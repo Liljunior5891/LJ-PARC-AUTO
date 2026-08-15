@@ -300,3 +300,44 @@ table.tableau {
   color: var(--couleur-danger);
   font-weight: 600;
 }
+
+/* ------------------- Bandeau de synthese (fiches) ----------------- */
+.grille-resume {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding-left: 0.85rem;
+    border-left: 3px solid var(--couleur-primaire);
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+    font-size: 0.75rem;
+  }
+}
+
+.libelle-resume {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--couleur-texte-doux);
+}
+
+.valeur-resume {
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+/* Rappel de perimetre : fonctionnalite prevue dans une phase ulterieure. */
+.note-phase {
+  margin: 1rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--couleur-bordure);
+  font-size: 0.78rem;
+  color: var(--couleur-texte-doux);
+}

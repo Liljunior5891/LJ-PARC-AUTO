@@ -1,0 +1,104 @@
+<div class="entete-page">
+  <div>
+    <h1>Clients</h1>
+    <p class="sous-titre">{{ page()?.totalElements ?? 0 }} client(s) enregistre(s)</p>
+  </div>
+  @if (peutGerer) {
+    <a class="bouton" routerLink="/clients/nouveau">+ Nouveau client</a>
+  }
+</div>
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="recherche">Recherche</label>
+      <input
+        id="recherche"
+        type="search"
+        placeholder="Raison sociale, code, contact..."
+        [(ngModel)]="recherche"
+        (keyup.enter)="filtrer()"
+      />
+    </div>
+    <div class="champ">
+      <label for="type">Type</label>
+      <select id="type" [(ngModel)]="type" (change)="filtrer()">
+        <option value="">Tous les types</option>
+        @for (t of types; track t.valeur) {
+          <option [value]="t.valeur">{{ t.libelle }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="archives">Archives</label>
+      <select id="archives" [(ngModel)]="masquerArchives" (change)="filtrer()">
+        <option [ngValue]="true">Masquer les clients archives</option>
+        <option [ngValue]="false">Afficher tous les clients</option>
+      </select>
+    </div>
+  </div>
+
+  @if (erreur()) {
+    <div class="message erreur" style="margin-top: 1rem">{{ erreur() }}</div>
+  }
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Raison sociale</th>
+          <th>Type</th>
+          <th>Telephone</th>
+          <th>Contact</th>
+          <th>Ville</th>
+          <th class="numerique">Delai paiement</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (client of page()?.content ?? []; track client.id) {
+          <tr>
+            <td><a [routerLink]="['/clients', client.id]">{{ client.code }}</a></td>
+            <td><strong>{{ client.raisonSociale }}</strong></td>
+            <td>{{ client.typeLibelle }}</td>
+            <td>{{ client.telephone || '—' }}</td>
+            <td>{{ client.personneContact || '—' }}</td>
+            <td>{{ client.ville || '—' }}</td>
+            <td class="numerique">
+              {{ client.delaiPaiementJours ? client.delaiPaiementJours + ' j' : '—' }}
+            </td>
+            <td>
+              @if (peutGerer) {
+                <a class="bouton secondaire petit" [routerLink]="['/clients', client.id]">Modifier</a>
+                <button class="bouton danger petit" type="button" (click)="archiver(client)">Archiver</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="8">
+              <div class="message vide">
+                {{ chargement() ? 'Chargement...' : 'Aucun client ne correspond a ces criteres.' }}
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">
+          Precedent
+        </button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">
+          Suivant
+        </button>
+      </div>
+    }
+  }
+</div>

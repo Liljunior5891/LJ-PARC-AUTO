@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TableauBordExploitation } from '../../core/models/exploitation';
 import { STATUTS_CAMION, StatutCamion, TableauBordParc } from '../../core/models/models';
 import { TableauBordService } from '../../core/services/tableau-bord.service';
 
@@ -13,6 +14,7 @@ export class TableauBord implements OnInit {
   private readonly service = inject(TableauBordService);
 
   readonly indicateurs = signal<TableauBordParc | null>(null);
+  readonly exploitation = signal<TableauBordExploitation | null>(null);
   readonly chargement = signal(true);
   readonly erreur = signal<string | null>(null);
 
@@ -34,6 +36,9 @@ export class TableauBord implements OnInit {
         this.chargement.set(false);
         this.erreur.set('Impossible de charger les indicateurs du parc.');
       }
+    });
+    this.service.exploitation().subscribe({
+      next: (donnees) => this.exploitation.set(donnees)
     });
   }
 

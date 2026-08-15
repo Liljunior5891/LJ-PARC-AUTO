@@ -19,6 +19,13 @@ export const routes: Routes = [
         title: 'Tableau de bord — PARC AUTO'
       },
       {
+        path: 'vue-parc',
+        loadComponent: () => import('./pages/vue-parc/vue-parc').then((m) => m.VueParc),
+        title: 'Vue globale du parc — PARC AUTO'
+      },
+
+      // --- Parc automobile -------------------------------------------------
+      {
         path: 'camions',
         loadComponent: () => import('./pages/camions/camions-liste').then((m) => m.CamionsListe),
         title: 'Camions — PARC AUTO'
@@ -57,6 +64,58 @@ export const routes: Routes = [
         path: 'documents',
         loadComponent: () => import('./pages/documents/documents').then((m) => m.Documents),
         title: 'Documents — PARC AUTO'
+      },
+
+      // --- Exploitation ----------------------------------------------------
+      {
+        path: 'clients',
+        loadComponent: () => import('./pages/clients/clients-liste').then((m) => m.ClientsListe),
+        title: 'Clients — PARC AUTO'
+      },
+      {
+        path: 'clients/nouveau',
+        loadComponent: () => import('./pages/clients/client-fiche').then((m) => m.ClientFiche),
+        title: 'Nouveau client — PARC AUTO'
+      },
+      {
+        path: 'clients/:id',
+        loadComponent: () => import('./pages/clients/client-fiche').then((m) => m.ClientFiche),
+        title: 'Fiche client — PARC AUTO'
+      },
+      {
+        path: 'locations',
+        loadComponent: () => import('./pages/locations/locations-liste').then((m) => m.LocationsListe),
+        title: 'Contrats de location — PARC AUTO'
+      },
+      {
+        path: 'locations/nouveau',
+        loadComponent: () => import('./pages/locations/location-fiche').then((m) => m.LocationFiche),
+        title: 'Nouveau contrat — PARC AUTO'
+      },
+      {
+        path: 'locations/:id',
+        loadComponent: () => import('./pages/locations/location-fiche').then((m) => m.LocationFiche),
+        title: 'Contrat de location — PARC AUTO'
+      },
+      {
+        path: 'missions',
+        loadComponent: () => import('./pages/missions/missions-liste').then((m) => m.MissionsListe),
+        title: 'Missions — PARC AUTO'
+      },
+      {
+        path: 'missions/nouvelle',
+        loadComponent: () => import('./pages/missions/mission-fiche').then((m) => m.MissionFiche),
+        title: 'Nouvelle mission — PARC AUTO'
+      },
+      {
+        path: 'missions/:id',
+        loadComponent: () => import('./pages/missions/mission-fiche').then((m) => m.MissionFiche),
+        title: 'Mission — PARC AUTO'
+      },
+      {
+        path: 'livraisons',
+        loadComponent: () => import('./pages/livraisons/livraisons').then((m) => m.Livraisons),
+        title: 'Livraisons — PARC AUTO'
       }
     ]
   },

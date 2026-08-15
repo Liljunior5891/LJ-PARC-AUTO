@@ -26,13 +26,15 @@ export class Shell {
   /** Menu du chapitre 37 : les entrees non encore developpees restent visibles mais desactivees. */
   readonly menu: EntreeMenu[] = [
     { libelle: 'Tableau de bord', route: '/tableau-bord', icone: '📊', section: 'Pilotage', disponible: true },
+    { libelle: 'Vue du parc', route: '/vue-parc', icone: '🗂️', section: 'Pilotage', disponible: true },
     { libelle: 'Camions', route: '/camions', icone: '🚛', section: 'Parc automobile', disponible: true },
     { libelle: 'Affectations', route: '/affectations', icone: '🔗', section: 'Parc automobile', disponible: true },
     { libelle: 'Documents', route: '/documents', icone: '📁', section: 'Parc automobile', disponible: true },
     { libelle: 'Chauffeurs', route: '/chauffeurs', icone: '👷', section: 'Chauffeurs', disponible: true },
-    { libelle: 'Locations', route: '/locations', icone: '📄', section: 'Exploitation', disponible: false },
-    { libelle: 'Missions', route: '/missions', icone: '🧭', section: 'Exploitation', disponible: false },
-    { libelle: 'Livraisons', route: '/livraisons', icone: '📦', section: 'Exploitation', disponible: false },
+    { libelle: 'Clients', route: '/clients', icone: '🏢', section: 'Exploitation', disponible: true },
+    { libelle: 'Locations', route: '/locations', icone: '📄', section: 'Exploitation', disponible: true },
+    { libelle: 'Missions', route: '/missions', icone: '🧭', section: 'Exploitation', disponible: true },
+    { libelle: 'Livraisons', route: '/livraisons', icone: '📦', section: 'Exploitation', disponible: true },
     { libelle: 'Recettes', route: '/recettes', icone: '💰', section: 'Finances', disponible: false },
     { libelle: 'Depenses', route: '/depenses', icone: '💸', section: 'Finances', disponible: false },
     { libelle: 'Facturation', route: '/facturation', icone: '🧾', section: 'Finances', disponible: false },

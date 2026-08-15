@@ -68,7 +68,9 @@ L'application est servie sur `http://localhost:4200`.
 | `DOCUMENTS_DIR` | `./data/documents` | Stockage des justificatifs |
 | `ADMIN_PASSWORD` | `Admin@2026` | Mot de passe du compte initial |
 
-## Périmètre livré (priorité 1 — Parc)
+## Périmètre livré
+
+### Priorité 1 — Parc
 
 - Authentification JWT et six profils utilisateurs (chapitre 40)
 - Camions : fiche complète, statuts, kilométrage, archivage (chapitre 6)
@@ -76,6 +78,15 @@ L'application est servie sur `http://localhost:4200`.
 - Affectations chauffeur / camion avec historique et contrôle de chevauchement (chapitre 9)
 - Documents : justificatifs téléversés et alertes d'échéance (chapitre 21)
 - Tableau de bord parc : effectifs, statuts, alertes (chapitre 4, volet parc)
+
+### Priorité 2 — Exploitation
+
+- Clients : fiche, conditions commerciales, historique des contrats (chapitre 10)
+- Contrats de location : cycle de vie complet et 5 modèles tarifaires (chapitres 11 et 12)
+- Missions : planification, démarrage, clôture avec relevés de compteur (chapitre 13)
+- Livraisons : bon, destinataire, marchandise et preuve de livraison (chapitre 14)
+- Vue globale du parc : camion, chauffeur, client, activité en cours (chapitre 5)
+- Tableau de bord : indicateurs d'exploitation et taux d'utilisation (chapitre 4.1)
 
 La suite du programme est décrite dans [docs/FEUILLE-DE-ROUTE.md](docs/FEUILLE-DE-ROUTE.md).
 

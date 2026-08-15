@@ -14,15 +14,27 @@ défini au chapitre 44.
 | 21 | Documents et alertes d'expiration | ✅ |
 | 4.1 | Tableau de bord — indicateurs de parc | ✅ (volet parc) |
 
-## Phase 2 — Exploitation
+## Phase 2 — Exploitation (livrée)
 
-| Chapitre | Fonctionnalité |
-| --- | --- |
-| 10 | Clients |
-| 11, 12 | Contrats de location et modèles tarifaires (jour, km, voyage, mois, longue durée) |
-| 13 | Missions |
-| 14 | Livraisons et preuves de livraison |
-| 5 | Vue globale du parc (tableau consolidé) |
+| Chapitre | Fonctionnalité | État |
+| --- | --- | --- |
+| 10 | Clients et conditions commerciales | ✅ |
+| 11, 12 | Contrats de location et 5 modèles tarifaires | ✅ |
+| 13 | Missions : planification, démarrage, clôture | ✅ |
+| 14 | Livraisons et preuves de livraison | ✅ |
+| 5 | Vue globale du parc | ✅ (hors colonnes financières) |
+| 4.1 | Indicateurs d'exploitation du tableau de bord | ✅ |
+
+Règles d'exploitation implémentées :
+
+- numérotation automatique et atomique des pièces (`LOC-2026-0001`, `M-…`, `LIV-…`) ;
+- un camion ne porte qu'un contrat actif et qu'une mission en cours à la fois,
+  garanti côté application **et** par des index uniques partiels PostgreSQL ;
+- l'activation d'un contrat engage le camion, sa clôture le libère ;
+- une mission démarrée place camion et chauffeur en mission ; à la clôture, le
+  camion retourne « en location » s'il reste sous contrat, sinon « disponible » ;
+- la clôture d'une mission met à jour le compteur kilométrique du camion ;
+- une livraison déclarée livrée exige une preuve : nom du réceptionnaire, signature ou photo.
 
 ## Phase 3 — Finances
 

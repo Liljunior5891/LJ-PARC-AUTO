@@ -9,7 +9,7 @@ public final class TableauBordDto {
     private TableauBordDto() {
     }
 
-    /** Indicateurs parc du chapitre 4.1 disponibles a ce stade du projet. */
+    /** Indicateurs de parc du chapitre 4.1. */
     public record Parc(
             long totalCamions,
             long camionsDisponibles,
@@ -24,5 +24,18 @@ public final class TableauBordDto {
             long documentsAExpirer,
             long documentsExpires,
             long permisAExpirer) {
+    }
+
+    /** Indicateurs d'exploitation du chapitre 4.1 (volet locations et missions). */
+    public record Exploitation(
+            long clientsActifs,
+            long contratsActifs,
+            long contratsEnAttente,
+            long contratsEcheance,
+            long missionsEnCours,
+            long missionsPlanifiees,
+            long livraisonsEnAttente,
+            long livraisonsLivrees,
+            long tauxUtilisationPourcent) {
     }
 }

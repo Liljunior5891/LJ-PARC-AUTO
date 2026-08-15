@@ -1,0 +1,129 @@
+<div class="entete-page">
+  <div>
+    <h1>Missions</h1>
+    <p class="sous-titre">{{ page()?.totalElements ?? 0 }} mission(s) — chapitre 13 du cahier des charges</p>
+  </div>
+  @if (peutGerer) {
+    <a class="bouton" routerLink="/missions/nouvelle">+ Nouvelle mission</a>
+  }
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="recherche">Recherche</label>
+      <input
+        id="recherche"
+        type="search"
+        placeholder="Numero, destination, marchandise..."
+        [(ngModel)]="recherche"
+        (keyup.enter)="filtrer()"
+      />
+    </div>
+    <div class="champ">
+      <label for="statut">Statut</label>
+      <select id="statut" [(ngModel)]="statut" (change)="filtrer()">
+        <option value="">Tous les statuts</option>
+        @for (s of statuts; track s.valeur) {
+          <option [value]="s.valeur">{{ s.libelle }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="type">Type</label>
+      <select id="type" [(ngModel)]="type" (change)="filtrer()">
+        <option value="">Tous les types</option>
+        @for (t of types; track t.valeur) {
+          <option [value]="t.valeur">{{ t.libelle }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Mission</th>
+          <th>Camion</th>
+          <th>Chauffeur</th>
+          <th>Client</th>
+          <th>Trajet</th>
+          <th>Depart</th>
+          <th class="numerique">Distance</th>
+          <th class="numerique">Recette</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (mission of page()?.content ?? []; track mission.id) {
+          <tr>
+            <td><a [routerLink]="['/missions', mission.id]">{{ mission.numero }}</a></td>
+            <td>{{ mission.camionImmatriculation }}</td>
+            <td>{{ mission.chauffeurNom || '—' }}</td>
+            <td>{{ mission.clientNom || '—' }}</td>
+            <td>{{ mission.lieuDepart || '?' }} → {{ mission.destination || '?' }}</td>
+            <td>{{ mission.dateDepart | date: 'dd/MM/yy HH:mm' }}</td>
+            <td class="numerique">{{ mission.distance ? (mission.distance | number) + ' km' : '—' }}</td>
+            <td class="numerique">
+              {{ (mission.recetteReelle ?? mission.recettePrevue ?? 0) | number }}
+            </td>
+            <td><span [class]="classeStatut(mission.statut)">{{ mission.statutLibelle }}</span></td>
+            <td>
+              @if (clotureEnCours() === mission.id) {
+                <input type="number" placeholder="km arrivee" [(ngModel)]="kilometrageArrivee"
+                       [ngModelOptions]="{ standalone: true }" style="width: 110px" />
+                <input type="number" placeholder="recette" [(ngModel)]="recetteReelle"
+                       [ngModelOptions]="{ standalone: true }" style="width: 110px" />
+                <button class="bouton petit" type="button" (click)="cloturer(mission)">Valider</button>
+                <button class="bouton secondaire petit" type="button" (click)="clotureEnCours.set(null)">
+                  Annuler
+                </button>
+              } @else {
+                @if (peutPiloter && mission.statut === 'PLANIFIEE') {
+                  <button class="bouton petit" type="button" (click)="demarrer(mission)">Demarrer</button>
+                }
+                @if (peutPiloter && mission.statut === 'EN_COURS') {
+                  <button class="bouton petit" type="button" (click)="ouvrirCloture(mission)">Cloturer</button>
+                }
+                @if (peutGerer && mission.statut !== 'TERMINEE' && mission.statut !== 'ANNULEE') {
+                  <button class="bouton danger petit" type="button" (click)="annuler(mission)">Annuler</button>
+                }
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="10">
+              <div class="message vide">
+                {{ chargement() ? 'Chargement...' : 'Aucune mission ne correspond a ces criteres.' }}
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">
+          Precedent
+        </button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">
+          Suivant
+        </button>
+      </div>
+    }
+  }
+</div>

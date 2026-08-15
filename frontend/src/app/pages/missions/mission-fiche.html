@@ -1,0 +1,157 @@
+<div class="entete-page">
+  <div>
+    <h1>{{ titre }}</h1>
+    <p class="sous-titre">
+      @if (mission(); as m) {
+        {{ m.numero }} — {{ m.statutLibelle }}
+      } @else {
+        Chapitre 13 — trajet, releves de compteur et recette
+      }
+    </p>
+  </div>
+  <a class="bouton secondaire" routerLink="/missions">Retour a la liste</a>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+@if (mission(); as m) {
+  <div class="carte" style="margin-bottom: 1rem">
+    <div class="grille-resume">
+      <div>
+        <span class="libelle-resume">Distance</span>
+        <strong class="valeur-resume">{{ m.distance ? (m.distance | number) + ' km' : '—' }}</strong>
+        <small>
+          {{ m.kilometrageDepart ? (m.kilometrageDepart | number) : '?' }} →
+          {{ m.kilometrageArrivee ? (m.kilometrageArrivee | number) : '?' }}
+        </small>
+      </div>
+      <div>
+        <span class="libelle-resume">Duree</span>
+        <strong class="valeur-resume">{{ m.dureeHeures !== undefined ? m.dureeHeures + ' h' : '—' }}</strong>
+        <small>
+          {{ m.dateDepart | date: 'dd/MM/yy HH:mm' }} →
+          {{ m.dateArrivee ? (m.dateArrivee | date: 'dd/MM/yy HH:mm') : 'en cours' }}
+        </small>
+      </div>
+      <div>
+        <span class="libelle-resume">Recette</span>
+        <strong class="valeur-resume">
+          {{ (m.recetteReelle ?? m.recettePrevue ?? 0) | number }} FCFA
+        </strong>
+        <small>{{ m.recetteReelle ? 'encaissee' : 'prevue' }}</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Rattachement</span>
+        <strong class="valeur-resume">{{ m.locationNumero || 'Hors contrat' }}</strong>
+        <small>{{ m.camionImmatriculation }} · {{ m.chauffeurNom || 'sans chauffeur' }}</small>
+      </div>
+    </div>
+    <p class="note-phase">
+      Les depenses de la mission et son resultat net seront calcules par le module Depenses (phase 3).
+    </p>
+  </div>
+}
+
+<form class="carte" [formGroup]="formulaire" (ngSubmit)="soumettre()">
+  <h2>Affectation</h2>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="camionId">Camion *</label>
+      <select id="camionId" formControlName="camionId">
+        <option [ngValue]="null">Selectionner un camion</option>
+        @for (camion of camions(); track camion.id) {
+          <option [ngValue]="camion.id">
+            {{ camion.numeroInterne }} — {{ camion.immatriculation }} ({{ camion.statutLibelle }})
+          </option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="chauffeurId">Chauffeur</label>
+      <select id="chauffeurId" formControlName="chauffeurId">
+        <option [ngValue]="null">A designer</option>
+        @for (chauffeur of chauffeurs(); track chauffeur.id) {
+          <option [ngValue]="chauffeur.id">{{ chauffeur.matricule }} — {{ chauffeur.nomComplet }}</option>
+        }
+      </select>
+      <span class="erreur-champ" style="color: var(--couleur-texte-doux)">
+        Obligatoire pour demarrer la mission
+      </span>
+    </div>
+    <div class="champ">
+      <label for="clientId">Client</label>
+      <select id="clientId" formControlName="clientId">
+        <option [ngValue]="null">Aucun client</option>
+        @for (client of clients(); track client.id) {
+          <option [ngValue]="client.id">{{ client.code }} — {{ client.raisonSociale }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="locationId">Contrat de location</label>
+      <select id="locationId" formControlName="locationId">
+        <option [ngValue]="null">Hors contrat</option>
+        @for (contrat of contrats(); track contrat.id) {
+          <option [ngValue]="contrat.id">
+            {{ contrat.numero }} — {{ contrat.clientNom }} ({{ contrat.camionImmatriculation }})
+          </option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <h2 style="margin-top: 1.5rem">Trajet</h2>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="typeMission">Type de mission *</label>
+      <select id="typeMission" formControlName="typeMission">
+        @for (t of types; track t.valeur) {
+          <option [value]="t.valeur">{{ t.libelle }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="dateDepart">Date et heure de depart *</label>
+      <input id="dateDepart" type="datetime-local" formControlName="dateDepart" />
+    </div>
+    <div class="champ">
+      <label for="lieuDepart">Lieu de depart</label>
+      <input id="lieuDepart" formControlName="lieuDepart" placeholder="Lome" />
+    </div>
+    <div class="champ">
+      <label for="destination">Destination</label>
+      <input id="destination" formControlName="destination" placeholder="Atakpame" />
+    </div>
+    <div class="champ">
+      <label for="marchandise">Marchandise</label>
+      <input id="marchandise" formControlName="marchandise" placeholder="Ciment 25 t" />
+    </div>
+    <div class="champ">
+      <label for="recettePrevue">Recette prevue (FCFA)</label>
+      <input id="recettePrevue" type="number" formControlName="recettePrevue" />
+    </div>
+  </div>
+
+  <div class="champ" style="margin-top: 1rem">
+    <label for="observations">Observations</label>
+    <textarea id="observations" formControlName="observations"></textarea>
+  </div>
+
+  @if (modifiable) {
+    <div class="actions-formulaire">
+      <button class="bouton" type="submit" [disabled]="enregistrement()">
+        {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
+      </button>
+      <a class="bouton secondaire" routerLink="/missions">Annuler</a>
+    </div>
+  } @else {
+    <p class="message vide" style="margin-top: 1.25rem">
+      Cette mission est {{ mission()?.statutLibelle?.toLowerCase() }} : elle n'est plus modifiable.
+    </p>
+  }
+</form>

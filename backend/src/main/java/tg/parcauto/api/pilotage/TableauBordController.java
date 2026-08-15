@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/tableau-bord")
 @RequiredArgsConstructor
@@ -20,5 +22,17 @@ public class TableauBordController {
     @Operation(summary = "Indicateurs du parc : effectifs, statuts, affectations et alertes")
     public TableauBordDto.Parc parc(@RequestParam(defaultValue = "30") int joursAlerte) {
         return service.parc(joursAlerte);
+    }
+
+    @GetMapping("/exploitation")
+    @Operation(summary = "Indicateurs d'exploitation : contrats, missions, livraisons")
+    public TableauBordDto.Exploitation exploitation(@RequestParam(defaultValue = "15") int joursEcheance) {
+        return service.exploitation(joursEcheance);
+    }
+
+    @GetMapping("/vue-parc")
+    @Operation(summary = "Vue globale du parc : camion, chauffeur, statut, activite et client")
+    public List<VueParcDto> vueParc() {
+        return service.vueParc();
     }
 }

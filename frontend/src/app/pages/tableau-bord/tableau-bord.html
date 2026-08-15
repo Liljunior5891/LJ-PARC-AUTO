@@ -46,6 +46,32 @@
     </a>
   </section>
 
+  @if (exploitation(); as e) {
+    <h2 style="margin: 1.5rem 0 0.75rem">Exploitation</h2>
+    <section class="grille-indicateurs">
+      <a class="carte indicateur info" routerLink="/locations">
+        <span class="libelle">Contrats actifs</span>
+        <strong class="valeur">{{ e.contratsActifs }}</strong>
+        <span class="detail">{{ e.contratsEcheance }} arrivent a echeance</span>
+      </a>
+      <a class="carte indicateur" routerLink="/missions">
+        <span class="libelle">Missions en cours</span>
+        <strong class="valeur">{{ e.missionsEnCours }}</strong>
+        <span class="detail">{{ e.missionsPlanifiees }} planifiees</span>
+      </a>
+      <a class="carte indicateur alerte" routerLink="/livraisons">
+        <span class="libelle">Livraisons a effectuer</span>
+        <strong class="valeur">{{ e.livraisonsEnAttente }}</strong>
+        <span class="detail">{{ e.livraisonsLivrees }} livrees a ce jour</span>
+      </a>
+      <a class="carte indicateur succes" routerLink="/vue-parc">
+        <span class="libelle">Taux d'utilisation</span>
+        <strong class="valeur">{{ e.tauxUtilisationPourcent }} %</strong>
+        <span class="detail">{{ e.clientsActifs }} client(s) actif(s)</span>
+      </a>
+    </section>
+  }
+
   <section class="deux-colonnes">
     <div class="carte">
       <h2>Repartition du parc par statut</h2>
@@ -86,8 +112,8 @@
         </li>
       </ul>
       <p class="note">
-        Les modules Locations, Missions, Recettes, Depenses et GPS completeront ce tableau de bord
-        dans les phases suivantes du projet.
+        Les indicateurs financiers du chapitre 4.2 (chiffre d'affaires, depenses, resultat, factures
+        impayees) seront ajoutes avec les modules Recettes, Depenses et Facturation de la phase 3.
       </p>
     </div>
   </section>

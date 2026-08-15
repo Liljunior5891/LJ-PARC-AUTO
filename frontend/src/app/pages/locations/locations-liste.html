@@ -1,0 +1,118 @@
+<div class="entete-page">
+  <div>
+    <h1>Contrats de location</h1>
+    <p class="sous-titre">
+      {{ page()?.totalElements ?? 0 }} contrat(s) — chapitres 11 et 12 du cahier des charges
+    </p>
+  </div>
+  @if (peutGerer) {
+    <a class="bouton" routerLink="/locations/nouveau">+ Nouveau contrat</a>
+  }
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="recherche">Recherche</label>
+      <input
+        id="recherche"
+        type="search"
+        placeholder="Numero, client, immatriculation, destination..."
+        [(ngModel)]="recherche"
+        (keyup.enter)="filtrer()"
+      />
+    </div>
+    <div class="champ">
+      <label for="statut">Statut</label>
+      <select id="statut" [(ngModel)]="statut" (change)="filtrer()">
+        <option value="">Tous les statuts</option>
+        @for (s of statuts; track s.valeur) {
+          <option [value]="s.valeur">{{ s.libelle }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="type">Modele tarifaire</label>
+      <select id="type" [(ngModel)]="type" (change)="filtrer()">
+        <option value="">Tous les modeles</option>
+        @for (t of types; track t.valeur) {
+          <option [value]="t.valeur">{{ t.libelle }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Contrat</th>
+          <th>Client</th>
+          <th>Camion</th>
+          <th>Modele</th>
+          <th>Periode</th>
+          <th class="numerique">Tarif</th>
+          <th class="numerique">Montant</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (contrat of page()?.content ?? []; track contrat.id) {
+          <tr>
+            <td><a [routerLink]="['/locations', contrat.id]">{{ contrat.numero }}</a></td>
+            <td><strong>{{ contrat.clientNom }}</strong></td>
+            <td>{{ contrat.camionImmatriculation }}</td>
+            <td>{{ contrat.typeLibelle }}</td>
+            <td>
+              {{ contrat.dateDebut }} → {{ contrat.dateFinReelle || contrat.dateFin || '—' }}
+              @if (contrat.echue) {
+                <span class="etiquette vendu">echu</span>
+              }
+            </td>
+            <td class="numerique">{{ contrat.tarif | number }}</td>
+            <td class="numerique"><strong>{{ contrat.montant | number }}</strong></td>
+            <td><span [class]="classeStatut(contrat.statut)">{{ contrat.statutLibelle }}</span></td>
+            <td>
+              @if (peutGerer) {
+                @if (contrat.statut === 'BROUILLON' || contrat.statut === 'EN_ATTENTE') {
+                  <button class="bouton petit" type="button" (click)="activer(contrat)">Activer</button>
+                }
+                <a class="bouton secondaire petit" [routerLink]="['/locations', contrat.id]">Ouvrir</a>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="9">
+              <div class="message vide">
+                {{ chargement() ? 'Chargement...' : 'Aucun contrat ne correspond a ces criteres.' }}
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">
+          Precedent
+        </button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">
+          Suivant
+        </button>
+      </div>
+    }
+  }
+</div>
