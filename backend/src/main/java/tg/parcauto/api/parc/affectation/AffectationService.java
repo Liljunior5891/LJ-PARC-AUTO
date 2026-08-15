@@ -28,7 +28,8 @@ public class AffectationService {
     @Transactional(readOnly = true)
     public Page<AffectationDto.Reponse> rechercher(Long camionId, Long chauffeurId, Boolean enCours,
                                                    Pageable pageable) {
-        return repository.rechercher(camionId, chauffeurId, enCours, pageable).map(AffectationDto.Reponse::de);
+        return repository.findAll(AffectationSpecifications.rechercher(camionId, chauffeurId, enCours), pageable)
+                .map(AffectationDto.Reponse::de);
     }
 
     @Transactional(readOnly = true)
@@ -65,8 +66,8 @@ public class AffectationService {
             throw new BusinessException("Le chauffeur " + chauffeur.nomComplet() + " est archive");
         }
 
-        List<Affectation> conflits = repository.chevauchements(
-                camion.getId(), chauffeur.getId(), requete.dateDebut(), requete.dateFin());
+        List<Affectation> conflits = repository.candidatsChevauchement(
+                camion.getId(), chauffeur.getId(), requete.dateDebut());
         for (Affectation conflit : conflits) {
             if (!conflit.chevauche(requete.dateDebut(), requete.dateFin())) {
                 continue;

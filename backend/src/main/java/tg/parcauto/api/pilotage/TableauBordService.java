@@ -29,7 +29,7 @@ public class TableauBordService {
     public TableauBordDto.Parc parc(int joursAlerte) {
         Map<StatutCamion, Long> repartition = camionService.repartitionParStatut();
         long total = repartition.values().stream().mapToLong(Long::longValue).sum();
-        long affectationsEnCours = affectationRepository.affectationsEnCours().size();
+        long affectationsEnCours = affectationRepository.countByDateFinIsNull();
 
         List<DocumentDto.Reponse> documents = documentService.aExpirer(joursAlerte);
         long expires = documents.stream().filter(DocumentDto.Reponse::expire).count();

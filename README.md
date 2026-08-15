@@ -39,8 +39,8 @@ cd backend
 mvn spring-boot:run
 ```
 
-L'API démarre sur `http://localhost:8080`.
-Documentation interactive : `http://localhost:8080/swagger-ui.html`.
+L'API démarre sur `http://localhost:8081` (port configurable via `SERVER_PORT`).
+Documentation interactive : `http://localhost:8081/swagger-ui.html`.
 
 Au premier démarrage, un compte administrateur est créé :
 
@@ -82,9 +82,14 @@ La suite du programme est décrite dans [docs/FEUILLE-DE-ROUTE.md](docs/FEUILLE-
 ## Tests
 
 ```bash
-cd backend && mvn test
-cd frontend && npm test
+cd backend && mvn test          # regles metier
+cd frontend && npm test         # composants Angular
+./scripts/verifier-api.sh       # test de fumee sur une API demarree
 ```
+
+Note : les requetes de recherche utilisent des Specifications JPA plutot que des
+clauses `:param is null` en JPQL — PostgreSQL ne sait pas typer un parametre nul
+isole et rejette la requete.
 
 ## Structure du dépôt
 

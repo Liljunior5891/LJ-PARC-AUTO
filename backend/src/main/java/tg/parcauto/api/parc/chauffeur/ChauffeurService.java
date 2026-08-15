@@ -20,8 +20,8 @@ public class ChauffeurService {
 
     @Transactional(readOnly = true)
     public Page<ChauffeurDto.Reponse> rechercher(String q, StatutChauffeur statut, Boolean actif, Pageable pageable) {
-        String terme = (q == null || q.isBlank()) ? null : q.trim();
-        return repository.rechercher(terme, statut, actif, pageable).map(ChauffeurDto.Reponse::de);
+        return repository.findAll(ChauffeurSpecifications.rechercher(q, statut, actif), pageable)
+                .map(ChauffeurDto.Reponse::de);
     }
 
     @Transactional(readOnly = true)

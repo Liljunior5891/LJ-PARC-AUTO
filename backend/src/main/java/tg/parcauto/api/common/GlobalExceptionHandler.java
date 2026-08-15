@@ -1,6 +1,7 @@
 package tg.parcauto.api.common;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -54,6 +56,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Map<String, Object>> handleAuth(AuthenticationException ex, HttpServletRequest req) {
         return build(HttpStatus.UNAUTHORIZED, "Identifiants invalides", req, null);
+    }
+
+    /**
+     * Filet de securite : sans lui, une erreur technique survenue dans un controleur
+     * remonte la chaine de filtres et se presente au client en 403, ce qui masque la cause.
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleTechnique(Exception ex, HttpServletRequest req) {
+        log.error("Erreur technique sur {} : {}", req.getRequestURI(), ex.getMessage(), ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur technique du serveur", req, null);
     }
 
     private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message,

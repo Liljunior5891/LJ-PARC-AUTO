@@ -28,7 +28,8 @@ public class DocumentService {
     @Transactional(readOnly = true)
     public Page<DocumentDto.Reponse> rechercher(ProprietaireDocument proprietaireType, Long proprietaireId,
                                                 TypeDocument type, Pageable pageable) {
-        return repository.rechercher(proprietaireType, proprietaireId, type, pageable)
+        return repository
+                .findAll(DocumentSpecifications.rechercher(proprietaireType, proprietaireId, type), pageable)
                 .map(d -> DocumentDto.Reponse.de(d, libelleProprietaire(d)));
     }
 
