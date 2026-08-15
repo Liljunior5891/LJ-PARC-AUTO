@@ -1,0 +1,149 @@
+.coquille {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  min-height: 100vh;
+  transition: grid-template-columns 0.2s ease;
+
+  &.menu-replie {
+    grid-template-columns: 0 1fr;
+
+    .barre-laterale {
+      display: none;
+    }
+  }
+}
+
+.barre-laterale {
+  background: #0e2233;
+  color: #d5dde5;
+  padding: 1rem 0.75rem;
+  overflow-y: auto;
+
+  .marque {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #fff;
+
+    .logo {
+      font-size: 1.3rem;
+    }
+  }
+
+  .section {
+    margin-bottom: 1rem;
+  }
+
+  .titre-section {
+    display: block;
+    padding: 0 0.6rem 0.35rem;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6f8296;
+  }
+
+  .lien {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 8px;
+    color: #d5dde5;
+    font-size: 0.9rem;
+
+    &:hover {
+      background: #16324a;
+    }
+
+    &.actif {
+      background: #1b6ba8;
+      color: #fff;
+    }
+
+    &.desactive {
+      color: #5d7284;
+      cursor: not-allowed;
+
+      &:hover {
+        background: transparent;
+      }
+    }
+
+    .icone {
+      width: 1.2rem;
+      text-align: center;
+    }
+
+    .badge-bientot {
+      margin-left: auto;
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      border: 1px solid #35516a;
+      border-radius: 999px;
+      padding: 0 0.35rem;
+    }
+  }
+}
+
+.zone-principale {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.barre-haute {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--couleur-surface);
+  border-bottom: 1px solid var(--couleur-bordure);
+
+  .bouton-menu {
+    background: none;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .utilisateur {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .identite {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    text-align: right;
+
+    small {
+      color: var(--couleur-texte-doux);
+      font-size: 0.72rem;
+    }
+  }
+}
+
+.contenu {
+  padding: 1.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .coquille {
+    grid-template-columns: 1fr;
+
+    .barre-laterale {
+      display: none;
+    }
+  }
+}

@@ -1,0 +1,53 @@
+<div class="coquille" [class.menu-replie]="!menuOuvert()">
+  <aside class="barre-laterale">
+    <div class="marque">
+      <span class="logo">🚛</span>
+      <span class="nom">PARC AUTO</span>
+    </div>
+
+    <nav>
+      @for (section of sections; track section) {
+        <div class="section">
+          <span class="titre-section">{{ section }}</span>
+          @for (entree of entreesDe(section); track entree.route) {
+            @if (entree.disponible) {
+              <a
+                class="lien"
+                [routerLink]="entree.route"
+                routerLinkActive="actif"
+              >
+                <span class="icone">{{ entree.icone }}</span>
+                <span class="libelle">{{ entree.libelle }}</span>
+              </a>
+            } @else {
+              <span class="lien desactive" title="Module prevu dans une prochaine phase">
+                <span class="icone">{{ entree.icone }}</span>
+                <span class="libelle">{{ entree.libelle }}</span>
+                <span class="badge-bientot">a venir</span>
+              </span>
+            }
+          }
+        </div>
+      }
+    </nav>
+  </aside>
+
+  <div class="zone-principale">
+    <header class="barre-haute">
+      <button class="bouton-menu" type="button" (click)="basculerMenu()" aria-label="Afficher ou masquer le menu">
+        ☰
+      </button>
+      <div class="utilisateur">
+        <div class="identite">
+          <strong>{{ utilisateur()?.nomComplet }}</strong>
+          <small>{{ utilisateur()?.roles?.join(', ') }}</small>
+        </div>
+        <button class="bouton secondaire petit" type="button" (click)="deconnexion()">Deconnexion</button>
+      </div>
+    </header>
+
+    <main class="contenu">
+      <router-outlet />
+    </main>
+  </div>
+</div>

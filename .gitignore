@@ -1,0 +1,23 @@
+# Build
+backend/target/
+frontend/dist/
+frontend/.angular/
+frontend/node_modules/
+
+# Donnees locales
+backend/data/
+data/
+
+# Environnement
+.env
+*.local
+
+# IDE
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+
+# Systeme
+Thumbs.db
+.DS_Store

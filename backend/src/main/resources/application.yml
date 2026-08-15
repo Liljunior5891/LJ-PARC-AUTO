@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: parcauto-api
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:parcauto}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  jackson:
+    default-property-inclusion: non_null
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 20MB
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+
+parcauto:
+  security:
+    jwt:
+      # A remplacer imperativement en production (variable d'environnement JWT_SECRET)
+      secret: ${JWT_SECRET:Y2hhbmdlLW1lLXBhcmNhdXRvLWRldi1zZWNyZXQta2V5LTMyLWJ5dGVzLW1pbmltdW0=}
+      expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
+  storage:
+    documents-dir: ${DOCUMENTS_DIR:./data/documents}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+
+logging:
+  level:
+    tg.parcauto: DEBUG

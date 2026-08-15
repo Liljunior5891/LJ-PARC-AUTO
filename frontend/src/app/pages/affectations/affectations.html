@@ -1,0 +1,149 @@
+<div class="entete-page">
+  <div>
+    <h1>Affectations chauffeur / camion</h1>
+    <p class="sous-titre">Chapitre 9 du cahier des charges — historique complet conserve</p>
+  </div>
+  @if (peutGerer) {
+    <button class="bouton" type="button" (click)="basculerFormulaire()">
+      {{ formulaireVisible() ? 'Fermer' : '+ Nouvelle affectation' }}
+    </button>
+  }
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+@if (formulaireVisible()) {
+  <form class="carte" [formGroup]="formulaire" (ngSubmit)="affecter()" style="margin-bottom: 1rem">
+    <h2>Affecter un chauffeur a un camion</h2>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="camionId">Camion *</label>
+        <select id="camionId" formControlName="camionId">
+          <option [ngValue]="null">Selectionner un camion</option>
+          @for (camion of camions(); track camion.id) {
+            <option [ngValue]="camion.id">
+              {{ camion.numeroInterne }} — {{ camion.immatriculation }} ({{ camion.statutLibelle }})
+            </option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="chauffeurId">Chauffeur *</label>
+        <select id="chauffeurId" formControlName="chauffeurId">
+          <option [ngValue]="null">Selectionner un chauffeur</option>
+          @for (chauffeur of chauffeurs(); track chauffeur.id) {
+            <option [ngValue]="chauffeur.id">
+              {{ chauffeur.matricule }} — {{ chauffeur.nomComplet }}
+            </option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="dateDebut">Date de debut *</label>
+        <input id="dateDebut" type="date" formControlName="dateDebut" />
+      </div>
+      <div class="champ">
+        <label for="dateFin">Date de fin prevue</label>
+        <input id="dateFin" type="date" formControlName="dateFin" />
+      </div>
+      <div class="champ">
+        <label for="motif">Motif</label>
+        <input id="motif" formControlName="motif" placeholder="Mission, remplacement, contrat..." />
+      </div>
+    </div>
+    <div class="champ" style="margin-top: 1rem">
+      <label for="observations">Observations</label>
+      <textarea id="observations" formControlName="observations"></textarea>
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton" type="submit">Affecter</button>
+      <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
+    </div>
+  </form>
+}
+
+<div class="carte">
+  <div class="champ" style="max-width: 280px">
+    <label for="filtre">Affichage</label>
+    <select id="filtre" [(ngModel)]="filtreEnCours" (change)="filtrer()">
+      <option value="ouvertes">Affectations en cours</option>
+      <option value="closes">Affectations terminees</option>
+      <option value="tous">Tout l'historique</option>
+    </select>
+  </div>
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Camion</th>
+          <th>Chauffeur</th>
+          <th>Debut</th>
+          <th>Fin</th>
+          <th>Motif</th>
+          <th>Etat</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (affectation of page()?.content ?? []; track affectation.id) {
+          <tr>
+            <td>
+              <strong>{{ affectation.camionImmatriculation }}</strong>
+              <small> ({{ affectation.camionNumeroInterne }})</small>
+            </td>
+            <td>{{ affectation.chauffeurNom }}</td>
+            <td>{{ affectation.dateDebut }}</td>
+            <td>{{ affectation.dateFin || '—' }}</td>
+            <td>{{ affectation.motif || '—' }}</td>
+            <td>
+              <span class="etiquette" [class.disponible]="affectation.enCours">
+                {{ affectation.enCours ? 'En cours' : 'Terminee' }}
+              </span>
+            </td>
+            <td>
+              @if (peutGerer && affectation.enCours) {
+                @if (clotureEnCours() === affectation.id) {
+                  <input type="date" [(ngModel)]="dateCloture" [ngModelOptions]="{ standalone: true }" />
+                  <button class="bouton petit" type="button" (click)="cloturer(affectation)">Valider</button>
+                  <button class="bouton secondaire petit" type="button" (click)="annulerCloture()">Annuler</button>
+                } @else {
+                  <button class="bouton secondaire petit" type="button" (click)="ouvrirCloture(affectation)">
+                    Cloturer
+                  </button>
+                }
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7">
+              <div class="message vide">
+                {{ chargement() ? 'Chargement...' : 'Aucune affectation pour ce filtre.' }}
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">
+          Precedent
+        </button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">
+          Suivant
+        </button>
+      </div>
+    }
+  }
+</div>

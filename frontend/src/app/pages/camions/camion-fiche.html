@@ -1,0 +1,133 @@
+<div class="entete-page">
+  <div>
+    <h1>{{ titre }}</h1>
+    <p class="sous-titre">Chapitre 6 du cahier des charges — identification et etat du vehicule</p>
+  </div>
+  <a class="bouton secondaire" routerLink="/camions">Retour a la liste</a>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<form class="carte" [formGroup]="formulaire" (ngSubmit)="soumettre()">
+  <h2>Identification</h2>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="numeroInterne">Numero interne *</label>
+      <input id="numeroInterne" formControlName="numeroInterne" placeholder="C-001" />
+      @if (formulaire.controls.numeroInterne.touched && formulaire.controls.numeroInterne.invalid) {
+        <span class="erreur-champ">Numero interne requis</span>
+      }
+    </div>
+    <div class="champ">
+      <label for="immatriculation">Immatriculation *</label>
+      <input id="immatriculation" formControlName="immatriculation" placeholder="TG-1234-AB" />
+      @if (formulaire.controls.immatriculation.touched && formulaire.controls.immatriculation.invalid) {
+        <span class="erreur-champ">Immatriculation requise</span>
+      }
+    </div>
+    <div class="champ">
+      <label for="marque">Marque</label>
+      <input id="marque" formControlName="marque" />
+    </div>
+    <div class="champ">
+      <label for="modele">Modele</label>
+      <input id="modele" formControlName="modele" />
+    </div>
+    <div class="champ">
+      <label for="annee">Annee</label>
+      <input id="annee" type="number" formControlName="annee" />
+    </div>
+    <div class="champ">
+      <label for="type">Type</label>
+      <input id="type" formControlName="type" placeholder="Benne, plateau, citerne..." />
+    </div>
+    <div class="champ">
+      <label for="categorie">Categorie</label>
+      <input id="categorie" formControlName="categorie" />
+    </div>
+    <div class="champ">
+      <label for="couleur">Couleur</label>
+      <input id="couleur" formControlName="couleur" />
+    </div>
+  </div>
+
+  <h2 style="margin-top: 1.5rem">Caracteristiques techniques</h2>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="numeroChassis">Numero de chassis</label>
+      <input id="numeroChassis" formControlName="numeroChassis" />
+    </div>
+    <div class="champ">
+      <label for="numeroMoteur">Numero moteur</label>
+      <input id="numeroMoteur" formControlName="numeroMoteur" />
+    </div>
+    <div class="champ">
+      <label for="capaciteTonnes">Capacite (tonnes)</label>
+      <input id="capaciteTonnes" type="number" step="0.01" formControlName="capaciteTonnes" />
+    </div>
+    <div class="champ">
+      <label for="typeCarburant">Carburant</label>
+      <select id="typeCarburant" formControlName="typeCarburant">
+        @for (carburant of carburants; track carburant) {
+          <option [value]="carburant">{{ carburant }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="gpsDeviceId">Identifiant traceur GPS</label>
+      <input id="gpsDeviceId" formControlName="gpsDeviceId" placeholder="Reserve au module GPS" />
+    </div>
+  </div>
+
+  <h2 style="margin-top: 1.5rem">Acquisition et exploitation</h2>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="dateAcquisition">Date d'acquisition</label>
+      <input id="dateAcquisition" type="date" formControlName="dateAcquisition" />
+    </div>
+    <div class="champ">
+      <label for="prixAchat">Prix d'achat (FCFA)</label>
+      <input id="prixAchat" type="number" formControlName="prixAchat" />
+    </div>
+    <div class="champ">
+      <label for="kilometrageInitial">Kilometrage initial</label>
+      <input id="kilometrageInitial" type="number" formControlName="kilometrageInitial" />
+    </div>
+    <div class="champ">
+      <label for="kilometrageActuel">Kilometrage actuel</label>
+      <input id="kilometrageActuel" type="number" formControlName="kilometrageActuel" />
+    </div>
+    <div class="champ">
+      <label for="statut">Statut</label>
+      <select id="statut" formControlName="statut">
+        @for (s of statuts; track s.valeur) {
+          <option [value]="s.valeur">{{ s.libelle }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="actif">Fiche active</label>
+      <select id="actif" formControlName="actif">
+        <option [value]="true">Oui</option>
+        <option [value]="false">Non (archive)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="champ" style="margin-top: 1rem">
+    <label for="observations">Observations</label>
+    <textarea id="observations" formControlName="observations"></textarea>
+  </div>
+
+  <div class="actions-formulaire">
+    <button class="bouton" type="submit" [disabled]="enregistrement()">
+      {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
+    </button>
+    <a class="bouton secondaire" routerLink="/camions">Annuler</a>
+  </div>
+</form>

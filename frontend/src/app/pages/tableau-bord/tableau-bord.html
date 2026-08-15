@@ -1,0 +1,94 @@
+<div class="entete-page">
+  <div>
+    <h1>Tableau de bord</h1>
+    <p class="sous-titre">Vision globale du parc de camions</p>
+  </div>
+  <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+@if (chargement()) {
+  <div class="message vide">Chargement des indicateurs...</div>
+} @else if (indicateurs(); as k) {
+  <section class="grille-indicateurs">
+    <a class="carte indicateur" routerLink="/camions">
+      <span class="libelle">Camions au parc</span>
+      <strong class="valeur">{{ k.totalCamions }}</strong>
+      <span class="detail">Taux de disponibilite : {{ tauxDisponibilite() }} %</span>
+    </a>
+    <a class="carte indicateur succes" routerLink="/camions">
+      <span class="libelle">Disponibles</span>
+      <strong class="valeur">{{ k.camionsDisponibles }}</strong>
+      <span class="detail">Prets a etre affectes</span>
+    </a>
+    <div class="carte indicateur info">
+      <span class="libelle">En mission</span>
+      <strong class="valeur">{{ k.camionsEnMission }}</strong>
+      <span class="detail">{{ k.camionsEnLocation }} en location</span>
+    </div>
+    <div class="carte indicateur alerte">
+      <span class="libelle">En maintenance</span>
+      <strong class="valeur">{{ k.camionsEnMaintenance }}</strong>
+      <span class="detail">{{ k.camionsImmobilises }} immobilises</span>
+    </div>
+    <a class="carte indicateur" routerLink="/chauffeurs">
+      <span class="libelle">Chauffeurs actifs</span>
+      <strong class="valeur">{{ k.chauffeursActifs }}</strong>
+      <span class="detail">{{ k.permisAExpirer }} permis a renouveler</span>
+    </a>
+    <a class="carte indicateur" routerLink="/affectations">
+      <span class="libelle">Affectations en cours</span>
+      <strong class="valeur">{{ k.affectationsEnCours }}</strong>
+      <span class="detail">{{ k.camionsSansChauffeur }} camions sans chauffeur</span>
+    </a>
+  </section>
+
+  <section class="deux-colonnes">
+    <div class="carte">
+      <h2>Repartition du parc par statut</h2>
+      <div class="repartition">
+        @for (statut of statuts; track statut.valeur) {
+          @if (nombreParStatut(statut.valeur) > 0) {
+            <div class="ligne-repartition">
+              <span class="etiquette-statut">{{ statut.libelle }}</span>
+              <div class="barre">
+                <div class="remplissage" [style.width.%]="partParStatut(statut.valeur)"></div>
+              </div>
+              <span class="valeur-repartition">
+                {{ nombreParStatut(statut.valeur) }} ({{ partParStatut(statut.valeur) }} %)
+              </span>
+            </div>
+          }
+        }
+        @if (k.totalCamions === 0) {
+          <p class="message vide">Aucun camion enregistre. Commencez par creer une fiche camion.</p>
+        }
+      </div>
+    </div>
+
+    <div class="carte">
+      <h2>Alertes documentaires</h2>
+      <ul class="liste-alertes">
+        <li>
+          <span class="pastille danger"></span>
+          <a routerLink="/documents">{{ k.documentsExpires }} document(s) expire(s)</a>
+        </li>
+        <li>
+          <span class="pastille attention"></span>
+          <a routerLink="/documents">{{ k.documentsAExpirer }} document(s) a renouveler sous 30 jours</a>
+        </li>
+        <li>
+          <span class="pastille attention"></span>
+          <a routerLink="/chauffeurs">{{ k.permisAExpirer }} permis de conduire a renouveler</a>
+        </li>
+      </ul>
+      <p class="note">
+        Les modules Locations, Missions, Recettes, Depenses et GPS completeront ce tableau de bord
+        dans les phases suivantes du projet.
+      </p>
+    </div>
+  </section>
+}

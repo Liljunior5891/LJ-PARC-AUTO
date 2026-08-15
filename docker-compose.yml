@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: parcauto-postgres
+    environment:
+      POSTGRES_DB: parcauto
+      POSTGRES_USER: parcauto
+      POSTGRES_PASSWORD: parcauto
+    ports:
+      - "5433:5432"
+    volumes:
+      - parcauto-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parcauto -d parcauto"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  parcauto-data:

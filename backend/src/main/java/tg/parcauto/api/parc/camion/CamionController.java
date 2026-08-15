@@ -1,0 +1,97 @@
+package tg.parcauto.api.parc.camion;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/camions")
+@RequiredArgsConstructor
+@Tag(name = "Camions")
+public class CamionController {
+
+    /** Roles autorises a modifier le parc. */
+    private static final String GESTION = "hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE')";
+
+    private final CamionService service;
+
+    @GetMapping
+    @Operation(summary = "Liste paginee des camions avec recherche et filtres")
+    public Page<CamionDto.Reponse> lister(@RequestParam(required = false) String q,
+                                          @RequestParam(required = false) StatutCamion statut,
+                                          @RequestParam(required = false) Boolean actif,
+                                          @PageableDefault(size = 20, sort = "numeroInterne",
+                                                  direction = Sort.Direction.ASC) Pageable pageable) {
+        return service.rechercher(q, statut, actif, pageable);
+    }
+
+    @GetMapping("/statistiques/statuts")
+    @Operation(summary = "Repartition des camions actifs par statut")
+    public Map<StatutCamion, Long> repartition() {
+        return service.repartitionParStatut();
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Fiche detaillee d'un camion")
+    public CamionDto.Reponse detail(@PathVariable Long id) {
+        return service.parId(id);
+    }
+
+    @PostMapping
+    @PreAuthorize(GESTION)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Cree un camion")
+    public CamionDto.Reponse creer(@Valid @RequestBody CamionDto.Requete requete) {
+        return service.creer(requete);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize(GESTION)
+    @Operation(summary = "Met a jour la fiche d'un camion")
+    public CamionDto.Reponse modifier(@PathVariable Long id, @Valid @RequestBody CamionDto.Requete requete) {
+        return service.modifier(id, requete);
+    }
+
+    @PatchMapping("/{id}/kilometrage")
+    @PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE','CHAUFFEUR')")
+    @Operation(summary = "Met a jour le compteur kilometrique")
+    public CamionDto.Reponse majKilometrage(@PathVariable Long id,
+                                            @Valid @RequestBody CamionDto.MajKilometrage requete) {
+        return service.majKilometrage(id, requete.kilometrage());
+    }
+
+    @PatchMapping("/{id}/statut")
+    @PreAuthorize(GESTION)
+    @Operation(summary = "Change le statut d'exploitation du camion")
+    public CamionDto.Reponse majStatut(@PathVariable Long id, @RequestBody CamionDto.MajStatut requete) {
+        return service.majStatut(id, requete.statut());
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Archive un camion (suppression logique)")
+    public void archiver(@PathVariable Long id) {
+        service.archiver(id);
+    }
+}

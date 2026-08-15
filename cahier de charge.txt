@@ -1,0 +1,1350 @@
+# CAHIER DES CHARGES
+
+## Logiciel de gestion, de suivi et de rentabilité d'un parc de camions de location
+
+**Version :** 2.0
+**Type de solution :** Application Web + Application mobile
+**Secteur :** Location de camions, transport et logistique
+**Objectif principal :** Permettre à l'entreprise de gérer ses camions, ses chauffeurs, ses locations, ses missions, ses dépenses, ses recettes et leur géolocalisation, tout en disposant d'une vision globale de la performance et de la rentabilité du parc.
+
+---
+
+# 1. CONTEXTE DU PROJET
+
+L'entreprise exerce principalement une activité de **location et d'exploitation de camions**.
+
+Elle dispose d'un parc de plusieurs camions pouvant être :
+
+* loués à des clients ;
+* affectés à des missions ;
+* utilisés pour des livraisons ;
+* affectés à des contrats de longue durée ;
+* utilisés pour des missions spéciales ;
+* momentanément immobilisés pour entretien ou réparation.
+
+L'entreprise souhaite disposer d'une plateforme centralisée permettant de connaître à tout moment :
+
+* l'état de chaque camion ;
+* sa localisation ;
+* son chauffeur ;
+* sa mission actuelle ;
+* son kilométrage ;
+* ses dépenses ;
+* ses recettes ;
+* son historique ;
+* ses contrats ;
+* ses entretiens ;
+* sa rentabilité.
+
+L'objectif est donc de transformer la gestion actuelle du parc en un système numérique permettant à la direction de **prendre des décisions à partir de données fiables et actualisées**.
+
+---
+
+# 2. OBJECTIF PRINCIPAL DU LOGICIEL
+
+Le logiciel devra répondre à une question essentielle :
+
+## « Combien chaque camion rapporte-t-il réellement à l'entreprise ? »
+
+Pour chaque camion, le système devra pouvoir déterminer :
+
+### RECETTES
+
+* revenus de location ;
+* revenus des missions ;
+* revenus de transport ;
+* revenus de livraison ;
+* revenus liés aux contrats ;
+* autres revenus.
+
+### DÉPENSES
+
+* carburant ;
+* entretien ;
+* vidange ;
+* réparations ;
+* pneus ;
+* assurance ;
+* taxes ;
+* péages ;
+* lavage ;
+* dépannage ;
+* frais de mission ;
+* salaire ou frais du chauffeur ;
+* GPS ;
+* autres dépenses.
+
+### RÉSULTAT
+
+**Rentabilité = Recettes - Dépenses**
+
+Le responsable pourra donc comparer les performances des différents camions.
+
+---
+
+# 3. VISION GLOBALE DU SYSTÈME
+
+Le système devra fonctionner autour de six éléments principaux :
+
+**1. CAMIONS**
+
+↓
+
+**2. CHAUFFEURS**
+
+↓
+
+**3. LOCATIONS / MISSIONS**
+
+↓
+
+**4. RECETTES**
+
+↓
+
+**5. DÉPENSES**
+
+↓
+
+**6. GPS / GÉOLOCALISATION**
+
+Toutes ces informations devront être liées entre elles.
+
+Par exemple :
+
+> CAMION TG-001
+> Chauffeur : Jean Dupont
+> Client : Société ABC
+> Contrat : LOCATION-2026-014
+> Mission : Transport de marchandises
+> Distance : 1 250 km
+> Recettes : 1 500 000 FCFA
+> Carburant : 450 000 FCFA
+> Entretien : 120 000 FCFA
+> Autres dépenses : 80 000 FCFA
+> Résultat : 850 000 FCFA
+
+---
+
+# 4. TABLEAU DE BORD DE LA DIRECTION
+
+Le tableau de bord sera l'écran principal du logiciel.
+
+Il devra fournir une vision globale du parc.
+
+## 4.1 Indicateurs principaux
+
+* Nombre total de camions ;
+* Camions disponibles ;
+* Camions en location ;
+* Camions en mission ;
+* Camions en maintenance ;
+* Camions immobilisés ;
+* Camions actuellement en déplacement ;
+* Camions actuellement à l'arrêt ;
+* Chauffeurs actifs ;
+* Locations en cours ;
+* Missions en cours ;
+* Contrats actifs.
+
+## 4.2 Indicateurs financiers
+
+* Chiffre d'affaires du mois ;
+* Total des dépenses du mois ;
+* Résultat du mois ;
+* Factures impayées ;
+* Recettes par camion ;
+* Dépenses par camion ;
+* Rentabilité par camion.
+
+## 4.3 Indicateurs d'exploitation
+
+* Kilométrage total ;
+* Distance parcourue ;
+* Consommation de carburant ;
+* Nombre de missions ;
+* Nombre de locations ;
+* Taux d'utilisation des camions.
+
+---
+
+# 5. VUE GLOBALE DU PARC
+
+Une page spécifique devra présenter tous les camions sous forme de tableau ou de cartes.
+
+Exemple :
+
+| Camion | Chauffeur | Statut     | Localisation    | Mission     |  Recettes | Dépenses |  Résultat |
+| ------ | --------- | ---------- | --------------- | ----------- | --------: | -------: | --------: |
+| TG-001 | Jean      | En mission | Lomé → Atakpamé | Transport   | 1 500 000 |  650 000 |   850 000 |
+| TG-002 | Paul      | Disponible | Dépôt           | —           |         0 |  120 000 |  -120 000 |
+| TG-003 | André     | Location   | Ghana           | Contrat ABC | 2 000 000 |  900 000 | 1 100 000 |
+
+Cette page permettra à la direction de comprendre immédiatement la situation du parc.
+
+---
+
+# 6. GESTION DES CAMIONS
+
+Chaque camion disposera d'une fiche complète.
+
+## 6.1 Informations
+
+* Numéro interne ;
+* Immatriculation ;
+* Marque ;
+* Modèle ;
+* Année ;
+* Type ;
+* Catégorie ;
+* Numéro de châssis ;
+* Numéro moteur ;
+* Couleur ;
+* Capacité ;
+* Type de carburant ;
+* Date d'acquisition ;
+* Prix d'achat ;
+* Kilométrage initial ;
+* Kilométrage actuel ;
+* Photo.
+
+## 6.2 Statut
+
+* Disponible ;
+* En location ;
+* En mission ;
+* En livraison ;
+* En maintenance ;
+* Immobilisé ;
+* Accidenté ;
+* Hors service ;
+* Vendu.
+
+---
+
+# 7. FICHE DE RENTABILITÉ DU CAMION
+
+Cette fonctionnalité sera l'une des plus importantes du logiciel.
+
+Chaque camion devra disposer d'une page :
+
+## « PERFORMANCE DU CAMION »
+
+Elle présentera :
+
+### Revenus
+
+* Revenus du jour ;
+* Revenus de la semaine ;
+* Revenus du mois ;
+* Revenus de l'année ;
+* Revenus cumulés.
+
+### Dépenses
+
+* Carburant ;
+* Entretien ;
+* Réparation ;
+* Pneus ;
+* Assurance ;
+* Chauffeur ;
+* Péages ;
+* Autres.
+
+### Résultat
+
+* Total recettes ;
+* Total dépenses ;
+* Bénéfice ;
+* Marge ;
+* Coût/km ;
+* Revenu/km.
+
+### Utilisation
+
+* Nombre de jours exploités ;
+* Nombre de jours disponibles ;
+* Nombre de jours immobilisés ;
+* Kilométrage parcouru.
+
+---
+
+# 8. GESTION DES CHAUFFEURS
+
+Chaque chauffeur aura une fiche.
+
+## Informations
+
+* Nom ;
+* Prénom ;
+* Photo ;
+* Téléphone ;
+* Adresse ;
+* Numéro de permis ;
+* Catégories de permis ;
+* Date d'obtention ;
+* Date d'expiration ;
+* Documents ;
+* Date d'embauche ;
+* Statut.
+
+## Historique
+
+Le système devra conserver :
+
+* camions conduits ;
+* missions ;
+* locations ;
+* kilomètres parcourus ;
+* incidents ;
+* accidents ;
+* dépenses déclarées ;
+* historique d'affectation.
+
+---
+
+# 9. AFFECTATION CHAUFFEUR / CAMION
+
+Le responsable pourra affecter un chauffeur à un camion.
+
+Le système devra enregistrer :
+
+* camion ;
+* chauffeur ;
+* date de début ;
+* date de fin ;
+* motif ;
+* observations.
+
+Un historique devra être conservé.
+
+---
+
+# 10. GESTION DES CLIENTS
+
+L'entreprise pourra enregistrer ses clients.
+
+## Informations
+
+* Nom / raison sociale ;
+* Téléphone ;
+* Email ;
+* Adresse ;
+* Personne de contact ;
+* Identifiant fiscal ;
+* Conditions commerciales ;
+* Historique des contrats ;
+* Historique des locations ;
+* Historique des factures ;
+* Historique des paiements.
+
+---
+
+# 11. GESTION DES LOCATIONS
+
+Le logiciel devra permettre de gérer les contrats de location de camions.
+
+## Informations
+
+* Numéro du contrat ;
+* Client ;
+* Camion ;
+* Chauffeur ;
+* Date de début ;
+* Date de fin ;
+* Tarif ;
+* Mode de facturation ;
+* Kilométrage prévu ;
+* Kilométrage réel ;
+* Destination ;
+* Conditions ;
+* Caution ;
+* Dépenses à la charge du client ;
+* Dépenses à la charge de l'entreprise.
+
+## Statuts
+
+* Brouillon ;
+* En attente ;
+* Actif ;
+* Terminé ;
+* Expiré ;
+* Annulé.
+
+---
+
+# 12. TYPES DE LOCATION
+
+Le système devra supporter plusieurs modèles.
+
+### Location à la journée
+
+Exemple :
+
+> Camion : 150 000 FCFA/jour.
+
+### Location au kilomètre
+
+Exemple :
+
+> 500 FCFA/km.
+
+### Location au voyage
+
+Exemple :
+
+> Lomé → Ouagadougou : 1 200 000 FCFA.
+
+### Location mensuelle
+
+Exemple :
+
+> 3 500 000 FCFA/mois.
+
+### Contrat longue durée
+
+Avec facturation périodique.
+
+---
+
+# 13. GESTION DES MISSIONS
+
+Une mission pourra être créée lorsqu'un camion est utilisé pour une prestation.
+
+Informations :
+
+* Numéro ;
+* Client ;
+* Camion ;
+* Chauffeur ;
+* Type de mission ;
+* Départ ;
+* Destination ;
+* Date ;
+* Heure ;
+* Kilométrage départ ;
+* Kilométrage arrivée ;
+* Distance ;
+* Recette prévue ;
+* Recette réelle ;
+* Dépenses ;
+* Résultat.
+
+---
+
+# 14. GESTION DES LIVRAISONS
+
+Le logiciel devra permettre de gérer les missions de livraison.
+
+Informations :
+
+* Client ;
+* Expéditeur ;
+* Destinataire ;
+* Marchandise ;
+* Quantité ;
+* Poids ;
+* Adresse ;
+* Camion ;
+* Chauffeur ;
+* Date ;
+* Heure ;
+* Bon de livraison ;
+* Signature ;
+* Photo ;
+* Preuve de livraison.
+
+---
+
+# 15. GESTION DES RECETTES
+
+Toutes les recettes devront être enregistrées et rattachées à un camion.
+
+Types :
+
+* Location ;
+* Transport ;
+* Livraison ;
+* Mission spéciale ;
+* Voyage ;
+* Contrat ;
+* Frais supplémentaires ;
+* Kilométrage supplémentaire.
+
+Pour chaque recette :
+
+* camion ;
+* client ;
+* mission ;
+* contrat ;
+* montant ;
+* date ;
+* mode de paiement ;
+* référence ;
+* justificatif.
+
+---
+
+# 16. GESTION DES DÉPENSES
+
+Toutes les dépenses devront obligatoirement pouvoir être associées à un camion.
+
+## Catégories
+
+### Carburant
+
+* Diesel ;
+* Essence ;
+* Autres.
+
+### Entretien
+
+* Vidange ;
+* Filtres ;
+* Freins ;
+* Moteur ;
+* Batterie ;
+* Électricité ;
+* Climatisation ;
+* Suspension ;
+* Réparation.
+
+### Pneus
+
+* Achat ;
+* Montage ;
+* Réparation ;
+* Équilibrage ;
+* Parallélisme.
+
+### Exploitation
+
+* Péage ;
+* Parking ;
+* Lavage ;
+* Dépannage ;
+* Frais de route.
+
+### Administratif
+
+* Assurance ;
+* Taxes ;
+* Visite technique ;
+* Autorisation.
+
+---
+
+# 17. ANALYSE DES DÉPENSES
+
+Le système devra permettre de répondre à :
+
+> Combien ce camion a-t-il dépensé ce mois-ci ?
+
+> Combien a-t-il dépensé en carburant ?
+
+> Combien a coûté son entretien ?
+
+> Combien avons-nous dépensé en pneus ?
+
+> Quel camion coûte le plus cher à exploiter ?
+
+---
+
+# 18. GESTION DU CARBURANT
+
+Chaque plein devra être enregistré.
+
+Informations :
+
+* camion ;
+* chauffeur ;
+* date ;
+* station ;
+* quantité ;
+* prix ;
+* montant ;
+* kilométrage ;
+* justificatif.
+
+Le système devra calculer :
+
+* consommation ;
+* coût/km ;
+* consommation moyenne ;
+* évolution de la consommation.
+
+---
+
+# 19. GESTION DE LA MAINTENANCE
+
+Le système devra permettre de suivre l'entretien de chaque camion.
+
+### Exemple
+
+> Camion TG-001
+> Dernière vidange : 120 000 km
+> Kilométrage actuel : 129 000 km
+> Prochaine vidange : 130 000 km
+
+Le système devra envoyer une alerte.
+
+---
+
+# 20. GESTION DES PNEUS
+
+Le logiciel devra permettre de suivre :
+
+* pneus installés ;
+* dimension ;
+* marque ;
+* date d'achat ;
+* prix ;
+* position ;
+* kilométrage ;
+* état ;
+* date de remplacement.
+
+---
+
+# 21. GESTION DES DOCUMENTS
+
+Pour chaque camion :
+
+* carte grise ;
+* assurance ;
+* visite technique ;
+* taxes ;
+* autorisations ;
+* documents douaniers ;
+* contrats ;
+* autres.
+
+Le système devra alerter avant expiration.
+
+---
+
+# 22. GÉOLOCALISATION GPS EN TEMPS RÉEL
+
+Chaque camion pourra être équipé d'un traceur GPS.
+
+Le logiciel devra récupérer les informations GPS.
+
+## Informations disponibles
+
+* Position ;
+* Latitude ;
+* Longitude ;
+* Vitesse ;
+* Direction ;
+* Kilométrage ;
+* État ;
+* Dernière communication ;
+* Chauffeur ;
+* Mission.
+
+---
+
+# 23. CARTE GPS DU PARC
+
+Une page :
+
+## « CARTE DU PARC »
+
+devra afficher tous les camions sur une carte.
+
+Chaque camion sera représenté par un marqueur.
+
+Exemple de statut :
+
+* 🟢 Disponible ;
+* 🔵 En mission ;
+* 🟠 En location ;
+* 🔴 Immobilisé ;
+* ⚫ Hors connexion.
+
+En cliquant sur un camion :
+
+> TG-001
+> Chauffeur : Jean
+> Statut : En mission
+> Vitesse : 72 km/h
+> Destination : Accra
+> Mission : M-2026-0014
+> Dernière position : maintenant.
+
+---
+
+# 24. HISTORIQUE DES TRAJETS
+
+Le responsable pourra sélectionner :
+
+**Camion → Date → Heure**
+
+pour visualiser :
+
+* itinéraire ;
+* distance ;
+* vitesse ;
+* arrêts ;
+* durée ;
+* zones parcourues.
+
+---
+
+# 25. GÉOFENCING
+
+Le responsable pourra définir :
+
+* siège ;
+* dépôt ;
+* agences ;
+* zones d'exploitation ;
+* zones interdites.
+
+Le système pourra alerter lorsqu'un camion :
+
+* entre dans une zone ;
+* sort d'une zone ;
+* reste trop longtemps dans une zone.
+
+---
+
+# 26. ALERTES GPS
+
+Le système pourra générer :
+
+* excès de vitesse ;
+* sortie de zone ;
+* entrée dans une zone ;
+* mouvement hors mission ;
+* arrêt prolongé ;
+* GPS déconnecté ;
+* utilisation hors horaires autorisés.
+
+---
+
+# 27. FACTURATION
+
+Le système devra générer les factures clients.
+
+Une facture pourra être liée à :
+
+* une location ;
+* un contrat ;
+* une mission ;
+* une livraison ;
+* un voyage ;
+* un kilométrage.
+
+La facture devra contenir :
+
+* numéro ;
+* client ;
+* camion ;
+* prestation ;
+* période ;
+* montant ;
+* taxes ;
+* total ;
+* échéance ;
+* statut.
+
+---
+
+# 28. SUIVI DES PAIEMENTS
+
+Statuts :
+
+* Non payée ;
+* Partiellement payée ;
+* Payée ;
+* En retard.
+
+Le système devra afficher :
+
+* montant facturé ;
+* montant payé ;
+* montant restant.
+
+---
+
+# 29. RENTABILITÉ GLOBALE DU PARC
+
+La direction devra pouvoir voir :
+
+### Total recettes
+
+**XX XXX XXX FCFA**
+
+### Total dépenses
+
+**XX XXX XXX FCFA**
+
+### Résultat
+
+**XX XXX XXX FCFA**
+
+Puis une répartition par camion.
+
+Exemple :
+
+| Camion |  Recettes |  Dépenses |  Résultat | Marge |
+| ------ | --------: | --------: | --------: | ----: |
+| TG-001 | 5 000 000 | 2 800 000 | 2 200 000 |  44 % |
+| TG-002 | 4 200 000 | 3 100 000 | 1 100 000 |  26 % |
+| TG-003 | 6 500 000 | 3 200 000 | 3 300 000 |  51 % |
+
+---
+
+# 30. COMPARAISON DES CAMIONS
+
+Une fonction permettra de comparer les performances.
+
+Exemples :
+
+* camion le plus rentable ;
+* camion générant le plus de recettes ;
+* camion ayant le plus de dépenses ;
+* camion consommant le plus ;
+* camion parcourant le plus de kilomètres ;
+* camion ayant le meilleur taux d'utilisation ;
+* camion ayant le plus de jours d'immobilisation.
+
+---
+
+# 31. COÛT RÉEL D'UN CAMION
+
+Le logiciel devra permettre de calculer le coût réel d'exploitation.
+
+### Coût d'exploitation
+
+**Carburant + Maintenance + Pneus + Assurance + Chauffeur + Taxes + Autres dépenses**
+
+Puis :
+
+**Résultat = Recettes - Coût d'exploitation**
+
+Et :
+
+**Marge = Résultat / Recettes × 100**
+
+---
+
+# 32. APPLICATION MOBILE CHAUFFEUR
+
+Le chauffeur pourra disposer d'une application mobile.
+
+Fonctions :
+
+* connexion ;
+* consultation du camion affecté ;
+* consultation des missions ;
+* démarrage d'une mission ;
+* fin de mission ;
+* kilométrage ;
+* déclaration de dépenses ;
+* déclaration de panne ;
+* déclaration d'accident ;
+* ajout de photos ;
+* confirmation de livraison.
+
+---
+
+# 33. GESTION DES INCIDENTS
+
+Le chauffeur pourra signaler :
+
+* panne ;
+* accident ;
+* crevaison ;
+* problème mécanique ;
+* retard ;
+* autre incident.
+
+Le responsable recevra immédiatement une notification.
+
+---
+
+# 34. NOTIFICATIONS
+
+Notifications concernant :
+
+* entretien ;
+* assurance ;
+* visite technique ;
+* permis chauffeur ;
+* contrat arrivant à expiration ;
+* nouvelle mission ;
+* nouvelle location ;
+* facture impayée ;
+* GPS hors connexion ;
+* excès de vitesse ;
+* incident.
+
+---
+
+# 35. RAPPORTS DE GESTION
+
+Le système devra générer :
+
+### Rapport financier
+
+* recettes ;
+* dépenses ;
+* résultat.
+
+### Rapport par camion
+
+* revenus ;
+* dépenses ;
+* rentabilité.
+
+### Rapport chauffeur
+
+* missions ;
+* kilomètres ;
+* incidents.
+
+### Rapport GPS
+
+* trajets ;
+* distances ;
+* arrêts ;
+* vitesse.
+
+### Rapport maintenance
+
+* interventions ;
+* coûts ;
+* pièces.
+
+### Rapport carburant
+
+* consommation ;
+* coût ;
+* coût/km.
+
+Les rapports devront être exportables en :
+
+* PDF ;
+* Excel ;
+* CSV.
+
+---
+
+# 36. FICHE SYNTHÉTIQUE D'UN CAMION
+
+Une fonctionnalité importante sera une **fiche synthétique du camion**.
+
+Exemple :
+
+## CAMION TG-001
+
+**Statut :** En location
+
+**Chauffeur :** Jean Dupont
+
+**Client :** Société ABC
+
+**Localisation :** Accra
+
+**Mission :** Transport de marchandises
+
+### Ce mois
+
+**Recettes :** 4 500 000 FCFA
+
+**Dépenses :** 2 150 000 FCFA
+
+**Résultat :** 2 350 000 FCFA
+
+**Kilométrage :** 8 450 km
+
+**Carburant :** 1 250 000 FCFA
+
+**Entretien :** 420 000 FCFA
+
+**Pneus :** 180 000 FCFA
+
+**Autres :** 300 000 FCFA
+
+Cette page devra donner à la direction **toutes les informations essentielles en un seul endroit**.
+
+---
+
+# 37. ARCHITECTURE DU MENU
+
+Le menu principal pourra être organisé comme suit :
+
+## TABLEAU DE BORD
+
+Vue globale du parc.
+
+## PARC AUTOMOBILE
+
+* Camions
+* Affectations
+* Documents
+* Historique
+
+## CHAUFFEURS
+
+* Chauffeurs
+* Affectations
+* Documents
+* Incidents
+
+## LOCATIONS
+
+* Contrats
+* Locations en cours
+* Locations terminées
+
+## MISSIONS
+
+* Missions
+* Livraisons
+* Voyages
+
+## GPS
+
+* Carte en temps réel
+* Historique
+* Géofencing
+* Alertes
+
+## MAINTENANCE
+
+* Entretiens
+* Réparations
+* Pneus
+
+## DÉPENSES
+
+* Carburant
+* Maintenance
+* Autres dépenses
+
+## RECETTES
+
+* Locations
+* Missions
+* Autres recettes
+
+## CLIENTS
+
+## FOURNISSEURS
+
+## FACTURATION
+
+* Factures
+* Paiements
+* Créances
+
+## RAPPORTS
+
+* Rentabilité
+* Parc
+* Chauffeurs
+* GPS
+* Maintenance
+* Finances
+
+## PARAMÈTRES
+
+---
+
+# 38. ARCHITECTURE TECHNIQUE RECOMMANDÉE
+
+La solution devra être conçue avec une architecture moderne et évolutive.
+
+### Backend
+
+* Spring Boot ;
+* API REST ;
+* WebSocket pour les données temps réel.
+
+### Frontend
+
+* Angular .
+
+### Mobile
+
+* Flutter ou React Native.
+
+### Base de données
+
+* PostgreSQL.
+
+### GPS
+
+Le système devra pouvoir intégrer différents fournisseurs de GPS.
+
+Une couche d'intégration GPS devra être prévue afin d'éviter de dépendre d'un seul fabricant.
+
+Architecture :
+
+**Traceur GPS**
+
+↓
+
+**Serveur GPS / passerelle**
+
+↓
+
+**API GPS**
+
+↓
+
+**Plateforme de gestion**
+
+↓
+
+**Tableau de bord**
+
+---
+
+# 39. SÉCURITÉ
+
+Le système devra intégrer :
+
+* authentification ;
+* gestion des rôles ;
+* permissions ;
+* HTTPS ;
+* journalisation ;
+* sauvegardes ;
+* protection des données ;
+* historique des actions.
+
+---
+
+# 40. UTILISATEURS
+
+Les profils pourront être :
+
+### Administrateur
+
+Accès complet.
+
+### Direction
+
+Accès aux :
+
+* tableaux de bord ;
+* finances ;
+* rentabilité ;
+* GPS ;
+* rapports.
+
+### Gestionnaire de parc
+
+Gestion :
+
+* camions ;
+* chauffeurs ;
+* missions ;
+* maintenance ;
+* GPS.
+
+### Comptable
+
+Gestion :
+
+* recettes ;
+* dépenses ;
+* factures ;
+* paiements.
+
+### Responsable logistique
+
+Gestion :
+
+* missions ;
+* locations ;
+* chauffeurs ;
+* camions.
+
+### Chauffeur
+
+Accès à l'application mobile et à ses missions.
+
+---
+
+# 41. INDICATEURS KPI DE LA DIRECTION
+
+Les principaux KPI seront :
+
+* nombre de camions ;
+* nombre de camions actifs ;
+* taux d'utilisation ;
+* chiffre d'affaires ;
+* dépenses ;
+* résultat ;
+* marge ;
+* recette moyenne/camion ;
+* dépense moyenne/camion ;
+* coût/km ;
+* recette/km ;
+* consommation moyenne ;
+* kilomètres parcourus ;
+* nombre de missions ;
+* jours d'immobilisation ;
+* coût de maintenance ;
+* taux de disponibilité.
+
+---
+
+# 42. OBJECTIF DE LA SOLUTION
+
+Le logiciel ne devra pas être simplement un registre de véhicules.
+
+Il devra constituer un véritable **outil de pilotage de l'entreprise de location de camions**.
+
+La direction devra pouvoir répondre rapidement à des questions telles que :
+
+> **Combien de camions sont actuellement disponibles ?**
+
+> **Où se trouve chaque camion ?**
+
+> **Quel chauffeur conduit chaque camion ?**
+
+> **Quels camions sont actuellement loués ?**
+
+> **Combien chaque camion a rapporté ce mois-ci ?**
+
+> **Combien chaque camion a dépensé ?**
+
+> **Quel est le camion le plus rentable ?**
+
+> **Quel camion coûte trop cher à exploiter ?**
+
+> **Quel camion a besoin d'un entretien ?**
+
+> **Quels clients doivent encore payer ?**
+
+> **Combien l'entreprise a-t-elle généré ce mois-ci ?**
+
+> **Combien le parc lui a-t-il réellement coûté ?**
+
+> **Quelle est la rentabilité globale du parc ?**
+
+---
+
+# 43. ÉVOLUTION FUTURE
+
+Le logiciel devra être développé avec une architecture permettant d'ajouter ultérieurement :
+
+* portail client ;
+* réservation en ligne ;
+* paiement en ligne ;
+* WhatsApp ;
+* SMS ;
+* application mobile client ;
+* optimisation des itinéraires ;
+* maintenance prédictive ;
+* analyse automatique de consommation ;
+* intelligence artificielle ;
+* gestion des stocks de pièces ;
+* gestion d'un atelier ;
+* comptabilité ;
+* gestion des salaires ;
+* gestion de plusieurs agences ;
+* gestion multi-entreprises ;
+* transformation en SaaS.
+
+---
+
+# 44. PRIORITÉ DE DÉVELOPPEMENT
+
+Pour une première version, les fonctionnalités prioritaires seront :
+
+### PRIORITÉ 1 — PARC
+
+* Gestion des camions ;
+* Gestion des chauffeurs ;
+* Affectations ;
+* Documents.
+
+### PRIORITÉ 2 — EXPLOITATION
+
+* Locations ;
+* Contrats ;
+* Missions ;
+* Livraisons.
+
+### PRIORITÉ 3 — FINANCES
+
+* Recettes ;
+* Dépenses ;
+* Facturation ;
+* Paiements ;
+* Rentabilité.
+
+### PRIORITÉ 4 — GPS
+
+* Localisation temps réel ;
+* Carte ;
+* Historique des trajets ;
+* Alertes.
+
+### PRIORITÉ 5 — MAINTENANCE
+
+* Vidanges ;
+* Entretiens ;
+* Réparations ;
+* Pneus ;
+* Alertes.
+
+### PRIORITÉ 6 — PILOTAGE
+
+* Dashboard ;
+* KPI ;
+* Rapports ;
+* Comparaison des camions.
+
+---
+
+# 45. RÉSULTAT ATTENDU
+
+À terme, le logiciel devra donner à l'entreprise une **vision complète et en temps réel de son parc de camions**.
+
+La direction pourra ouvrir le tableau de bord et connaître immédiatement :
+
+**PARC**
+
+→ Combien de camions ?
+
+**EXPLOITATION**
+
+→ Combien sont loués ou en mission ?
+
+**GPS**
+
+→ Où sont-ils ?
+
+**CHAUFFEURS**
+
+→ Qui conduit chaque camion ?
+
+**RECETTES**
+
+→ Combien chaque camion rapporte ?
+
+**DÉPENSES**
+
+→ Combien chaque camion coûte ?
+
+**RENTABILITÉ**
+
+→ Combien chaque camion génère réellement ?
+
+**MAINTENANCE**
+
+→ Quels camions nécessitent une intervention ?
+
+**FINANCE**
+
+→ Quelles factures sont payées ou impayées ?
+
+L'objectif final est donc de disposer d'un **véritable système de pilotage financier, opérationnel et géographique du parc automobile**, spécifiquement adapté à une entreprise de location de camions.

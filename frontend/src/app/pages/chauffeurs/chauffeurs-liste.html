@@ -1,0 +1,108 @@
+<div class="entete-page">
+  <div>
+    <h1>Chauffeurs</h1>
+    <p class="sous-titre">{{ page()?.totalElements ?? 0 }} chauffeur(s) enregistre(s)</p>
+  </div>
+  @if (peutGerer) {
+    <a class="bouton" routerLink="/chauffeurs/nouveau">+ Nouveau chauffeur</a>
+  }
+</div>
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="recherche">Recherche</label>
+      <input
+        id="recherche"
+        type="search"
+        placeholder="Nom, matricule, telephone..."
+        [(ngModel)]="recherche"
+        (keyup.enter)="filtrer()"
+      />
+    </div>
+    <div class="champ">
+      <label for="statut">Statut</label>
+      <select id="statut" [(ngModel)]="statut" (change)="filtrer()">
+        <option value="">Tous les statuts</option>
+        @for (s of statuts; track s.valeur) {
+          <option [value]="s.valeur">{{ s.libelle }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="archives">Archives</label>
+      <select id="archives" [(ngModel)]="masquerArchives" (change)="filtrer()">
+        <option [ngValue]="true">Masquer les chauffeurs archives</option>
+        <option [ngValue]="false">Afficher tous les chauffeurs</option>
+      </select>
+    </div>
+  </div>
+
+  @if (erreur()) {
+    <div class="message erreur" style="margin-top: 1rem">{{ erreur() }}</div>
+  }
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Matricule</th>
+          <th>Nom complet</th>
+          <th>Telephone</th>
+          <th>Permis</th>
+          <th>Expiration permis</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (chauffeur of page()?.content ?? []; track chauffeur.id) {
+          <tr>
+            <td><a [routerLink]="['/chauffeurs', chauffeur.id]">{{ chauffeur.matricule }}</a></td>
+            <td><strong>{{ chauffeur.nomComplet }}</strong></td>
+            <td>{{ chauffeur.telephone }}</td>
+            <td>{{ chauffeur.categoriesPermis || '—' }}</td>
+            <td>
+              @if (chauffeur.permisExpiration) {
+                <span [class.alerte-permis]="chauffeur.permisBientotExpire">
+                  {{ chauffeur.permisExpiration }}
+                </span>
+              } @else {
+                —
+              }
+            </td>
+            <td><span [class]="classeStatut(chauffeur.statut)">{{ chauffeur.statutLibelle }}</span></td>
+            <td>
+              @if (peutGerer) {
+                <a class="bouton secondaire petit" [routerLink]="['/chauffeurs', chauffeur.id]">Modifier</a>
+                <button class="bouton danger petit" type="button" (click)="archiver(chauffeur)">Archiver</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7">
+              <div class="message vide">
+                {{ chargement() ? 'Chargement...' : 'Aucun chauffeur ne correspond a ces criteres.' }}
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">
+          Precedent
+        </button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">
+          Suivant
+        </button>
+      </div>
+    }
+  }
+</div>

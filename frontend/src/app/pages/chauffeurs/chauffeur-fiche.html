@@ -1,0 +1,123 @@
+<div class="entete-page">
+  <div>
+    <h1>{{ titre }}</h1>
+    <p class="sous-titre">Chapitre 8 du cahier des charges — identite, permis et suivi</p>
+  </div>
+  <a class="bouton secondaire" routerLink="/chauffeurs">Retour a la liste</a>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<form class="carte" [formGroup]="formulaire" (ngSubmit)="soumettre()">
+  <h2>Identite</h2>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="matricule">Matricule *</label>
+      <input id="matricule" formControlName="matricule" placeholder="CH-001" />
+      @if (formulaire.controls.matricule.touched && formulaire.controls.matricule.invalid) {
+        <span class="erreur-champ">Matricule requis</span>
+      }
+    </div>
+    <div class="champ">
+      <label for="nom">Nom *</label>
+      <input id="nom" formControlName="nom" />
+      @if (formulaire.controls.nom.touched && formulaire.controls.nom.invalid) {
+        <span class="erreur-champ">Nom requis</span>
+      }
+    </div>
+    <div class="champ">
+      <label for="prenom">Prenom *</label>
+      <input id="prenom" formControlName="prenom" />
+      @if (formulaire.controls.prenom.touched && formulaire.controls.prenom.invalid) {
+        <span class="erreur-champ">Prenom requis</span>
+      }
+    </div>
+    <div class="champ">
+      <label for="dateNaissance">Date de naissance</label>
+      <input id="dateNaissance" type="date" formControlName="dateNaissance" />
+    </div>
+    <div class="champ">
+      <label for="telephone">Telephone *</label>
+      <input id="telephone" formControlName="telephone" placeholder="+228 90 00 00 00" />
+      @if (formulaire.controls.telephone.touched && formulaire.controls.telephone.invalid) {
+        <span class="erreur-champ">Telephone requis</span>
+      }
+    </div>
+    <div class="champ">
+      <label for="telephoneUrgence">Telephone d'urgence</label>
+      <input id="telephoneUrgence" formControlName="telephoneUrgence" />
+    </div>
+    <div class="champ">
+      <label for="email">Email</label>
+      <input id="email" type="email" formControlName="email" />
+    </div>
+    <div class="champ">
+      <label for="adresse">Adresse</label>
+      <input id="adresse" formControlName="adresse" />
+    </div>
+  </div>
+
+  <h2 style="margin-top: 1.5rem">Permis de conduire</h2>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="numeroPermis">Numero de permis</label>
+      <input id="numeroPermis" formControlName="numeroPermis" />
+    </div>
+    <div class="champ">
+      <label for="categoriesPermis">Categories</label>
+      <input id="categoriesPermis" formControlName="categoriesPermis" placeholder="C, CE, D" />
+    </div>
+    <div class="champ">
+      <label for="permisObtention">Date d'obtention</label>
+      <input id="permisObtention" type="date" formControlName="permisObtention" />
+    </div>
+    <div class="champ">
+      <label for="permisExpiration">Date d'expiration</label>
+      <input id="permisExpiration" type="date" formControlName="permisExpiration" />
+    </div>
+  </div>
+
+  <h2 style="margin-top: 1.5rem">Emploi</h2>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="dateEmbauche">Date d'embauche</label>
+      <input id="dateEmbauche" type="date" formControlName="dateEmbauche" />
+    </div>
+    <div class="champ">
+      <label for="salaireMensuel">Salaire mensuel (FCFA)</label>
+      <input id="salaireMensuel" type="number" formControlName="salaireMensuel" />
+    </div>
+    <div class="champ">
+      <label for="statut">Statut</label>
+      <select id="statut" formControlName="statut">
+        @for (s of statuts; track s.valeur) {
+          <option [value]="s.valeur">{{ s.libelle }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="actif">Fiche active</label>
+      <select id="actif" formControlName="actif">
+        <option [value]="true">Oui</option>
+        <option [value]="false">Non (archive)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="champ" style="margin-top: 1rem">
+    <label for="observations">Observations</label>
+    <textarea id="observations" formControlName="observations"></textarea>
+  </div>
+
+  <div class="actions-formulaire">
+    <button class="bouton" type="submit" [disabled]="enregistrement()">
+      {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
+    </button>
+    <a class="bouton secondaire" routerLink="/chauffeurs">Annuler</a>
+  </div>
+</form>

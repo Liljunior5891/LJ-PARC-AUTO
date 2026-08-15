@@ -1,0 +1,302 @@
+/* ===================================================================
+   PARC AUTO - feuille de style globale
+   =================================================================== */
+
+:root {
+  --couleur-fond: #f4f6f9;
+  --couleur-surface: #ffffff;
+  --couleur-bordure: #e2e6ed;
+  --couleur-texte: #1f2733;
+  --couleur-texte-doux: #6b7684;
+  --couleur-primaire: #0f4c81;
+  --couleur-primaire-clair: #1b6ba8;
+  --couleur-accent: #f0a202;
+  --couleur-succes: #1e874b;
+  --couleur-danger: #c62828;
+  --couleur-info: #1565c0;
+  --rayon: 10px;
+  --ombre: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--couleur-fond);
+  color: var(--couleur-texte);
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+
+h2 {
+  font-size: 1.15rem;
+}
+
+a {
+  color: var(--couleur-primaire);
+  text-decoration: none;
+}
+
+/* --------------------------- Cartes ------------------------------ */
+.carte {
+  background: var(--couleur-surface);
+  border: 1px solid var(--couleur-bordure);
+  border-radius: var(--rayon);
+  box-shadow: var(--ombre);
+  padding: 1.25rem;
+}
+
+.entete-page {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+
+  .sous-titre {
+    color: var(--couleur-texte-doux);
+    margin: 0;
+  }
+}
+
+/* -------------------------- Formulaires -------------------------- */
+.grille-formulaire {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+
+  label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--couleur-texte-doux);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  input,
+  select,
+  textarea {
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font: inherit;
+    background: #fff;
+    color: inherit;
+
+    &:focus {
+      outline: 2px solid var(--couleur-primaire-clair);
+      outline-offset: -1px;
+    }
+
+    &.invalide {
+      border-color: var(--couleur-danger);
+    }
+  }
+
+  textarea {
+    min-height: 80px;
+    resize: vertical;
+  }
+
+  .erreur-champ {
+    color: var(--couleur-danger);
+    font-size: 0.75rem;
+  }
+}
+
+.actions-formulaire {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+
+/* --------------------------- Boutons ----------------------------- */
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--couleur-primaire);
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: var(--couleur-primaire-clair);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  &.secondaire {
+    background: #fff;
+    color: var(--couleur-texte);
+    border-color: var(--couleur-bordure);
+
+    &:hover:not(:disabled) {
+      background: #eef2f7;
+    }
+  }
+
+  &.danger {
+    background: var(--couleur-danger);
+
+    &:hover:not(:disabled) {
+      background: #a52020;
+    }
+  }
+
+  &.petit {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* --------------------------- Tableaux ---------------------------- */
+.tableau-conteneur {
+  overflow-x: auto;
+}
+
+table.tableau {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+
+  th,
+  td {
+    padding: 0.65rem 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid var(--couleur-bordure);
+    white-space: nowrap;
+  }
+
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--couleur-texte-doux);
+    background: #fafbfc;
+  }
+
+  tbody tr:hover {
+    background: #f7f9fc;
+  }
+
+  td.numerique,
+  th.numerique {
+    text-align: right;
+  }
+}
+
+/* --------------------------- Etiquettes -------------------------- */
+.etiquette {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #eceff3;
+  color: var(--couleur-texte-doux);
+
+  &.disponible,
+  &.actif {
+    background: #e3f5ea;
+    color: var(--couleur-succes);
+  }
+
+  &.en_mission,
+  &.en_livraison {
+    background: #e5effb;
+    color: var(--couleur-info);
+  }
+
+  &.en_location {
+    background: #fdf0d5;
+    color: #96660a;
+  }
+
+  &.en_maintenance,
+  &.en_conge {
+    background: #f3ecfb;
+    color: #6b3fa0;
+  }
+
+  &.immobilise,
+  &.accidente,
+  &.hors_service,
+  &.vendu,
+  &.suspendu,
+  &.inactif {
+    background: #fce9e9;
+    color: var(--couleur-danger);
+  }
+}
+
+/* --------------------------- Messages ---------------------------- */
+.message {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+
+  &.erreur {
+    background: #fce9e9;
+    color: var(--couleur-danger);
+    border: 1px solid #f3c7c7;
+  }
+
+  &.succes {
+    background: #e3f5ea;
+    color: var(--couleur-succes);
+    border: 1px solid #bfe4cd;
+  }
+
+  &.vide {
+    background: #fff;
+    color: var(--couleur-texte-doux);
+    border: 1px dashed var(--couleur-bordure);
+    text-align: center;
+  }
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  color: var(--couleur-texte-doux);
+}
+
+.alerte-permis {
+  color: var(--couleur-danger);
+  font-weight: 600;
+}

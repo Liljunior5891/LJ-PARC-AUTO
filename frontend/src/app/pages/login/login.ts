@@ -1,0 +1,50 @@
+import { Component, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '../../core/auth/auth.service';
+
+@Component({
+  selector: 'app-login',
+  imports: [ReactiveFormsModule],
+  templateUrl: './login.html',
+  styleUrl: './login.scss'
+})
+export class Login {
+  private readonly fb = inject(FormBuilder);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly enCours = signal(false);
+  readonly erreur = signal<string | null>(null);
+
+  readonly formulaire = this.fb.nonNullable.group({
+    email: ['', [Validators.required, Validators.email]],
+    motDePasse: ['', [Validators.required]]
+  });
+
+  soumettre(): void {
+    if (this.formulaire.invalid || this.enCours()) {
+      this.formulaire.markAllAsTouched();
+      return;
+    }
+    this.enCours.set(true);
+    this.erreur.set(null);
+
+    const { email, motDePasse } = this.formulaire.getRawValue();
+    this.auth.login(email, motDePasse).subscribe({
+      next: () => {
+        const retour = this.route.snapshot.queryParamMap.get('retour') ?? '/tableau-bord';
+        void this.router.navigateByUrl(retour);
+      },
+      error: (erreur) => {
+        this.enCours.set(false);
+        this.erreur.set(
+          erreur.status === 401
+            ? 'Email ou mot de passe incorrect.'
+            : "Connexion au serveur impossible. Verifiez que l'API est demarree."
+        );
+      }
+    });
+  }
+}

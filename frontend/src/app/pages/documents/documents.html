@@ -1,0 +1,176 @@
+<div class="entete-page">
+  <div>
+    <h1>Documents du parc</h1>
+    <p class="sous-titre">Chapitre 21 — carte grise, assurance, visite technique, taxes, permis...</p>
+  </div>
+  @if (peutGerer) {
+    <button class="bouton" type="button" (click)="basculerFormulaire()">
+      {{ formulaireVisible() ? 'Fermer' : '+ Nouveau document' }}
+    </button>
+  }
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+@if (formulaireVisible()) {
+  <form class="carte" [formGroup]="formulaire" (ngSubmit)="enregistrer()" style="margin-bottom: 1rem">
+    <h2>Enregistrer un document</h2>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="proprietaireType">Rattache a *</label>
+        <select id="proprietaireType" formControlName="proprietaireType">
+          <option value="CAMION">Un camion</option>
+          <option value="CHAUFFEUR">Un chauffeur</option>
+        </select>
+      </div>
+      <div class="champ">
+        <label for="proprietaireId">
+          {{ formulaire.controls.proprietaireType.value === 'CAMION' ? 'Camion *' : 'Chauffeur *' }}
+        </label>
+        <select id="proprietaireId" formControlName="proprietaireId">
+          <option [ngValue]="null">Selectionner</option>
+          @if (formulaire.controls.proprietaireType.value === 'CAMION') {
+            @for (camion of camions(); track camion.id) {
+              <option [ngValue]="camion.id">{{ camion.numeroInterne }} — {{ camion.immatriculation }}</option>
+            }
+          } @else {
+            @for (chauffeur of chauffeurs(); track chauffeur.id) {
+              <option [ngValue]="chauffeur.id">{{ chauffeur.matricule }} — {{ chauffeur.nomComplet }}</option>
+            }
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="type">Type de document *</label>
+        <select id="type" formControlName="type">
+          @for (type of types; track type.valeur) {
+            <option [value]="type.valeur">{{ type.libelle }}</option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="libelle">Libelle *</label>
+        <input id="libelle" formControlName="libelle" placeholder="Assurance 2026" />
+      </div>
+      <div class="champ">
+        <label for="numero">Numero</label>
+        <input id="numero" formControlName="numero" />
+      </div>
+      <div class="champ">
+        <label for="emetteur">Emetteur</label>
+        <input id="emetteur" formControlName="emetteur" placeholder="Compagnie, administration..." />
+      </div>
+      <div class="champ">
+        <label for="dateEmission">Date d'emission</label>
+        <input id="dateEmission" type="date" formControlName="dateEmission" />
+      </div>
+      <div class="champ">
+        <label for="dateExpiration">Date d'expiration</label>
+        <input id="dateExpiration" type="date" formControlName="dateExpiration" />
+      </div>
+      <div class="champ">
+        <label for="cout">Cout (FCFA)</label>
+        <input id="cout" type="number" formControlName="cout" />
+      </div>
+      <div class="champ">
+        <label for="fichier">Justificatif (PDF, image)</label>
+        <input id="fichier" type="file" (change)="fichierChoisi($event)" />
+      </div>
+    </div>
+    <div class="champ" style="margin-top: 1rem">
+      <label for="observations">Observations</label>
+      <textarea id="observations" formControlName="observations"></textarea>
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton" type="submit">Enregistrer</button>
+      <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
+    </div>
+  </form>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="filtreProprietaire">Rattachement</label>
+      <select id="filtreProprietaire" [(ngModel)]="filtreProprietaire" (change)="filtrer()">
+        <option value="">Tous</option>
+        <option value="CAMION">Camions</option>
+        <option value="CHAUFFEUR">Chauffeurs</option>
+      </select>
+    </div>
+    <div class="champ">
+      <label for="filtreType">Type</label>
+      <select id="filtreType" [(ngModel)]="filtreType" (change)="filtrer()">
+        <option value="">Tous les types</option>
+        @for (type of types; track type.valeur) {
+          <option [value]="type.valeur">{{ type.libelle }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Document</th>
+          <th>Type</th>
+          <th>Rattache a</th>
+          <th>Emission</th>
+          <th>Expiration</th>
+          <th>Echeance</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (document of page()?.content ?? []; track document.id) {
+          <tr>
+            <td><strong>{{ document.libelle }}</strong></td>
+            <td>{{ document.typeLibelle }}</td>
+            <td>{{ document.proprietaireLibelle || '—' }}</td>
+            <td>{{ document.dateEmission || '—' }}</td>
+            <td>{{ document.dateExpiration || '—' }}</td>
+            <td><span [class]="classeEcheance(document)">{{ libelleEcheance(document) }}</span></td>
+            <td>
+              @if (document.fichierDisponible) {
+                <button class="bouton secondaire petit" type="button" (click)="telecharger(document)">
+                  Telecharger
+                </button>
+              }
+              @if (peutGerer) {
+                <button class="bouton danger petit" type="button" (click)="archiver(document)">Archiver</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7">
+              <div class="message vide">
+                {{ chargement() ? 'Chargement...' : 'Aucun document enregistre.' }}
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">
+          Precedent
+        </button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">
+          Suivant
+        </button>
+      </div>
+    }
+  }
+</div>
