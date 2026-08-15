@@ -30,6 +30,21 @@ public class TableauBordController {
         return service.exploitation(joursEcheance);
     }
 
+    @GetMapping("/finances")
+    @Operation(summary = "Indicateurs financiers : chiffre d'affaires, depenses, resultat, creances")
+    public TableauBordDto.Finances finances(
+            @RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(
+                    iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate debut,
+            @RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(
+                    iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate fin) {
+        java.time.LocalDate finRetenue = fin == null ? java.time.LocalDate.now() : fin;
+        return service.finances(debut == null ? finRetenue.withDayOfMonth(1) : debut, finRetenue);
+    }
+
     @GetMapping("/vue-parc")
     @Operation(summary = "Vue globale du parc : camion, chauffeur, statut, activite et client")
     public List<VueParcDto> vueParc() {

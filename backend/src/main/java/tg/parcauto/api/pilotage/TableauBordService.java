@@ -12,6 +12,9 @@ import tg.parcauto.api.exploitation.location.StatutLocation;
 import tg.parcauto.api.exploitation.mission.Mission;
 import tg.parcauto.api.exploitation.mission.MissionRepository;
 import tg.parcauto.api.exploitation.mission.StatutMission;
+import tg.parcauto.api.finance.facture.FactureService;
+import tg.parcauto.api.finance.facture.PaiementRepository;
+import tg.parcauto.api.finance.rentabilite.RentabiliteService;
 import tg.parcauto.api.parc.affectation.Affectation;
 import tg.parcauto.api.parc.affectation.AffectationRepository;
 import tg.parcauto.api.parc.camion.Camion;
@@ -46,6 +49,9 @@ public class TableauBordService {
     private final LocationRepository locationRepository;
     private final MissionRepository missionRepository;
     private final LivraisonRepository livraisonRepository;
+    private final RentabiliteService rentabiliteService;
+    private final FactureService factureService;
+    private final PaiementRepository paiementRepository;
 
     public TableauBordDto.Parc parc(int joursAlerte) {
         Map<StatutCamion, Long> repartition = camionService.repartitionParStatut();
@@ -92,6 +98,24 @@ public class TableauBordService {
                         List.of(StatutLivraison.PLANIFIEE, StatutLivraison.EN_COURS)),
                 livraisonRepository.countByStatut(StatutLivraison.LIVREE),
                 tauxUtilisation);
+    }
+
+    /** Indicateurs financiers du chapitre 4.2, sur la periode demandee. */
+    public TableauBordDto.Finances finances(LocalDate debut, LocalDate fin) {
+        var rentabilite = rentabiliteService.global(debut, fin);
+        var creances = factureService.creances();
+        return new TableauBordDto.Finances(
+                debut, fin,
+                rentabilite.totalRecettes(),
+                rentabilite.totalDepenses(),
+                rentabilite.resultat(),
+                rentabilite.margePourcent(),
+                paiementRepository.totalEncaisseSurPeriode(debut, fin),
+                creances.montantRestant(),
+                creances.nombreFacturesImpayees(),
+                creances.nombreEnRetard(),
+                rentabilite.recetteMoyenneParCamion(),
+                rentabilite.depenseMoyenneParCamion());
     }
 
     /**

@@ -26,6 +26,22 @@ public final class TableauBordDto {
             long permisAExpirer) {
     }
 
+    /** Indicateurs financiers du chapitre 4.2. */
+    public record Finances(
+            java.time.LocalDate debut,
+            java.time.LocalDate fin,
+            java.math.BigDecimal chiffreAffaires,
+            java.math.BigDecimal totalDepenses,
+            java.math.BigDecimal resultat,
+            java.math.BigDecimal margePourcent,
+            java.math.BigDecimal encaisseSurPeriode,
+            java.math.BigDecimal creancesRestantes,
+            long facturesImpayees,
+            long facturesEnRetard,
+            java.math.BigDecimal recetteMoyenneParCamion,
+            java.math.BigDecimal depenseMoyenneParCamion) {
+    }
+
     /** Indicateurs d'exploitation du chapitre 4.1 (volet locations et missions). */
     public record Exploitation(
             long clientsActifs,
