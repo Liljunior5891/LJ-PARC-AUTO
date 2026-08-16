@@ -82,6 +82,10 @@ public class Camion extends BaseEntity {
     @Column(name = "gps_device_id", length = 80)
     private String gpsDeviceId;
 
+    /** Seuil de vitesse propre a ce camion, exploite par les alertes GPS (chapitre 26). */
+    @Column(name = "vitesse_max_kmh")
+    private Integer vitesseMaxKmh;
+
     @Column(columnDefinition = "text")
     private String observations;
 

@@ -15,6 +15,9 @@ public interface CamionRepository extends JpaRepository<Camion, Long>, JpaSpecif
 
     boolean existsByNumeroInterneIgnoreCase(String numeroInterne);
 
+    /** Camion equipe de ce traceur GPS (chapitre 22). */
+    Optional<Camion> findByGpsDeviceId(String gpsDeviceId);
+
     @Query("select c.statut as statut, count(c) as total from Camion c where c.actif = true group by c.statut")
     List<StatutCompte> compterParStatut();
 

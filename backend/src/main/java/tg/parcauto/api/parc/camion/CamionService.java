@@ -112,6 +112,7 @@ public class CamionService {
         camion.setPrixAchat(r.prixAchat());
         camion.setPhotoUrl(r.photoUrl());
         camion.setGpsDeviceId(r.gpsDeviceId());
+        camion.setVitesseMaxKmh(r.vitesseMaxKmh());
         camion.setObservations(r.observations());
         if (r.typeCarburant() != null) {
             camion.setTypeCarburant(r.typeCarburant());

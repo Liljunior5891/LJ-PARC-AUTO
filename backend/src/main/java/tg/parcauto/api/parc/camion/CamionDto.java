@@ -33,6 +33,7 @@ public final class CamionDto {
             StatutCamion statut,
             @Size(max = 500) String photoUrl,
             @Size(max = 80) String gpsDeviceId,
+            @Min(30) Integer vitesseMaxKmh,
             String observations,
             Boolean actif) {
     }
@@ -60,6 +61,7 @@ public final class CamionDto {
             String statutLibelle,
             String photoUrl,
             String gpsDeviceId,
+            Integer vitesseMaxKmh,
             String observations,
             boolean actif) {
 
@@ -70,7 +72,7 @@ public final class CamionDto {
                     c.getCouleur(), c.getCapaciteTonnes(), c.getTypeCarburant(), c.getDateAcquisition(),
                     c.getPrixAchat(), c.getKilometrageInitial(), c.getKilometrageActuel(), c.kilometrageParcouru(),
                     c.getStatut(), c.getStatut().getLibelle(), c.getPhotoUrl(), c.getGpsDeviceId(),
-                    c.getObservations(), c.isActif());
+                    c.getVitesseMaxKmh(), c.getObservations(), c.isActif());
         }
     }
 
