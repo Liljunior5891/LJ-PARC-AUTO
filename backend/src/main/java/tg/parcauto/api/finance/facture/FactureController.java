@@ -9,7 +9,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -34,6 +37,7 @@ public class FactureController {
     private static final String GESTION = "hasAnyRole('ADMIN','COMPTABLE')";
 
     private final FactureService service;
+    private final FacturePdfService pdfService;
 
     @GetMapping
     @Operation(summary = "Liste paginee des factures")
@@ -63,6 +67,17 @@ public class FactureController {
     @Operation(summary = "Detail d'une facture avec ses lignes et ses reglements")
     public FactureDto.Reponse detail(@PathVariable Long id) {
         return service.parId(id);
+    }
+
+    /** Edition PDF a remettre au client (chapitre 27). */
+    @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Telecharge la facture au format PDF")
+    public ResponseEntity<byte[]> pdf(@PathVariable Long id) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + pdfService.nomFichier(id) + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfService.produire(id));
     }
 
     @PostMapping

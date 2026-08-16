@@ -26,7 +26,6 @@ export interface Kpi {
 
 export interface FicheSynthese {
   camionId: number;
-  numeroInterne: string;
   immatriculation: string;
   marqueModele?: string;
   statut: StatutCamion;

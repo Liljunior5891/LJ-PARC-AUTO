@@ -27,7 +27,6 @@ public final class CamionSpecifications {
                 String motif = SpecificationUtils.motif(q);
                 predicats.add(cb.or(
                         cb.like(cb.lower(racine.get("immatriculation")), motif),
-                        cb.like(cb.lower(racine.get("numeroInterne")), motif),
                         cb.like(cb.lower(cb.coalesce(racine.get("marque"), "")), motif),
                         cb.like(cb.lower(cb.coalesce(racine.get("modele"), "")), motif)));
             }

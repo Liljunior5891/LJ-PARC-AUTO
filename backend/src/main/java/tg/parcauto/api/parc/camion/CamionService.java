@@ -9,6 +9,7 @@ import tg.parcauto.api.common.BusinessException;
 import tg.parcauto.api.common.ResourceNotFoundException;
 
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -17,6 +18,7 @@ import java.util.Map;
 public class CamionService {
 
     private final CamionRepository repository;
+    private final MarqueCamionRepository marqueRepository;
 
     @Transactional(readOnly = true)
     public Page<CamionDto.Reponse> rechercher(String q, StatutCamion statut, Boolean actif, Pageable pageable) {
@@ -34,6 +36,14 @@ public class CamionService {
         return repository.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Camion", id));
     }
 
+    /** Referentiel des marques, pour les listes deroulantes et les logos. */
+    @Transactional(readOnly = true)
+    public List<MarqueCamionDto.Reponse> marques() {
+        return marqueRepository.findByActifTrueOrderByOrdreAscNomAsc().stream()
+                .map(MarqueCamionDto.Reponse::de)
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public Map<StatutCamion, Long> repartitionParStatut() {
         Map<StatutCamion, Long> repartition = new EnumMap<>(StatutCamion.class);
@@ -47,9 +57,6 @@ public class CamionService {
     public CamionDto.Reponse creer(CamionDto.Requete requete) {
         if (repository.existsByImmatriculationIgnoreCase(requete.immatriculation())) {
             throw new BusinessException("Un camion existe deja avec l'immatriculation " + requete.immatriculation());
-        }
-        if (repository.existsByNumeroInterneIgnoreCase(requete.numeroInterne())) {
-            throw new BusinessException("Un camion existe deja avec le numero interne " + requete.numeroInterne());
         }
         Camion camion = new Camion();
         appliquer(camion, requete);
@@ -97,9 +104,17 @@ public class CamionService {
     }
 
     private void appliquer(Camion camion, CamionDto.Requete r) {
-        camion.setNumeroInterne(r.numeroInterne().trim());
         camion.setImmatriculation(r.immatriculation().trim().toUpperCase());
-        camion.setMarque(r.marque());
+        // La marque du referentiel prime ; le libelle libre sert de repli.
+        if (r.marqueId() != null) {
+            MarqueCamion marque = marqueRepository.findById(r.marqueId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Marque", r.marqueId()));
+            camion.setMarqueReference(marque);
+            camion.setMarque(marque.getNom());
+        } else {
+            camion.setMarqueReference(null);
+            camion.setMarque(r.marque());
+        }
         camion.setModele(r.modele());
         camion.setAnnee(r.annee());
         camion.setType(r.type());

@@ -96,6 +96,12 @@ export class LocationFiche implements OnInit {
     if (parametre && parametre !== 'nouveau') {
       this.id.set(Number(parametre));
       this.recharger();
+      return;
+    }
+    // Creation depuis la fiche d'un camion : celui-ci est deja choisi.
+    const camionId = this.route.snapshot.queryParamMap.get('camionId');
+    if (camionId) {
+      this.formulaire.controls.camionId.setValue(Number(camionId));
     }
   }
 

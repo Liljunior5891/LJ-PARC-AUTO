@@ -35,8 +35,8 @@ public final class PositionGpsDto {
     /** Marqueur de la carte du parc, chapitre 23. */
     public record MarqueurCarte(
             Long camionId,
-            String numeroInterne,
             String immatriculation,
+            String marque,
             StatutCamion statut,
             String statutLibelle,
             String chauffeurNom,

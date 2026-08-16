@@ -10,7 +10,6 @@ import tg.parcauto.api.parc.camion.StatutCamion;
  */
 public record VueParcDto(
         Long camionId,
-        String numeroInterne,
         String immatriculation,
         String marqueModele,
         StatutCamion statut,

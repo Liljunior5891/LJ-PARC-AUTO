@@ -68,7 +68,7 @@ public class RentabiliteService {
 
         List<RentabiliteDto.LigneCamion> lignes = camionRepository.findAll().stream()
                 .filter(Camion::isActif)
-                .sorted(Comparator.comparing(Camion::getNumeroInterne))
+                .sorted(Comparator.comparing(Camion::getImmatriculation))
                 .map(camion -> ligne(camion,
                         recettes.getOrDefault(camion.getId(), BigDecimal.ZERO),
                         depenses.getOrDefault(camion.getId(), BigDecimal.ZERO),
@@ -110,7 +110,7 @@ public class RentabiliteService {
                 + (camion.getModele() == null ? "" : camion.getModele())).trim();
 
         return new RentabiliteDto.FicheCamion(
-                camion.getId(), camion.getNumeroInterne(), camion.getImmatriculation(),
+                camion.getId(), camion.getImmatriculation(), camion.libelleMarque(),
                 marqueModele.isEmpty() ? null : marqueModele, camion.getStatut().getLibelle(),
                 debut, fin,
                 revenus(camionId),
@@ -181,7 +181,7 @@ public class RentabiliteService {
         long km = distance == null ? 0L : distance.getDistance();
         long missions = distance == null ? 0L : distance.getNombre();
         return new RentabiliteDto.LigneCamion(
-                camion.getId(), camion.getNumeroInterne(), camion.getImmatriculation(),
+                camion.getId(), camion.getImmatriculation(), camion.libelleMarque(),
                 camion.getStatut().getLibelle(),
                 recettes, depenses, resultat, pourcentage(resultat, recettes),
                 km, missions, parKm(depenses, km), parKm(recettes, km));

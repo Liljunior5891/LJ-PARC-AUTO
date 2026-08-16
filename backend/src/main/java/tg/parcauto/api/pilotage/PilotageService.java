@@ -142,7 +142,7 @@ public class PilotageService {
                 + (camion.getModele() == null ? "" : camion.getModele())).trim();
 
         return new FicheSyntheseDto(
-                camion.getId(), camion.getNumeroInterne(), camion.getImmatriculation(),
+                camion.getId(), camion.getImmatriculation(),
                 marqueModele.isEmpty() ? null : marqueModele,
                 camion.getStatut(), camion.getStatut().getLibelle(), debut, fin,
                 ligneCarte == null ? null : ligneCarte.chauffeurNom(),

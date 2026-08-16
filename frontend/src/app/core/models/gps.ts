@@ -3,8 +3,8 @@ import { StatutCamion } from './models';
 
 export interface MarqueurCarte {
   camionId: number;
-  numeroInterne: string;
   immatriculation: string;
+  marque?: string;
   statut: StatutCamion;
   statutLibelle: string;
   chauffeurNom?: string;

@@ -27,7 +27,7 @@
           <option [ngValue]="null">Selectionner un camion</option>
           @for (camion of camions(); track camion.id) {
             <option [ngValue]="camion.id">
-              {{ camion.numeroInterne }} — {{ camion.immatriculation }} ({{ camion.statutLibelle }})
+              {{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }} ({{ camion.statutLibelle }})
             </option>
           }
         </select>
@@ -95,7 +95,7 @@
           <tr>
             <td>
               <strong>{{ affectation.camionImmatriculation }}</strong>
-              <small> ({{ affectation.camionNumeroInterne }})</small>
+              <small> ({{ affectation.camionMarque }})</small>
             </td>
             <td>{{ affectation.chauffeurNom }}</td>
             <td>{{ affectation.dateDebut }}</td>

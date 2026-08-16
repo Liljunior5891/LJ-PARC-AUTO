@@ -97,10 +97,11 @@ public class RapportService {
     /** Le tableau de comparaison des camions du chapitre 29. */
     private String rentabiliteParCamion(LocalDate debut, LocalDate fin) {
         StringBuilder csv = new StringBuilder(BOM);
-        ligne(csv, "Numero", "Immatriculation", "Statut", "Recettes", "Depenses", "Resultat",
+        ligne(csv, "Immatriculation", "Marque", "Statut", "Recettes", "Depenses", "Resultat",
                 "Marge (%)", "Kilometres", "Missions", "Cout/km", "Revenu/km");
         for (RentabiliteDto.LigneCamion ligne : rentabiliteService.global(debut, fin).camions()) {
-            ligne(csv, ligne.numeroInterne(), ligne.immatriculation(), ligne.statutLibelle(),
+            ligne(csv, ligne.immatriculation(), ligne.marque() == null ? "" : ligne.marque(),
+                    ligne.statutLibelle(),
                     nombre(ligne.recettes()), nombre(ligne.depenses()), nombre(ligne.resultat()),
                     nombre(ligne.margePourcent()), String.valueOf(ligne.distanceKm()),
                     String.valueOf(ligne.nombreMissions()),
@@ -150,7 +151,7 @@ public class RapportService {
     /** Etat du parc avec la derniere position connue de chaque camion. */
     private String parc() {
         StringBuilder csv = new StringBuilder(BOM);
-        ligne(csv, "Numero", "Immatriculation", "Statut", "Chauffeur", "Activite",
+        ligne(csv, "Immatriculation", "Marque", "Statut", "Chauffeur", "Activite",
                 "Kilometrage", "Latitude", "Longitude", "Derniere communication");
         List<PositionGpsDto.MarqueurCarte> marqueurs = carteService.marqueurs();
         camionService.rechercher(null, null, true,
@@ -159,7 +160,8 @@ public class RapportService {
                     var position = marqueurs.stream()
                             .filter(m -> m.camionId().equals(camion.id()))
                             .findFirst().orElse(null);
-                    ligne(csv, camion.numeroInterne(), camion.immatriculation(), camion.statutLibelle(),
+                    ligne(csv, camion.immatriculation(), camion.marque() == null ? "" : camion.marque(),
+                            camion.statutLibelle(),
                             position == null || position.chauffeurNom() == null ? "" : position.chauffeurNom(),
                             position == null || position.activite() == null ? "" : position.activite(),
                             String.valueOf(camion.kilometrageActuel()),

@@ -66,6 +66,7 @@ L'application est servie sur `http://localhost:4200`.
 | `JWT_EXPIRATION_MINUTES` | `480` | Durée de validité d'une session |
 | `CORS_ORIGINS` | `http://localhost:4200` | Origines autorisées |
 | `DOCUMENTS_DIR` | `./data/documents` | Stockage des justificatifs |
+| `ENTREPRISE_NOM`, `ENTREPRISE_ADRESSE`, `ENTREPRISE_TELEPHONE`, `ENTREPRISE_NIF` | — | Mentions portées sur les factures PDF |
 | `ADMIN_PASSWORD` | `Admin@2026` | Mot de passe du compte initial |
 
 ## Périmètre livré

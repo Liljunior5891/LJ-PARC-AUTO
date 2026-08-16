@@ -39,6 +39,12 @@ parcauto:
     allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
   storage:
     documents-dir: ${DOCUMENTS_DIR:./data/documents}
+  # Mentions reprises en tete des factures PDF (chapitre 27).
+  entreprise:
+    nom: ${ENTREPRISE_NOM:PARC AUTO}
+    adresse: ${ENTREPRISE_ADRESSE:}
+    telephone: ${ENTREPRISE_TELEPHONE:}
+    identifiant-fiscal: ${ENTREPRISE_NIF:}
 
 springdoc:
   swagger-ui:

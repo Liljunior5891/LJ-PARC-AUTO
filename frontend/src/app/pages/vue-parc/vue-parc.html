@@ -28,7 +28,6 @@
       <thead>
         <tr>
           <th>Camion</th>
-          <th>Immatriculation</th>
           <th>Chauffeur</th>
           <th>Statut</th>
           <th>Client</th>
@@ -44,12 +43,13 @@
         @for (ligne of lignesAffichees(); track ligne.camionId) {
           <tr>
             <td>
-              <a [routerLink]="['/camions', ligne.camionId]">{{ ligne.numeroInterne }}</a>
+              <a [routerLink]="['/camions', ligne.camionId]">
+                <strong>{{ ligne.immatriculation }}</strong>
+              </a>
               @if (ligne.marqueModele) {
                 <small> · {{ ligne.marqueModele }}</small>
               }
             </td>
-            <td><strong>{{ ligne.immatriculation }}</strong></td>
             <td>{{ ligne.chauffeurNom || '—' }}</td>
             <td><span [class]="classeStatut(ligne.statut)">{{ ligne.statutLibelle }}</span></td>
             <td>{{ ligne.clientNom || '—' }}</td>
@@ -70,7 +70,7 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="11">
+            <td colspan="10">
               <div class="message vide">
                 {{ chargement() ? 'Chargement...' : 'Aucun camion pour ce filtre.' }}
               </div>

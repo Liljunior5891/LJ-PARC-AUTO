@@ -58,14 +58,14 @@ public class CarteParcService {
                             : mission.getTypeMission().getLibelle() + " (" + mission.getNumero() + ")";
 
                     return new PositionGpsDto.MarqueurCarte(
-                            camion.getId(), camion.getNumeroInterne(), camion.getImmatriculation(),
+                            camion.getId(), camion.getImmatriculation(), camion.libelleMarque(),
                             camion.getStatut(), camion.getStatut().getLibelle(),
                             chauffeur, activite,
                             position.getLatitude(), position.getLongitude(),
                             position.getVitesseKmh(), position.getDirection(),
                             position.getHorodatage(), positionService.horsConnexion(position));
                 })
-                .sorted(Comparator.comparing(PositionGpsDto.MarqueurCarte::numeroInterne))
+                .sorted(Comparator.comparing(PositionGpsDto.MarqueurCarte::immatriculation))
                 .toList();
     }
 

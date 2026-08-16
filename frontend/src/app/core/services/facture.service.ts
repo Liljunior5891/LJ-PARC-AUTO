@@ -68,6 +68,11 @@ export class FactureService {
     return this.http.get<Facture>(`${this.base}/${id}`);
   }
 
+  /** Edition PDF a remettre au client (chapitre 27). */
+  pdf(id: number): Observable<Blob> {
+    return this.http.get(`${this.base}/${id}/pdf`, { responseType: 'blob' });
+  }
+
   impayees(): Observable<Facture[]> {
     return this.http.get<Facture[]>(`${this.base}/impayees`);
   }

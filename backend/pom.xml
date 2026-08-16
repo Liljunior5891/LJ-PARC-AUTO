@@ -82,6 +82,13 @@
             <version>${springdoc.version}</version>
         </dependency>
 
+        <!-- Generation des factures PDF (chapitre 27). OpenPDF est sous licence LGPL/MPL. -->
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>2.0.3</version>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

@@ -15,7 +15,7 @@
       <input
         id="recherche"
         type="search"
-        placeholder="Immatriculation, numero interne, marque..."
+        placeholder="Immatriculation, marque, modele..."
         [(ngModel)]="recherche"
         (keyup.enter)="filtrer()"
       />
@@ -46,7 +46,6 @@
     <table class="tableau">
       <thead>
         <tr>
-          <th>Numero</th>
           <th>Immatriculation</th>
           <th>Marque / modele</th>
           <th>Type</th>
@@ -59,8 +58,18 @@
       <tbody>
         @for (camion of page()?.content ?? []; track camion.id) {
           <tr>
-            <td><a [routerLink]="['/camions', camion.id]">{{ camion.numeroInterne }}</a></td>
-            <td><strong>{{ camion.immatriculation }}</strong></td>
+            <td>
+              <a class="lien-camion" [routerLink]="['/camions', camion.id]">
+                <span class="logo-marque" [style.background]="camion.marqueCouleur || '#6b7684'">
+                  @if (camion.marqueLogoUrl) {
+                    <img [src]="camion.marqueLogoUrl" [alt]="camion.marque" />
+                  } @else {
+                    {{ camion.marqueMonogramme || '?' }}
+                  }
+                </span>
+                <strong>{{ camion.immatriculation }}</strong>
+              </a>
+            </td>
             <td>{{ camion.marque }} {{ camion.modele }}</td>
             <td>{{ camion.type || '—' }}</td>
             <td class="numerique">{{ camion.capaciteTonnes ?? '—' }}</td>

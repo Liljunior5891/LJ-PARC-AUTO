@@ -14,8 +14,8 @@ public final class CamionDto {
     }
 
     public record Requete(
-            @NotBlank @Size(max = 40) String numeroInterne,
             @NotBlank @Size(max = 40) String immatriculation,
+            Long marqueId,
             @Size(max = 60) String marque,
             @Size(max = 60) String modele,
             @Min(1950) Integer annee,
@@ -40,9 +40,12 @@ public final class CamionDto {
 
     public record Reponse(
             Long id,
-            String numeroInterne,
             String immatriculation,
+            Long marqueId,
             String marque,
+            String marqueLogoUrl,
+            String marqueCouleur,
+            String marqueMonogramme,
             String modele,
             Integer annee,
             String type,
@@ -67,7 +70,13 @@ public final class CamionDto {
 
         public static Reponse de(Camion c) {
             return new Reponse(
-                    c.getId(), c.getNumeroInterne(), c.getImmatriculation(), c.getMarque(), c.getModele(),
+                    c.getId(), c.getImmatriculation(),
+                    c.getMarqueReference() == null ? null : c.getMarqueReference().getId(),
+                    c.libelleMarque(),
+                    c.getMarqueReference() == null ? null : c.getMarqueReference().getLogoUrl(),
+                    c.getMarqueReference() == null ? null : c.getMarqueReference().getCouleur(),
+                    c.getMarqueReference() == null ? null : c.getMarqueReference().monogramme(),
+                    c.getModele(),
                     c.getAnnee(), c.getType(), c.getCategorie(), c.getNumeroChassis(), c.getNumeroMoteur(),
                     c.getCouleur(), c.getCapaciteTonnes(), c.getTypeCarburant(), c.getDateAcquisition(),
                     c.getPrixAchat(), c.getKilometrageInitial(), c.getKilometrageActuel(), c.kilometrageParcouru(),

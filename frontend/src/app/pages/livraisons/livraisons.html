@@ -28,7 +28,7 @@
         <select id="camionId" formControlName="camionId">
           <option [ngValue]="null">Selectionner un camion</option>
           @for (camion of camions(); track camion.id) {
-            <option [ngValue]="camion.id">{{ camion.numeroInterne }} — {{ camion.immatriculation }}</option>
+            <option [ngValue]="camion.id">{{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }}</option>
           }
         </select>
       </div>

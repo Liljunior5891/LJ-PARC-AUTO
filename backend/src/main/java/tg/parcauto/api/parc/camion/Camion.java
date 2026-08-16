@@ -4,6 +4,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,12 +24,16 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class Camion extends BaseEntity {
 
-    @Column(name = "numero_interne", nullable = false, unique = true, length = 40)
-    private String numeroInterne;
-
+    /** La plaque identifie le camion : c'est elle que les equipes utilisent. */
     @Column(nullable = false, unique = true, length = 40)
     private String immatriculation;
 
+    /** Marque du referentiel, porteuse du logo. */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "marque_id")
+    private MarqueCamion marqueReference;
+
+    /** Libelle de la marque, conserve pour les marques hors referentiel. */
     @Column(length = 60)
     private String marque;
 
@@ -91,6 +98,11 @@ public class Camion extends BaseEntity {
 
     @Column(nullable = false)
     private boolean actif = true;
+
+    /** Libelle de la marque : celui du referentiel s'il existe. */
+    public String libelleMarque() {
+        return marqueReference != null ? marqueReference.getNom() : marque;
+    }
 
     /** Kilometres parcourus depuis la mise en service. */
     public long kilometrageParcouru() {

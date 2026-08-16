@@ -15,8 +15,8 @@ public final class RentabiliteDto {
     /** Ligne de comparaison entre camions, chapitres 29 et 30. */
     public record LigneCamion(
             Long camionId,
-            String numeroInterne,
             String immatriculation,
+            String marque,
             String statutLibelle,
             BigDecimal recettes,
             BigDecimal depenses,
@@ -75,8 +75,8 @@ public final class RentabiliteDto {
     /** Fiche « performance du camion », chapitre 7 du cahier des charges. */
     public record FicheCamion(
             Long camionId,
-            String numeroInterne,
             String immatriculation,
+            String marque,
             String marqueModele,
             String statutLibelle,
             LocalDate debut,

@@ -13,8 +13,6 @@ public interface CamionRepository extends JpaRepository<Camion, Long>, JpaSpecif
 
     boolean existsByImmatriculationIgnoreCase(String immatriculation);
 
-    boolean existsByNumeroInterneIgnoreCase(String numeroInterne);
-
     /** Camion equipe de ce traceur GPS (chapitre 22). */
     Optional<Camion> findByGpsDeviceId(String gpsDeviceId);
 

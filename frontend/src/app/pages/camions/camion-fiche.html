@@ -6,6 +6,123 @@
   <a class="bouton secondaire" routerLink="/camions">Retour a la liste</a>
 </div>
 
+@if (id() !== null) {
+  <div class="onglets">
+    <button type="button" [class.actif]="volet() === 'fiche'" (click)="ouvrirVolet('fiche')">
+      Fiche du vehicule
+    </button>
+    <button type="button" [class.actif]="volet() === 'recettes'" (click)="ouvrirVolet('recettes')">
+      RECETTES
+    </button>
+    <button type="button" [class.actif]="volet() === 'depenses'" (click)="ouvrirVolet('depenses')">
+      DEPENSES
+    </button>
+  </div>
+}
+
+@if (volet() === 'recettes') {
+  <div class="carte">
+    <div class="entete-page" style="margin-bottom: 0.75rem">
+      <div>
+        <h2>Contrats de ce camion</h2>
+        <p class="sous-titre">
+          {{ contrats().length }} contrat(s) — {{ totalContrats() | number }} FCFA au total
+        </p>
+      </div>
+      <a class="bouton" [routerLink]="['/locations/nouveau']" [queryParams]="{ camionId: id() }">
+        + Nouveau contrat
+      </a>
+    </div>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th>Contrat</th>
+            <th>Client</th>
+            <th>Modele</th>
+            <th>Periode</th>
+            <th class="numerique">Montant</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (contrat of contrats(); track contrat.id) {
+            <tr>
+              <td><a [routerLink]="['/locations', contrat.id]">{{ contrat.numero }}</a></td>
+              <td><strong>{{ contrat.clientNom }}</strong></td>
+              <td>{{ contrat.typeLibelle }}</td>
+              <td>{{ contrat.dateDebut }} → {{ contrat.dateFinReelle || contrat.dateFin || '—' }}</td>
+              <td class="numerique"><strong>{{ contrat.montant | number }}</strong></td>
+              <td><span class="etiquette">{{ contrat.statutLibelle }}</span></td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6">
+                <div class="message vide">Aucun contrat pour ce camion.</div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+@if (volet() === 'depenses') {
+  <div class="carte">
+    <div class="entete-page" style="margin-bottom: 0.75rem">
+      <div>
+        <h2>Depenses de ce camion</h2>
+        <p class="sous-titre">
+          {{ depenses().length }} depense(s) — {{ totalDepenses() | number }} FCFA au total
+        </p>
+      </div>
+      <a class="bouton" routerLink="/depenses" [queryParams]="{ camionId: id(), nouvelle: true }">
+        + Nouvelle depense
+      </a>
+    </div>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th>Numero</th>
+            <th>Date</th>
+            <th>Categorie</th>
+            <th>Nature</th>
+            <th>Libelle</th>
+            <th>Fournisseur</th>
+            <th class="numerique">Montant</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (depense of depenses(); track depense.id) {
+            <tr>
+              <td><strong>{{ depense.numero }}</strong></td>
+              <td>{{ depense.dateDepense }}</td>
+              <td>{{ depense.categorieLibelle }}</td>
+              <td>{{ depense.sousCategorieLibelle }}</td>
+              <td>{{ depense.libelle }}</td>
+              <td>{{ depense.fournisseur || depense.station || '—' }}</td>
+              <td class="numerique">
+                <strong>{{ depense.montant | number }}</strong>
+                @if (depense.aChargeClient) {
+                  <span class="etiquette en_location">client</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7">
+                <div class="message vide">Aucune depense pour ce camion.</div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
 @if (erreur()) {
   <div class="message erreur">{{ erreur() }}</div>
 }
@@ -13,26 +130,40 @@
   <div class="message succes">{{ succes() }}</div>
 }
 
+@if (volet() === 'fiche') {
 <form class="carte" [formGroup]="formulaire" (ngSubmit)="soumettre()">
   <h2>Identification</h2>
   <div class="grille-formulaire">
     <div class="champ">
-      <label for="numeroInterne">Numero interne *</label>
-      <input id="numeroInterne" formControlName="numeroInterne" placeholder="C-001" />
-      @if (formulaire.controls.numeroInterne.touched && formulaire.controls.numeroInterne.invalid) {
-        <span class="erreur-champ">Numero interne requis</span>
-      }
-    </div>
-    <div class="champ">
       <label for="immatriculation">Immatriculation *</label>
       <input id="immatriculation" formControlName="immatriculation" placeholder="TG-1234-AB" />
+      <span class="erreur-champ" style="color: var(--couleur-texte-doux)">
+        C'est la plaque qui identifie le camion
+      </span>
       @if (formulaire.controls.immatriculation.touched && formulaire.controls.immatriculation.invalid) {
         <span class="erreur-champ">Immatriculation requise</span>
       }
     </div>
     <div class="champ">
-      <label for="marque">Marque</label>
-      <input id="marque" formControlName="marque" />
+      <label for="marqueId">Marque</label>
+      <select id="marqueId" formControlName="marqueId">
+        <option [ngValue]="null">Selectionner une marque</option>
+        @for (marque of marques(); track marque.id) {
+          <option [ngValue]="marque.id">{{ marque.nom }}</option>
+        }
+      </select>
+      @if (marqueChoisie(); as m) {
+        <span class="apercu-marque">
+          <span class="logo-marque" [style.background]="m.couleur || '#6b7684'">
+            @if (m.logoUrl) {
+              <img [src]="m.logoUrl" [alt]="m.nom" />
+            } @else {
+              {{ m.monogramme }}
+            }
+          </span>
+          {{ m.nom }}{{ m.pays ? ' · ' + m.pays : '' }}
+        </span>
+      }
     </div>
     <div class="champ">
       <label for="modele">Modele</label>
@@ -131,3 +262,4 @@
     <a class="bouton secondaire" routerLink="/camions">Annuler</a>
   </div>
 </form>
+}

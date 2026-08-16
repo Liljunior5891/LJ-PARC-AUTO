@@ -36,7 +36,7 @@
           <option [ngValue]="null">Selectionner</option>
           @if (formulaire.controls.proprietaireType.value === 'CAMION') {
             @for (camion of camions(); track camion.id) {
-              <option [ngValue]="camion.id">{{ camion.numeroInterne }} — {{ camion.immatriculation }}</option>
+              <option [ngValue]="camion.id">{{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }}</option>
             }
           } @else {
             @for (chauffeur of chauffeurs(); track chauffeur.id) {

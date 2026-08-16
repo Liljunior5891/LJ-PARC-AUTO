@@ -19,7 +19,7 @@
         <option [ngValue]="undefined">Selectionner un camion</option>
         @for (camion of camions(); track camion.id) {
           <option [ngValue]="camion.id">
-            {{ camion.numeroInterne }} — {{ camion.immatriculation }}
+            {{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }}
           </option>
         }
       </select>

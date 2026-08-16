@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Camion, CamionRequete, Page, StatutCamion } from '../models/models';
+import { Camion, CamionRequete, MarqueCamion, Page, StatutCamion } from '../models/models';
 
 export interface FiltreCamion {
   q?: string;
@@ -22,7 +22,7 @@ export class CamionService {
     let params = new HttpParams()
       .set('page', filtre.page ?? 0)
       .set('size', filtre.size ?? 20)
-      .set('sort', filtre.sort ?? 'numeroInterne,asc');
+      .set('sort', filtre.sort ?? 'immatriculation,asc');
     if (filtre.q) {
       params = params.set('q', filtre.q);
     }
@@ -33,6 +33,11 @@ export class CamionService {
       params = params.set('actif', filtre.actif);
     }
     return this.http.get<Page<Camion>>(this.base, { params });
+  }
+
+  /** Referentiel des marques, avec logo et couleur (chapitre 6). */
+  marques(): Observable<MarqueCamion[]> {
+    return this.http.get<MarqueCamion[]>(`${this.base}/marques`);
   }
 
   parId(id: number): Observable<Camion> {

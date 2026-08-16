@@ -140,3 +140,28 @@ Restent à faire :
 - Suppression logique (archivage) pour toute entité porteuse d'historique.
 - Montants en `NUMERIC(16,2)`, devise FCFA, pas de virgule flottante.
 - Contrôles d'accès par rôle sur chaque contrôleur (`@PreAuthorize`).
+
+
+## Ajustements demandés après recette (16/08/2026)
+
+Corrections issues du fichier `les remarques.txt` :
+
+1. **Le camion est identifié par sa plaque.** Le numéro interne faisait doublon :
+   colonne supprimée (migration V6), recherche, tris et écrans réalignés sur
+   l'immatriculation.
+2. **Référentiel de marques avec logo.** Table `marque_camion` avec 21 marques
+   courantes en Afrique de l'Ouest. Le champ `logoUrl` accepte un fichier fourni
+   par l'entreprise ; à défaut, l'interface affiche un monogramme aux couleurs de
+   la marque. Les logos sont des marques déposées : ils ne sont pas embarqués.
+3. **Volets RECETTES et DÉPENSES sur la fiche du camion.** RECETTES liste les
+   contrats du véhicule et permet d'en créer un nouveau, camion pré-sélectionné ;
+   DÉPENSES liste ses dépenses et ouvre le formulaire de saisie pré-rempli.
+4. **Menus Locations, Missions et Livraisons retirés.** Les routes restent
+   actives : ces écrans sont désormais atteints depuis la fiche du camion.
+5. **Facture PDF.** Après enregistrement d'une recette rattachée à un client,
+   l'application propose de générer la facture puis de télécharger son PDF
+   (OpenPDF, mentions émetteur / client / période / TVA / échéance).
+
+Les coordonnées de l'entreprise portées sur la facture se règlent par variables
+d'environnement : `ENTREPRISE_NOM`, `ENTREPRISE_ADRESSE`, `ENTREPRISE_TELEPHONE`,
+`ENTREPRISE_NIF`.

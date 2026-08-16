@@ -15,6 +15,8 @@ import { Camion, Page } from '../../core/models/models';
 import { CamionService } from '../../core/services/camion.service';
 import { ClientService } from '../../core/services/client.service';
 import { RecetteService } from '../../core/services/recette.service';
+import { FactureService } from '../../core/services/facture.service';
+import { Facture } from '../../core/models/finance';
 
 @Component({
   selector: 'app-recettes',
@@ -26,6 +28,7 @@ export class Recettes implements OnInit {
   private readonly service = inject(RecetteService);
   private readonly camionService = inject(CamionService);
   private readonly clientService = inject(ClientService);
+  private readonly factureService = inject(FactureService);
   private readonly auth = inject(AuthService);
 
   readonly types = TYPES_RECETTE;
@@ -39,6 +42,9 @@ export class Recettes implements OnInit {
   readonly erreur = signal<string | null>(null);
   readonly succes = signal<string | null>(null);
   readonly formulaireVisible = signal(false);
+  /** Recette venant d'etre enregistree, pour laquelle une facture est proposee. */
+  readonly recetteAFacturer = signal<Recette | null>(null);
+  readonly factureGeneree = signal<Facture | null>(null);
 
   /** Total encaisse sur la periode consultee. */
   readonly totalPeriode = computed(() =>
@@ -143,6 +149,9 @@ export class Recettes implements OnInit {
         this.succes.set(`Recette ${recette.numero} enregistree.`);
         this.formulaire.reset({ type: 'TRANSPORT', dateRecette: this.aujourdhui(), montant: 0 });
         this.formulaireVisible.set(false);
+        // La facture n'est proposee que si la recette a un client a qui la remettre.
+        this.recetteAFacturer.set(recette.clientId ? recette : null);
+        this.factureGeneree.set(null);
         this.charger();
       },
       error: (erreur) => this.erreur.set(erreur.error?.message ?? 'Enregistrement impossible.')
@@ -157,6 +166,56 @@ export class Recettes implements OnInit {
       next: () => this.charger(),
       error: (erreur) => this.erreur.set(erreur.error?.message ?? 'Suppression impossible.')
     });
+  }
+
+  /**
+   * Genere la facture correspondant a la recette, puis propose son PDF.
+   * La facture reste en brouillon : elle n'est exigible qu'une fois emise.
+   */
+  genererFacture(recette: Recette): void {
+    this.erreur.set(null);
+    const requete = {
+      clientId: recette.clientId!,
+      locationId: recette.locationId ?? null,
+      missionId: recette.missionId ?? null,
+      dateEmission: recette.dateRecette,
+      lignes: [
+        {
+          camionId: recette.camionId,
+          designation: recette.libelle,
+          quantite: 1,
+          unite: 'forfait',
+          prixUnitaire: recette.montant
+        }
+      ]
+    };
+    this.factureService.creer(requete).subscribe({
+      next: (facture) => {
+        this.factureGeneree.set(facture);
+        this.succes.set(`Facture ${facture.numero} generee pour ${facture.clientNom}.`);
+      },
+      error: (erreur) => this.erreur.set(erreur.error?.message ?? 'Generation de la facture impossible.')
+    });
+  }
+
+  /** Telecharge le PDF de la facture pour remise au client. */
+  telechargerFacture(facture: Facture): void {
+    this.factureService.pdf(facture.id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const lien = document.createElement('a');
+        lien.href = url;
+        lien.download = `facture_${facture.numero}.pdf`;
+        lien.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.erreur.set('Telechargement du PDF impossible.')
+    });
+  }
+
+  fermerProposition(): void {
+    this.recetteAFacturer.set(null);
+    this.factureGeneree.set(null);
   }
 
   /** Part d'un type dans le total de la periode, pour la barre de repartition. */

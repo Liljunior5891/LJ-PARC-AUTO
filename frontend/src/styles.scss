@@ -410,3 +410,87 @@ table.tableau {
   font-size: 0.82rem;
   line-height: 1.45;
 }
+
+/* ---------------------- Pastille de marque de camion -------------------- */
+.logo-marque {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex: none;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #fff;
+  }
+}
+
+.lien-camion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.apercu-marque {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--couleur-texte-doux);
+}
+
+/* --------------------------- Barre d onglets ---------------------------- */
+.onglets {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0 0 1rem;
+  border-bottom: 1px solid var(--couleur-bordure);
+
+  button {
+    padding: 0.6rem 1.1rem;
+    border: none;
+    border-bottom: 3px solid transparent;
+    background: none;
+    font: inherit;
+    font-weight: 600;
+    color: var(--couleur-texte-doux);
+    cursor: pointer;
+
+    &:hover { color: var(--couleur-texte); }
+
+    &.actif {
+      color: var(--couleur-primaire);
+      border-bottom-color: var(--couleur-primaire);
+    }
+  }
+}
+
+/* ------------- Proposition de facture apres saisie d une recette --------- */
+.proposition-facture {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  border-left: 4px solid var(--couleur-primaire);
+  background: #f2f7fc;
+
+  h2 { margin-bottom: 0.15rem; }
+
+  .actions-proposition {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+}

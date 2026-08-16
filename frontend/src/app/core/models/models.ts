@@ -47,9 +47,13 @@ export type TypeCarburant = 'DIESEL' | 'ESSENCE' | 'GPL' | 'ELECTRIQUE' | 'HYBRI
 
 export interface Camion {
   id: number;
-  numeroInterne: string;
   immatriculation: string;
+  /** Marque du referentiel, porteuse du logo. */
+  marqueId?: number;
   marque?: string;
+  marqueLogoUrl?: string;
+  marqueCouleur?: string;
+  marqueMonogramme?: string;
   modele?: string;
   annee?: number;
   type?: string;
@@ -72,7 +76,22 @@ export interface Camion {
   actif: boolean;
 }
 
-export type CamionRequete = Omit<Camion, 'id' | 'statutLibelle' | 'kilometrageParcouru'>;
+export type CamionRequete = Omit<
+  Camion,
+  'id' | 'statutLibelle' | 'kilometrageParcouru' | 'marqueLogoUrl' | 'marqueCouleur' | 'marqueMonogramme'
+>;
+
+/** Marque du referentiel (chapitre 6). */
+export interface MarqueCamion {
+  id: number;
+  nom: string;
+  logoUrl?: string;
+  couleur?: string;
+  monogramme: string;
+  pays?: string;
+  ordre: number;
+  actif: boolean;
+}
 
 export type StatutChauffeur = 'ACTIF' | 'EN_MISSION' | 'EN_CONGE' | 'SUSPENDU' | 'INACTIF';
 
@@ -110,7 +129,7 @@ export interface Affectation {
   id: number;
   camionId: number;
   camionImmatriculation: string;
-  camionNumeroInterne: string;
+  camionMarque?: string;
   chauffeurId: number;
   chauffeurNom: string;
   dateDebut: string;

@@ -1,6 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import {
   CATEGORIES_DEPENSE,
@@ -26,6 +27,7 @@ export class Depenses implements OnInit {
   private readonly camionService = inject(CamionService);
   private readonly chauffeurService = inject(ChauffeurService);
   private readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
 
   readonly categories = CATEGORIES_DEPENSE;
   readonly modes = MODES_PAIEMENT;
@@ -82,6 +84,15 @@ export class Depenses implements OnInit {
   });
 
   ngOnInit(): void {
+    // Arrivee depuis la fiche d'un camion : filtre et formulaire prets.
+    const camionId = this.route.snapshot.queryParamMap.get('camionId');
+    if (camionId) {
+      this.camionId = Number(camionId);
+      this.formulaire.controls.camionId.setValue(Number(camionId));
+      if (this.route.snapshot.queryParamMap.get('nouvelle') === 'true') {
+        this.formulaireVisible.set(true);
+      }
+    }
     this.charger();
     this.service.natures().subscribe({
       next: (natures) => this.natures.set(natures)

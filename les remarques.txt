@@ -1,0 +1,6 @@
+les remarques:
+1-chaque camion est identifable par ssa plaque d'immatriculation et non son numero interne (pas besoin)
+2-Charger la liste de marque de camion avec le logo. lors de l'enregistrement d'un camion, une fois la marque choisi on affiche le logo dans la liste des camion
+3-Quand on clique sur un camion, on aura les boutons suivante en haut: RECETTE (pour afficher un la liste des contrat associé a ce camion et un bouton ajouter pour créer un nouveau contrat de ce vehicule), DEPENSE (pour afficher un la liste des depenses associé a ce camion et un bouton ajouter pour créer une nouvelle depense de ce vehicule).
+4-les menu LOCATION,MISSION,LIVRAISON sont pas utiles. tu les enleves.
+5- Apres avoir enregistré une recette , le système doit nous proposer de generer la facture a remettre au client en version PDF

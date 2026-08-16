@@ -132,7 +132,7 @@ public class TableauBordService {
 
         return camionRepository.findAll().stream()
                 .filter(Camion::isActif)
-                .sorted(Comparator.comparing(Camion::getNumeroInterne))
+                .sorted(Comparator.comparing(Camion::getImmatriculation))
                 .map(camion -> ligne(camion, affectations.get(camion.getId()),
                         missions.get(camion.getId()), locations.get(camion.getId())))
                 .toList();
@@ -169,7 +169,7 @@ public class TableauBordService {
                 + (camion.getModele() == null ? "" : camion.getModele())).trim();
 
         return new VueParcDto(
-                camion.getId(), camion.getNumeroInterne(), camion.getImmatriculation(),
+                camion.getId(), camion.getImmatriculation(),
                 marqueModele.isEmpty() ? null : marqueModele,
                 camion.getStatut(), camion.getStatut().getLibelle(),
                 chauffeurId, chauffeurNom, clientNom, activite, localisation,

@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -40,9 +41,15 @@ public class CamionController {
     public Page<CamionDto.Reponse> lister(@RequestParam(required = false) String q,
                                           @RequestParam(required = false) StatutCamion statut,
                                           @RequestParam(required = false) Boolean actif,
-                                          @PageableDefault(size = 20, sort = "numeroInterne",
+                                          @PageableDefault(size = 20, sort = "immatriculation",
                                                   direction = Sort.Direction.ASC) Pageable pageable) {
         return service.rechercher(q, statut, actif, pageable);
+    }
+
+    @GetMapping("/marques")
+    @Operation(summary = "Referentiel des marques de camions, avec logo et couleur")
+    public List<MarqueCamionDto.Reponse> marques() {
+        return service.marques();
     }
 
     @GetMapping("/statistiques/statuts")

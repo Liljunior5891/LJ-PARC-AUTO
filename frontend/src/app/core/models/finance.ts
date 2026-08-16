@@ -232,8 +232,8 @@ export interface Creances {
 
 export interface LigneRentabilite {
   camionId: number;
-  numeroInterne: string;
   immatriculation: string;
+  marque?: string;
   statutLibelle: string;
   recettes: number;
   depenses: number;
@@ -279,8 +279,8 @@ export interface UtilisationCamion {
 
 export interface FichePerformance {
   camionId: number;
-  numeroInterne: string;
   immatriculation: string;
+  marque?: string;
   marqueModele?: string;
   statutLibelle: string;
   debut: string;

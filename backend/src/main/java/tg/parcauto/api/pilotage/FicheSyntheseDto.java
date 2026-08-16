@@ -14,7 +14,6 @@ import java.util.List;
  */
 public record FicheSyntheseDto(
         Long camionId,
-        String numeroInterne,
         String immatriculation,
         String marqueModele,
         StatutCamion statut,

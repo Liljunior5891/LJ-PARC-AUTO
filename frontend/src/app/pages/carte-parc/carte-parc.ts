@@ -112,7 +112,7 @@ export class CarteParc implements AfterViewInit, OnDestroy {
       const couleur = marqueur.horsConnexion ? '#333d47' : COULEURS_STATUT[marqueur.statut];
       const pastille = L.divIcon({
         className: 'marqueur-camion',
-        html: `<span style="background:${couleur}">${marqueur.numeroInterne}</span>`,
+        html: `<span style="background:${couleur}">${marqueur.immatriculation}</span>`,
         iconSize: [56, 22],
         iconAnchor: [28, 11]
       });
