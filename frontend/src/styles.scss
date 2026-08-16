@@ -1,3 +1,5 @@
+@import "leaflet/dist/leaflet.css";
+
 /* ===================================================================
    PARC AUTO - feuille de style globale
    =================================================================== */
@@ -389,4 +391,22 @@ table.tableau {
     height: 100%;
     background: var(--couleur-primaire);
   }
+}
+
+/* ------------------------ Marqueurs de la carte ------------------------- */
+.marqueur-camion span {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.35);
+  border: 2px solid #fff;
+}
+
+.leaflet-popup-content {
+  font-size: 0.82rem;
+  line-height: 1.45;
 }

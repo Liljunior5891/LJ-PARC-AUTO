@@ -63,16 +63,31 @@ chapitre 2. Autres règles :
 Les **jours d'immobilisation** de la fiche performance restent à zéro tant que le
 module Maintenance (phase 5) n'alimente pas cette donnée.
 
-## Phase 4 — GPS
+## Phase 4 — GPS (livrée)
 
-| Chapitre | Fonctionnalité |
-| --- | --- |
-| 22 | Couche d'intégration GPS multi-fournisseurs |
-| 23 | Carte du parc en temps réel (WebSocket) |
-| 24 | Historique des trajets |
-| 25, 26 | Géofencing et alertes |
+| Chapitre | Fonctionnalité | État |
+| --- | --- | --- |
+| 22 | Couche d'intégration multi-fournisseurs | ✅ |
+| 23 | Carte du parc, marqueurs par statut | ✅ |
+| 24 | Historique des trajets | ✅ |
+| 25 | Géofencing sur zones circulaires | ✅ |
+| 26 | Alertes GPS | ✅ |
 
-Le champ `gps_device_id` de la table `camion` est déjà prévu pour cette phase.
+Points de conception :
+
+- **aucune dépendance à un fabricant** : chaque fournisseur a son adaptateur qui
+  traduit vers un format pivot (`PositionBrute`). Ajouter un traceur = une classe,
+  aucune autre modification. Deux adaptateurs fournis : format pivot et Traccar ;
+- les positions arrivent par `POST /api/gps/positions/{fournisseur}` et sont
+  rattachées au camion par le `gpsDeviceId` de sa fiche ;
+- la fenêtre d'anti-répétition des alertes se calcule sur l'horodatage de la
+  position, jamais sur l'heure courante : une passerelle qui rattrape un retard
+  réseau ne doit pas produire une alerte par trame ;
+- les positions et alertes sont diffusées par WebSocket STOMP (`/topic/gps/*`) ;
+  la carte utilise pour l'instant un rafraîchissement périodique de 20 s.
+
+Les zones sont **circulaires** (centre + rayon). Des zones polygonales
+nécessiteraient PostGIS et ne sont pas requises par le cahier des charges.
 
 ## Phase 5 — Maintenance
 

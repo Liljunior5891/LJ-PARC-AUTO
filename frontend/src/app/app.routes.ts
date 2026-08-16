@@ -138,6 +138,11 @@ export const routes: Routes = [
         title: 'Rentabilite — PARC AUTO'
       },
       {
+        path: 'gps',
+        loadComponent: () => import('./pages/carte-parc/carte-parc').then((m) => m.CarteParc),
+        title: 'Carte du parc — PARC AUTO'
+      },
+      {
         path: 'livraisons',
         loadComponent: () => import('./pages/livraisons/livraisons').then((m) => m.Livraisons),
         title: 'Livraisons — PARC AUTO'

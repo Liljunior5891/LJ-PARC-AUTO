@@ -76,6 +76,16 @@ verifier "rentabilite globale"       "rentabilite/global?$PERIODE"
 verifier "fiche performance camion"  "rentabilite/camions/1?$PERIODE"
 verifier "tableau de bord finances"  "tableau-bord/finances?$PERIODE"
 
+# --- Geolocalisation (phase 4) ---
+verifier "fournisseurs GPS"          "gps/fournisseurs"
+verifier "carte du parc"             "gps/carte"
+verifier "zones de geofencing"       "gps/zones"
+verifier "alertes GPS"               "gps/alertes?page=0&size=20"
+verifier "alertes recentes"          "gps/alertes/recentes"
+verifier "synthese des alertes"      "gps/alertes/synthese"
+verifier "trajet d un camion"        "gps/camions/1/trajet"
+verifier "dernieres positions"       "gps/camions/1/dernieres?nombre=5"
+
 if [ "$echec" -eq 0 ]; then
   echo "Tous les endpoints repondent."
 else

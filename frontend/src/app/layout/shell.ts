@@ -40,7 +40,7 @@ export class Shell {
     { libelle: 'Carburant', route: '/carburant', icone: '⛽', section: 'Finances', disponible: true },
     { libelle: 'Facturation', route: '/facturation', icone: '🧾', section: 'Finances', disponible: true },
     { libelle: 'Rentabilite', route: '/rentabilite', icone: '📈', section: 'Pilotage', disponible: true },
-    { libelle: 'Carte du parc', route: '/gps', icone: '🗺️', section: 'GPS', disponible: false },
+    { libelle: 'Carte du parc', route: '/gps', icone: '🗺️', section: 'GPS', disponible: true },
     { libelle: 'Maintenance', route: '/maintenance', icone: '🔧', section: 'Maintenance', disponible: false },
     { libelle: 'Rapports', route: '/rapports', icone: '📈', section: 'Pilotage', disponible: false }
   ];

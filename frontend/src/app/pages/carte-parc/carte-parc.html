@@ -1,0 +1,134 @@
+<div class="entete-page">
+  <div>
+    <h1>Carte du parc</h1>
+    <p class="sous-titre">
+      Chapitre 23 — position, statut et activite de chaque camion en temps reel
+      @if (derniereMaj(); as maj) {
+        · actualise a {{ maj | date: 'HH:mm:ss' }}
+      }
+    </p>
+  </div>
+  <div style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap">
+    <div class="champ">
+      <label for="dateTrajet">Journee du trajet</label>
+      <input id="dateTrajet" type="date" [(ngModel)]="dateTrajet" />
+    </div>
+    <div class="champ">
+      <label for="afficherZones">Zones</label>
+      <select id="afficherZones" [(ngModel)]="afficherZones" (change)="basculerZones()">
+        <option [ngValue]="true">Afficher les zones</option>
+        <option [ngValue]="false">Masquer les zones</option>
+      </select>
+    </div>
+    <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+<div class="disposition-carte">
+  <div class="carte panneau-carte">
+    <div id="carte-parc" class="conteneur-carte"></div>
+
+    <div class="legende">
+      <span><i style="background: #1e874b"></i> Disponible</span>
+      <span><i style="background: #1565c0"></i> En mission</span>
+      <span><i style="background: #f0a202"></i> En location</span>
+      <span><i style="background: #6b3fa0"></i> En maintenance</span>
+      <span><i style="background: #c62828"></i> Immobilise</span>
+      <span><i style="background: #333d47"></i> Hors connexion</span>
+    </div>
+
+    @if (trajet(); as t) {
+      <div class="resume-trajet">
+        <div class="grille-resume">
+          <div>
+            <span class="libelle-resume">Distance</span>
+            <strong class="valeur-resume">{{ t.distanceKm | number }} km</strong>
+            <small>{{ t.nombrePoints }} points releves</small>
+          </div>
+          <div>
+            <span class="libelle-resume">Duree</span>
+            <strong class="valeur-resume">{{ t.dureeMinutes }} min</strong>
+            <small>{{ t.nombreArrets }} arret(s)</small>
+          </div>
+          <div>
+            <span class="libelle-resume">Vitesse moyenne</span>
+            <strong class="valeur-resume">{{ t.vitesseMoyenne | number }} km/h</strong>
+            <small>maximale {{ t.vitesseMaximale | number }} km/h</small>
+          </div>
+          <div>
+            <span class="libelle-resume">Camion</span>
+            <strong class="valeur-resume">{{ t.immatriculation }}</strong>
+            <small>{{ t.debut | date: 'dd/MM HH:mm' }} → {{ t.fin | date: 'HH:mm' }}</small>
+          </div>
+        </div>
+        <button class="bouton secondaire petit" type="button" (click)="effacerTrajet()">
+          Effacer le trajet
+        </button>
+      </div>
+    }
+  </div>
+
+  <div class="colonne-laterale">
+    <div class="carte">
+      <h2>Camions localises</h2>
+      <ul class="liste-camions">
+        @for (marqueur of marqueurs(); track marqueur.camionId) {
+          <li [class.actif]="camionSuivi()?.camionId === marqueur.camionId">
+            <span class="pastille-statut" [style.background]="couleurStatut(marqueur)"></span>
+            <div class="details">
+              <strong>{{ marqueur.immatriculation }}</strong>
+              <small>
+                {{ marqueur.statutLibelle }}
+                @if (marqueur.vitesseKmh) {
+                  · {{ marqueur.vitesseKmh | number }} km/h
+                }
+                @if (marqueur.horsConnexion) {
+                  · <span class="etiquette vendu">hors connexion</span>
+                }
+              </small>
+              <small>{{ marqueur.chauffeurNom || 'sans chauffeur' }}</small>
+            </div>
+            <div class="actions">
+              <button class="bouton secondaire petit" type="button" (click)="centrerSur(marqueur)">
+                Centrer
+              </button>
+              <button class="bouton petit" type="button" (click)="afficherTrajet(marqueur.camionId)">
+                Trajet
+              </button>
+            </div>
+          </li>
+        } @empty {
+          <li>
+            <div class="message vide">
+              Aucun camion localise. Associez un traceur a un camion et transmettez une position.
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+
+    <div class="carte">
+      <h2>Alertes recentes</h2>
+      <ul class="liste-alertes-gps">
+        @for (alerte of alertes(); track alerte.id) {
+          <li>
+            <div>
+              <span [class]="classeGravite(alerte)">{{ alerte.typeLibelle }}</span>
+              <p>{{ alerte.message }}</p>
+              <small>{{ alerte.horodatage | date: 'dd/MM HH:mm' }}</small>
+            </div>
+            <button class="bouton secondaire petit" type="button" (click)="traiter(alerte)">
+              Traiter
+            </button>
+          </li>
+        } @empty {
+          <li><div class="message vide">Aucune alerte en attente.</div></li>
+        }
+      </ul>
+    </div>
+  </div>
+</div>

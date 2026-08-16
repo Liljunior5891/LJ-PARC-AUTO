@@ -97,6 +97,14 @@ L'application est servie sur `http://localhost:4200`.
 - Rentabilité : fiche performance du camion, comparaison du parc, coût réel et marge (chapitres 7, 29, 30, 31)
 - Tableau de bord : chiffre d'affaires, dépenses, résultat et créances (chapitre 4.2)
 
+### Priorité 4 — GPS
+
+- Couche d'intégration multi-fournisseurs, sans dépendance à un fabricant (chapitre 22)
+- Carte du parc : marqueurs colorés par statut, popup camion/chauffeur/mission (chapitre 23)
+- Historique des trajets : itinéraire, distance, vitesses, arrêts (chapitre 24)
+- Géofencing : siège, dépôts, agences, zones interdites (chapitre 25)
+- Alertes : excès de vitesse, zone interdite, mouvement hors mission, hors horaires (chapitre 26)
+
 La suite du programme est décrite dans [docs/FEUILLE-DE-ROUTE.md](docs/FEUILLE-DE-ROUTE.md).
 
 ## Tests
