@@ -113,6 +113,31 @@ export const routes: Routes = [
         title: 'Mission — PARC AUTO'
       },
       {
+        path: 'recettes',
+        loadComponent: () => import('./pages/recettes/recettes').then((m) => m.Recettes),
+        title: 'Recettes — PARC AUTO'
+      },
+      {
+        path: 'depenses',
+        loadComponent: () => import('./pages/depenses/depenses').then((m) => m.Depenses),
+        title: 'Depenses — PARC AUTO'
+      },
+      {
+        path: 'carburant',
+        loadComponent: () => import('./pages/carburant/carburant').then((m) => m.Carburant),
+        title: 'Carburant — PARC AUTO'
+      },
+      {
+        path: 'facturation',
+        loadComponent: () => import('./pages/factures/factures').then((m) => m.Factures),
+        title: 'Facturation — PARC AUTO'
+      },
+      {
+        path: 'rentabilite',
+        loadComponent: () => import('./pages/rentabilite/rentabilite').then((m) => m.Rentabilite),
+        title: 'Rentabilite — PARC AUTO'
+      },
+      {
         path: 'livraisons',
         loadComponent: () => import('./pages/livraisons/livraisons').then((m) => m.Livraisons),
         title: 'Livraisons — PARC AUTO'
