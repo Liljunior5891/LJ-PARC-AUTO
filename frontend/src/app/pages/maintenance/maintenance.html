@@ -1,0 +1,404 @@
+<div class="entete-page">
+  <div>
+    <h1>Maintenance</h1>
+    <p class="sous-titre">
+      Chapitres 19, 20 et 33 — entretiens, pneumatiques et incidents
+    </p>
+  </div>
+  @if (peutGerer || (onglet() === 'incidents' && peutDeclarer)) {
+    <button class="bouton" type="button" (click)="basculerFormulaire()">
+      {{ formulaireVisible() ? 'Fermer' :
+         onglet() === 'entretiens' ? '+ Planifier une intervention' :
+         onglet() === 'pneus' ? '+ Nouveau pneu' : '+ Declarer un incident' }}
+    </button>
+  }
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<section class="grille-indicateurs">
+  <div class="carte indicateur alerte">
+    <span class="libelle">Echeances a traiter</span>
+    <strong class="valeur">{{ alertesEntretien().length }}</strong>
+    <span class="detail">{{ entretiens().length }} intervention(s) ouverte(s)</span>
+  </div>
+  <div class="carte indicateur">
+    <span class="libelle">Pneus a remplacer</span>
+    <strong class="valeur">{{ pneusARemplacer().length }}</strong>
+    <span class="detail">{{ pneus().length }} pneu(s) suivis</span>
+  </div>
+  <div class="carte indicateur" [class.alerte]="incidentsOuverts().length > 0">
+    <span class="libelle">Incidents ouverts</span>
+    <strong class="valeur">{{ incidentsOuverts().length }}</strong>
+    <span class="detail">{{ incidents().length }} au total</span>
+  </div>
+</section>
+
+<div class="onglets">
+  <button type="button" [class.actif]="onglet() === 'entretiens'" (click)="changerOnglet('entretiens')">
+    Entretiens
+  </button>
+  <button type="button" [class.actif]="onglet() === 'pneus'" (click)="changerOnglet('pneus')">
+    Pneumatiques
+  </button>
+  <button type="button" [class.actif]="onglet() === 'incidents'" (click)="changerOnglet('incidents')">
+    Incidents
+  </button>
+</div>
+
+<!-- ------------------------------ Entretiens ------------------------------ -->
+@if (onglet() === 'entretiens') {
+  @if (formulaireVisible()) {
+    <form class="carte" [formGroup]="formEntretien" (ngSubmit)="planifier()" style="margin-bottom: 1rem">
+      <h2>Planifier une intervention</h2>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="camionId">Camion *</label>
+          <select id="camionId" formControlName="camionId">
+            <option [ngValue]="null">Selectionner</option>
+            @for (camion of camions(); track camion.id) {
+              <option [ngValue]="camion.id">
+                {{ camion.immatriculation }} ({{ camion.kilometrageActuel | number }} km)
+              </option>
+            }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="type">Type *</label>
+          <select id="type" formControlName="type">
+            @for (t of typesEntretien; track t.valeur) {
+              <option [value]="t.valeur">{{ t.libelle }}</option>
+            }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="libelle">Libelle *</label>
+          <input id="libelle" formControlName="libelle" placeholder="Vidange periodique" />
+        </div>
+        <div class="champ">
+          <label for="kilometragePrevu">Echeance kilometrique</label>
+          <input id="kilometragePrevu" type="number" formControlName="kilometragePrevu" />
+        </div>
+        <div class="champ">
+          <label for="datePrevue">Echeance calendaire</label>
+          <input id="datePrevue" type="date" formControlName="datePrevue" />
+        </div>
+        <div class="champ">
+          <label for="periodiciteKm">Periodicite (km)</label>
+          <input id="periodiciteKm" type="number" formControlName="periodiciteKm" />
+          <span class="erreur-champ" style="color: var(--couleur-texte-doux)">
+            Par defaut, celle conseillee pour ce type
+          </span>
+        </div>
+        <div class="champ">
+          <label for="fournisseur">Garage</label>
+          <input id="fournisseur" formControlName="fournisseur" />
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton" type="submit">Planifier</button>
+        <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
+      </div>
+    </form>
+  }
+
+  @if (realisationEnCours(); as e) {
+    <div class="carte" style="margin-bottom: 1rem">
+      <h2>Realiser {{ e.numero }} — {{ e.libelle }}</h2>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="kilometrageRealise">Kilometrage releve *</label>
+          <input id="kilometrageRealise" type="number" [(ngModel)]="kilometrageRealise" />
+        </div>
+        <div class="champ">
+          <label for="coutRealisation">Cout (FCFA)</label>
+          <input id="coutRealisation" type="number" [(ngModel)]="coutRealisation" />
+          <span class="erreur-champ" style="color: var(--couleur-texte-doux)">
+            Genere la depense rattachee au camion
+          </span>
+        </div>
+        <div class="champ">
+          <label for="piecesRemplacees">Pieces remplacees</label>
+          <input id="piecesRemplacees" [(ngModel)]="piecesRemplacees" />
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton" type="button" (click)="realiser(e)">Valider la realisation</button>
+        <button class="bouton secondaire" type="button" (click)="realisationEnCours.set(null)">
+          Annuler
+        </button>
+      </div>
+    </div>
+  }
+
+  <div class="carte">
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th>Numero</th>
+            <th>Camion</th>
+            <th>Type</th>
+            <th>Libelle</th>
+            <th>Echeance</th>
+            <th>Statut</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (entretien of entretiens(); track entretien.id) {
+            <tr>
+              <td><strong>{{ entretien.numero }}</strong></td>
+              <td>{{ entretien.camionImmatriculation }}</td>
+              <td>{{ entretien.typeLibelle }}</td>
+              <td>{{ entretien.libelle }}</td>
+              <td>
+                @if (entretien.kilometragePrevu) {
+                  {{ entretien.kilometragePrevu | number }} km
+                }
+                @if (entretien.datePrevue) {
+                  <small> · {{ entretien.datePrevue }}</small>
+                }
+                <br />
+                <span [class]="classeEcheance(entretien)">{{ libelleEcheance(entretien) }}</span>
+              </td>
+              <td><span class="etiquette">{{ entretien.statutLibelle }}</span></td>
+              <td>
+                @if (peutGerer) {
+                  @if (entretien.statut === 'PLANIFIE') {
+                    <button class="bouton secondaire petit" type="button" (click)="demarrer(entretien)">
+                      Atelier
+                    </button>
+                  }
+                  <button class="bouton petit" type="button" (click)="ouvrirRealisation(entretien)">
+                    Realiser
+                  </button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7"><div class="message vide">Aucune intervention ouverte.</div></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<!-- ------------------------------- Pneus ---------------------------------- -->
+@if (onglet() === 'pneus') {
+  @if (formulaireVisible()) {
+    <form class="carte" [formGroup]="formPneu" (ngSubmit)="creerPneu()" style="margin-bottom: 1rem">
+      <h2>Enregistrer un pneu en stock</h2>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="reference">Reference *</label>
+          <input id="reference" formControlName="reference" placeholder="PN-0003" />
+        </div>
+        <div class="champ">
+          <label for="marque">Marque</label>
+          <input id="marque" formControlName="marque" />
+        </div>
+        <div class="champ">
+          <label for="dimension">Dimension</label>
+          <input id="dimension" formControlName="dimension" placeholder="315/80 R22.5" />
+        </div>
+        <div class="champ">
+          <label for="dateAchat">Date d'achat</label>
+          <input id="dateAchat" type="date" formControlName="dateAchat" />
+        </div>
+        <div class="champ">
+          <label for="prixAchat">Prix (FCFA)</label>
+          <input id="prixAchat" type="number" formControlName="prixAchat" />
+        </div>
+        <div class="champ">
+          <label for="dureeViePrevueKm">Duree de vie prevue (km)</label>
+          <input id="dureeViePrevueKm" type="number" formControlName="dureeViePrevueKm" />
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton" type="submit">Enregistrer</button>
+        <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
+      </div>
+    </form>
+  }
+
+  <div class="carte">
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th>Reference</th>
+            <th>Marque / dimension</th>
+            <th>Camion</th>
+            <th>Position</th>
+            <th class="numerique">Kilometres</th>
+            <th>Usure</th>
+            <th class="numerique">Cout / km</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (pneu of pneus(); track pneu.id) {
+            <tr>
+              <td><strong>{{ pneu.reference }}</strong></td>
+              <td>{{ pneu.marque }} {{ pneu.dimension }}</td>
+              <td>{{ pneu.camionImmatriculation || '—' }}</td>
+              <td>{{ pneu.position || '—' }}</td>
+              <td class="numerique">
+                {{ pneu.kilometresParcourus ? (pneu.kilometresParcourus | number) : '—' }}
+              </td>
+              <td>
+                @if (pneu.usurePourcent !== undefined && pneu.usurePourcent !== null) {
+                  <div class="mesure-conso">
+                    <div class="barre-conso">
+                      <div class="remplissage-conso" [style.width.%]="pneu.usurePourcent"
+                           [style.background]="pneu.aRemplacer ? '#c62828' : '#1e874b'"></div>
+                    </div>
+                    <span>{{ pneu.usurePourcent }} %</span>
+                  </div>
+                } @else {
+                  —
+                }
+              </td>
+              <td class="numerique">{{ pneu.coutParKm ? (pneu.coutParKm | number) : '—' }}</td>
+              <td>
+                <span class="etiquette">{{ pneu.statutLibelle }}</span>
+                @if (pneu.aRemplacer) {
+                  <span class="etiquette vendu">a remplacer</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8"><div class="message vide">Aucun pneu enregistre.</div></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<!-- ----------------------------- Incidents -------------------------------- -->
+@if (onglet() === 'incidents') {
+  @if (formulaireVisible()) {
+    <form class="carte" [formGroup]="formIncident" (ngSubmit)="declarer()" style="margin-bottom: 1rem">
+      <h2>Declarer un incident</h2>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="camionIncident">Camion *</label>
+          <select id="camionIncident" formControlName="camionId">
+            <option [ngValue]="null">Selectionner</option>
+            @for (camion of camions(); track camion.id) {
+              <option [ngValue]="camion.id">{{ camion.immatriculation }}</option>
+            }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="chauffeurIncident">Chauffeur</label>
+          <select id="chauffeurIncident" formControlName="chauffeurId">
+            <option [ngValue]="null">Aucun</option>
+            @for (chauffeur of chauffeurs(); track chauffeur.id) {
+              <option [ngValue]="chauffeur.id">{{ chauffeur.nomComplet }}</option>
+            }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="typeIncident">Type *</label>
+          <select id="typeIncident" formControlName="type">
+            @for (t of typesIncident; track t.valeur) {
+              <option [value]="t.valeur">{{ t.libelle }}</option>
+            }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="gravite">Gravite</label>
+          <select id="gravite" formControlName="gravite">
+            @for (g of gravites; track g.valeur) {
+              <option [value]="g.valeur">{{ g.libelle }}</option>
+            }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="lieu">Lieu</label>
+          <input id="lieu" formControlName="lieu" placeholder="RN1 pres de Blitta" />
+        </div>
+      </div>
+      <div class="champ" style="margin-top: 1rem">
+        <label for="description">Description *</label>
+        <textarea id="description" formControlName="description"></textarea>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton" type="submit">Declarer</button>
+        <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
+      </div>
+    </form>
+  }
+
+  <div class="carte">
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th>Numero</th>
+            <th>Camion</th>
+            <th>Type</th>
+            <th>Gravite</th>
+            <th>Description</th>
+            <th>Survenu le</th>
+            <th>Statut</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (incident of incidents(); track incident.id) {
+            <tr>
+              <td><strong>{{ incident.numero }}</strong></td>
+              <td>{{ incident.camionImmatriculation }}</td>
+              <td>
+                {{ incident.typeLibelle }}
+                @if (incident.immobilisant) {
+                  <span class="etiquette vendu">immobilisant</span>
+                }
+              </td>
+              <td>{{ incident.graviteLibelle }}</td>
+              <td class="cellule-description">{{ incident.description }}</td>
+              <td>{{ incident.survenuLe | date: 'dd/MM HH:mm' }}</td>
+              <td>
+                <span class="etiquette">{{ incident.statutLibelle }}</span>
+                @if (incident.entretienNumero) {
+                  <small> · {{ incident.entretienNumero }}</small>
+                }
+              </td>
+              <td>
+                @if (peutGerer && incident.ouvert) {
+                  @if (incident.statut === 'DECLARE') {
+                    <button class="bouton secondaire petit" type="button"
+                            (click)="traiter(incident, 'PRIS_EN_CHARGE')">
+                      Prendre en charge
+                    </button>
+                  }
+                  <button class="bouton petit" type="button" (click)="traiter(incident, 'RESOLU')">
+                    Resoudre
+                  </button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8"><div class="message vide">Aucun incident declare.</div></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

@@ -105,6 +105,12 @@ L'application est servie sur `http://localhost:4200`.
 - Géofencing : siège, dépôts, agences, zones interdites (chapitre 25)
 - Alertes : excès de vitesse, zone interdite, mouvement hors mission, hors horaires (chapitre 26)
 
+### Priorité 5 — Maintenance
+
+- Entretiens : échéances kilométriques et calendaires, alertes, réalisation générant la dépense (chapitre 19)
+- Pneumatiques : suivi individuel par position, usure et coût au kilomètre (chapitre 20)
+- Incidents : déclaration terrain, immobilisation automatique, ouverture d'une réparation (chapitre 33)
+
 La suite du programme est décrite dans [docs/FEUILLE-DE-ROUTE.md](docs/FEUILLE-DE-ROUTE.md).
 
 ## Tests

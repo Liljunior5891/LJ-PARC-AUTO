@@ -143,6 +143,11 @@ export const routes: Routes = [
         title: 'Carte du parc — PARC AUTO'
       },
       {
+        path: 'maintenance',
+        loadComponent: () => import('./pages/maintenance/maintenance').then((m) => m.Maintenance),
+        title: 'Maintenance — PARC AUTO'
+      },
+      {
         path: 'livraisons',
         loadComponent: () => import('./pages/livraisons/livraisons').then((m) => m.Livraisons),
         title: 'Livraisons — PARC AUTO'

@@ -89,13 +89,26 @@ Points de conception :
 Les zones sont **circulaires** (centre + rayon). Des zones polygonales
 nécessiteraient PostGIS et ne sont pas requises par le cahier des charges.
 
-## Phase 5 — Maintenance
+## Phase 5 — Maintenance (livrée)
 
-| Chapitre | Fonctionnalité |
-| --- | --- |
-| 19 | Entretiens, seuils de vidange et alertes |
-| 20 | Suivi des pneus par position |
-| 33 | Incidents déclarés par les chauffeurs |
+| Chapitre | Fonctionnalité | État |
+| --- | --- | --- |
+| 19 | Entretiens, échéances et alertes | ✅ |
+| 20 | Suivi des pneus par position | ✅ |
+| 33 | Incidents déclarés depuis le terrain | ✅ |
+
+Règles de maintenance :
+
+- l'échéance d'une intervention est **kilométrique, calendaire ou les deux** :
+  la première atteinte déclenche l'alerte (marge de 1 000 km ou 15 jours) ;
+- réaliser une intervention **génère la dépense** rattachée au camion : sans ce
+  lien, le coût de maintenance échapperait au calcul de rentabilité du chapitre 2 ;
+- la réalisation met à jour le compteur, libère le camion et **planifie
+  l'occurrence suivante** d'après la périodicité ;
+- une position de roue ne porte qu'un pneu monté à la fois, garanti par un index
+  unique partiel ; le kilométrage propre de chaque pneu donne son coût au km ;
+- un incident immobilisant place le camion en `IMMOBILISE` ou `ACCIDENTE` et ne le
+  libère qu'une fois **tous** les incidents ouverts résolus.
 
 ## Phase 6 — Pilotage et mobile
 

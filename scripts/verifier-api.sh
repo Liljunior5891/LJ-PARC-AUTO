@@ -86,6 +86,16 @@ verifier "synthese des alertes"      "gps/alertes/synthese"
 verifier "trajet d un camion"        "gps/camions/1/trajet"
 verifier "dernieres positions"       "gps/camions/1/dernieres?nombre=5"
 
+# --- Maintenance (phase 5) ---
+verifier "interventions ouvertes"    "entretiens"
+verifier "alertes d entretien"       "entretiens/alertes"
+verifier "historique entretien"      "entretiens/camions/1"
+verifier "liste des pneus"           "pneus"
+verifier "pneus a remplacer"         "pneus/alertes"
+verifier "pneus d un camion"         "pneus/camions/1"
+verifier "incidents"                 "incidents?page=0&size=20"
+verifier "incidents ouverts"         "incidents/ouverts"
+
 if [ "$echec" -eq 0 ]; then
   echo "Tous les endpoints repondent."
 else

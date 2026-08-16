@@ -1,0 +1,32 @@
+.onglets {
+  display: flex;
+  gap: 0.35rem;
+  margin: 1.25rem 0 1rem;
+  border-bottom: 1px solid var(--couleur-bordure);
+
+  button {
+    padding: 0.6rem 1.1rem;
+    border: none;
+    border-bottom: 3px solid transparent;
+    background: none;
+    font: inherit;
+    font-weight: 600;
+    color: var(--couleur-texte-doux);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--couleur-texte);
+    }
+
+    &.actif {
+      color: var(--couleur-primaire);
+      border-bottom-color: var(--couleur-primaire);
+    }
+  }
+}
+
+/* La description d'un incident peut etre longue : elle seule s'enroule. */
+.cellule-description {
+  white-space: normal;
+  max-width: 320px;
+}
