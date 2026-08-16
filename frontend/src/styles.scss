@@ -341,3 +341,30 @@ table.tableau {
   font-size: 0.78rem;
   color: var(--couleur-texte-doux);
 }
+
+/* ------------------ Mesure de consommation (carburant) ------------------ */
+.mesure-conso {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 150px;
+
+  .barre-conso {
+    flex: 1;
+    height: 6px;
+    background: #eceff3;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .remplissage-conso {
+    height: 100%;
+    background: var(--couleur-accent);
+  }
+
+  span {
+    font-size: 0.78rem;
+    color: var(--couleur-texte-doux);
+    white-space: nowrap;
+  }
+}

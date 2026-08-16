@@ -1,0 +1,133 @@
+<div class="entete-page">
+  <div>
+    <h1>Suivi du carburant</h1>
+    <p class="sous-titre">
+      Chapitre 18 — consommation calculee plein a plein, cout au kilometre et evolution
+    </p>
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+<div class="carte" style="margin-bottom: 1rem">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="camionId">Camion</label>
+      <select id="camionId" [(ngModel)]="camionId" (change)="charger()">
+        <option [ngValue]="undefined">Selectionner un camion</option>
+        @for (camion of camions(); track camion.id) {
+          <option [ngValue]="camion.id">
+            {{ camion.numeroInterne }} — {{ camion.immatriculation }}
+          </option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="debut">Du</label>
+      <input id="debut" type="date" [(ngModel)]="debut" (change)="charger()" />
+    </div>
+    <div class="champ">
+      <label for="fin">Au</label>
+      <input id="fin" type="date" [(ngModel)]="fin" (change)="charger()" />
+    </div>
+  </div>
+</div>
+
+@if (chargement()) {
+  <div class="message vide">Chargement...</div>
+} @else if (synthese(); as s) {
+  <div class="carte" style="margin-bottom: 1rem">
+    <div class="grille-resume">
+      <div>
+        <span class="libelle-resume">Consommation moyenne</span>
+        <strong class="valeur-resume">
+          {{ s.consommationMoyenneL100km ? (s.consommationMoyenneL100km | number) + ' l/100 km' : '—' }}
+        </strong>
+        <small>sur {{ s.distanceCouverte | number }} km couverts</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Cout carburant / km</span>
+        <strong class="valeur-resume">
+          {{ s.coutCarburantParKm ? (s.coutCarburantParKm | number) + ' FCFA' : '—' }}
+        </strong>
+        <small>prix moyen : {{ s.prixMoyenLitre ? (s.prixMoyenLitre | number) + ' FCFA/l' : '—' }}</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Volume total</span>
+        <strong class="valeur-resume">{{ s.totalLitres | number }} l</strong>
+        <small>{{ s.nombrePleins }} plein(s) sur la periode</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Depense carburant</span>
+        <strong class="valeur-resume">{{ s.totalMontant | number }} FCFA</strong>
+        <small>{{ s.camionImmatriculation }}</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="carte">
+    <h2>Historique des pleins</h2>
+    <div class="tableau-conteneur" style="margin-top: 1rem">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Station</th>
+            <th>Chauffeur</th>
+            <th class="numerique">Compteur</th>
+            <th class="numerique">Distance</th>
+            <th class="numerique">Litres</th>
+            <th class="numerique">Prix / l</th>
+            <th class="numerique">Montant</th>
+            <th>Consommation</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (plein of s.pleins; track plein.depenseId) {
+            <tr>
+              <td>{{ plein.date }}</td>
+              <td>{{ plein.station || '—' }}</td>
+              <td>{{ plein.chauffeurNom || '—' }}</td>
+              <td class="numerique">{{ plein.kilometrage | number }} km</td>
+              <td class="numerique">
+                {{ plein.distanceDepuisPleinPrecedent
+                    ? (plein.distanceDepuisPleinPrecedent | number) + ' km' : '—' }}
+              </td>
+              <td class="numerique">{{ plein.litres | number }}</td>
+              <td class="numerique">{{ plein.prixLitre ? (plein.prixLitre | number) : '—' }}</td>
+              <td class="numerique"><strong>{{ plein.montant | number }}</strong></td>
+              <td>
+                @if (plein.consommationL100km) {
+                  <div class="mesure-conso">
+                    <div class="barre-conso">
+                      <div class="remplissage-conso" [style.width.%]="hauteurBarre(plein.consommationL100km)"></div>
+                    </div>
+                    <span>{{ plein.consommationL100km | number }} l/100</span>
+                  </div>
+                } @else {
+                  <span class="etiquette">reference</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="9">
+                <div class="message vide">
+                  Aucun plein enregistre sur cette periode. Saisissez-les depuis l'ecran Depenses.
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="note-phase">
+      Le premier plein de la periode sert de reference : sa consommation ne peut pas etre calculee
+      faute de distance connue depuis le plein precedent.
+    </p>
+  </div>
+} @else {
+  <div class="message vide">Selectionnez un camion pour afficher sa consommation.</div>
+}
