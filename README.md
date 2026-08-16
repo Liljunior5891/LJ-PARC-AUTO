@@ -88,6 +88,15 @@ L'application est servie sur `http://localhost:4200`.
 - Vue globale du parc : camion, chauffeur, client, activité en cours (chapitre 5)
 - Tableau de bord : indicateurs d'exploitation et taux d'utilisation (chapitre 4.1)
 
+### Priorité 3 — Finances
+
+- Recettes rattachées au camion, avec répartition par type (chapitre 15)
+- Dépenses par catégorie et nature détaillée, avec analyse (chapitres 16 et 17)
+- Carburant : consommation plein à plein, coût/km, prix moyen du litre (chapitre 18)
+- Facturation : génération depuis un contrat ou une mission, TVA, règlements, créances (chapitres 27 et 28)
+- Rentabilité : fiche performance du camion, comparaison du parc, coût réel et marge (chapitres 7, 29, 30, 31)
+- Tableau de bord : chiffre d'affaires, dépenses, résultat et créances (chapitre 4.2)
+
 La suite du programme est décrite dans [docs/FEUILLE-DE-ROUTE.md](docs/FEUILLE-DE-ROUTE.md).
 
 ## Tests

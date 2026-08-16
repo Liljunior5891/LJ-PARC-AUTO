@@ -60,6 +60,22 @@ verifier "missions en cours"         "missions/en-cours"
 verifier "liste livraisons"          "livraisons?page=0&size=20"
 verifier "recherche livraisons"      "livraisons?q=a"
 
+# --- Finances (phase 3) ---
+PERIODE="debut=$(date -d '-1 month' +%Y-%m-01 2>/dev/null || echo 2026-01-01)&fin=$(date +%Y-%m-%d)"
+verifier "liste recettes"            "recettes?page=0&size=20"
+verifier "recettes filtrees"         "recettes?$PERIODE"
+verifier "repartition recettes"      "recettes/repartition?$PERIODE"
+verifier "liste depenses"            "depenses?page=0&size=20"
+verifier "natures de depenses"       "depenses/natures"
+verifier "repartition depenses"      "depenses/repartition?$PERIODE"
+verifier "synthese carburant"        "carburant/camions/1?$PERIODE"
+verifier "liste factures"            "factures?page=0&size=20"
+verifier "factures impayees"         "factures/impayees"
+verifier "etat des creances"         "factures/creances"
+verifier "rentabilite globale"       "rentabilite/global?$PERIODE"
+verifier "fiche performance camion"  "rentabilite/camions/1?$PERIODE"
+verifier "tableau de bord finances"  "tableau-bord/finances?$PERIODE"
+
 if [ "$echec" -eq 0 ]; then
   echo "Tous les endpoints repondent."
 else

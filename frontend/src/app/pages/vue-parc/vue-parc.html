@@ -35,6 +35,9 @@
           <th>Activite en cours</th>
           <th>Localisation</th>
           <th class="numerique">Kilometrage</th>
+          <th class="numerique">Recettes</th>
+          <th class="numerique">Depenses</th>
+          <th class="numerique">Resultat</th>
         </tr>
       </thead>
       <tbody>
@@ -53,10 +56,21 @@
             <td>{{ ligne.activite || '—' }}</td>
             <td>{{ ligne.localisation || '—' }}</td>
             <td class="numerique">{{ ligne.kilometrageActuel | number }} km</td>
+            @if (finances(ligne.camionId); as f) {
+              <td class="numerique">{{ f.recettes | number }}</td>
+              <td class="numerique">{{ f.depenses | number }}</td>
+              <td class="numerique">
+                <strong [class]="classeResultat(f.resultat)">{{ f.resultat | number }}</strong>
+              </td>
+            } @else {
+              <td class="numerique">—</td>
+              <td class="numerique">—</td>
+              <td class="numerique">—</td>
+            }
           </tr>
         } @empty {
           <tr>
-            <td colspan="8">
+            <td colspan="11">
               <div class="message vide">
                 {{ chargement() ? 'Chargement...' : 'Aucun camion pour ce filtre.' }}
               </div>
@@ -68,7 +82,7 @@
   </div>
 
   <p class="note-phase">
-    Les colonnes Recettes, Depenses et Resultat prevues au chapitre 5 seront ajoutees avec les modules
-    Recettes et Depenses de la phase 3.
+    Les montants portent sur le mois en cours. Le detail par camion est disponible depuis l'ecran
+    Rentabilite.
   </p>
 </div>

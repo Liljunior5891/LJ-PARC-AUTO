@@ -36,18 +36,32 @@ Règles d'exploitation implémentées :
 - la clôture d'une mission met à jour le compteur kilométrique du camion ;
 - une livraison déclarée livrée exige une preuve : nom du réceptionnaire, signature ou photo.
 
-## Phase 3 — Finances
+## Phase 3 — Finances (livrée)
 
-| Chapitre | Fonctionnalité |
-| --- | --- |
-| 15 | Recettes rattachées au camion |
-| 16, 17 | Dépenses par catégorie et analyse |
-| 18 | Carburant, consommation et coût/km |
-| 27, 28 | Facturation et suivi des paiements |
-| 7, 29, 30, 31 | Rentabilité par camion, comparaison et coût réel d'exploitation |
+| Chapitre | Fonctionnalité | État |
+| --- | --- | --- |
+| 15 | Recettes rattachées au camion | ✅ |
+| 16, 17 | Dépenses par catégorie et nature, analyse | ✅ |
+| 18 | Carburant, consommation plein à plein, coût/km | ✅ |
+| 27, 28 | Facturation, règlements et créances | ✅ |
+| 7 | Fiche performance du camion | ✅ (hors jours d'immobilisation) |
+| 29, 30, 31 | Rentabilité globale, comparaison, coût réel et marge | ✅ |
+| 4.2 | Indicateurs financiers du tableau de bord | ✅ |
+| 5 | Colonnes financières de la vue globale du parc | ✅ |
 
-Ces modules exigent une règle constante : **toute recette et toute dépense est
-rattachée à un camion**, condition du calcul de rentabilité du chapitre 2.
+Règle constante appliquée : **toute recette et toute dépense est rattachée à un
+camion** (colonne `camion_id` non nulle), condition du calcul de rentabilité du
+chapitre 2. Autres règles :
+
+- `résultat = recettes − dépenses`, par camion puis agrégé au parc ;
+- les dépenses refacturées au client sont exclues du résultat ;
+- un plein de carburant exige un relevé de compteur, sans quoi la consommation
+  serait incalculable ;
+- l'émission d'une facture génère une recette par camion facturé ;
+- une facture émise n'est plus modifiable, une facture réglée n'est pas annulable.
+
+Les **jours d'immobilisation** de la fiche performance restent à zéro tant que le
+module Maintenance (phase 5) n'alimente pas cette donnée.
 
 ## Phase 4 — GPS
 

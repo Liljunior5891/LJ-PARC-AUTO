@@ -46,6 +46,36 @@
     </a>
   </section>
 
+  @if (finances(); as f) {
+    <h2 style="margin: 1.5rem 0 0.75rem">Finances du mois</h2>
+    <section class="grille-indicateurs">
+      <a class="carte indicateur succes" routerLink="/recettes">
+        <span class="libelle">Chiffre d'affaires</span>
+        <strong class="valeur">{{ f.chiffreAffaires | number }}</strong>
+        <span class="detail">FCFA depuis le {{ f.debut }}</span>
+      </a>
+      <a class="carte indicateur alerte" routerLink="/depenses">
+        <span class="libelle">Depenses</span>
+        <strong class="valeur">{{ f.totalDepenses | number }}</strong>
+        <span class="detail">moyenne {{ f.depenseMoyenneParCamion | number }} / camion</span>
+      </a>
+      <a class="carte indicateur info" routerLink="/rentabilite">
+        <span class="libelle">Resultat</span>
+        <strong class="valeur" [class.resultat-negatif]="f.resultat < 0">
+          {{ f.resultat | number }}
+        </strong>
+        <span class="detail">marge {{ f.margePourcent | number }} %</span>
+      </a>
+      <a class="carte indicateur" routerLink="/facturation">
+        <span class="libelle">Creances</span>
+        <strong class="valeur">{{ f.creancesRestantes | number }}</strong>
+        <span class="detail">
+          {{ f.facturesImpayees }} impayee(s), {{ f.facturesEnRetard }} en retard
+        </span>
+      </a>
+    </section>
+  }
+
   @if (exploitation(); as e) {
     <h2 style="margin: 1.5rem 0 0.75rem">Exploitation</h2>
     <section class="grille-indicateurs">
@@ -112,8 +142,8 @@
         </li>
       </ul>
       <p class="note">
-        Les indicateurs financiers du chapitre 4.2 (chiffre d'affaires, depenses, resultat, factures
-        impayees) seront ajoutes avec les modules Recettes, Depenses et Facturation de la phase 3.
+        Les modules GPS (carte temps reel, geofencing) et Maintenance completeront ce tableau de bord
+        dans les phases 4 et 5.
       </p>
     </div>
   </section>

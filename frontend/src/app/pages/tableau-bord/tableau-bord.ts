@@ -1,20 +1,25 @@
+import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TableauBordExploitation } from '../../core/models/exploitation';
+import { TableauBordFinances } from '../../core/models/finance';
+import { RentabiliteService } from '../../core/services/rentabilite.service';
 import { STATUTS_CAMION, StatutCamion, TableauBordParc } from '../../core/models/models';
 import { TableauBordService } from '../../core/services/tableau-bord.service';
 
 @Component({
   selector: 'app-tableau-bord',
-  imports: [RouterLink],
+  imports: [RouterLink, DecimalPipe],
   templateUrl: './tableau-bord.html',
   styleUrl: './tableau-bord.scss'
 })
 export class TableauBord implements OnInit {
   private readonly service = inject(TableauBordService);
+  private readonly rentabiliteService = inject(RentabiliteService);
 
   readonly indicateurs = signal<TableauBordParc | null>(null);
   readonly exploitation = signal<TableauBordExploitation | null>(null);
+  readonly finances = signal<TableauBordFinances | null>(null);
   readonly chargement = signal(true);
   readonly erreur = signal<string | null>(null);
 
@@ -39,6 +44,9 @@ export class TableauBord implements OnInit {
     });
     this.service.exploitation().subscribe({
       next: (donnees) => this.exploitation.set(donnees)
+    });
+    this.rentabiliteService.finances().subscribe({
+      next: (donnees) => this.finances.set(donnees)
     });
   }
 
