@@ -148,6 +148,11 @@ export const routes: Routes = [
         title: 'Maintenance — PARC AUTO'
       },
       {
+        path: 'direction',
+        loadComponent: () => import('./pages/direction/direction').then((m) => m.Direction),
+        title: 'Pilotage — PARC AUTO'
+      },
+      {
         path: 'livraisons',
         loadComponent: () => import('./pages/livraisons/livraisons').then((m) => m.Livraisons),
         title: 'Livraisons — PARC AUTO'

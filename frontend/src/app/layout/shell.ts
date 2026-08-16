@@ -42,7 +42,7 @@ export class Shell {
     { libelle: 'Rentabilite', route: '/rentabilite', icone: '📈', section: 'Pilotage', disponible: true },
     { libelle: 'Carte du parc', route: '/gps', icone: '🗺️', section: 'GPS', disponible: true },
     { libelle: 'Maintenance', route: '/maintenance', icone: '🔧', section: 'Maintenance', disponible: true },
-    { libelle: 'Rapports', route: '/rapports', icone: '📈', section: 'Pilotage', disponible: false }
+    { libelle: 'Direction', route: '/direction', icone: '🎯', section: 'Pilotage', disponible: true }
   ];
 
   get sections(): string[] {

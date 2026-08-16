@@ -96,6 +96,16 @@ verifier "pneus d un camion"         "pneus/camions/1"
 verifier "incidents"                 "incidents?page=0&size=20"
 verifier "incidents ouverts"         "incidents/ouverts"
 
+# --- Pilotage (phase 6) ---
+verifier "KPI de direction"          "pilotage/kpi?$PERIODE"
+verifier "fiche synthetique camion"  "pilotage/camions/1/synthese?$PERIODE"
+verifier "notifications"             "pilotage/notifications"
+verifier "synthese notifications"    "pilotage/notifications/synthese"
+verifier "rapports disponibles"      "pilotage/rapports"
+verifier "export rapport financier"  "pilotage/rapports/FINANCIER?$PERIODE"
+verifier "export rentabilite"        "pilotage/rapports/RENTABILITE_CAMIONS?$PERIODE"
+verifier "export etat du parc"       "pilotage/rapports/PARC?$PERIODE"
+
 if [ "$echec" -eq 0 ]; then
   echo "Tous les endpoints repondent."
 else

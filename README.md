@@ -111,6 +111,16 @@ L'application est servie sur `http://localhost:4200`.
 - Pneumatiques : suivi individuel par position, usure et coût au kilomètre (chapitre 20)
 - Incidents : déclaration terrain, immobilisation automatique, ouverture d'une réparation (chapitre 33)
 
+### Priorité 6 — Pilotage
+
+- KPI de direction : parc, finances, exploitation (chapitre 41)
+- Fiche synthétique du camion, toutes informations réunies (chapitre 36)
+- Notifications consolidées de tous les modules (chapitre 34)
+- Rapports exportables en CSV (chapitre 35 — PDF et Excel restent à ajouter)
+
+L'application mobile chauffeur (chapitre 32) n'est pas démarrée ; l'API accepte déjà
+le rôle `CHAUFFEUR` sur les missions, dépenses, livraisons et incidents.
+
 La suite du programme est décrite dans [docs/FEUILLE-DE-ROUTE.md](docs/FEUILLE-DE-ROUTE.md).
 
 ## Tests

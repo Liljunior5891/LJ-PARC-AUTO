@@ -42,4 +42,13 @@ public interface EntretienRepository extends JpaRepository<Entretien, Long>,
                                             @Param("type") TypeEntretien type);
 
     long countByStatut(StatutEntretien statut);
+
+    /** Jours d'immobilisation cumules par les interventions realisees sur la periode. */
+    @Query("""
+            select coalesce(sum(e.immobilisationJours), 0) from Entretien e
+            where e.statut = tg.parcauto.api.maintenance.entretien.StatutEntretien.REALISE
+              and e.dateRealisation between :debut and :fin
+            """)
+    long joursImmobilisationSurPeriode(@Param("debut") java.time.LocalDate debut,
+                                       @Param("fin") java.time.LocalDate fin);
 }

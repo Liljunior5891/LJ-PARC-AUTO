@@ -1,0 +1,240 @@
+<div class="entete-page">
+  <div>
+    <h1>Pilotage de la direction</h1>
+    <p class="sous-titre">
+      Chapitres 34 a 41 — indicateurs, fiche synthetique, rapports et notifications
+    </p>
+  </div>
+  <div style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap">
+    <div class="champ">
+      <label for="debut">Du</label>
+      <input id="debut" type="date" [(ngModel)]="debut" (change)="charger()" />
+    </div>
+    <div class="champ">
+      <label for="fin">Au</label>
+      <input id="fin" type="date" [(ngModel)]="fin" (change)="charger()" />
+    </div>
+    <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+@if (chargement()) {
+  <div class="message vide">Calcul des indicateurs...</div>
+} @else if (kpi(); as k) {
+  <h2 class="titre-section-kpi">Parc</h2>
+  <section class="grille-indicateurs">
+    <a class="carte indicateur" routerLink="/camions">
+      <span class="libelle">Camions</span>
+      <strong class="valeur">{{ k.nombreCamions }}</strong>
+      <span class="detail">{{ k.camionsActifs }} exploitables</span>
+    </a>
+    <div class="carte indicateur succes">
+      <span class="libelle">Taux de disponibilite</span>
+      <strong class="valeur">{{ k.tauxDisponibilitePourcent | number }} %</strong>
+      <span class="detail">part du parc prete a partir</span>
+    </div>
+    <a class="carte indicateur info" routerLink="/vue-parc">
+      <span class="libelle">Taux d'utilisation</span>
+      <strong class="valeur">{{ k.tauxUtilisationPourcent | number }} %</strong>
+      <span class="detail">jours exploites sur la periode</span>
+    </a>
+    <a class="carte indicateur alerte" routerLink="/maintenance">
+      <span class="libelle">Jours d'immobilisation</span>
+      <strong class="valeur">{{ k.joursImmobilisation }}</strong>
+      <span class="detail">interventions realisees</span>
+    </a>
+  </section>
+
+  <h2 class="titre-section-kpi">Finances</h2>
+  <section class="grille-indicateurs">
+    <a class="carte indicateur succes" routerLink="/recettes">
+      <span class="libelle">Chiffre d'affaires</span>
+      <strong class="valeur">{{ k.chiffreAffaires | number }}</strong>
+      <span class="detail">{{ k.recetteMoyenneParCamion | number }} par camion</span>
+    </a>
+    <a class="carte indicateur alerte" routerLink="/depenses">
+      <span class="libelle">Depenses</span>
+      <strong class="valeur">{{ k.depenses | number }}</strong>
+      <span class="detail">dont {{ k.coutMaintenance | number }} de maintenance</span>
+    </a>
+    <a class="carte indicateur info" routerLink="/rentabilite">
+      <span class="libelle">Resultat</span>
+      <strong class="valeur" [class]="classeResultat(k.resultat)">{{ k.resultat | number }}</strong>
+      <span class="detail">marge {{ k.margePourcent | number }} %</span>
+    </a>
+    <div class="carte indicateur">
+      <span class="libelle">Cout / revenu au km</span>
+      <strong class="valeur">{{ k.coutParKm | number }}</strong>
+      <span class="detail">revenu {{ k.revenuParKm | number }} FCFA/km</span>
+    </div>
+  </section>
+
+  <h2 class="titre-section-kpi">Exploitation</h2>
+  <section class="grille-indicateurs">
+    <a class="carte indicateur" routerLink="/missions">
+      <span class="libelle">Kilometres parcourus</span>
+      <strong class="valeur">{{ k.kilometresParcourus | number }}</strong>
+      <span class="detail">{{ k.nombreMissions }} mission(s) terminee(s)</span>
+    </a>
+    <a class="carte indicateur" routerLink="/carburant">
+      <span class="libelle">Consommation moyenne</span>
+      <strong class="valeur">{{ k.consommationMoyenneL100km | number }}</strong>
+      <span class="detail">litres aux 100 km</span>
+    </a>
+    <a class="carte indicateur alerte" routerLink="/gps">
+      <span class="libelle">Notifications</span>
+      <strong class="valeur">{{ notifications().length }}</strong>
+      <span class="detail">{{ critiques().length }} critique(s)</span>
+    </a>
+  </section>
+}
+
+<div class="deux-colonnes" style="margin-top: 1.5rem">
+  <div class="carte">
+    <h2>Notifications</h2>
+    <p class="sous-titre">Chapitre 34 — tout ce qui reclame une action, tous modules confondus</p>
+    <ul class="liste-notifications">
+      @for (notification of notifications(); track $index) {
+        <li>
+          <span [class]="classeNiveau(notification)">{{ notification.categorie }}</span>
+          <a [routerLink]="notification.cible">{{ notification.message }}</a>
+          @if (notification.horodatage) {
+            <small>{{ notification.horodatage | date: 'dd/MM HH:mm' }}</small>
+          }
+        </li>
+      } @empty {
+        <li><div class="message vide">Aucune notification en attente.</div></li>
+      }
+    </ul>
+  </div>
+
+  <div class="carte">
+    <h2>Rapports de gestion</h2>
+    <p class="sous-titre">Chapitre 35 — export CSV, ouvrable dans Excel</p>
+    <ul class="liste-rapports">
+      @for (rapport of rapports(); track rapport.valeur) {
+        <li>
+          <span>{{ rapport.libelle }}</span>
+          <button class="bouton secondaire petit" type="button" (click)="exporter(rapport)">
+            Exporter
+          </button>
+        </li>
+      }
+    </ul>
+    <p class="note-phase">
+      Les exports PDF et Excel natifs prevus au chapitre 35 restent a ajouter ; le CSV s'ouvre
+      directement dans un tableur.
+    </p>
+  </div>
+</div>
+
+<div class="carte" style="margin-top: 1rem">
+  <div class="entete-page" style="margin-bottom: 0.75rem">
+    <div>
+      <h2>Fiche synthetique d'un camion</h2>
+      <p class="sous-titre">Chapitre 36 — toutes les informations essentielles en un seul endroit</p>
+    </div>
+    <div class="champ" style="min-width: 260px">
+      <label for="camionSynthese">Camion</label>
+      <select id="camionSynthese" [(ngModel)]="camionSynthese" (change)="afficherSynthese()">
+        <option [ngValue]="undefined">Selectionner un camion</option>
+        @for (camion of camions(); track camion.id) {
+          <option [ngValue]="camion.id">
+            {{ camion.numeroInterne }} — {{ camion.immatriculation }}
+          </option>
+        }
+      </select>
+    </div>
+  </div>
+
+  @if (fiche(); as f) {
+    <div class="bandeau-synthese">
+      <div>
+        <span class="libelle-resume">Camion</span>
+        <strong class="valeur-resume">{{ f.immatriculation }}</strong>
+        <small>{{ f.marqueModele }} · {{ f.statutLibelle }}</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Chauffeur</span>
+        <strong class="valeur-resume">{{ f.chauffeurNom || '—' }}</strong>
+        <small>{{ f.clientNom || 'sans client' }}</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Activite</span>
+        <strong class="valeur-resume">{{ f.activite || '—' }}</strong>
+        <small>{{ f.localisation || 'localisation inconnue' }}</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Kilometrage</span>
+        <strong class="valeur-resume">{{ f.kilometrageActuel | number }} km</strong>
+        <small>{{ f.kilometresSurPeriode | number }} km sur la periode</small>
+      </div>
+    </div>
+
+    <h2 style="margin-top: 1.5rem">Ce mois</h2>
+    <div class="grille-resume">
+      <div>
+        <span class="libelle-resume">Recettes</span>
+        <strong class="valeur-resume">{{ f.recettes | number }}</strong>
+        <small>revenu/km {{ f.revenuParKm ? (f.revenuParKm | number) : '—' }}</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Depenses</span>
+        <strong class="valeur-resume">{{ f.depenses | number }}</strong>
+        <small>cout/km {{ f.coutParKm ? (f.coutParKm | number) : '—' }}</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Resultat</span>
+        <strong class="valeur-resume" [class]="classeResultat(f.resultat)">
+          {{ f.resultat | number }}
+        </strong>
+        <small>marge {{ f.margePourcent | number }} %</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Carburant</span>
+        <strong class="valeur-resume">
+          {{ f.consommationMoyenneL100km ? (f.consommationMoyenneL100km | number) : '—' }}
+        </strong>
+        <small>litres / 100 km</small>
+      </div>
+      @for (ligne of f.depensesParCategorie; track ligne.categorie) {
+        <div>
+          <span class="libelle-resume">{{ ligne.libelle }}</span>
+          <strong class="valeur-resume">{{ ligne.total | number }}</strong>
+          <small>{{ ligne.nombre }} operation(s)</small>
+        </div>
+      }
+    </div>
+
+    <h2 style="margin-top: 1.5rem">Points d'attention</h2>
+    <ul class="liste-alertes">
+      <li>
+        <span class="pastille" [class.danger]="f.entretiensEnRetard > 0"
+              [class.attention]="f.entretiensEnRetard === 0"></span>
+        {{ f.entretiensAVenir }} entretien(s) a venir, {{ f.entretiensEnRetard }} en retard
+      </li>
+      <li>
+        <span class="pastille attention"></span>
+        {{ f.pneusARemplacer }} pneu(s) a remplacer
+      </li>
+      <li>
+        <span class="pastille" [class.danger]="f.incidentsOuverts > 0"
+              [class.attention]="f.incidentsOuverts === 0"></span>
+        {{ f.incidentsOuverts }} incident(s) ouvert(s)
+      </li>
+      <li>
+        <span class="pastille attention"></span>
+        {{ f.documentsAExpirer }} document(s) a renouveler, {{ f.alertesGpsNonTraitees }} alerte(s) GPS
+      </li>
+    </ul>
+  } @else {
+    <div class="message vide">Selectionnez un camion pour afficher sa fiche synthetique.</div>
+  }
+</div>

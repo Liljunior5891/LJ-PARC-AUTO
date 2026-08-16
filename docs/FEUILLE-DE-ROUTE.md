@@ -110,15 +110,28 @@ Règles de maintenance :
 - un incident immobilisant place le camion en `IMMOBILISE` ou `ACCIDENTE` et ne le
   libère qu'une fois **tous** les incidents ouverts résolus.
 
-## Phase 6 — Pilotage et mobile
+## Phase 6 — Pilotage (livrée, hors mobile)
 
-| Chapitre | Fonctionnalité |
-| --- | --- |
-| 4, 41 | Tableau de bord complet et KPI de direction |
-| 35 | Rapports exportables PDF / Excel / CSV |
-| 36 | Fiche synthétique du camion |
-| 32 | Application mobile chauffeur |
-| 34 | Notifications |
+| Chapitre | Fonctionnalité | État |
+| --- | --- | --- |
+| 4, 41 | Tableau de bord et KPI de direction | ✅ |
+| 34 | Notifications consolidées | ✅ |
+| 35 | Rapports exportables | ⚠️ CSV uniquement |
+| 36 | Fiche synthétique du camion | ✅ |
+| 32 | Application mobile chauffeur | ❌ non démarrée |
+
+Le service de pilotage n'a **aucune donnée propre** : il assemble celles des cinq
+modules précédents. Les notifications interrogent chaque module et présentent une
+liste unique et ordonnée, chaque entrée pointant vers l'écran concerné.
+
+Restent à faire :
+
+- **exports PDF et Excel natifs** (chapitre 35). Le CSV produit s'ouvre déjà dans
+  Excel — séparateur point-virgule, virgule décimale et BOM UTF-8 pour les accents.
+  Un PDF nécessite une bibliothèque supplémentaire (OpenPDF ou équivalent) ;
+- **application mobile chauffeur** (chapitre 32). C'est un projet Flutter ou React
+  Native distinct. L'API est prête : les endpoints de mission (démarrage, clôture),
+  de dépense, de livraison et d'incident acceptent déjà le rôle `CHAUFFEUR`.
 
 ## Principes techniques transverses
 
