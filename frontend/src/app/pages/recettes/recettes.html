@@ -1,0 +1,216 @@
+<div class="entete-page">
+  <div>
+    <h1>Recettes</h1>
+    <p class="sous-titre">
+      Chapitre 15 — toute recette est rattachee a un camion, condition du calcul de rentabilite
+    </p>
+  </div>
+  @if (peutGerer) {
+    <button class="bouton" type="button" (click)="basculerFormulaire()">
+      {{ formulaireVisible() ? 'Fermer' : '+ Nouvelle recette' }}
+    </button>
+  }
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+@if (formulaireVisible()) {
+  <form class="carte" [formGroup]="formulaire" (ngSubmit)="enregistrer()" style="margin-bottom: 1rem">
+    <h2>Enregistrer une recette</h2>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="camionId">Camion *</label>
+        <select id="camionId" formControlName="camionId">
+          <option [ngValue]="null">Selectionner un camion</option>
+          @for (camion of camions(); track camion.id) {
+            <option [ngValue]="camion.id">
+              {{ camion.numeroInterne }} — {{ camion.immatriculation }}
+            </option>
+          }
+        </select>
+        @if (formulaire.controls.camionId.touched && formulaire.controls.camionId.invalid) {
+          <span class="erreur-champ">Camion requis</span>
+        }
+      </div>
+      <div class="champ">
+        <label for="clientId">Client</label>
+        <select id="clientId" formControlName="clientId">
+          <option [ngValue]="null">Aucun</option>
+          @for (client of clients(); track client.id) {
+            <option [ngValue]="client.id">{{ client.raisonSociale }}</option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="type">Type de recette *</label>
+        <select id="type" formControlName="type">
+          @for (t of types; track t.valeur) {
+            <option [value]="t.valeur">{{ t.libelle }}</option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="libelle">Libelle *</label>
+        <input id="libelle" formControlName="libelle" placeholder="Transport Lome - Atakpame" />
+        @if (formulaire.controls.libelle.touched && formulaire.controls.libelle.invalid) {
+          <span class="erreur-champ">Libelle requis</span>
+        }
+      </div>
+      <div class="champ">
+        <label for="montant">Montant (FCFA) *</label>
+        <input id="montant" type="number" formControlName="montant" />
+      </div>
+      <div class="champ">
+        <label for="dateRecette">Date *</label>
+        <input id="dateRecette" type="date" formControlName="dateRecette" />
+      </div>
+      <div class="champ">
+        <label for="modePaiement">Mode de paiement</label>
+        <select id="modePaiement" formControlName="modePaiement">
+          <option [ngValue]="null">Non precise</option>
+          @for (mode of modes; track mode.valeur) {
+            <option [value]="mode.valeur">{{ mode.libelle }}</option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="reference">Reference</label>
+        <input id="reference" formControlName="reference" placeholder="Numero de recu, virement..." />
+      </div>
+    </div>
+    <div class="champ" style="margin-top: 1rem">
+      <label for="observations">Observations</label>
+      <textarea id="observations" formControlName="observations"></textarea>
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton" type="submit">Enregistrer</button>
+      <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
+    </div>
+  </form>
+}
+
+<div class="carte" style="margin-bottom: 1rem">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="debut">Du</label>
+      <input id="debut" type="date" [(ngModel)]="debut" (change)="filtrer()" />
+    </div>
+    <div class="champ">
+      <label for="fin">Au</label>
+      <input id="fin" type="date" [(ngModel)]="fin" (change)="filtrer()" />
+    </div>
+    <div class="champ">
+      <label for="camionFiltre">Camion</label>
+      <select id="camionFiltre" [(ngModel)]="camionId" (change)="filtrer()">
+        <option [ngValue]="undefined">Tout le parc</option>
+        @for (camion of camions(); track camion.id) {
+          <option [ngValue]="camion.id">{{ camion.immatriculation }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="type">Type</label>
+      <select id="type" [(ngModel)]="type" (change)="filtrer()">
+        <option value="">Tous les types</option>
+        @for (t of types; track t.valeur) {
+          <option [value]="t.valeur">{{ t.libelle }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="recherche">Recherche</label>
+      <input
+        id="recherche"
+        type="search"
+        placeholder="Numero, libelle, reference..."
+        [(ngModel)]="recherche"
+        (keyup.enter)="filtrer()"
+      />
+    </div>
+  </div>
+
+  <div class="grille-resume" style="margin-top: 1.25rem">
+    <div>
+      <span class="libelle-resume">Total encaisse sur la periode</span>
+      <strong class="valeur-resume">{{ totalPeriode() | number }} FCFA</strong>
+      <small>{{ page()?.totalElements ?? 0 }} recette(s)</small>
+    </div>
+    @for (ligne of repartition(); track ligne.type) {
+      <div>
+        <span class="libelle-resume">{{ ligne.libelle }}</span>
+        <strong class="valeur-resume">{{ ligne.total | number }}</strong>
+        <small>{{ part(ligne) }} % · {{ ligne.nombre }} operation(s)</small>
+      </div>
+    }
+  </div>
+</div>
+
+<div class="carte">
+  <div class="tableau-conteneur">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Numero</th>
+          <th>Date</th>
+          <th>Camion</th>
+          <th>Type</th>
+          <th>Libelle</th>
+          <th>Client</th>
+          <th>Rattachement</th>
+          <th class="numerique">Montant</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (recette of page()?.content ?? []; track recette.id) {
+          <tr>
+            <td><strong>{{ recette.numero }}</strong></td>
+            <td>{{ recette.dateRecette }}</td>
+            <td>{{ recette.camionImmatriculation }}</td>
+            <td>{{ recette.typeLibelle }}</td>
+            <td>{{ recette.libelle }}</td>
+            <td>{{ recette.clientNom || '—' }}</td>
+            <td>
+              {{ recette.factureNumero || recette.missionNumero || recette.locationNumero || '—' }}
+            </td>
+            <td class="numerique"><strong>{{ recette.montant | number }}</strong></td>
+            <td>
+              @if (peutGerer && !recette.factureNumero) {
+                <button class="bouton danger petit" type="button" (click)="supprimer(recette)">
+                  Supprimer
+                </button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="9">
+              <div class="message vide">
+                {{ chargement() ? 'Chargement...' : 'Aucune recette sur cette periode.' }}
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">
+          Precedent
+        </button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">
+          Suivant
+        </button>
+      </div>
+    }
+  }
+</div>
