@@ -368,3 +368,25 @@ table.tableau {
     white-space: nowrap;
   }
 }
+
+/* ---------------------- Rentabilite : lecture rapide -------------------- */
+.resultat-positif {
+  color: var(--couleur-succes);
+}
+
+.resultat-negatif {
+  color: var(--couleur-danger);
+}
+
+.barre-recette {
+  height: 4px;
+  margin-top: 0.3rem;
+  background: #eceff3;
+  border-radius: 999px;
+  overflow: hidden;
+
+  .remplissage-recette {
+    height: 100%;
+    background: var(--couleur-primaire);
+  }
+}

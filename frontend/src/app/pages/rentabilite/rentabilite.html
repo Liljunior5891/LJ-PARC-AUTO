@@ -1,0 +1,275 @@
+<div class="entete-page">
+  <div>
+    <h1>Rentabilite du parc</h1>
+    <p class="sous-titre">
+      Chapitres 29 a 31 — combien chaque camion rapporte-t-il reellement a l'entreprise ?
+    </p>
+  </div>
+  <div style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap">
+    <div class="champ">
+      <label for="debut">Du</label>
+      <input id="debut" type="date" [(ngModel)]="debut" (change)="charger()" />
+    </div>
+    <div class="champ">
+      <label for="fin">Au</label>
+      <input id="fin" type="date" [(ngModel)]="fin" (change)="charger()" />
+    </div>
+    <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+@if (chargement()) {
+  <div class="message vide">Calcul en cours...</div>
+} @else if (global(); as g) {
+  <section class="grille-indicateurs">
+    <div class="carte indicateur succes">
+      <span class="libelle">Total recettes</span>
+      <strong class="valeur">{{ g.totalRecettes | number }}</strong>
+      <span class="detail">FCFA sur la periode</span>
+    </div>
+    <div class="carte indicateur alerte">
+      <span class="libelle">Total depenses</span>
+      <strong class="valeur">{{ g.totalDepenses | number }}</strong>
+      <span class="detail">refacturations client exclues</span>
+    </div>
+    <div class="carte indicateur" [class.info]="g.resultat >= 0">
+      <span class="libelle">Resultat</span>
+      <strong class="valeur" [class]="classeResultat(g.resultat)">{{ g.resultat | number }}</strong>
+      <span class="detail">marge {{ g.margePourcent | number }} %</span>
+    </div>
+    <div class="carte indicateur">
+      <span class="libelle">Moyenne par camion</span>
+      <strong class="valeur">{{ g.recetteMoyenneParCamion | number }}</strong>
+      <span class="detail">{{ g.depenseMoyenneParCamion | number }} de depenses</span>
+    </div>
+  </section>
+
+  @if (g.palmares; as p) {
+    <div class="carte" style="margin-bottom: 1rem">
+      <h2>Comparaison des camions</h2>
+      <div class="grille-resume" style="margin-top: 0.75rem">
+        <div>
+          <span class="libelle-resume">Le plus rentable</span>
+          <strong class="valeur-resume">{{ p.plusRentable?.immatriculation || '—' }}</strong>
+          <small>{{ (p.plusRentable?.resultat ?? 0) | number }} FCFA de resultat</small>
+        </div>
+        <div>
+          <span class="libelle-resume">Le moins rentable</span>
+          <strong class="valeur-resume">{{ p.moinsRentable?.immatriculation || '—' }}</strong>
+          <small>{{ (p.moinsRentable?.resultat ?? 0) | number }} FCFA de resultat</small>
+        </div>
+        <div>
+          <span class="libelle-resume">Plus de recettes</span>
+          <strong class="valeur-resume">{{ p.plusDeRecettes?.immatriculation || '—' }}</strong>
+          <small>{{ (p.plusDeRecettes?.recettes ?? 0) | number }} FCFA</small>
+        </div>
+        <div>
+          <span class="libelle-resume">Coute le plus cher</span>
+          <strong class="valeur-resume">{{ p.plusDeDepenses?.immatriculation || '—' }}</strong>
+          <small>{{ (p.plusDeDepenses?.depenses ?? 0) | number }} FCFA de depenses</small>
+        </div>
+        <div>
+          <span class="libelle-resume">Plus de kilometres</span>
+          <strong class="valeur-resume">{{ p.plusDeKilometres?.immatriculation || '—' }}</strong>
+          <small>{{ (p.plusDeKilometres?.distanceKm ?? 0) | number }} km</small>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="carte">
+    <h2>Rentabilite par camion</h2>
+    <div class="tableau-conteneur" style="margin-top: 1rem">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th>Camion</th>
+            <th>Statut</th>
+            <th class="numerique">Recettes</th>
+            <th class="numerique">Depenses</th>
+            <th class="numerique">Resultat</th>
+            <th class="numerique">Marge</th>
+            <th class="numerique">Km</th>
+            <th class="numerique">Cout / km</th>
+            <th class="numerique">Revenu / km</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (ligne of g.camions; track ligne.camionId) {
+            <tr>
+              <td>
+                <strong>{{ ligne.immatriculation }}</strong>
+                <small> · {{ ligne.numeroInterne }}</small>
+                <div class="barre-recette">
+                  <div class="remplissage-recette" [style.width.%]="largeurRecette(ligne)"></div>
+                </div>
+              </td>
+              <td>{{ ligne.statutLibelle }}</td>
+              <td class="numerique">{{ ligne.recettes | number }}</td>
+              <td class="numerique">{{ ligne.depenses | number }}</td>
+              <td class="numerique">
+                <strong [class]="classeResultat(ligne.resultat)">{{ ligne.resultat | number }}</strong>
+              </td>
+              <td class="numerique">{{ ligne.margePourcent | number }} %</td>
+              <td class="numerique">{{ ligne.distanceKm | number }}</td>
+              <td class="numerique">{{ ligne.coutParKm ? (ligne.coutParKm | number) : '—' }}</td>
+              <td class="numerique">{{ ligne.revenuParKm ? (ligne.revenuParKm | number) : '—' }}</td>
+              <td>
+                <button class="bouton secondaire petit" type="button" (click)="ouvrirFiche(ligne.camionId)">
+                  Performance
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="10">
+                <div class="message vide">Aucun camion actif dans le parc.</div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+@if (fiche(); as f) {
+  <div class="carte" style="margin-top: 1rem">
+    <div class="entete-page" style="margin-bottom: 0.75rem">
+      <div>
+        <h2>Performance du camion {{ f.immatriculation }}</h2>
+        <p class="sous-titre">
+          {{ f.marqueModele }} · {{ f.statutLibelle }} · du {{ f.debut }} au {{ f.fin }}
+        </p>
+      </div>
+      <button class="bouton secondaire" type="button" (click)="fermerFiche()">Fermer</button>
+    </div>
+
+    <div class="grille-resume">
+      <div>
+        <span class="libelle-resume">Total recettes</span>
+        <strong class="valeur-resume">{{ f.totalRecettes | number }}</strong>
+        <small>revenu/km : {{ f.revenuParKm ? (f.revenuParKm | number) + ' FCFA' : '—' }}</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Total depenses</span>
+        <strong class="valeur-resume">{{ f.totalDepenses | number }}</strong>
+        <small>cout/km : {{ f.coutParKm ? (f.coutParKm | number) + ' FCFA' : '—' }}</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Resultat</span>
+        <strong class="valeur-resume" [class]="classeResultat(f.resultat)">
+          {{ f.resultat | number }}
+        </strong>
+        <small>marge {{ f.margePourcent | number }} %</small>
+      </div>
+      <div>
+        <span class="libelle-resume">Taux d'utilisation</span>
+        <strong class="valeur-resume">{{ f.utilisation.tauxUtilisationPourcent | number }} %</strong>
+        <small>
+          {{ f.utilisation.joursExploites }} j exploites / {{ f.utilisation.joursPeriode }} j
+        </small>
+      </div>
+    </div>
+
+    <h2 style="margin-top: 1.5rem">Revenus</h2>
+    <div class="grille-resume">
+      <div>
+        <span class="libelle-resume">Aujourd'hui</span>
+        <strong class="valeur-resume">{{ f.revenus.jour | number }}</strong>
+      </div>
+      <div>
+        <span class="libelle-resume">7 derniers jours</span>
+        <strong class="valeur-resume">{{ f.revenus.semaine | number }}</strong>
+      </div>
+      <div>
+        <span class="libelle-resume">Mois en cours</span>
+        <strong class="valeur-resume">{{ f.revenus.mois | number }}</strong>
+      </div>
+      <div>
+        <span class="libelle-resume">Annee en cours</span>
+        <strong class="valeur-resume">{{ f.revenus.annee | number }}</strong>
+      </div>
+      <div>
+        <span class="libelle-resume">Cumule</span>
+        <strong class="valeur-resume">{{ f.revenus.cumule | number }}</strong>
+      </div>
+    </div>
+
+    <div class="deux-colonnes" style="margin-top: 1.5rem">
+      <div>
+        <h2>Depenses par nature</h2>
+        <div class="tableau-conteneur">
+          <table class="tableau">
+            <thead>
+              <tr>
+                <th>Nature</th>
+                <th>Categorie</th>
+                <th class="numerique">Montant</th>
+                <th class="numerique">Operations</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (ligne of f.depensesParNature; track ligne.nature) {
+                <tr>
+                  <td>{{ ligne.libelle }}</td>
+                  <td>{{ ligne.categorieLibelle }}</td>
+                  <td class="numerique"><strong>{{ ligne.total | number }}</strong></td>
+                  <td class="numerique">{{ ligne.nombre }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4"><div class="message vide">Aucune depense sur la periode.</div></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h2>Recettes par type</h2>
+        <div class="tableau-conteneur">
+          <table class="tableau">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th class="numerique">Montant</th>
+                <th class="numerique">Operations</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (ligne of f.recettesParType; track ligne.type) {
+                <tr>
+                  <td>{{ ligne.libelle }}</td>
+                  <td class="numerique"><strong>{{ ligne.total | number }}</strong></td>
+                  <td class="numerique">{{ ligne.nombre }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="3"><div class="message vide">Aucune recette sur la periode.</div></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <h2 style="margin-top: 1.5rem">Utilisation</h2>
+        <ul class="liste-alertes">
+          <li>{{ f.utilisation.distanceKm | number }} km parcourus</li>
+          <li>{{ f.utilisation.nombreMissions }} mission(s) terminee(s)</li>
+          <li>{{ f.utilisation.joursDisponibles }} jour(s) disponible(s)</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="note-phase">
+      Les jours d'immobilisation prevus au chapitre 7 seront alimentes par le module Maintenance
+      (phase 5) : ils sont a zero a ce stade.
+    </p>
+  </div>
+}
