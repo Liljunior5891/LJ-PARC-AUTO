@@ -10,7 +10,12 @@ export const authGuard: CanActivateFn = (_route, state) => {
   if (auth.connecte()) {
     return true;
   }
-  return router.createUrlTree(['/connexion'], { queryParams: { retour: state.url } });
+  // Le motif est transmis pour distinguer une session expiree d'un simple acces direct.
+  return router.createUrlTree(['/connexion'], {
+    queryParams: auth.sessionExpiree()
+      ? { retour: state.url, motif: 'expiration' }
+      : { retour: state.url }
+  });
 };
 
 /** Restreint une route a une liste de roles. */

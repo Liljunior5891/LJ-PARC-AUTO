@@ -6,6 +6,9 @@
       <p class="sous-titre">Gestion, suivi et rentabilite du parc de camions</p>
     </div>
 
+    @if (information()) {
+      <div class="message vide">{{ information() }}</div>
+    }
     @if (erreur()) {
       <div class="message erreur">{{ erreur() }}</div>
     }

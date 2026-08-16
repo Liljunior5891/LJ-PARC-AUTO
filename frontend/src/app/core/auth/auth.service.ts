@@ -13,9 +13,13 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
 
+  /** Vrai lorsque la session stockee a ete purgee parce qu'elle avait expire. */
+  private readonly sessionExpireeSignal = signal(false);
+
   private readonly utilisateurSignal = signal<UtilisateurCourant | null>(this.lireUtilisateurStocke());
 
   readonly utilisateur = this.utilisateurSignal.asReadonly();
+  readonly sessionExpiree = this.sessionExpireeSignal.asReadonly();
   readonly connecte = computed(() => this.utilisateurSignal() !== null);
 
   login(email: string, motDePasse: string): Observable<LoginResponse> {
@@ -23,6 +27,7 @@ export class AuthService {
       .post<LoginResponse>(`${environment.apiUrl}/auth/login`, { email, motDePasse })
       .pipe(
         tap((reponse) => {
+          this.sessionExpireeSignal.set(false);
           localStorage.setItem(CLE_TOKEN, reponse.token);
           localStorage.setItem(CLE_UTILISATEUR, JSON.stringify(reponse.utilisateur));
           this.utilisateurSignal.set(reponse.utilisateur);
@@ -30,15 +35,25 @@ export class AuthService {
       );
   }
 
-  logout(): void {
+  /**
+   * Ferme la session. Le motif est transmis a l'ecran de connexion : une session
+   * expiree doit etre annoncee comme telle, et non ressembler a une panne serveur.
+   */
+  logout(motif?: 'expiration'): void {
     localStorage.removeItem(CLE_TOKEN);
     localStorage.removeItem(CLE_UTILISATEUR);
     this.utilisateurSignal.set(null);
-    void this.router.navigate(['/connexion']);
+    void this.router.navigate(['/connexion'], {
+      queryParams: motif ? { motif } : undefined
+    });
   }
 
   get token(): string | null {
-    return localStorage.getItem(CLE_TOKEN);
+    const token = localStorage.getItem(CLE_TOKEN);
+    if (token && this.expire(token)) {
+      return null;
+    }
+    return token;
   }
 
   /** Vrai si l'utilisateur possede au moins un des roles demandes. */
@@ -55,13 +70,48 @@ export class AuthService {
     return this.aRole('ADMIN', 'GESTIONNAIRE_PARC', 'LOGISTIQUE');
   }
 
+  /**
+   * Lit la session stockee. Un jeton expire est purge immediatement : sans cela
+   * l'application se croirait connectee et chaque appel echouerait en 401,
+   * affichant une erreur de chargement au lieu d'inviter a se reconnecter.
+   */
   private lireUtilisateurStocke(): UtilisateurCourant | null {
+    const token = localStorage.getItem(CLE_TOKEN);
     const brut = localStorage.getItem(CLE_UTILISATEUR);
-    if (!brut || !localStorage.getItem(CLE_TOKEN)) {
+    if (!token || !brut || this.expire(token)) {
+      if (token && this.expire(token)) {
+        this.sessionExpireeSignal.set(true);
+      }
+      localStorage.removeItem(CLE_TOKEN);
+      localStorage.removeItem(CLE_UTILISATEUR);
       return null;
     }
     try {
       return JSON.parse(brut) as UtilisateurCourant;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Vrai si la date d'expiration du jeton est depassee. */
+  private expire(token: string): boolean {
+    const charge = this.lireCharge(token);
+    if (!charge?.exp) {
+      // Sans date d'expiration lisible, le serveur reste seul juge.
+      return false;
+    }
+    return charge.exp * 1000 <= Date.now();
+  }
+
+  /** Decode la charge utile du JWT, sans verifier la signature : le serveur s'en charge. */
+  private lireCharge(token: string): { exp?: number } | null {
+    const parties = token.split('.');
+    if (parties.length !== 3) {
+      return null;
+    }
+    try {
+      const base64 = parties[1].replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(base64)) as { exp?: number };
     } catch {
       return null;
     }

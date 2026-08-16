@@ -15,7 +15,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(requete).pipe(
     catchError((erreur: HttpErrorResponse) => {
       if (erreur.status === 401 && !req.url.includes('/auth/login')) {
-        auth.logout();
+        // Session invalide ou expiree : on la ferme et on l'annonce clairement.
+        auth.logout('expiration');
       }
       return throwError(() => erreur);
     })

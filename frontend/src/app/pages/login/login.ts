@@ -17,6 +17,12 @@ export class Login {
 
   readonly enCours = signal(false);
   readonly erreur = signal<string | null>(null);
+  /** Renseigne lorsque l'utilisateur a ete redirige apres expiration de sa session. */
+  readonly information = signal<string | null>(
+    this.route.snapshot.queryParamMap.get('motif') === 'expiration'
+      ? 'Votre session a expire. Reconnectez-vous pour continuer.'
+      : null
+  );
 
   readonly formulaire = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
