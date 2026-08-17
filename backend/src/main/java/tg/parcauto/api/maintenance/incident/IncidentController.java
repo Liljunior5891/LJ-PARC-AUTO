@@ -49,7 +49,7 @@ public class IncidentController {
 
     /** Le chauffeur declare depuis l'application mobile (chapitres 32 et 33). */
     @PostMapping
-    @PreAuthorize(Autorisations.GESTION)
+    @PreAuthorize(Autorisations.TERRAIN)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Declare un incident et notifie le responsable")
     public IncidentDto.Reponse declarer(@Valid @RequestBody IncidentDto.Requete requete) {

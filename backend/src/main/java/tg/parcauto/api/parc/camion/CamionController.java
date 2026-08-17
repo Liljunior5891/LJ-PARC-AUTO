@@ -111,7 +111,7 @@ public class CamionController {
     }
 
     @PatchMapping("/{id}/kilometrage")
-    @PreAuthorize(Autorisations.GESTION)
+    @PreAuthorize(Autorisations.TERRAIN)
     @Operation(summary = "Met a jour le compteur kilometrique")
     public CamionDto.Reponse majKilometrage(@PathVariable Long id,
                                             @Valid @RequestBody CamionDto.MajKilometrage requete) {
