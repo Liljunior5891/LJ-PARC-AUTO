@@ -82,6 +82,41 @@
     </div>
   </div>
 
+  <h2 style="margin-top: 1.5rem">Garant — personne a prevenir</h2>
+  <p class="sous-titre" style="margin-bottom: 0.75rem">
+    Personne a contacter en cas d'urgence, qui se porte caution du chauffeur
+  </p>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="garantNom">Nom complet</label>
+      <input id="garantNom" formControlName="garantNom" />
+    </div>
+    <div class="champ">
+      <label for="garantLien">Lien avec le chauffeur</label>
+      <input id="garantLien" formControlName="garantLien" placeholder="Pere, epouse, frere..." />
+    </div>
+    <div class="champ">
+      <label for="garantTelephone">Telephone</label>
+      <input id="garantTelephone" formControlName="garantTelephone" />
+    </div>
+    <div class="champ">
+      <label for="garantTelephoneSecondaire">Telephone secondaire</label>
+      <input id="garantTelephoneSecondaire" formControlName="garantTelephoneSecondaire" />
+    </div>
+    <div class="champ">
+      <label for="garantProfession">Profession</label>
+      <input id="garantProfession" formControlName="garantProfession" />
+    </div>
+    <div class="champ">
+      <label for="garantPieceIdentite">Numero de piece d'identite</label>
+      <input id="garantPieceIdentite" formControlName="garantPieceIdentite" />
+    </div>
+    <div class="champ">
+      <label for="garantAdresse">Adresse</label>
+      <input id="garantAdresse" formControlName="garantAdresse" />
+    </div>
+  </div>
+
   <h2 style="margin-top: 1.5rem">Emploi</h2>
   <div class="grille-formulaire">
     <div class="champ">
@@ -121,3 +156,88 @@
     <a class="bouton secondaire" routerLink="/chauffeurs">Annuler</a>
   </div>
 </form>
+
+@if (id() !== null) {
+  <div class="carte" style="margin-top: 1rem">
+    <div class="entete-page" style="margin-bottom: 0.75rem">
+      <div>
+        <h2>Dossiers</h2>
+        <p class="sous-titre">Pieces du chauffeur et de son garant</p>
+      </div>
+      <button class="bouton" type="button" (click)="televersementVisible.set(!televersementVisible())">
+        {{ televersementVisible() ? 'Fermer' : '+ Televerser un document' }}
+      </button>
+    </div>
+
+    @if (televersementVisible()) {
+      <div class="grille-formulaire" style="margin-bottom: 1rem">
+        <div class="champ">
+          <label for="typeDocument">Type de document</label>
+          <app-select-recherche
+            [(ngModel)]="typeDocument"
+            [ngModelOptions]="{ standalone: true }"
+            [options]="optionsTypeDocument()"
+            [autoriserVide]="false"
+            placeholder="Type de document"
+          />
+        </div>
+        <div class="champ">
+          <label for="libelleDocument">Libelle</label>
+          <input id="libelleDocument" [(ngModel)]="libelleDocument"
+                 [ngModelOptions]="{ standalone: true }"
+                 placeholder="Repris du type si laisse vide" />
+        </div>
+        <div class="champ">
+          <label for="fichier">Fichier</label>
+          <input id="fichier" type="file" (change)="fichierChoisi($event)" />
+        </div>
+      </div>
+      <div class="actions-formulaire" style="margin-top: 0">
+        <button class="bouton" type="button" (click)="televerser()">Televerser</button>
+      </div>
+    }
+
+    <div class="tableau-conteneur" style="margin-top: 1rem">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th>Document</th>
+            <th>Type</th>
+            <th>Concerne</th>
+            <th>Expiration</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (document of documents(); track document.id) {
+            <tr>
+              <td><strong>{{ document.libelle }}</strong></td>
+              <td>{{ document.typeLibelle }}</td>
+              <td>
+                @if (estDocumentGarant(document)) {
+                  <span class="etiquette en_location">Garant</span>
+                } @else {
+                  <span class="etiquette">Chauffeur</span>
+                }
+              </td>
+              <td>{{ document.dateExpiration || '—' }}</td>
+              <td>
+                @if (document.fichierDisponible) {
+                  <button class="bouton secondaire petit" type="button" (click)="telecharger(document)">
+                    Telecharger
+                  </button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5">
+                <div class="message vide">Aucun document televerse pour ce chauffeur.</div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

@@ -23,25 +23,22 @@
     <div class="grille-formulaire">
       <div class="champ">
         <label for="camionId">Camion *</label>
-        <select id="camionId" formControlName="camionId">
-          <option [ngValue]="null">Selectionner un camion</option>
-          @for (camion of camions(); track camion.id) {
-            <option [ngValue]="camion.id">
-              {{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }} ({{ camion.statutLibelle }})
-            </option>
-          }
-        </select>
+        <app-select-recherche
+          formControlName="camionId"
+          [options]="optionsCamion()"
+          placeholder="Selectionner un camion"
+        />
       </div>
       <div class="champ">
         <label for="chauffeurId">Chauffeur *</label>
-        <select id="chauffeurId" formControlName="chauffeurId">
-          <option [ngValue]="null">Selectionner un chauffeur</option>
-          @for (chauffeur of chauffeurs(); track chauffeur.id) {
-            <option [ngValue]="chauffeur.id">
-              {{ chauffeur.matricule }} — {{ chauffeur.nomComplet }}
-            </option>
-          }
-        </select>
+        <app-select-recherche
+          formControlName="chauffeurId"
+          [options]="optionsChauffeur()"
+          placeholder="Selectionner un chauffeur"
+        />
+        <button class="lien-creation" type="button" (click)="basculerCreationChauffeur()">
+          {{ creationChauffeurVisible() ? 'Annuler la creation' : '+ Creer un nouveau chauffeur' }}
+        </button>
       </div>
       <div class="champ">
         <label for="dateDebut">Date de debut *</label>
@@ -60,6 +57,54 @@
       <label for="observations">Observations</label>
       <textarea id="observations" formControlName="observations"></textarea>
     </div>
+    @if (creationChauffeurVisible()) {
+      <div class="bloc-creation" [formGroup]="formChauffeur">
+        <h2>Nouveau chauffeur</h2>
+        <p class="sous-titre">
+          Les informations essentielles suffisent : la fiche complete se remplit ensuite
+        </p>
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label for="matriculeChauffeur">Matricule *</label>
+            <input id="matriculeChauffeur" formControlName="matricule" placeholder="CH-002" />
+          </div>
+          <div class="champ">
+            <label for="nomChauffeur">Nom *</label>
+            <input id="nomChauffeur" formControlName="nom" />
+          </div>
+          <div class="champ">
+            <label for="prenomChauffeur">Prenom *</label>
+            <input id="prenomChauffeur" formControlName="prenom" />
+          </div>
+          <div class="champ">
+            <label for="telephoneChauffeur">Telephone *</label>
+            <input id="telephoneChauffeur" formControlName="telephone" />
+          </div>
+          <div class="champ">
+            <label for="categoriesChauffeur">Categories de permis</label>
+            <input id="categoriesChauffeur" formControlName="categoriesPermis" placeholder="C, CE" />
+          </div>
+          <div class="champ">
+            <label for="expirationChauffeur">Expiration du permis</label>
+            <input id="expirationChauffeur" type="date" formControlName="permisExpiration" />
+          </div>
+          <div class="champ">
+            <label for="garantNomChauffeur">Garant</label>
+            <input id="garantNomChauffeur" formControlName="garantNom" placeholder="Personne a prevenir" />
+          </div>
+          <div class="champ">
+            <label for="garantTelChauffeur">Telephone du garant</label>
+            <input id="garantTelChauffeur" formControlName="garantTelephone" />
+          </div>
+        </div>
+        <div class="actions-formulaire" style="margin-top: 1rem">
+          <button class="bouton" type="button" (click)="creerChauffeur()">
+            Creer et selectionner
+          </button>
+        </div>
+      </div>
+    }
+
     <div class="actions-formulaire">
       <button class="bouton" type="submit">Affecter</button>
       <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>

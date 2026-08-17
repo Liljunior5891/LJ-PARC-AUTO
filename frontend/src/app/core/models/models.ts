@@ -164,6 +164,14 @@ export interface Chauffeur {
   permisBientotExpire: boolean;
   dateEmbauche?: string;
   salaireMensuel?: number;
+  garantNom?: string;
+  garantLien?: string;
+  garantTelephone?: string;
+  garantTelephoneSecondaire?: string;
+  garantAdresse?: string;
+  garantProfession?: string;
+  garantPieceIdentite?: string;
+  garantRenseigne?: boolean;
   statut: StatutChauffeur;
   statutLibelle: string;
   observations?: string;
@@ -172,7 +180,7 @@ export interface Chauffeur {
 
 export type ChauffeurRequete = Omit<
   Chauffeur,
-  'id' | 'nomComplet' | 'statutLibelle' | 'permisBientotExpire'
+  'id' | 'nomComplet' | 'statutLibelle' | 'permisBientotExpire' | 'garantRenseigne'
 >;
 
 export interface Affectation {
@@ -211,6 +219,9 @@ export type TypeDocument =
   | 'PERMIS_CONDUIRE'
   | 'PIECE_IDENTITE'
   | 'VISITE_MEDICALE'
+  | 'GARANT_PIECE_IDENTITE'
+  | 'GARANT_ATTESTATION'
+  | 'GARANT_JUSTIFICATIF'
   | 'AUTRE';
 
 export interface DocumentParc {
@@ -304,5 +315,8 @@ export const TYPES_DOCUMENT: { valeur: TypeDocument; libelle: string }[] = [
   { valeur: 'PERMIS_CONDUIRE', libelle: 'Permis de conduire' },
   { valeur: 'PIECE_IDENTITE', libelle: "Piece d'identite" },
   { valeur: 'VISITE_MEDICALE', libelle: 'Visite medicale' },
+  { valeur: 'GARANT_PIECE_IDENTITE', libelle: "Piece d'identite du garant" },
+  { valeur: 'GARANT_ATTESTATION', libelle: 'Attestation de garantie' },
+  { valeur: 'GARANT_JUSTIFICATIF', libelle: 'Justificatif du garant' },
   { valeur: 'AUTRE', libelle: 'Autre' }
 ];

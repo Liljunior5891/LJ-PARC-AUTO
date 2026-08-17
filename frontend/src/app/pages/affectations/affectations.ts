@@ -1,14 +1,15 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { Affectation, Camion, Chauffeur, Page } from '../../core/models/models';
+import { OptionSelect, SelectRecherche } from '../../shared/select-recherche';
 import { AffectationService } from '../../core/services/affectation.service';
 import { CamionService } from '../../core/services/camion.service';
 import { ChauffeurService } from '../../core/services/chauffeur.service';
 
 @Component({
   selector: 'app-affectations',
-  imports: [FormsModule, ReactiveFormsModule],
+  imports: [FormsModule, ReactiveFormsModule, SelectRecherche],
   templateUrl: './affectations.html'
 })
 export class Affectations implements OnInit {
@@ -25,11 +26,43 @@ export class Affectations implements OnInit {
   readonly succes = signal<string | null>(null);
   readonly chargement = signal(false);
   readonly formulaireVisible = signal(false);
+  /** Formulaire de creation rapide d'un chauffeur absent du systeme. */
+  readonly creationChauffeurVisible = signal(false);
+
+  readonly optionsCamion = computed<OptionSelect[]>(() =>
+    this.camions().map((camion) => ({
+      valeur: camion.id,
+      libelle: camion.immatriculation,
+      detail: [camion.marque, camion.modele, camion.statutLibelle].filter(Boolean).join(' - '),
+      couleur: camion.marqueCouleur,
+      monogramme: camion.marqueMonogramme,
+      logoUrl: camion.marqueLogoUrl
+    }))
+  );
+  readonly optionsChauffeur = computed<OptionSelect[]>(() =>
+    this.chauffeurs().map((chauffeur) => ({
+      valeur: chauffeur.id,
+      libelle: chauffeur.nomComplet,
+      detail: [chauffeur.matricule, chauffeur.telephone].filter(Boolean).join(' - ')
+    }))
+  );
 
   filtreEnCours: 'tous' | 'ouvertes' | 'closes' = 'ouvertes';
   private pageCourante = 0;
 
   readonly peutGerer = this.auth.peutGererParc();
+
+  /** Creation rapide : seuls les champs indispensables sont demandes. */
+  readonly formChauffeur = this.fb.nonNullable.group({
+    matricule: ['', [Validators.required]],
+    nom: ['', [Validators.required]],
+    prenom: ['', [Validators.required]],
+    telephone: ['', [Validators.required]],
+    categoriesPermis: [''],
+    permisExpiration: [null as string | null],
+    garantNom: [''],
+    garantTelephone: ['']
+  });
 
   readonly formulaire = this.fb.nonNullable.group({
     camionId: [null as number | null, [Validators.required]],
@@ -88,6 +121,33 @@ export class Affectations implements OnInit {
     this.formulaireVisible.update((visible) => !visible);
     this.erreur.set(null);
     this.succes.set(null);
+  }
+
+  basculerCreationChauffeur(): void {
+    this.creationChauffeurVisible.update((visible) => !visible);
+    this.erreur.set(null);
+  }
+
+  /**
+   * Cree le chauffeur puis le selectionne dans l'affectation en cours de saisie :
+   * l'utilisateur n'a pas a quitter l'ecran pour enregistrer un nouvel arrivant.
+   */
+  creerChauffeur(): void {
+    if (this.formChauffeur.invalid) {
+      this.formChauffeur.markAllAsTouched();
+      return;
+    }
+    this.erreur.set(null);
+    this.chauffeurService.creer(this.formChauffeur.getRawValue() as never).subscribe({
+      next: (chauffeur) => {
+        this.chauffeurs.update((liste) => [...liste, chauffeur]);
+        this.formulaire.controls.chauffeurId.setValue(chauffeur.id);
+        this.formChauffeur.reset();
+        this.creationChauffeurVisible.set(false);
+        this.succes.set('Chauffeur ' + chauffeur.nomComplet + ' cree et selectionne.');
+      },
+      error: (erreur) => this.erreur.set(erreur.error?.message ?? 'Creation du chauffeur impossible.')
+    });
   }
 
   affecter(): void {
