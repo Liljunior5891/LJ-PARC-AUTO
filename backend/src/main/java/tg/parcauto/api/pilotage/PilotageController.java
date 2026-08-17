@@ -27,6 +27,7 @@ public class PilotageController {
 
     private final PilotageService service;
     private final RapportService rapportService;
+    private final RapportPdfService rapportPdfService;
     private final NotificationService notificationService;
     private final EvolutionService evolutionService;
 
@@ -95,6 +96,43 @@ public class PilotageController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + type.nomFichier(debutRetenu, finRetenue) + "\"")
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .body(contenu);
+    }
+
+    /** Catalogue des rapports PDF, pour alimenter l'ecran Rapports. */
+    @GetMapping("/rapports-pdf")
+    @Operation(summary = "Catalogue des rapports editables en PDF")
+    public List<Map<String, Object>> rapportsPdf() {
+        return Arrays.stream(TypeRapportPdf.values())
+                .map(type -> Map.<String, Object>of(
+                        "valeur", type.name(),
+                        "libelle", type.getLibelle(),
+                        "description", type.getDescription(),
+                        "selectionCamions", type.isSelectionCamions()))
+                .toList();
+    }
+
+    /**
+     * Edition PDF d'un rapport (chapitre 35).
+     *
+     * @param camionIds selection facultative ; sans elle le rapport porte sur tout le parc
+     */
+    @GetMapping(value = "/rapports-pdf/{type}", produces = MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Telecharge un rapport au format PDF")
+    public ResponseEntity<byte[]> exporterPdf(
+            @PathVariable TypeRapportPdf type,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
+            @RequestParam(required = false) List<Long> camionIds) {
+        LocalDate finRetenue = fin == null ? LocalDate.now() : fin;
+        LocalDate debutRetenu = debut == null ? finRetenue.withDayOfMonth(1) : debut;
+
+        byte[] contenu = rapportPdfService.produire(type, debutRetenu, finRetenue,
+                camionIds == null ? List.of() : camionIds);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + type.nomFichier(debutRetenu, finRetenue) + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
                 .body(contenu);
     }
 }
