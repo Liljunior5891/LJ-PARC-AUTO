@@ -11,7 +11,8 @@ import { TableauBordService } from '../../core/services/tableau-bord.service';
 @Component({
   selector: 'app-vue-parc',
   imports: [FormsModule, RouterLink, DecimalPipe],
-  templateUrl: './vue-parc.html'
+  templateUrl: './vue-parc.html',
+  styleUrl: './vue-parc.scss'
 })
 export class VueParc implements OnInit {
   private readonly service = inject(TableauBordService);
@@ -81,5 +82,24 @@ export class VueParc implements OnInit {
 
   classeStatut(statut: StatutCamion): string {
     return 'etiquette ' + statut.toLowerCase();
+  }
+
+  /**
+   * Couleur du bloc selon le statut du camion : c'est elle qui rend la vue
+   * lisible d'un coup d'oeil. Elle reprend la legende de la carte du parc.
+   */
+  couleurStatut(statut: StatutCamion): string {
+    const couleurs: Record<StatutCamion, string> = {
+      DISPONIBLE: '#1e874b',
+      EN_MISSION: '#1565c0',
+      EN_LIVRAISON: '#1565c0',
+      EN_LOCATION: '#e07b00',
+      EN_MAINTENANCE: '#8455c8',
+      IMMOBILISE: '#c62828',
+      ACCIDENTE: '#c62828',
+      HORS_SERVICE: '#6b7684',
+      VENDU: '#6b7684'
+    };
+    return couleurs[statut];
   }
 }

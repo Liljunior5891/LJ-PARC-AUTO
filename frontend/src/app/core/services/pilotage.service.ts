@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  EvolutionMensuelle,
   FicheSynthese,
   Kpi,
   Notification,
@@ -24,6 +25,13 @@ export class PilotageService {
   synthese(camionId: number, debut?: string, fin?: string): Observable<FicheSynthese> {
     return this.http.get<FicheSynthese>(`${this.base}/camions/${camionId}/synthese`, {
       params: this.periode(debut, fin)
+    });
+  }
+
+  /** Serie mensuelle recettes / depenses (remarque 6). */
+  evolution(mois = 6): Observable<EvolutionMensuelle[]> {
+    return this.http.get<EvolutionMensuelle[]>(`${this.base}/evolution`, {
+      params: new HttpParams().set('mois', mois)
     });
   }
 

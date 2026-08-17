@@ -79,3 +79,33 @@ export interface RapportDisponible {
   valeur: string;
   libelle: string;
 }
+
+/** Point de la serie mensuelle recettes / depenses (remarque 6). */
+export interface EvolutionMensuelle {
+  mois: string;
+  moisLibelle: string;
+  annee: number;
+  recettes: number;
+  depenses: number;
+  resultat: number;
+}
+
+/**
+ * Palette categorielle des graphiques.
+ * Ordre fixe, jamais recycle : une categorie garde sa couleur quels que soient
+ * les filtres. Valide par scripts/validate_palette.js (bande de clarte, chroma,
+ * separation daltonisme, contraste).
+ */
+export const PALETTE_CATEGORIELLE = [
+  '#2178b8',
+  '#e07b00',
+  '#8455c8',
+  '#1e874b',
+  '#d94a4a',
+  '#0f9c9c',
+  '#a8791f'
+];
+
+/** Recettes et depenses : deux mesures opposees, deux teintes de la palette. */
+export const COULEUR_RECETTES = '#1e874b';
+export const COULEUR_DEPENSES = '#d94a4a';

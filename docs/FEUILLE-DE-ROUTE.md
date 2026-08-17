@@ -165,3 +165,33 @@ Corrections issues du fichier `les remarques.txt` :
 Les coordonnées de l'entreprise portées sur la facture se règlent par variables
 d'environnement : `ENTREPRISE_NOM`, `ENTREPRISE_ADRESSE`, `ENTREPRISE_TELEPHONE`,
 `ENTREPRISE_NIF`.
+
+
+## Deuxième série d'ajustements (17/08/2026)
+
+1. **Type et couleur en référentiels.** Tables `type_camion` (13 entrées) et
+   `couleur_camion` (12 entrées avec code hexadécimal), migration V7. Le libellé
+   libre reste accepté pour une valeur hors liste.
+2. **Listes déroulantes avec recherche.** Composant `app-select-recherche`, écrit
+   sans dépendance : filtre insensible aux accents, pastilles de couleur, logos de
+   marque. Il implémente `ControlValueAccessor`, donc s'utilise comme un champ
+   ordinaire (`formControlName` ou `ngModel`). Déployé sur les listes de données
+   (camion, chauffeur, marque, type, couleur, type de document) ; les listes de
+   statuts, courtes et fermées, restent des `select` natifs.
+3. **Création d'un chauffeur depuis l'affectation.** Formulaire réduit aux champs
+   indispensables ; le chauffeur créé est immédiatement sélectionné.
+4. **Garant du chauffeur.** Nom, lien, deux téléphones, adresse, profession et
+   pièce d'identité, plus le téléversement des dossiers du chauffeur et du garant
+   (trois types de documents dédiés).
+5. **Volet ODOMÈTRE** sur la fiche du camion, à côté de RECETTES et DÉPENSES.
+   Aucune table dédiée : les relevés proviennent des missions, des pleins, des
+   interventions et des trames GPS, avec la distance entre deux relevés.
+6. **Graphiques du tableau de bord.** Recettes / dépenses sur six mois (une seule
+   échelle, jamais deux axes) et répartition des dépenses par catégorie. La palette
+   catégorielle est validée par `scripts/validate_palette.js` du référentiel de
+   visualisation : bande de clarté, chroma, séparation daltonisme et contraste.
+   Chaque barre est directement étiquetée, l'ordre des couleurs est fixe.
+7. **Vue du parc en blocs.** Un bloc par camion — immatriculation, marque, modèle,
+   dernier kilométrage — dont le bandeau porte la couleur du statut. Les recettes,
+   dépenses et résultat du mois se dévoilent au survol ; sur écran tactile, où le
+   survol n'existe pas, ils restent visibles.

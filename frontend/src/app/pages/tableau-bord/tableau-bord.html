@@ -79,17 +79,17 @@
   @if (exploitation(); as e) {
     <h2 style="margin: 1.5rem 0 0.75rem">Exploitation</h2>
     <section class="grille-indicateurs">
-      <a class="carte indicateur info" routerLink="/locations">
+      <a class="carte indicateur info" routerLink="/vue-parc">
         <span class="libelle">Contrats actifs</span>
         <strong class="valeur">{{ e.contratsActifs }}</strong>
         <span class="detail">{{ e.contratsEcheance }} arrivent a echeance</span>
       </a>
-      <a class="carte indicateur" routerLink="/missions">
+      <a class="carte indicateur" routerLink="/vue-parc">
         <span class="libelle">Missions en cours</span>
         <strong class="valeur">{{ e.missionsEnCours }}</strong>
         <span class="detail">{{ e.missionsPlanifiees }} planifiees</span>
       </a>
-      <a class="carte indicateur alerte" routerLink="/livraisons">
+      <a class="carte indicateur alerte" routerLink="/vue-parc">
         <span class="libelle">Livraisons a effectuer</span>
         <strong class="valeur">{{ e.livraisonsEnAttente }}</strong>
         <span class="detail">{{ e.livraisonsLivrees }} livrees a ce jour</span>
@@ -102,6 +102,79 @@
     </section>
   }
 
+
+  <section class="deux-colonnes" style="margin-top: 1.5rem">
+    <!-- Depenses par rapport aux recettes, mois par mois : un seul axe, deux series. -->
+    <figure class="carte graphique">
+      <figcaption>
+        <h2>Recettes et depenses</h2>
+        <p class="sous-titre">Six derniers mois, en FCFA</p>
+      </figcaption>
+
+      <ul class="legende-graphique">
+        <li><span class="puce" [style.background]="couleurRecettes"></span> Recettes</li>
+        <li><span class="puce" [style.background]="couleurDepenses"></span> Depenses</li>
+      </ul>
+
+      <div class="colonnes-mois">
+        @for (point of evolution(); track point.mois) {
+          <div class="mois" [attr.title]="point.moisLibelle + ' ' + point.annee
+              + ' — recettes ' + point.recettes + ', depenses ' + point.depenses
+              + ', resultat ' + point.resultat">
+            <div class="paire-barres">
+              <div class="barre recette" [style.height.%]="hauteur(point.recettes)"
+                   [style.background]="couleurRecettes"></div>
+              <div class="barre depense" [style.height.%]="hauteur(point.depenses)"
+                   [style.background]="couleurDepenses"></div>
+            </div>
+            <span class="etiquette-mois">{{ point.moisLibelle }}</span>
+            <span class="resultat-mois" [class.resultat-negatif]="point.resultat < 0">
+              {{ point.resultat | number }}
+            </span>
+          </div>
+        } @empty {
+          <p class="message vide">Aucune donnee sur la periode.</p>
+        }
+      </div>
+      <p class="note-graphique">
+        Les deux series partagent la meme echelle. Le chiffre sous chaque mois est le resultat.
+      </p>
+    </figure>
+
+    <!-- Repartition des depenses par categorie : barres classees, chaque categorie etiquetee. -->
+    <figure class="carte graphique">
+      <figcaption>
+        <h2>Depenses par categorie</h2>
+        <p class="sous-titre">
+          Mois en cours — {{ totalDepensesCategories() | number }} FCFA
+        </p>
+      </figcaption>
+
+      <ul class="barres-categories">
+        @for (ligne of depensesParCategorie(); track ligne.categorie; let i = $index) {
+          <li>
+            <span class="nom-categorie">
+              <span class="puce" [style.background]="couleurCategorie(i)"></span>
+              {{ ligne.libelle }}
+            </span>
+            <span class="piste">
+              <span class="remplissage" [style.width.%]="partCategorie(ligne)"
+                    [style.background]="couleurCategorie(i)"></span>
+            </span>
+            <span class="valeur-categorie">
+              {{ ligne.total | number }}
+              <small>{{ partCategorie(ligne) }} %</small>
+            </span>
+          </li>
+        } @empty {
+          <li><p class="message vide">Aucune depense ce mois-ci.</p></li>
+        }
+      </ul>
+      <p class="note-graphique">
+        Les depenses refacturees au client sont exclues.
+      </p>
+    </figure>
+  </section>
   <section class="deux-colonnes">
     <div class="carte">
       <h2>Repartition du parc par statut</h2>

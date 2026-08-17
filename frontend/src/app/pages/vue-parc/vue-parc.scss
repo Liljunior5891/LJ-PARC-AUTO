@@ -1,0 +1,130 @@
+/* Vue du parc en blocs : un bloc par camion, colore selon son statut. */
+.grille-blocs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.bloc-camion {
+  position: relative;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: var(--rayon);
+  background: var(--couleur-surface);
+  box-shadow: var(--ombre);
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  /* Bandeau superieur aux couleurs du statut. */
+  &::before {
+    content: '';
+    display: block;
+    height: 6px;
+    background: var(--couleur-statut);
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(16, 24, 40, 0.14);
+  }
+}
+
+.lien-bloc {
+  display: block;
+  padding: 0.9rem 1rem 1rem;
+  color: inherit;
+}
+
+.bloc-camion header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.immatriculation {
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.statut {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--couleur-statut);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.modele {
+  margin: 0 0 0.7rem;
+  font-size: 0.82rem;
+  color: var(--couleur-texte-doux);
+}
+
+.infos {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+
+  div {
+    min-width: 0;
+  }
+
+  dt {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--couleur-texte-doux);
+  }
+
+  dd {
+    margin: 0.1rem 0 0;
+    font-weight: 600;
+    font-size: 0.88rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Les finances se devoilent au survol, sans deplacer le contenu du bloc. */
+.survol-finances {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed var(--couleur-bordure);
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.18s ease, opacity 0.18s ease, margin 0.18s ease, padding 0.18s ease;
+
+  span {
+    display: block;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--couleur-texte-doux);
+  }
+
+  strong {
+    font-size: 0.85rem;
+  }
+}
+
+.bloc-camion:hover .survol-finances,
+.bloc-camion:focus-within .survol-finances {
+  max-height: 120px;
+  opacity: 1;
+}
+
+/* Sur ecran tactile, le survol n'existe pas : les montants restent visibles. */
+@media (hover: none) {
+  .survol-finances {
+    max-height: 120px;
+    opacity: 1;
+  }
+}

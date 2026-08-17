@@ -28,6 +28,7 @@ public class PilotageController {
     private final PilotageService service;
     private final RapportService rapportService;
     private final NotificationService notificationService;
+    private final EvolutionService evolutionService;
 
     @GetMapping("/kpi")
     @Operation(summary = "Indicateurs de direction du chapitre 41")
@@ -47,6 +48,13 @@ public class PilotageController {
         LocalDate finRetenue = fin == null ? LocalDate.now() : fin;
         return service.ficheSynthese(camionId,
                 debut == null ? finRetenue.withDayOfMonth(1) : debut, finRetenue);
+    }
+
+    /** Serie mensuelle recettes / depenses / resultat, pour le tableau de bord. */
+    @GetMapping("/evolution")
+    @Operation(summary = "Evolution mensuelle des recettes et des depenses")
+    public List<EvolutionMensuelleDto> evolution(@RequestParam(defaultValue = "6") int mois) {
+        return evolutionService.evolution(mois);
     }
 
     @GetMapping("/notifications")

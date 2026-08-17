@@ -121,3 +121,151 @@
   padding-top: 0.75rem;
   margin: 0;
 }
+
+/* --------------------------- Graphiques du bord -------------------------- */
+.graphique {
+  margin: 0;
+
+  figcaption {
+    margin-bottom: 0.75rem;
+
+    h2 {
+      margin-bottom: 0.1rem;
+    }
+  }
+}
+
+.legende-graphique {
+  display: flex;
+  gap: 1rem;
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  font-size: 0.78rem;
+  color: var(--couleur-texte-doux);
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+}
+
+.puce {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+  flex: none;
+}
+
+/* Colonnes mensuelles : deux barres fines par mois, separees d un filet blanc. */
+.colonnes-mois {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  min-height: 190px;
+  padding-top: 0.5rem;
+
+  .mois {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .paire-barres {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 2px;
+    height: 150px;
+    width: 100%;
+  }
+
+  .barre {
+    width: 14px;
+    min-height: 2px;
+    border-radius: 4px 4px 0 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .mois:hover .barre {
+    opacity: 0.82;
+  }
+
+  .etiquette-mois {
+    font-size: 0.72rem;
+    color: var(--couleur-texte-doux);
+    text-transform: capitalize;
+  }
+
+  .resultat-mois {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--couleur-succes);
+  }
+}
+
+/* Barres horizontales classees, chacune directement etiquetee. */
+.barres-categories {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+
+  li {
+    display: grid;
+    grid-template-columns: 130px 1fr 110px;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.82rem;
+  }
+
+  .nom-categorie {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .piste {
+    height: 10px;
+    background: #eceff3;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .remplissage {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    min-width: 3px;
+  }
+
+  .valeur-categorie {
+    text-align: right;
+    font-weight: 600;
+
+    small {
+      display: block;
+      font-weight: 400;
+      font-size: 0.7rem;
+      color: var(--couleur-texte-doux);
+    }
+  }
+}
+
+.note-graphique {
+  margin: 1rem 0 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--couleur-bordure);
+  font-size: 0.74rem;
+  color: var(--couleur-texte-doux);
+}
