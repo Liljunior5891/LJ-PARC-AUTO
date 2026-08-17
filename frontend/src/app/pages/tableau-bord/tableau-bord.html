@@ -161,40 +161,30 @@
         <li><span class="puce" [style.background]="couleurDepenses"></span> Depenses</li>
       </ul>
 
-      <ul class="barres-camions">
+      <div class="colonnes-camions">
         @for (ligne of financesParCamion(); track ligne.camionId) {
-          <li [attr.title]="ligne.immatriculation
-              + ' — recettes ' + ligne.recettes
-              + ', depenses ' + ligne.depenses
-              + ', resultat ' + ligne.resultat">
-            <a class="nom-camion" [routerLink]="['/camions', ligne.camionId]">
-              {{ ligne.immatriculation }}
-              <small>{{ ligne.marque || 'Marque non renseignee' }}</small>
-            </a>
-            <span class="paire-pistes">
-              <span class="piste">
-                <span class="remplissage" [style.width.%]="largeurMontant(ligne.recettes)"
-                      [style.background]="couleurRecettes"></span>
-              </span>
-              <span class="piste">
-                <span class="remplissage" [style.width.%]="largeurMontant(ligne.depenses)"
-                      [style.background]="couleurDepenses"></span>
-              </span>
+          <a class="camion" [routerLink]="['/camions', ligne.camionId]"
+             [attr.title]="ligne.immatriculation
+                 + ' — recettes ' + ligne.recettes
+                 + ', depenses ' + ligne.depenses
+                 + ', resultat ' + ligne.resultat">
+            <span class="paire-barres">
+              <span class="barre" [style.height.%]="hauteurMontant(ligne.recettes)"
+                    [style.background]="couleurRecettes"></span>
+              <span class="barre" [style.height.%]="hauteurMontant(ligne.depenses)"
+                    [style.background]="couleurDepenses"></span>
             </span>
-            <span class="valeurs-camion">
-              <span>{{ ligne.recettes | number }}</span>
-              <span>{{ ligne.depenses | number }}</span>
-              <strong [class.resultat-negatif]="ligne.resultat < 0">
-                {{ ligne.resultat | number }}
-              </strong>
+            <span class="etiquette-camion">{{ ligne.immatriculation }}</span>
+            <span class="valeur-colonne" [class.resultat-negatif]="ligne.resultat < 0">
+              {{ ligne.resultat | number }}
             </span>
-          </li>
+          </a>
         } @empty {
-          <li><p class="message vide">Aucun mouvement enregistre ce mois-ci.</p></li>
+          <p class="message vide">Aucun mouvement enregistre ce mois-ci.</p>
         }
-      </ul>
+      </div>
       <p class="note-graphique">
-        Les deux series partagent la meme echelle. Le chiffre en gras est le resultat du camion.
+        Les deux series partagent la meme echelle. Le chiffre sous chaque camion est son resultat.
       </p>
     </figure>
 
@@ -207,27 +197,22 @@
         </p>
       </figcaption>
 
-      <ul class="barres-camions kilometres">
+      <div class="colonnes-camions">
         @for (ligne of kilometresParCamion(); track ligne.camionId) {
-          <li [attr.title]="ligne.immatriculation + ' — ' + ligne.distanceKm + ' km, '
-              + ligne.nombreMissions + ' mission(s)'">
-            <a class="nom-camion" [routerLink]="['/camions', ligne.camionId]">
-              {{ ligne.immatriculation }}
-              <small>{{ ligne.statutLibelle }}</small>
-            </a>
-            <span class="piste">
-              <span class="remplissage" [style.width.%]="largeurKilometres(ligne.distanceKm)"
+          <a class="camion" [routerLink]="['/camions', ligne.camionId]"
+             [attr.title]="ligne.immatriculation + ' — ' + ligne.distanceKm + ' km, '
+                 + ligne.nombreMissions + ' mission(s)'">
+            <span class="paire-barres">
+              <span class="barre" [style.height.%]="hauteurKilometres(ligne.distanceKm)"
                     [style.background]="couleurKilometres"></span>
             </span>
-            <span class="valeurs-camion">
-              <strong>{{ ligne.distanceKm | number }} km</strong>
-              <span>{{ ligne.nombreMissions }} mission(s)</span>
-            </span>
-          </li>
+            <span class="etiquette-camion">{{ ligne.immatriculation }}</span>
+            <span class="valeur-colonne">{{ ligne.distanceKm | number }} km</span>
+          </a>
         } @empty {
-          <li><p class="message vide">Aucun kilometre enregistre ce mois-ci.</p></li>
+          <p class="message vide">Aucun kilometre enregistre ce mois-ci.</p>
         }
-      </ul>
+      </div>
       <p class="note-graphique">
         Distance calculee sur les releves du compteur : missions, pleins et entretiens.
       </p>

@@ -115,18 +115,18 @@ export class TableauBord implements OnInit {
   }
 
   /**
-   * Largeur de barre, en pourcentage du plus gros montant de la comparaison.
+   * Hauteur de colonne, en pourcentage du plus gros montant de la comparaison.
    * Une valeur nulle ne dessine rien ; une valeur faible garde un trait visible.
    */
-  largeurMontant(valeur: number): number {
-    return this.largeur(valeur, this.maximumParCamion());
+  hauteurMontant(valeur: number): number {
+    return this.part(valeur, this.maximumParCamion());
   }
 
-  largeurKilometres(valeur: number): number {
-    return this.largeur(valeur, this.maximumKilometres());
+  hauteurKilometres(valeur: number): number {
+    return this.part(valeur, this.maximumKilometres());
   }
 
-  private largeur(valeur: number, maximum: number): number {
+  private part(valeur: number, maximum: number): number {
     if (valeur <= 0) {
       return 0;
     }

@@ -175,6 +175,11 @@
     font-weight: 600;
     color: var(--couleur-succes);
   }
+
+  /* Sans ce rappel, le vert ci-dessus l'emportait sur la regle globale. */
+  .resultat-mois.resultat-negatif {
+    color: var(--couleur-danger);
+  }
 }
 
 /* Barres horizontales classees, chacune directement etiquetee. */
@@ -230,75 +235,69 @@
   }
 }
 
-/* Comparaison camion par camion : une ligne par camion, barres classees. */
-.barres-camions {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* Colonnes par camion : meme lecture que les colonnes mensuelles, camions en abscisse. */
+.colonnes-camions {
   display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
+  align-items: flex-end;
+  gap: 0.75rem;
+  min-height: 190px;
+  padding-top: 0.5rem;
+  /* Au-dela d'une dizaine de camions, la comparaison defile au lieu de s'ecraser. */
+  overflow-x: auto;
 
-  li {
-    display: grid;
-    grid-template-columns: 115px 1fr 105px;
+  .camion {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.6rem;
-    font-size: 0.82rem;
-  }
-
-  .nom-camion {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    font-weight: 600;
+    gap: 0.3rem;
+    flex: 1 0 58px;
+    min-width: 0;
     color: inherit;
-
-    small {
-      font-weight: 400;
-      font-size: 0.7rem;
-      color: var(--couleur-texte-doux);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
   }
 
-  /* Les deux barres d'un meme camion, separees par un filet de fond. */
-  .paire-pistes {
+  .paire-barres {
     display: flex;
-    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
     gap: 2px;
+    height: 150px;
+    width: 100%;
   }
 
-  .piste {
-    height: 9px;
-    background: #eceff3;
-    border-radius: 999px;
+  /* Aucune hauteur minimale : un camion sans mouvement ne dessine pas de colonne. */
+  .barre {
+    width: 14px;
+    border-radius: 4px 4px 0 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .camion:hover .barre {
+    opacity: 0.82;
+  }
+
+  .etiquette-camion {
+    font-size: 0.72rem;
+    font-weight: 600;
+    max-width: 100%;
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  /* Pas de largeur minimale : un camion sans mouvement ne dessine aucune barre. */
-  .remplissage {
-    display: block;
-    height: 100%;
-    border-radius: 999px;
+  .valeur-colonne {
+    font-size: 0.72rem;
+    color: var(--couleur-texte-doux);
   }
 
-  .valeurs-camion {
-    display: flex;
-    flex-direction: column;
-    text-align: right;
-    line-height: 1.35;
+  /* La regle globale est moins specifique : le rouge doit la reprendre ici. */
+  .valeur-colonne.resultat-negatif {
+    color: var(--couleur-danger);
+    font-weight: 600;
+  }
 
-    span {
-      font-size: 0.73rem;
-      color: var(--couleur-texte-doux);
-    }
-
-    strong {
-      font-size: 0.8rem;
-    }
+  .message.vide {
+    flex: 1;
+    margin: 0;
   }
 }
 
