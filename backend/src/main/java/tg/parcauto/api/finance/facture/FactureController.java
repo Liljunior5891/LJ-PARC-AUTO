@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/factures")
@@ -34,7 +35,6 @@ import java.util.List;
 @Tag(name = "Facturation et paiements")
 public class FactureController {
 
-    private static final String GESTION = "hasAnyRole('ADMIN','COMPTABLE')";
 
     private final FactureService service;
     private final FacturePdfService pdfService;
@@ -81,7 +81,7 @@ public class FactureController {
     }
 
     @PostMapping
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Cree une facture en brouillon")
     public FactureDto.Reponse creer(@Valid @RequestBody FactureDto.Requete requete) {
@@ -89,7 +89,7 @@ public class FactureController {
     }
 
     @PostMapping("/depuis-contrat")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Genere une facture a partir d'un contrat de location")
     public FactureDto.Reponse depuisContrat(@Valid @RequestBody FactureDto.DepuisContrat requete) {
@@ -97,7 +97,7 @@ public class FactureController {
     }
 
     @PostMapping("/depuis-mission")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Genere une facture a partir d'une mission terminee")
     public FactureDto.Reponse depuisMission(@Valid @RequestBody FactureDto.DepuisMission requete) {
@@ -105,21 +105,21 @@ public class FactureController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Met a jour une facture en brouillon")
     public FactureDto.Reponse modifier(@PathVariable Long id, @Valid @RequestBody FactureDto.Requete requete) {
         return service.modifier(id, requete);
     }
 
     @PatchMapping("/{id}/emission")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Emet la facture et enregistre les recettes par camion")
     public FactureDto.Reponse emettre(@PathVariable Long id) {
         return service.emettre(id);
     }
 
     @PostMapping("/{id}/paiements")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Enregistre un reglement")
     public FactureDto.Reponse payer(@PathVariable Long id,
@@ -128,14 +128,14 @@ public class FactureController {
     }
 
     @PatchMapping("/{id}/annulation")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Annule une facture sans reglement")
     public FactureDto.Reponse annuler(@PathVariable Long id, @RequestParam(required = false) String motif) {
         return service.annuler(id, motif);
     }
 
     @PatchMapping("/retards")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Bascule en retard les factures echues non soldees")
     public int marquerRetards() {
         return service.marquerRetards();

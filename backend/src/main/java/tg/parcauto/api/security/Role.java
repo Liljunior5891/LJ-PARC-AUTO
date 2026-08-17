@@ -1,20 +1,27 @@
 package tg.parcauto.api.security;
 
-/** Profils utilisateurs definis au chapitre 40 du cahier des charges. */
+/**
+ * Profils utilisateurs de l'application.
+ * <p>
+ * Deux profils suffisent a l'exploitation : l'administrateur, qui gere en plus
+ * les comptes, et le gestionnaire de parc, qui conduit l'activite au quotidien.
+ */
 public enum Role {
 
-    /** Acces complet. */
-    ADMIN,
-    /** Tableaux de bord, finances, rentabilite, GPS, rapports. */
-    DIRECTION,
-    /** Camions, chauffeurs, missions, maintenance, GPS. */
-    GESTIONNAIRE_PARC,
-    /** Recettes, depenses, factures, paiements. */
-    COMPTABLE,
-    /** Missions, locations, chauffeurs, camions. */
-    LOGISTIQUE,
-    /** Application mobile et missions personnelles. */
-    CHAUFFEUR;
+    /** Acces complet, y compris la gestion des utilisateurs. */
+    ADMIN("Administrateur"),
+    /** Camions, chauffeurs, exploitation, finances, GPS et maintenance. */
+    GESTIONNAIRE_PARC("Gestionnaire de parc");
+
+    private final String libelle;
+
+    Role(String libelle) {
+        this.libelle = libelle;
+    }
+
+    public String getLibelle() {
+        return libelle;
+    }
 
     public String authority() {
         return "ROLE_" + name();

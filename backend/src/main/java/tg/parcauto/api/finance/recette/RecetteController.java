@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/recettes")
@@ -31,7 +32,6 @@ import java.util.List;
 @Tag(name = "Recettes")
 public class RecetteController {
 
-    private static final String GESTION = "hasAnyRole('ADMIN','COMPTABLE','LOGISTIQUE')";
 
     private final RecetteService service;
 
@@ -64,7 +64,7 @@ public class RecetteController {
     }
 
     @PostMapping
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Enregistre une recette rattachee a un camion")
     public RecetteDto.Reponse creer(@Valid @RequestBody RecetteDto.Requete requete) {
@@ -72,14 +72,14 @@ public class RecetteController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Met a jour une recette")
     public RecetteDto.Reponse modifier(@PathVariable Long id, @Valid @RequestBody RecetteDto.Requete requete) {
         return service.modifier(id, requete);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','COMPTABLE')")
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Supprime une recette non facturee")
     public void supprimer(@PathVariable Long id) {

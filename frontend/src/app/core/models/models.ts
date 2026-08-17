@@ -10,13 +10,7 @@ export interface Page<T> {
   last: boolean;
 }
 
-export type Role =
-  | 'ADMIN'
-  | 'DIRECTION'
-  | 'GESTIONNAIRE_PARC'
-  | 'COMPTABLE'
-  | 'LOGISTIQUE'
-  | 'CHAUFFEUR';
+export type Role = 'ADMIN' | 'GESTIONNAIRE_PARC';
 
 export interface UtilisateurCourant {
   id: number;

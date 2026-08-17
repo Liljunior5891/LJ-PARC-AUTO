@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/chauffeurs")
@@ -29,7 +30,6 @@ import java.util.List;
 @Tag(name = "Chauffeurs")
 public class ChauffeurController {
 
-    private static final String GESTION = "hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE')";
 
     private final ChauffeurService service;
 
@@ -56,7 +56,7 @@ public class ChauffeurController {
     }
 
     @PostMapping
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Cree un chauffeur")
     public ChauffeurDto.Reponse creer(@Valid @RequestBody ChauffeurDto.Requete requete) {
@@ -64,14 +64,14 @@ public class ChauffeurController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Met a jour la fiche d'un chauffeur")
     public ChauffeurDto.Reponse modifier(@PathVariable Long id, @Valid @RequestBody ChauffeurDto.Requete requete) {
         return service.modifier(id, requete);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC')")
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Archive un chauffeur (suppression logique)")
     public void archiver(@PathVariable Long id) {

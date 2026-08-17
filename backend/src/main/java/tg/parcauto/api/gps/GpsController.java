@@ -20,6 +20,7 @@ import tg.parcauto.api.gps.position.PositionGpsDto;
 
 import java.time.Instant;
 import java.util.List;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/gps")
@@ -36,7 +37,7 @@ public class GpsController {
      * utile est traduite par l'adaptateur correspondant (chapitre 22).
      */
     @PostMapping("/positions/{fournisseur}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC')")
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.ACCEPTED)
     @Operation(summary = "Recoit les positions d'un fournisseur de traceurs")
     public int ingerer(@PathVariable String fournisseur, @RequestBody JsonNode charge) {

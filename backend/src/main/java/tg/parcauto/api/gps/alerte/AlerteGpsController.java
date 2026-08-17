@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/gps/alertes")
@@ -44,7 +45,7 @@ public class AlerteGpsController {
     }
 
     @PatchMapping("/{id}/traitement")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE','DIRECTION')")
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Marque une alerte comme traitee")
     public AlerteGpsDto.Reponse traiter(@PathVariable Long id) {
         return service.traiter(id);

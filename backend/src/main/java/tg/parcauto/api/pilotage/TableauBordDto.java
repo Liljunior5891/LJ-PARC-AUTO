@@ -41,17 +41,4 @@ public final class TableauBordDto {
             java.math.BigDecimal recetteMoyenneParCamion,
             java.math.BigDecimal depenseMoyenneParCamion) {
     }
-
-    /** Indicateurs d'exploitation du chapitre 4.1 (volet locations et missions). */
-    public record Exploitation(
-            long clientsActifs,
-            long contratsActifs,
-            long contratsEnAttente,
-            long contratsEcheance,
-            long missionsEnCours,
-            long missionsPlanifiees,
-            long livraisonsEnAttente,
-            long livraisonsLivrees,
-            long tauxUtilisationPourcent) {
-    }
 }

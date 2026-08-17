@@ -65,9 +65,14 @@ export class AuthService {
     return roles.some((role) => courant.roles.includes(role));
   }
 
-  /** Roles autorises a modifier le parc (camions, chauffeurs, affectations, documents). */
+  /** Profils autorises a conduire l'activite : tout sauf la gestion des comptes. */
   peutGererParc(): boolean {
-    return this.aRole('ADMIN', 'GESTIONNAIRE_PARC', 'LOGISTIQUE');
+    return this.aRole('ADMIN', 'GESTIONNAIRE_PARC');
+  }
+
+  /** Seul l'administrateur gere les comptes utilisateurs. */
+  estAdmin(): boolean {
+    return this.aRole('ADMIN');
   }
 
   /**

@@ -63,7 +63,7 @@ export class Depenses implements OnInit {
   fin = this.aujourdhui();
   private pageCourante = 0;
 
-  readonly peutGerer = this.auth.aRole('ADMIN', 'COMPTABLE', 'GESTIONNAIRE_PARC', 'LOGISTIQUE');
+  readonly peutGerer = this.auth.peutGererParc();
 
   readonly formulaire = this.fb.nonNullable.group({
     camionId: [null as number | null, [Validators.required]],

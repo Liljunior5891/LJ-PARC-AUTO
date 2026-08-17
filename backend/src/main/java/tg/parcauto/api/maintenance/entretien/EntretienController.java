@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/entretiens")
@@ -25,7 +26,6 @@ import java.util.List;
 @Tag(name = "Maintenance")
 public class EntretienController {
 
-    private static final String GESTION = "hasAnyRole('ADMIN','GESTIONNAIRE_PARC')";
 
     private final EntretienService service;
 
@@ -54,7 +54,7 @@ public class EntretienController {
     }
 
     @PostMapping
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Planifie une intervention")
     public EntretienDto.Reponse planifier(@Valid @RequestBody EntretienDto.Requete requete) {
@@ -62,7 +62,7 @@ public class EntretienController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Met a jour une intervention non close")
     public EntretienDto.Reponse modifier(@PathVariable Long id,
                                          @Valid @RequestBody EntretienDto.Requete requete) {
@@ -70,14 +70,14 @@ public class EntretienController {
     }
 
     @PatchMapping("/{id}/demarrage")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Passe le camion a l'atelier")
     public EntretienDto.Reponse demarrer(@PathVariable Long id) {
         return service.demarrer(id);
     }
 
     @PatchMapping("/{id}/realisation")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Cloture l'intervention, enregistre la depense et planifie la suivante")
     public EntretienDto.Reponse realiser(@PathVariable Long id,
                                          @Valid @RequestBody EntretienDto.Realisation realisation) {
@@ -85,7 +85,7 @@ public class EntretienController {
     }
 
     @PatchMapping("/{id}/annulation")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Annule l'intervention")
     public EntretienDto.Reponse annuler(@PathVariable Long id,
                                         @RequestParam(required = false) String motif) {

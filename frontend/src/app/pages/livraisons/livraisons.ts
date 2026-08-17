@@ -53,8 +53,8 @@ export class Livraisons implements OnInit {
   photoUrl = '';
   motifRefus = '';
 
-  readonly peutGerer = this.auth.aRole('ADMIN', 'LOGISTIQUE', 'GESTIONNAIRE_PARC');
-  readonly peutConfirmer = this.auth.aRole('ADMIN', 'LOGISTIQUE', 'GESTIONNAIRE_PARC', 'CHAUFFEUR');
+  readonly peutGerer = this.auth.peutGererParc();
+  readonly peutConfirmer = this.auth.peutGererParc();
 
   readonly formulaire = this.fb.nonNullable.group({
     missionId: [null as number | null],

@@ -46,7 +46,7 @@ export class LocationFiche implements OnInit {
   kilometrageReel: number | null = null;
   observationsCloture = '';
 
-  readonly peutGerer = this.auth.aRole('ADMIN', 'LOGISTIQUE', 'GESTIONNAIRE_PARC');
+  readonly peutGerer = this.auth.peutGererParc();
 
   readonly formulaire = this.fb.nonNullable.group({
     clientId: [null as number | null, [Validators.required]],

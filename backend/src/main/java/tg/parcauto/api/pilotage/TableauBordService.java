@@ -3,15 +3,10 @@ package tg.parcauto.api.pilotage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tg.parcauto.api.exploitation.client.ClientRepository;
-import tg.parcauto.api.exploitation.livraison.LivraisonRepository;
-import tg.parcauto.api.exploitation.livraison.StatutLivraison;
 import tg.parcauto.api.exploitation.location.Location;
 import tg.parcauto.api.exploitation.location.LocationRepository;
-import tg.parcauto.api.exploitation.location.StatutLocation;
 import tg.parcauto.api.exploitation.mission.Mission;
 import tg.parcauto.api.exploitation.mission.MissionRepository;
-import tg.parcauto.api.exploitation.mission.StatutMission;
 import tg.parcauto.api.finance.facture.FactureService;
 import tg.parcauto.api.finance.facture.PaiementRepository;
 import tg.parcauto.api.finance.rentabilite.RentabiliteService;
@@ -45,10 +40,8 @@ public class TableauBordService {
     private final ChauffeurRepository chauffeurRepository;
     private final AffectationRepository affectationRepository;
     private final DocumentService documentService;
-    private final ClientRepository clientRepository;
     private final LocationRepository locationRepository;
     private final MissionRepository missionRepository;
-    private final LivraisonRepository livraisonRepository;
     private final RentabiliteService rentabiliteService;
     private final FactureService factureService;
     private final PaiementRepository paiementRepository;
@@ -75,29 +68,6 @@ public class TableauBordService {
                 documents.size() - expires,
                 expires,
                 chauffeurService.permisAExpirer(joursAlerte).size());
-    }
-
-    public TableauBordDto.Exploitation exploitation(int joursEcheance) {
-        Map<StatutCamion, Long> repartition = camionService.repartitionParStatut();
-        long total = repartition.values().stream().mapToLong(Long::longValue).sum();
-        long enLocation = repartition.getOrDefault(StatutCamion.EN_LOCATION, 0L);
-        long enMission = repartition.getOrDefault(StatutCamion.EN_MISSION, 0L)
-                + repartition.getOrDefault(StatutCamion.EN_LIVRAISON, 0L);
-
-        // Taux d'utilisation : part du parc actuellement engagee aupres d'un client.
-        long tauxUtilisation = total == 0 ? 0 : Math.round((enLocation + enMission) * 100.0 / total);
-
-        return new TableauBordDto.Exploitation(
-                clientRepository.countByActifTrue(),
-                locationRepository.countByStatut(StatutLocation.ACTIVE),
-                locationRepository.countByStatut(StatutLocation.EN_ATTENTE),
-                locationRepository.actifsExpirantAvant(LocalDate.now().plusDays(joursEcheance)).size(),
-                missionRepository.countByStatut(StatutMission.EN_COURS),
-                missionRepository.countByStatut(StatutMission.PLANIFIEE),
-                livraisonRepository.countByStatutIn(
-                        List.of(StatutLivraison.PLANIFIEE, StatutLivraison.EN_COURS)),
-                livraisonRepository.countByStatut(StatutLivraison.LIVREE),
-                tauxUtilisation);
     }
 
     /** Indicateurs financiers du chapitre 4.2, sur la periode demandee. */

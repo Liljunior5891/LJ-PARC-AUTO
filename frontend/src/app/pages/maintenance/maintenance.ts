@@ -56,8 +56,8 @@ export class Maintenance implements OnInit {
   readonly pneusARemplacer = computed(() => this.pneus().filter((p) => p.aRemplacer));
   readonly incidentsOuverts = computed(() => this.incidents().filter((i) => i.ouvert));
 
-  readonly peutGerer = this.auth.aRole('ADMIN', 'GESTIONNAIRE_PARC');
-  readonly peutDeclarer = this.auth.aRole('ADMIN', 'GESTIONNAIRE_PARC', 'LOGISTIQUE', 'CHAUFFEUR');
+  readonly peutGerer = this.auth.peutGererParc();
+  readonly peutDeclarer = this.auth.peutGererParc();
 
   readonly formEntretien = this.fb.nonNullable.group({
     camionId: [null as number | null, [Validators.required]],

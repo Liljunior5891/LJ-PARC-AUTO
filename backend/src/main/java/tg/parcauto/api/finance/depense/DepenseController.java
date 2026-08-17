@@ -26,6 +26,7 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/depenses")
@@ -33,7 +34,6 @@ import java.util.Map;
 @Tag(name = "Depenses")
 public class DepenseController {
 
-    private static final String GESTION = "hasAnyRole('ADMIN','COMPTABLE','GESTIONNAIRE_PARC','LOGISTIQUE')";
 
     private final DepenseService service;
 
@@ -89,7 +89,7 @@ public class DepenseController {
     }
 
     @PostMapping
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Enregistre une depense rattachee a un camion")
     public DepenseDto.Reponse creer(@Valid @RequestBody DepenseDto.Requete requete) {
@@ -97,14 +97,14 @@ public class DepenseController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Met a jour une depense")
     public DepenseDto.Reponse modifier(@PathVariable Long id, @Valid @RequestBody DepenseDto.Requete requete) {
         return service.modifier(id, requete);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','COMPTABLE')")
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Supprime une depense")
     public void supprimer(@PathVariable Long id) {

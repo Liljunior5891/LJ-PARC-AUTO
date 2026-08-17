@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/gps/zones")
@@ -25,7 +26,6 @@ import java.util.List;
 @Tag(name = "Geofencing")
 public class ZoneGeofenceController {
 
-    private static final String GESTION = "hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE')";
 
     private final ZoneGeofenceService service;
 
@@ -42,7 +42,7 @@ public class ZoneGeofenceController {
     }
 
     @PostMapping
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Cree une zone surveillee")
     public ZoneGeofenceDto.Reponse creer(@Valid @RequestBody ZoneGeofenceDto.Requete requete) {
@@ -50,7 +50,7 @@ public class ZoneGeofenceController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Met a jour une zone")
     public ZoneGeofenceDto.Reponse modifier(@PathVariable Long id,
                                             @Valid @RequestBody ZoneGeofenceDto.Requete requete) {
@@ -58,7 +58,7 @@ public class ZoneGeofenceController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Desactive une zone")
     public void desactiver(@PathVariable Long id) {

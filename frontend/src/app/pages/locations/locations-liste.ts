@@ -34,7 +34,7 @@ export class LocationsListe implements OnInit {
   type: TypeLocation | '' = '';
   private pageCourante = 0;
 
-  readonly peutGerer = this.auth.aRole('ADMIN', 'LOGISTIQUE', 'GESTIONNAIRE_PARC');
+  readonly peutGerer = this.auth.peutGererParc();
 
   ngOnInit(): void {
     this.charger();

@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/affectations")
@@ -30,7 +31,6 @@ import java.util.List;
 @Tag(name = "Affectations chauffeur / camion")
 public class AffectationController {
 
-    private static final String GESTION = "hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE')";
 
     private final AffectationService service;
 
@@ -63,7 +63,7 @@ public class AffectationController {
     }
 
     @PostMapping
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Affecte un chauffeur a un camion")
     public AffectationDto.Reponse affecter(@Valid @RequestBody AffectationDto.Requete requete) {
@@ -71,7 +71,7 @@ public class AffectationController {
     }
 
     @PatchMapping("/{id}/cloture")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Cloture une affectation en cours")
     public AffectationDto.Reponse cloturer(@PathVariable Long id,
                                            @Valid @RequestBody AffectationDto.Cloture cloture) {
@@ -79,7 +79,7 @@ public class AffectationController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC')")
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Supprime une affectation future non commencee")
     public void supprimer(@PathVariable Long id) {

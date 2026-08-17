@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/documents")
@@ -34,7 +35,6 @@ import java.util.List;
 @Tag(name = "Documents")
 public class DocumentController {
 
-    private static final String GESTION = "hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE')";
 
     private final DocumentService service;
 
@@ -74,7 +74,7 @@ public class DocumentController {
     }
 
     @PostMapping(consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Enregistre un document avec justificatif optionnel")
     public DocumentDto.Reponse creer(@Valid @RequestPart("document") DocumentDto.Requete requete,
@@ -83,7 +83,7 @@ public class DocumentController {
     }
 
     @PutMapping(value = "/{id}", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Met a jour un document")
     public DocumentDto.Reponse modifier(@PathVariable Long id,
                                         @Valid @RequestPart("document") DocumentDto.Requete requete,
@@ -92,7 +92,7 @@ public class DocumentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Archive un document")
     public void archiver(@PathVariable Long id) {

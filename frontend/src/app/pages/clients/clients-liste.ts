@@ -25,7 +25,7 @@ export class ClientsListe implements OnInit {
   masquerArchives = true;
   private pageCourante = 0;
 
-  readonly peutGerer = this.auth.aRole('ADMIN', 'LOGISTIQUE', 'COMPTABLE');
+  readonly peutGerer = this.auth.peutGererParc();
 
   ngOnInit(): void {
     this.charger();

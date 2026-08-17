@@ -24,12 +24,6 @@ public class TableauBordController {
         return service.parc(joursAlerte);
     }
 
-    @GetMapping("/exploitation")
-    @Operation(summary = "Indicateurs d'exploitation : contrats, missions, livraisons")
-    public TableauBordDto.Exploitation exploitation(@RequestParam(defaultValue = "15") int joursEcheance) {
-        return service.exploitation(joursEcheance);
-    }
-
     @GetMapping("/finances")
     @Operation(summary = "Indicateurs financiers : chiffre d'affaires, depenses, resultat, creances")
     public TableauBordDto.Finances finances(

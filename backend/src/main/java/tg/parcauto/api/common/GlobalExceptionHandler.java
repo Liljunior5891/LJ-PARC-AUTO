@@ -59,6 +59,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Une URL inconnue est une erreur du client, pas une panne : sans ce cas
+     * particulier, le filet de securite ci-dessous la presenterait en 500.
+     */
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleCheminInconnu(
+            org.springframework.web.servlet.resource.NoResourceFoundException ex,
+            HttpServletRequest req) {
+        return build(HttpStatus.NOT_FOUND, "Ressource introuvable : " + req.getRequestURI(), req, null);
+    }
+
+    /**
      * Filet de securite : sans lui, une erreur technique survenue dans un controleur
      * remonte la chaine de filtres et se presente au client en 403, ce qui masque la cause.
      */

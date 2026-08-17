@@ -39,8 +39,8 @@ export class MissionsListe implements OnInit {
   type: TypeMission | '' = '';
   private pageCourante = 0;
 
-  readonly peutPiloter = this.auth.aRole('ADMIN', 'LOGISTIQUE', 'GESTIONNAIRE_PARC', 'CHAUFFEUR');
-  readonly peutGerer = this.auth.aRole('ADMIN', 'LOGISTIQUE', 'GESTIONNAIRE_PARC');
+  readonly peutPiloter = this.auth.peutGererParc();
+  readonly peutGerer = this.auth.peutGererParc();
 
   ngOnInit(): void {
     this.charger();

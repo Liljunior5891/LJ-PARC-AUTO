@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/camions")
@@ -32,7 +33,6 @@ import java.util.Map;
 public class CamionController {
 
     /** Roles autorises a modifier le parc. */
-    private static final String GESTION = "hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE')";
 
     private final CamionService service;
     private final OdometreService odometreService;
@@ -96,7 +96,7 @@ public class CamionController {
     }
 
     @PostMapping
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Cree un camion")
     public CamionDto.Reponse creer(@Valid @RequestBody CamionDto.Requete requete) {
@@ -104,14 +104,14 @@ public class CamionController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Met a jour la fiche d'un camion")
     public CamionDto.Reponse modifier(@PathVariable Long id, @Valid @RequestBody CamionDto.Requete requete) {
         return service.modifier(id, requete);
     }
 
     @PatchMapping("/{id}/kilometrage")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE','CHAUFFEUR')")
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Met a jour le compteur kilometrique")
     public CamionDto.Reponse majKilometrage(@PathVariable Long id,
                                             @Valid @RequestBody CamionDto.MajKilometrage requete) {
@@ -119,14 +119,14 @@ public class CamionController {
     }
 
     @PatchMapping("/{id}/statut")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Change le statut d'exploitation du camion")
     public CamionDto.Reponse majStatut(@PathVariable Long id, @RequestBody CamionDto.MajStatut requete) {
         return service.majStatut(id, requete.statut());
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC')")
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Archive un camion (suppression logique)")
     public void archiver(@PathVariable Long id) {

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/incidents")
@@ -48,7 +49,7 @@ public class IncidentController {
 
     /** Le chauffeur declare depuis l'application mobile (chapitres 32 et 33). */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE','CHAUFFEUR')")
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Declare un incident et notifie le responsable")
     public IncidentDto.Reponse declarer(@Valid @RequestBody IncidentDto.Requete requete) {
@@ -56,7 +57,7 @@ public class IncidentController {
     }
 
     @PatchMapping("/{id}/traitement")
-    @PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE')")
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Fait avancer le traitement et libere le camion s'il est resolu")
     public IncidentDto.Reponse traiter(@PathVariable Long id,
                                        @Valid @RequestBody IncidentDto.Traitement traitement) {

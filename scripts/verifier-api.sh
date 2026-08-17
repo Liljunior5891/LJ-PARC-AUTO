@@ -52,7 +52,6 @@ verifier "historique affectations"   "affectations?page=0&size=20"
 verifier "liste documents"           "documents?page=0&size=20"
 verifier "alertes documents"         "documents/alertes/expiration?jours=30"
 verifier "tableau de bord parc"      "tableau-bord/parc"
-verifier "indicateurs exploitation"  "tableau-bord/exploitation"
 verifier "vue globale du parc"       "tableau-bord/vue-parc"
 verifier "liste clients"             "clients?page=0&size=20"
 verifier "recherche clients"         "clients?q=a&actif=true"
@@ -111,6 +110,12 @@ verifier "rapports disponibles"      "pilotage/rapports"
 verifier "export rapport financier"  "pilotage/rapports/FINANCIER?$PERIODE"
 verifier "export rentabilite"        "pilotage/rapports/RENTABILITE_CAMIONS?$PERIODE"
 verifier "export etat du parc"       "pilotage/rapports/PARC?$PERIODE"
+
+# Comptes utilisateurs (chapitre 40).
+verifier "profils utilisateurs"      "utilisateurs/profils"
+verifier "liste des utilisateurs"    "utilisateurs"
+verifier "utilisateurs actifs"       "utilisateurs?actif=true"
+verifier "utilisateurs par profil"   "utilisateurs?role=ADMIN"
 
 # Les neuf rapports PDF du chapitre 35.
 verifier "catalogue des rapports PDF" "pilotage/rapports-pdf"

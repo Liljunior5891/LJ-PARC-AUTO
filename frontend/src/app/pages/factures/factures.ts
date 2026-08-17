@@ -56,7 +56,7 @@ export class Factures implements OnInit {
   modePaiement: ModePaiement = 'VIREMENT';
   referencePaiement = '';
 
-  readonly peutGerer = this.auth.aRole('ADMIN', 'COMPTABLE');
+  readonly peutGerer = this.auth.peutGererParc();
 
   ngOnInit(): void {
     this.charger();

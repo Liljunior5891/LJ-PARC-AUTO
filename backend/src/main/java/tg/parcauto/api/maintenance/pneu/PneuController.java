@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import tg.parcauto.api.security.Autorisations;
 
 @RestController
 @RequestMapping("/api/pneus")
@@ -24,7 +25,6 @@ import java.util.List;
 @Tag(name = "Pneumatiques")
 public class PneuController {
 
-    private static final String GESTION = "hasAnyRole('ADMIN','GESTIONNAIRE_PARC')";
 
     private final PneuService service;
 
@@ -53,7 +53,7 @@ public class PneuController {
     }
 
     @PostMapping
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Enregistre un pneu en stock")
     public PneuDto.Reponse creer(@Valid @RequestBody PneuDto.Requete requete) {
@@ -61,21 +61,21 @@ public class PneuController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Met a jour la fiche d'un pneu")
     public PneuDto.Reponse modifier(@PathVariable Long id, @Valid @RequestBody PneuDto.Requete requete) {
         return service.modifier(id, requete);
     }
 
     @PatchMapping("/{id}/montage")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Monte le pneu sur un camion, a une position libre")
     public PneuDto.Reponse monter(@PathVariable Long id, @Valid @RequestBody PneuDto.Montage montage) {
         return service.monter(id, montage);
     }
 
     @PatchMapping("/{id}/depose")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(Autorisations.GESTION)
     @Operation(summary = "Depose le pneu : retour en stock ou rebut")
     public PneuDto.Reponse deposer(@PathVariable Long id, @Valid @RequestBody PneuDto.Depose depose) {
         return service.deposer(id, depose);
