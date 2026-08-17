@@ -39,7 +39,8 @@ export class Shell {
     { libelle: 'Rentabilite', route: '/rentabilite', icone: '📈', section: 'Pilotage', disponible: true },
     { libelle: 'Carte du parc', route: '/gps', icone: '🗺️', section: 'GPS', disponible: true },
     { libelle: 'Maintenance', route: '/maintenance', icone: '🔧', section: 'Maintenance', disponible: true },
-    { libelle: 'Direction', route: '/direction', icone: '🎯', section: 'Pilotage', disponible: true }
+    { libelle: 'Direction', route: '/direction', icone: '🎯', section: 'Pilotage', disponible: true },
+    { libelle: 'Rapports PDF', route: '/rapports', icone: '📄', section: 'Rapports', disponible: true }
   ];
 
   get sections(): string[] {

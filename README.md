@@ -117,7 +117,10 @@ L'application est servie sur `http://localhost:4200`.
 - KPI de direction : parc, finances, exploitation (chapitre 41)
 - Fiche synthétique du camion, toutes informations réunies (chapitre 36)
 - Notifications consolidées de tous les modules (chapitre 34)
-- Rapports exportables en CSV (chapitre 35 — PDF et Excel restent à ajouter)
+- Menu **Rapports** : neuf rapports téléchargeables en PDF (parc global, fiche
+  complète d'un ou plusieurs camions, financier, recettes, dépenses, carburant,
+  maintenance, chauffeurs, créances) ; export CSV conservé pour les tableurs
+  (chapitre 35 — le `.xlsx` natif reste à ajouter)
 
 L'application mobile chauffeur (chapitre 32) n'est pas démarrée ; l'API accepte déjà
 le rôle `CHAUFFEUR` sur les missions, dépenses, livraisons et incidents.

@@ -1,0 +1,168 @@
+/* Menu Rapports : le catalogue a gauche, les parametres du rapport a droite. */
+.atelier-rapports {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .atelier-rapports {
+    grid-template-columns: 1fr;
+  }
+}
+
+.catalogue h2,
+.parametres h2 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--couleur-texte-doux);
+  margin: 0 0 0.75rem;
+}
+
+.liste-rapports {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.carte-rapport {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--couleur-bordure);
+  border-left: 4px solid transparent;
+  border-radius: var(--rayon);
+  background: var(--couleur-surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: #f6f9fd;
+  }
+
+  /* Le rapport actif se repere au liseré et au fond, pas a la couleur du texte. */
+  &.choisi {
+    border-left-color: var(--couleur-primaire);
+    background: #eef4fb;
+  }
+
+  strong {
+    font-size: 0.95rem;
+  }
+
+  .description {
+    font-size: 0.8rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  .marque-selection {
+    margin-top: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--couleur-primaire);
+  }
+}
+
+.parametres {
+  h3 {
+    margin: 1.25rem 0 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .sous-titre {
+    margin-top: -0.4rem;
+  }
+}
+
+.ligne-periode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.raccourcis {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.aide {
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  color: var(--couleur-texte-doux);
+}
+
+.barre-selection {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
+.recherche-camion {
+  flex: 1 1 200px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.compteur {
+  font-size: 0.8rem;
+  color: var(--couleur-texte-doux);
+}
+
+.liste-camions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.4rem;
+  max-height: 40vh;
+  overflow-y: auto;
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    cursor: pointer;
+
+    &.coche {
+      border-color: var(--couleur-primaire);
+      background: #eef4fb;
+    }
+  }
+
+  .immatriculation {
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .modele {
+    font-size: 0.75rem;
+    color: var(--couleur-texte-doux);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.actions-rapport {
+  margin-top: 1.25rem;
+}

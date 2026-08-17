@@ -112,6 +112,14 @@ verifier "export rapport financier"  "pilotage/rapports/FINANCIER?$PERIODE"
 verifier "export rentabilite"        "pilotage/rapports/RENTABILITE_CAMIONS?$PERIODE"
 verifier "export etat du parc"       "pilotage/rapports/PARC?$PERIODE"
 
+# Les neuf rapports PDF du chapitre 35.
+verifier "catalogue des rapports PDF" "pilotage/rapports-pdf"
+for type in PARC_GLOBAL CAMIONS_DETAIL FINANCIER RECETTES DEPENSES \
+            CARBURANT MAINTENANCE CHAUFFEURS CREANCES; do
+  verifier "PDF $type" "pilotage/rapports-pdf/$type?$PERIODE"
+done
+verifier "PDF selection de camions" "pilotage/rapports-pdf/CAMIONS_DETAIL?$PERIODE&camionIds=1"
+
 if [ "$echec" -eq 0 ]; then
   echo "Tous les endpoints repondent."
 else

@@ -8,6 +8,7 @@ import {
   Kpi,
   Notification,
   RapportDisponible,
+  RapportPdfDisponible,
   SyntheseNotifications
 } from '../models/pilotage';
 
@@ -57,6 +58,29 @@ export class PilotageService {
       params: new HttpParams().set('debut', debut).set('fin', fin),
       responseType: 'blob'
     });
+  }
+
+  /** Catalogue des rapports editables en PDF (chapitre 35). */
+  rapportsPdf(): Observable<RapportPdfDisponible[]> {
+    return this.http.get<RapportPdfDisponible[]>(`${this.base}/rapports-pdf`);
+  }
+
+  /**
+   * Edition PDF d'un rapport.
+   *
+   * @param camionIds selection facultative ; vide signifie tout le parc
+   */
+  telechargerRapportPdf(
+    type: string,
+    debut: string,
+    fin: string,
+    camionIds: number[] = []
+  ): Observable<Blob> {
+    let params = new HttpParams().set('debut', debut).set('fin', fin);
+    for (const camionId of camionIds) {
+      params = params.append('camionIds', camionId);
+    }
+    return this.http.get(`${this.base}/rapports-pdf/${type}`, { params, responseType: 'blob' });
   }
 
   private periode(debut?: string, fin?: string): HttpParams {

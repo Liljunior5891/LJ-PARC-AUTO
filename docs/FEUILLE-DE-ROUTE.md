@@ -116,7 +116,7 @@ Règles de maintenance :
 | --- | --- | --- |
 | 4, 41 | Tableau de bord et KPI de direction | ✅ |
 | 34 | Notifications consolidées | ✅ |
-| 35 | Rapports exportables | ⚠️ CSV uniquement |
+| 35 | Rapports exportables | ✅ PDF (9 rapports) + CSV |
 | 36 | Fiche synthétique du camion | ✅ |
 | 32 | Application mobile chauffeur | ❌ non démarrée |
 
@@ -126,9 +126,11 @@ liste unique et ordonnée, chaque entrée pointant vers l'écran concerné.
 
 Restent à faire :
 
-- **exports PDF et Excel natifs** (chapitre 35). Le CSV produit s'ouvre déjà dans
-  Excel — séparateur point-virgule, virgule décimale et BOM UTF-8 pour les accents.
-  Un PDF nécessite une bibliothèque supplémentaire (OpenPDF ou équivalent) ;
+- **export Excel natif** (chapitre 35). Le PDF est livré — menu **Rapports**, neuf
+  rapports dont le global du parc et la fiche complète d'un ou plusieurs camions
+  (`RapportPdfService`, mise en page commune dans `MiseEnPagePdf`). Le CSV reste
+  proposé et s'ouvre dans Excel — séparateur point-virgule, virgule décimale et
+  BOM UTF-8 pour les accents ; un `.xlsx` natif demanderait Apache POI ;
 - **application mobile chauffeur** (chapitre 32). C'est un projet Flutter ou React
   Native distinct. L'API est prête : les endpoints de mission (démarrage, clôture),
   de dépense, de livraison et d'incident acceptent déjà le rôle `CHAUFFEUR`.

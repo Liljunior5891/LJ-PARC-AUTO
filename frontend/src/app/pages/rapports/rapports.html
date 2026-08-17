@@ -1,0 +1,114 @@
+<div class="entete-page">
+  <div>
+    <h1>Rapports</h1>
+    <p class="sous-titre">
+      Chapitre 35 — editez en PDF l'etat du parc, des camions, des finances et de la maintenance
+    </p>
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="atelier-rapports">
+  <!-- Colonne de gauche : le catalogue, une carte par rapport. -->
+  <section class="catalogue">
+    <h2>Choisissez un rapport</h2>
+    <ul class="liste-rapports">
+      @for (rapport of catalogue(); track rapport.valeur) {
+        <li>
+          <button type="button" class="carte-rapport"
+                  [class.choisi]="typeChoisi() === rapport.valeur"
+                  [attr.aria-pressed]="typeChoisi() === rapport.valeur"
+                  (click)="choisir(rapport)">
+            <strong>{{ rapport.libelle }}</strong>
+            <span class="description">{{ rapport.description }}</span>
+            @if (rapport.selectionCamions) {
+              <span class="marque-selection">Selection de camions possible</span>
+            }
+          </button>
+        </li>
+      } @empty {
+        <li class="message vide">Chargement du catalogue...</li>
+      }
+    </ul>
+  </section>
+
+  <!-- Colonne de droite : les parametres du rapport choisi. -->
+  <section class="parametres">
+    @if (rapport(); as r) {
+      <div class="carte">
+        <h2>{{ r.libelle }}</h2>
+        <p class="sous-titre">{{ r.description }}</p>
+
+        <h3>Periode</h3>
+        <div class="ligne-periode">
+          <div class="champ">
+            <label for="debut">Du</label>
+            <input id="debut" type="date" [(ngModel)]="debut" />
+          </div>
+          <div class="champ">
+            <label for="fin">Au</label>
+            <input id="fin" type="date" [(ngModel)]="fin" />
+          </div>
+          <div class="raccourcis">
+            <button class="bouton secondaire petit" type="button" (click)="periodeRapide('mois')">
+              Ce mois
+            </button>
+            <button class="bouton secondaire petit" type="button" (click)="periodeRapide('trimestre')">
+              Ce trimestre
+            </button>
+            <button class="bouton secondaire petit" type="button" (click)="periodeRapide('annee')">
+              Cette annee
+            </button>
+          </div>
+        </div>
+
+        @if (choixCamions()) {
+          <h3>Camions</h3>
+          <p class="aide">
+            Sans selection, le rapport porte sur tout le parc. Cochez un ou plusieurs camions
+            pour le restreindre.
+          </p>
+          <div class="barre-selection">
+            <input type="search" class="recherche-camion" placeholder="Rechercher un camion"
+                   aria-label="Rechercher un camion" [(ngModel)]="recherche" />
+            <button class="bouton secondaire petit" type="button" (click)="toutSelectionner()">
+              Tout cocher
+            </button>
+            <button class="bouton secondaire petit" type="button" (click)="toutDeselectionner()">
+              Tout decocher
+            </button>
+            <span class="compteur">{{ selection().length }} selectionne(s)</span>
+          </div>
+          <ul class="liste-camions">
+            @for (camion of camionsFiltres(); track camion.id) {
+              <li>
+                <label [class.coche]="estSelectionne(camion.id)">
+                  <input type="checkbox" [checked]="estSelectionne(camion.id)"
+                         (change)="basculer(camion.id)" />
+                  <span class="immatriculation">{{ camion.immatriculation }}</span>
+                  <span class="modele">{{ camion.marque }} {{ camion.modele }}</span>
+                </label>
+              </li>
+            } @empty {
+              <li class="message vide">Aucun camion pour cette recherche.</li>
+            }
+          </ul>
+        }
+
+        <div class="actions-rapport">
+          <button class="bouton" type="button" [disabled]="edition()" (click)="telecharger()">
+            {{ edition() ? 'Edition en cours...' : 'Telecharger le PDF' }}
+          </button>
+        </div>
+      </div>
+    } @else {
+      <div class="message vide">Selectionnez un rapport dans la liste.</div>
+    }
+  </section>
+</div>

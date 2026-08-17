@@ -80,6 +80,15 @@ export interface RapportDisponible {
   libelle: string;
 }
 
+/** Entree du catalogue des rapports PDF (chapitre 35). */
+export interface RapportPdfDisponible {
+  valeur: string;
+  libelle: string;
+  description: string;
+  /** Vrai si le rapport peut etre restreint a une selection de camions. */
+  selectionCamions: boolean;
+}
+
 /** Point de la serie mensuelle recettes / depenses (remarque 6). */
 export interface EvolutionMensuelle {
   mois: string;

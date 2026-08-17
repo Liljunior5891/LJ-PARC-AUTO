@@ -153,6 +153,11 @@ export const routes: Routes = [
         title: 'Pilotage — PARC AUTO'
       },
       {
+        path: 'rapports',
+        loadComponent: () => import('./pages/rapports/rapports').then((m) => m.Rapports),
+        title: 'Rapports — PARC AUTO'
+      },
+      {
         path: 'livraisons',
         loadComponent: () => import('./pages/livraisons/livraisons').then((m) => m.Livraisons),
         title: 'Livraisons — PARC AUTO'
