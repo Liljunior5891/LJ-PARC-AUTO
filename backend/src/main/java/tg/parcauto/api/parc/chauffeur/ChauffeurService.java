@@ -84,6 +84,13 @@ public class ChauffeurService {
         c.setPermisExpiration(r.permisExpiration());
         c.setDateEmbauche(r.dateEmbauche());
         c.setSalaireMensuel(r.salaireMensuel());
+        c.setGarantNom(r.garantNom());
+        c.setGarantLien(r.garantLien());
+        c.setGarantTelephone(r.garantTelephone());
+        c.setGarantTelephoneSecondaire(r.garantTelephoneSecondaire());
+        c.setGarantAdresse(r.garantAdresse());
+        c.setGarantProfession(r.garantProfession());
+        c.setGarantPieceIdentite(r.garantPieceIdentite());
         c.setObservations(r.observations());
         if (r.statut() != null) {
             c.setStatut(r.statut());

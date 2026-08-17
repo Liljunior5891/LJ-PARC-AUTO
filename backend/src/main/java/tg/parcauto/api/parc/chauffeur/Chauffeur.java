@@ -67,6 +67,30 @@ public class Chauffeur extends BaseEntity {
     @Column(name = "salaire_mensuel", precision = 16, scale = 2)
     private BigDecimal salaireMensuel;
 
+    // --- Garant : la personne a prevenir, qui se porte caution ---
+
+    @Column(name = "garant_nom", length = 150)
+    private String garantNom;
+
+    /** Lien avec le chauffeur : pere, epouse, frere, employeur precedent... */
+    @Column(name = "garant_lien", length = 80)
+    private String garantLien;
+
+    @Column(name = "garant_telephone", length = 30)
+    private String garantTelephone;
+
+    @Column(name = "garant_telephone_secondaire", length = 30)
+    private String garantTelephoneSecondaire;
+
+    @Column(name = "garant_adresse", length = 255)
+    private String garantAdresse;
+
+    @Column(name = "garant_profession", length = 120)
+    private String garantProfession;
+
+    @Column(name = "garant_piece_identite", length = 80)
+    private String garantPieceIdentite;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private StatutChauffeur statut = StatutChauffeur.ACTIF;
@@ -79,6 +103,12 @@ public class Chauffeur extends BaseEntity {
 
     public String nomComplet() {
         return prenom + " " + nom;
+    }
+
+    /** Vrai si un garant est renseigne, au moins par son nom et son telephone. */
+    public boolean garantRenseigne() {
+        return garantNom != null && !garantNom.isBlank()
+                && garantTelephone != null && !garantTelephone.isBlank();
     }
 
     /** Vrai si le permis est expire ou expire dans les {@code jours} prochains jours. */

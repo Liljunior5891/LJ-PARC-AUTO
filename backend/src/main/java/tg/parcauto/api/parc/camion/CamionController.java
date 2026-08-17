@@ -35,6 +35,7 @@ public class CamionController {
     private static final String GESTION = "hasAnyRole('ADMIN','GESTIONNAIRE_PARC','LOGISTIQUE')";
 
     private final CamionService service;
+    private final OdometreService odometreService;
 
     @GetMapping
     @Operation(summary = "Liste paginee des camions avec recherche et filtres")
@@ -52,10 +53,40 @@ public class CamionController {
         return service.marques();
     }
 
+    @GetMapping("/types")
+    @Operation(summary = "Referentiel des types de camions")
+    public List<ReferentielDto> types() {
+        return service.types();
+    }
+
+    @GetMapping("/couleurs")
+    @Operation(summary = "Referentiel des couleurs")
+    public List<ReferentielDto> couleurs() {
+        return service.couleurs();
+    }
+
     @GetMapping("/statistiques/statuts")
     @Operation(summary = "Repartition des camions actifs par statut")
     public Map<StatutCamion, Long> repartition() {
         return service.repartitionParStatut();
+    }
+
+    /** Historique des releves kilometriques, tous modules confondus. */
+    @GetMapping("/{id}/odometre")
+    @Operation(summary = "Historique du compteur kilometrique d'un camion")
+    public OdometreDto odometre(
+            @PathVariable Long id,
+            @RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(
+                    iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate debut,
+            @RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(
+                    iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate fin) {
+        java.time.LocalDate finRetenue = fin == null ? java.time.LocalDate.now() : fin;
+        return odometreService.historique(id,
+                debut == null ? finRetenue.minusMonths(6) : debut, finRetenue);
     }
 
     @GetMapping("/{id}")

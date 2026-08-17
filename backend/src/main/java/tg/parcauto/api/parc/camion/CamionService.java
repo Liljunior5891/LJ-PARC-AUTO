@@ -19,6 +19,8 @@ public class CamionService {
 
     private final CamionRepository repository;
     private final MarqueCamionRepository marqueRepository;
+    private final TypeCamionRepository typeRepository;
+    private final CouleurCamionRepository couleurRepository;
 
     @Transactional(readOnly = true)
     public Page<CamionDto.Reponse> rechercher(String q, StatutCamion statut, Boolean actif, Pageable pageable) {
@@ -41,6 +43,22 @@ public class CamionService {
     public List<MarqueCamionDto.Reponse> marques() {
         return marqueRepository.findByActifTrueOrderByOrdreAscNomAsc().stream()
                 .map(MarqueCamionDto.Reponse::de)
+                .toList();
+    }
+
+    /** Types de carrosserie proposes a la saisie. */
+    @Transactional(readOnly = true)
+    public List<ReferentielDto> types() {
+        return typeRepository.findByActifTrueOrderByOrdreAscNomAsc().stream()
+                .map(ReferentielDto::de)
+                .toList();
+    }
+
+    /** Couleurs proposees a la saisie. */
+    @Transactional(readOnly = true)
+    public List<ReferentielDto> couleurs() {
+        return couleurRepository.findByActifTrueOrderByOrdreAscNomAsc().stream()
+                .map(ReferentielDto::de)
                 .toList();
     }
 
@@ -117,11 +135,28 @@ public class CamionService {
         }
         camion.setModele(r.modele());
         camion.setAnnee(r.annee());
-        camion.setType(r.type());
+        // Le referentiel prime ; le libelle libre sert de repli.
+        if (r.typeId() != null) {
+            TypeCamion type = typeRepository.findById(r.typeId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Type de camion", r.typeId()));
+            camion.setTypeReference(type);
+            camion.setType(type.getNom());
+        } else {
+            camion.setTypeReference(null);
+            camion.setType(r.type());
+        }
         camion.setCategorie(r.categorie());
         camion.setNumeroChassis(r.numeroChassis());
         camion.setNumeroMoteur(r.numeroMoteur());
-        camion.setCouleur(r.couleur());
+        if (r.couleurId() != null) {
+            CouleurCamion couleur = couleurRepository.findById(r.couleurId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Couleur", r.couleurId()));
+            camion.setCouleurReference(couleur);
+            camion.setCouleur(couleur.getNom());
+        } else {
+            camion.setCouleurReference(null);
+            camion.setCouleur(r.couleur());
+        }
         camion.setCapaciteTonnes(r.capaciteTonnes());
         camion.setDateAcquisition(r.dateAcquisition());
         camion.setPrixAchat(r.prixAchat());

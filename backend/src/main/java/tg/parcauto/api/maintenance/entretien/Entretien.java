@@ -97,6 +97,11 @@ public class Entretien extends BaseEntity {
     @Column(columnDefinition = "text")
     private String observations;
 
+    /** Intitule court de l'intervention, pour les historiques. */
+    public String getTypeLibelleCourt() {
+        return type.getLibelle();
+    }
+
     /** Kilometres restants avant l'echeance ; negatif si elle est depassee. */
     public Long kilometresRestants() {
         if (kilometragePrevu == null) {

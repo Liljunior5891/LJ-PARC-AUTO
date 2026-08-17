@@ -43,7 +43,12 @@ public class Camion extends BaseEntity {
     @Column(name = "annee")
     private Integer annee;
 
-    /** Type de vehicule : benne, plateau, citerne, porte-conteneur... */
+    /** Type du referentiel : benne, plateau, citerne, porte-conteneur... */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "type_id")
+    private TypeCamion typeReference;
+
+    /** Libelle du type, conserve pour les types hors referentiel. */
     @Column(length = 60)
     private String type;
 
@@ -55,6 +60,10 @@ public class Camion extends BaseEntity {
 
     @Column(name = "numero_moteur", length = 60)
     private String numeroMoteur;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "couleur_id")
+    private CouleurCamion couleurReference;
 
     @Column(length = 40)
     private String couleur;
@@ -102,6 +111,14 @@ public class Camion extends BaseEntity {
     /** Libelle de la marque : celui du referentiel s'il existe. */
     public String libelleMarque() {
         return marqueReference != null ? marqueReference.getNom() : marque;
+    }
+
+    public String libelleType() {
+        return typeReference != null ? typeReference.getNom() : type;
+    }
+
+    public String libelleCouleur() {
+        return couleurReference != null ? couleurReference.getNom() : couleur;
     }
 
     /** Kilometres parcourus depuis la mise en service. */
