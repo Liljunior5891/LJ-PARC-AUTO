@@ -1,8 +1,11 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TableauBordExploitation } from '../../core/models/exploitation';
-import { LigneCategorieDepense, TableauBordFinances } from '../../core/models/finance';
+import {
+  LigneCategorieDepense,
+  LigneRentabilite,
+  TableauBordFinances
+} from '../../core/models/finance';
 import {
   COULEUR_DEPENSES,
   COULEUR_RECETTES,
@@ -11,7 +14,7 @@ import {
 } from '../../core/models/pilotage';
 import { DepenseService } from '../../core/services/depense.service';
 import { RentabiliteService } from '../../core/services/rentabilite.service';
-import { STATUTS_CAMION, StatutCamion, TableauBordParc } from '../../core/models/models';
+import { TableauBordParc } from '../../core/models/models';
 import { PilotageService } from '../../core/services/pilotage.service';
 import { TableauBordService } from '../../core/services/tableau-bord.service';
 
@@ -28,13 +31,15 @@ export class TableauBord implements OnInit {
   private readonly pilotageService = inject(PilotageService);
 
   readonly indicateurs = signal<TableauBordParc | null>(null);
-  readonly exploitation = signal<TableauBordExploitation | null>(null);
   readonly finances = signal<TableauBordFinances | null>(null);
   readonly evolution = signal<EvolutionMensuelle[]>([]);
   readonly depensesParCategorie = signal<LigneCategorieDepense[]>([]);
+  /** Recettes, depenses et kilometres de chaque camion sur le mois en cours. */
+  readonly parCamion = signal<LigneRentabilite[]>([]);
 
   readonly couleurRecettes = COULEUR_RECETTES;
   readonly couleurDepenses = COULEUR_DEPENSES;
+  readonly couleurKilometres = PALETTE_CATEGORIELLE[0];
 
   /** Echelle commune aux deux series : un seul axe, jamais deux. */
   readonly maximumEvolution = computed(() =>
@@ -47,10 +52,32 @@ export class TableauBord implements OnInit {
   readonly totalDepensesCategories = computed(() =>
     this.depensesParCategorie().reduce((cumul, ligne) => cumul + ligne.total, 0)
   );
+
+  /** Camions classes du plus gros chiffre d'affaires au plus faible. */
+  readonly financesParCamion = computed(() =>
+    [...this.parCamion()].sort((a, b) => b.recettes - a.recettes)
+  );
+
+  /** Les deux series partagent l'echelle du plus gros montant, tous camions confondus. */
+  readonly maximumParCamion = computed(() =>
+    Math.max(...this.parCamion().flatMap((ligne) => [ligne.recettes, ligne.depenses]), 1)
+  );
+
+  /** Camions classes du plus roulant au moins roulant. */
+  readonly kilometresParCamion = computed(() =>
+    [...this.parCamion()].sort((a, b) => b.distanceKm - a.distanceKm)
+  );
+
+  readonly maximumKilometres = computed(() =>
+    Math.max(...this.parCamion().map((ligne) => ligne.distanceKm), 1)
+  );
+
+  readonly totalKilometres = computed(() =>
+    this.parCamion().reduce((cumul, ligne) => cumul + ligne.distanceKm, 0)
+  );
+
   readonly chargement = signal(true);
   readonly erreur = signal<string | null>(null);
-
-  readonly statuts = STATUTS_CAMION;
 
   ngOnInit(): void {
     this.charger();
@@ -69,9 +96,6 @@ export class TableauBord implements OnInit {
         this.erreur.set('Impossible de charger les indicateurs du parc.');
       }
     });
-    this.service.exploitation().subscribe({
-      next: (donnees) => this.exploitation.set(donnees)
-    });
     this.rentabiliteService.finances().subscribe({
       next: (donnees) => this.finances.set(donnees)
     });
@@ -85,6 +109,28 @@ export class TableauBord implements OnInit {
     this.depenseService.repartition(debut, fin).subscribe({
       next: (lignes) => this.depensesParCategorie.set(lignes)
     });
+    this.rentabiliteService.global(debut, fin).subscribe({
+      next: (donnees) => this.parCamion.set(donnees.camions)
+    });
+  }
+
+  /**
+   * Largeur de barre, en pourcentage du plus gros montant de la comparaison.
+   * Une valeur nulle ne dessine rien ; une valeur faible garde un trait visible.
+   */
+  largeurMontant(valeur: number): number {
+    return this.largeur(valeur, this.maximumParCamion());
+  }
+
+  largeurKilometres(valeur: number): number {
+    return this.largeur(valeur, this.maximumKilometres());
+  }
+
+  private largeur(valeur: number, maximum: number): number {
+    if (valeur <= 0) {
+      return 0;
+    }
+    return Math.max(1, Math.round((valeur / maximum) * 100));
   }
 
   /** Hauteur de barre, en pourcentage de la valeur maximale de la serie. */
@@ -100,16 +146,6 @@ export class TableauBord implements OnInit {
   partCategorie(ligne: LigneCategorieDepense): number {
     const total = this.totalDepensesCategories();
     return total === 0 ? 0 : Math.round((ligne.total / total) * 100);
-  }
-
-  nombreParStatut(statut: StatutCamion): number {
-    return this.indicateurs()?.repartitionStatuts?.[statut] ?? 0;
-  }
-
-  /** Part du statut dans le parc actif, en pourcentage. */
-  partParStatut(statut: StatutCamion): number {
-    const total = this.indicateurs()?.totalCamions ?? 0;
-    return total === 0 ? 0 : Math.round((this.nombreParStatut(statut) / total) * 100);
   }
 
   tauxDisponibilite(): number {

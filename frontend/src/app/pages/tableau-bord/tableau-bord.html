@@ -76,33 +76,6 @@
     </section>
   }
 
-  @if (exploitation(); as e) {
-    <h2 style="margin: 1.5rem 0 0.75rem">Exploitation</h2>
-    <section class="grille-indicateurs">
-      <a class="carte indicateur info" routerLink="/vue-parc">
-        <span class="libelle">Contrats actifs</span>
-        <strong class="valeur">{{ e.contratsActifs }}</strong>
-        <span class="detail">{{ e.contratsEcheance }} arrivent a echeance</span>
-      </a>
-      <a class="carte indicateur" routerLink="/vue-parc">
-        <span class="libelle">Missions en cours</span>
-        <strong class="valeur">{{ e.missionsEnCours }}</strong>
-        <span class="detail">{{ e.missionsPlanifiees }} planifiees</span>
-      </a>
-      <a class="carte indicateur alerte" routerLink="/vue-parc">
-        <span class="libelle">Livraisons a effectuer</span>
-        <strong class="valeur">{{ e.livraisonsEnAttente }}</strong>
-        <span class="detail">{{ e.livraisonsLivrees }} livrees a ce jour</span>
-      </a>
-      <a class="carte indicateur succes" routerLink="/vue-parc">
-        <span class="libelle">Taux d'utilisation</span>
-        <strong class="valeur">{{ e.tauxUtilisationPourcent }} %</strong>
-        <span class="detail">{{ e.clientsActifs }} client(s) actif(s)</span>
-      </a>
-    </section>
-  }
-
-
   <section class="deux-colonnes" style="margin-top: 1.5rem">
     <!-- Depenses par rapport aux recettes, mois par mois : un seul axe, deux series. -->
     <figure class="carte graphique">
@@ -176,28 +149,92 @@
     </figure>
   </section>
   <section class="deux-colonnes">
-    <div class="carte">
-      <h2>Repartition du parc par statut</h2>
-      <div class="repartition">
-        @for (statut of statuts; track statut.valeur) {
-          @if (nombreParStatut(statut.valeur) > 0) {
-            <div class="ligne-repartition">
-              <span class="etiquette-statut">{{ statut.libelle }}</span>
-              <div class="barre">
-                <div class="remplissage" [style.width.%]="partParStatut(statut.valeur)"></div>
-              </div>
-              <span class="valeur-repartition">
-                {{ nombreParStatut(statut.valeur) }} ({{ partParStatut(statut.valeur) }} %)
-              </span>
-            </div>
-          }
-        }
-        @if (k.totalCamions === 0) {
-          <p class="message vide">Aucun camion enregistre. Commencez par creer une fiche camion.</p>
-        }
-      </div>
-    </div>
+    <!-- Ce que chaque camion rapporte et ce qu'il coute : la question du chapitre 2. -->
+    <figure class="carte graphique">
+      <figcaption>
+        <h2>Recettes et depenses par camion</h2>
+        <p class="sous-titre">Mois en cours, en FCFA</p>
+      </figcaption>
 
+      <ul class="legende-graphique">
+        <li><span class="puce" [style.background]="couleurRecettes"></span> Recettes</li>
+        <li><span class="puce" [style.background]="couleurDepenses"></span> Depenses</li>
+      </ul>
+
+      <ul class="barres-camions">
+        @for (ligne of financesParCamion(); track ligne.camionId) {
+          <li [attr.title]="ligne.immatriculation
+              + ' — recettes ' + ligne.recettes
+              + ', depenses ' + ligne.depenses
+              + ', resultat ' + ligne.resultat">
+            <a class="nom-camion" [routerLink]="['/camions', ligne.camionId]">
+              {{ ligne.immatriculation }}
+              <small>{{ ligne.marque || 'Marque non renseignee' }}</small>
+            </a>
+            <span class="paire-pistes">
+              <span class="piste">
+                <span class="remplissage" [style.width.%]="largeurMontant(ligne.recettes)"
+                      [style.background]="couleurRecettes"></span>
+              </span>
+              <span class="piste">
+                <span class="remplissage" [style.width.%]="largeurMontant(ligne.depenses)"
+                      [style.background]="couleurDepenses"></span>
+              </span>
+            </span>
+            <span class="valeurs-camion">
+              <span>{{ ligne.recettes | number }}</span>
+              <span>{{ ligne.depenses | number }}</span>
+              <strong [class.resultat-negatif]="ligne.resultat < 0">
+                {{ ligne.resultat | number }}
+              </strong>
+            </span>
+          </li>
+        } @empty {
+          <li><p class="message vide">Aucun mouvement enregistre ce mois-ci.</p></li>
+        }
+      </ul>
+      <p class="note-graphique">
+        Les deux series partagent la meme echelle. Le chiffre en gras est le resultat du camion.
+      </p>
+    </figure>
+
+    <!-- Kilometres parcourus sur le mois, camion par camion. -->
+    <figure class="carte graphique">
+      <figcaption>
+        <h2>Kilometrage par camion</h2>
+        <p class="sous-titre">
+          Mois en cours — {{ totalKilometres() | number }} km au total
+        </p>
+      </figcaption>
+
+      <ul class="barres-camions kilometres">
+        @for (ligne of kilometresParCamion(); track ligne.camionId) {
+          <li [attr.title]="ligne.immatriculation + ' — ' + ligne.distanceKm + ' km, '
+              + ligne.nombreMissions + ' mission(s)'">
+            <a class="nom-camion" [routerLink]="['/camions', ligne.camionId]">
+              {{ ligne.immatriculation }}
+              <small>{{ ligne.statutLibelle }}</small>
+            </a>
+            <span class="piste">
+              <span class="remplissage" [style.width.%]="largeurKilometres(ligne.distanceKm)"
+                    [style.background]="couleurKilometres"></span>
+            </span>
+            <span class="valeurs-camion">
+              <strong>{{ ligne.distanceKm | number }} km</strong>
+              <span>{{ ligne.nombreMissions }} mission(s)</span>
+            </span>
+          </li>
+        } @empty {
+          <li><p class="message vide">Aucun kilometre enregistre ce mois-ci.</p></li>
+        }
+      </ul>
+      <p class="note-graphique">
+        Distance calculee sur les releves du compteur : missions, pleins et entretiens.
+      </p>
+    </figure>
+  </section>
+
+  <section>
     <div class="carte">
       <h2>Alertes documentaires</h2>
       <ul class="liste-alertes">
@@ -215,8 +252,8 @@
         </li>
       </ul>
       <p class="note">
-        Les modules GPS (carte temps reel, geofencing) et Maintenance completeront ce tableau de bord
-        dans les phases 4 et 5.
+        Les echeances de maintenance et les alertes GPS sont suivies dans leurs ecrans respectifs ;
+        l'ecran Direction en donne la liste consolidee.
       </p>
     </div>
   </section>
