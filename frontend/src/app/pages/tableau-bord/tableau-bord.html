@@ -3,7 +3,19 @@
     <h1>Tableau de bord</h1>
     <p class="sous-titre">Vision globale du parc de camions</p>
   </div>
-  <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
+  <div class="commandes-bord">
+    <!-- Etendue des donnees observees : tout le volet financier la suit. -->
+    <div class="selecteur-portee" role="group" aria-label="Periode observee">
+      @for (p of portees; track p.valeur) {
+        <button type="button" [class.actif]="portee() === p.valeur"
+                [attr.aria-pressed]="portee() === p.valeur" [attr.title]="p.detail"
+                (click)="changerPortee(p.valeur)">
+          {{ p.libelle }}
+        </button>
+      }
+    </div>
+    <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
+  </div>
 </div>
 
 @if (erreur()) {
@@ -47,7 +59,7 @@
   </section>
 
   @if (finances(); as f) {
-    <h2 style="margin: 1.5rem 0 0.75rem">Finances du mois</h2>
+    <h2 style="margin: 1.5rem 0 0.75rem">Finances — {{ libellePeriode() }}</h2>
     <section class="grille-indicateurs">
       <a class="carte indicateur succes" routerLink="/recettes">
         <span class="libelle">Chiffre d'affaires</span>
@@ -81,7 +93,7 @@
     <figure class="carte graphique">
       <figcaption>
         <h2>Recettes et depenses</h2>
-        <p class="sous-titre">Six derniers mois, en FCFA</p>
+        <p class="sous-titre">{{ moisEvolution() }} derniers mois, en FCFA</p>
       </figcaption>
 
       <ul class="legende-graphique">
@@ -119,7 +131,7 @@
       <figcaption>
         <h2>Depenses par categorie</h2>
         <p class="sous-titre">
-          Mois en cours — {{ totalDepensesCategories() | number }} FCFA
+          {{ libellePeriode() }} — {{ totalDepensesCategories() | number }} FCFA
         </p>
       </figcaption>
 
@@ -140,7 +152,7 @@
             </span>
           </li>
         } @empty {
-          <li><p class="message vide">Aucune depense ce mois-ci.</p></li>
+          <li><p class="message vide">Aucune depense sur cette periode.</p></li>
         }
       </ul>
       <p class="note-graphique">
@@ -153,7 +165,7 @@
     <figure class="carte graphique">
       <figcaption>
         <h2>Recettes et depenses par camion</h2>
-        <p class="sous-titre">Mois en cours, en FCFA</p>
+        <p class="sous-titre">{{ libellePeriode() }}, en FCFA</p>
       </figcaption>
 
       <ul class="legende-graphique">
@@ -180,7 +192,7 @@
             </span>
           </a>
         } @empty {
-          <p class="message vide">Aucun mouvement enregistre ce mois-ci.</p>
+          <p class="message vide">Aucun mouvement enregistre sur cette periode.</p>
         }
       </div>
       <p class="note-graphique">
@@ -193,7 +205,7 @@
       <figcaption>
         <h2>Kilometrage par camion</h2>
         <p class="sous-titre">
-          Mois en cours — {{ totalKilometres() | number }} km au total
+          {{ libellePeriode() }} — {{ totalKilometres() | number }} km au total
         </p>
       </figcaption>
 
@@ -210,7 +222,7 @@
             <span class="valeur-colonne">{{ ligne.distanceKm | number }} km</span>
           </a>
         } @empty {
-          <p class="message vide">Aucun kilometre enregistre ce mois-ci.</p>
+          <p class="message vide">Aucun kilometre enregistre sur cette periode.</p>
         }
       </div>
       <p class="note-graphique">

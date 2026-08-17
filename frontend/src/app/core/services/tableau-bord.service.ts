@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LigneVueParc, TableauBordExploitation } from '../models/exploitation';
+import { LigneVueParc } from '../models/exploitation';
 import { TableauBordParc } from '../models/models';
 
 @Injectable({ providedIn: 'root' })
@@ -13,12 +13,6 @@ export class TableauBordService {
   parc(joursAlerte = 30): Observable<TableauBordParc> {
     return this.http.get<TableauBordParc>(`${this.base}/parc`, {
       params: new HttpParams().set('joursAlerte', joursAlerte)
-    });
-  }
-
-  exploitation(joursEcheance = 15): Observable<TableauBordExploitation> {
-    return this.http.get<TableauBordExploitation>(`${this.base}/exploitation`, {
-      params: new HttpParams().set('joursEcheance', joursEcheance)
     });
   }
 

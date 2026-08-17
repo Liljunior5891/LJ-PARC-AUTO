@@ -1,3 +1,40 @@
+.commandes-bord {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* Selecteur de periode : un seul choix a la fois, l'actif porte la couleur. */
+.selecteur-portee {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 8px;
+  background: #eef2f7;
+
+  button {
+    padding: 0.4rem 0.8rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--couleur-texte-doux);
+    cursor: pointer;
+
+    &:hover:not(.actif) {
+      color: var(--couleur-texte);
+    }
+
+    &.actif {
+      background: var(--couleur-primaire);
+      color: #fff;
+    }
+  }
+}
+
 .grille-indicateurs {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));

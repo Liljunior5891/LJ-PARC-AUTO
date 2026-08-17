@@ -41,6 +41,39 @@ export class TableauBord implements OnInit {
   readonly couleurDepenses = COULEUR_DEPENSES;
   readonly couleurKilometres = PALETTE_CATEGORIELLE[0];
 
+  /** Etendue des donnees observees ; tout l'ecran financier la suit. */
+  readonly portees: { valeur: Portee; libelle: string; detail: string }[] = [
+    { valeur: 'MOIS', libelle: 'Mois', detail: 'Mois en cours' },
+    { valeur: 'TRIMESTRE', libelle: 'Trimestre', detail: 'Trimestre en cours' },
+    { valeur: 'SEMESTRE', libelle: 'Semestre', detail: 'Semestre en cours' },
+    { valeur: 'TOUTES', libelle: 'Toutes', detail: 'Depuis le debut' }
+  ];
+
+  readonly portee = signal<Portee>('MOIS');
+
+  /** Bornes envoyees a l'API pour la portee choisie. */
+  readonly intervalle = computed(() => {
+    const aujourdhui = new Date();
+    const annee = aujourdhui.getFullYear();
+    const mois = aujourdhui.getMonth();
+    const debut = {
+      MOIS: new Date(annee, mois, 1),
+      TRIMESTRE: new Date(annee, Math.floor(mois / 3) * 3, 1),
+      SEMESTRE: new Date(annee, mois < 6 ? 0 : 6, 1),
+      // Aucune donnee n'est anterieure : cette borne couvre tout l'historique.
+      TOUTES: new Date(2000, 0, 1)
+    }[this.portee()];
+    return { debut: this.iso(debut), fin: this.iso(aujourdhui) };
+  });
+
+  /** Intitule de la periode, repris par les titres des graphiques. */
+  readonly libellePeriode = computed(
+    () => this.portees.find((p) => p.valeur === this.portee())!.detail
+  );
+
+  /** La serie mensuelle s'allonge quand on demande tout l'historique. */
+  readonly moisEvolution = computed(() => (this.portee() === 'TOUTES' ? 12 : 6));
+
   /** Echelle commune aux deux series : un seul axe, jamais deux. */
   readonly maximumEvolution = computed(() =>
     Math.max(
@@ -96,22 +129,28 @@ export class TableauBord implements OnInit {
         this.erreur.set('Impossible de charger les indicateurs du parc.');
       }
     });
-    this.rentabiliteService.finances().subscribe({
+    const { debut, fin } = this.intervalle();
+    this.rentabiliteService.finances(debut, fin).subscribe({
       next: (donnees) => this.finances.set(donnees)
     });
-    this.pilotageService.evolution(6).subscribe({
+    this.pilotageService.evolution(this.moisEvolution()).subscribe({
       next: (serie) => this.evolution.set(serie)
     });
-    const fin = new Date().toISOString().slice(0, 10);
-    const debut = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-      .toISOString()
-      .slice(0, 10);
     this.depenseService.repartition(debut, fin).subscribe({
       next: (lignes) => this.depensesParCategorie.set(lignes)
     });
     this.rentabiliteService.global(debut, fin).subscribe({
       next: (donnees) => this.parCamion.set(donnees.camions)
     });
+  }
+
+  /** Change l'etendue observee et recharge tout ce qui en depend. */
+  changerPortee(portee: Portee): void {
+    if (this.portee() === portee) {
+      return;
+    }
+    this.portee.set(portee);
+    this.charger();
   }
 
   /**
@@ -155,4 +194,14 @@ export class TableauBord implements OnInit {
     }
     return Math.round((donnees.camionsDisponibles / donnees.totalCamions) * 100);
   }
+
+  /** Date locale au format ISO : toISOString decalerait d'un jour. */
+  private iso(date: Date): string {
+    const mois = `${date.getMonth() + 1}`.padStart(2, '0');
+    const jour = `${date.getDate()}`.padStart(2, '0');
+    return `${date.getFullYear()}-${mois}-${jour}`;
+  }
 }
+
+/** Etendue des donnees observees sur le tableau de bord. */
+type Portee = 'MOIS' | 'TRIMESTRE' | 'SEMESTRE' | 'TOUTES';
