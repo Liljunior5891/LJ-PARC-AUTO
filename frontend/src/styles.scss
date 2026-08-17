@@ -281,6 +281,13 @@ table.tableau {
     border: 1px solid #bfe4cd;
   }
 
+  /* Ni une erreur ni un succes : l'ecran signale un ecart a corriger. */
+  &.avertissement {
+    background: #fdf3e3;
+    color: #8a5a00;
+    border: 1px solid #f0dcb8;
+  }
+
   &.vide {
     background: #fff;
     color: var(--couleur-texte-doux);

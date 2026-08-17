@@ -164,5 +164,54 @@
 }
 
 .actions-rapport {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
   margin-top: 1.25rem;
+}
+
+/* Apercu : le PDF edite, affiche tel qu'il sera enregistre. */
+.apercu {
+  margin: 1rem 0 0;
+  padding: 1rem;
+
+  figcaption {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+
+    h3 {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    .sous-titre {
+      margin: 0.15rem 0 0;
+      font-size: 0.78rem;
+    }
+  }
+
+  .aide {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+  }
+}
+
+.actions-apercu {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.lecteur-pdf {
+  display: block;
+  width: 100%;
+  /* Assez haut pour lire une page entiere sans quitter l'ecran. */
+  height: min(78vh, 900px);
+  border: 1px solid var(--couleur-bordure);
+  border-radius: var(--rayon);
+  background: #f4f6f9;
 }

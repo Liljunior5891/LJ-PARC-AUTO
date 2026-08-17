@@ -117,7 +117,8 @@ L'application est servie sur `http://localhost:4200`.
 - KPI de direction : parc, finances, exploitation (chapitre 41)
 - Fiche synthétique du camion, toutes informations réunies (chapitre 36)
 - Notifications consolidées de tous les modules (chapitre 34)
-- Menu **Rapports** : neuf rapports téléchargeables en PDF (parc global, fiche
+- Menu **Rapports** : neuf rapports consultables à l'écran puis téléchargeables
+  en PDF (parc global, fiche
   complète d'un ou plusieurs camions, financier, recettes, dépenses, carburant,
   maintenance, chauffeurs, créances) ; export CSV conservé pour les tableurs
   (chapitre 35 — le `.xlsx` natif reste à ajouter)

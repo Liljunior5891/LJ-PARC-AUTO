@@ -1,5 +1,6 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { RapportPdfDisponible } from '../../core/models/pilotage';
 import { Camion } from '../../core/models/models';
 import { CamionService } from '../../core/services/camion.service';
@@ -9,7 +10,8 @@ import { PilotageService } from '../../core/services/pilotage.service';
  * Menu Rapports (chapitre 35).
  *
  * On choisit un rapport dans le catalogue, une periode, et — pour les rapports
- * qui l'acceptent — un ou plusieurs camions ; le PDF est ensuite telecharge.
+ * qui l'acceptent — un ou plusieurs camions. Le PDF s'affiche d'abord dans
+ * l'ecran : on ne telecharge qu'apres avoir vu ce que le rapport contient.
  * L'export CSV du pilotage reste disponible pour ceux qui retravaillent les
  * chiffres dans un tableur.
  */
@@ -19,17 +21,23 @@ import { PilotageService } from '../../core/services/pilotage.service';
   templateUrl: './rapports.html',
   styleUrl: './rapports.scss'
 })
-export class Rapports implements OnInit {
+export class Rapports implements OnInit, OnDestroy {
   private readonly service = inject(PilotageService);
   private readonly camionService = inject(CamionService);
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly catalogue = signal<RapportPdfDisponible[]>([]);
   readonly camions = signal<Camion[]>([]);
   readonly selection = signal<number[]>([]);
   readonly typeChoisi = signal<string | null>(null);
-  readonly edition = signal<string | null>(null);
+  readonly edition = signal(false);
   readonly erreur = signal<string | null>(null);
   readonly succes = signal<string | null>(null);
+
+  /** Le PDF actuellement affiche, avec les parametres qui l'ont produit. */
+  readonly apercu = signal<Apercu | null>(null);
+  /** Vrai quand les parametres ont bouge depuis l'edition de l'apercu. */
+  readonly apercuPerime = signal(false);
 
   debut = this.premierJourDeLAnnee();
   fin = this.aujourdhui();
@@ -69,9 +77,20 @@ export class Rapports implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+    this.libererApercu();
+  }
+
   choisir(rapport: RapportPdfDisponible): void {
+    if (this.typeChoisi() === rapport.valeur) {
+      return;
+    }
     this.typeChoisi.set(rapport.valeur);
     this.succes.set(null);
+    // Un autre rapport n'a rien a voir avec celui affiche : on repart a zero.
+    this.libererApercu();
+    this.apercu.set(null);
+    this.apercuPerime.set(false);
   }
 
   basculer(camionId: number): void {
@@ -81,6 +100,7 @@ export class Rapports implements OnInit {
         ? selection.filter((id) => id !== camionId)
         : [...selection, camionId]
     );
+    this.marquerPerime();
   }
 
   estSelectionne(camionId: number): boolean {
@@ -89,44 +109,84 @@ export class Rapports implements OnInit {
 
   toutSelectionner(): void {
     this.selection.set(this.camionsFiltres().map((camion) => camion.id));
+    this.marquerPerime();
   }
 
   toutDeselectionner(): void {
     this.selection.set([]);
+    this.marquerPerime();
   }
 
-  /** Telecharge le PDF et propose son enregistrement. */
-  telecharger(): void {
-    const rapport = this.rapport();
-    if (!rapport || this.edition()) {
-      return;
+  /** L'apercu affiche ne correspond plus aux parametres a l'ecran. */
+  marquerPerime(): void {
+    if (this.apercu()) {
+      this.apercuPerime.set(true);
     }
-    if (this.debut > this.fin) {
-      this.erreur.set('La date de debut est posterieure a la date de fin.');
+  }
+
+  /**
+   * Edite le rapport et l'affiche dans l'ecran.
+   *
+   * Le PDF est garde en memoire : le telechargement qui suit reutilise ce
+   * fichier au lieu d'en redemander un au serveur.
+   */
+  previsualiser(): void {
+    const rapport = this.rapport();
+    if (!rapport || this.edition() || !this.periodeValide()) {
+      this.enchainerTelechargement = false;
       return;
     }
 
     this.erreur.set(null);
     this.succes.set(null);
-    this.edition.set(rapport.valeur);
+    this.edition.set(true);
 
     const camionIds = rapport.selectionCamions ? this.selection() : [];
     this.service.telechargerRapportPdf(rapport.valeur, this.debut, this.fin, camionIds).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const lien = document.createElement('a');
-        lien.href = url;
-        lien.download = `${rapport.valeur.toLowerCase()}_${this.debut}_${this.fin}.pdf`;
-        lien.click();
-        URL.revokeObjectURL(url);
-        this.edition.set(null);
-        this.succes.set(`${rapport.libelle} telecharge.`);
+      next: (fichier) => {
+        this.libererApercu();
+        // #toolbar=0 masque la barre du lecteur : l'ecran porte deja ses boutons.
+        const url = URL.createObjectURL(fichier);
+        this.apercu.set({
+          fichier,
+          url,
+          urlSure: this.sanitizer.bypassSecurityTrustResourceUrl(`${url}#toolbar=0&view=FitH`),
+          libelle: rapport.libelle,
+          nomFichier: `${rapport.valeur.toLowerCase()}_${this.debut}_${this.fin}.pdf`,
+          taille: fichier.size
+        });
+        this.apercuPerime.set(false);
+        this.edition.set(false);
+        if (this.enchainerTelechargement) {
+          this.enchainerTelechargement = false;
+          this.enregistrer(this.apercu()!);
+        }
       },
       error: () => {
-        this.edition.set(null);
+        this.edition.set(false);
+        this.enchainerTelechargement = false;
         this.erreur.set("Edition du rapport impossible. Verifiez la periode demandee.");
       }
     });
+  }
+
+  /** Enregistre le PDF affiche ; sans apercu, il est edite puis enregistre. */
+  telecharger(): void {
+    const apercu = this.apercu();
+    if (!apercu || this.apercuPerime()) {
+      this.enchainerTelechargement = true;
+      this.previsualiser();
+      return;
+    }
+    this.enregistrer(apercu);
+  }
+
+  /** Ouvre le PDF dans un onglet, pour le lire en plein ecran ou l'imprimer. */
+  ouvrirDansUnOnglet(): void {
+    const apercu = this.apercu();
+    if (apercu) {
+      window.open(apercu.url, '_blank');
+    }
   }
 
   /** Raccourcis de periode : le mois, le trimestre ou l'annee en cours. */
@@ -140,6 +200,41 @@ export class Rapports implements OnInit {
           : new Date(aujourdhui.getFullYear(), 0, 1);
     this.debut = this.iso(debut);
     this.fin = this.aujourdhui();
+    this.marquerPerime();
+  }
+
+  /** Poids du PDF, pour situer l'ampleur du document avant de l'enregistrer. */
+  poids(octets: number): string {
+    return octets < 1024 * 1024
+      ? `${Math.round(octets / 1024)} Ko`
+      : `${(octets / 1024 / 1024).toFixed(1)} Mo`;
+  }
+
+  /** Vrai tant que le telechargement demande attend son edition. */
+  private enchainerTelechargement = false;
+
+  private enregistrer(apercu: Apercu): void {
+    const lien = document.createElement('a');
+    lien.href = apercu.url;
+    lien.download = apercu.nomFichier;
+    lien.click();
+    this.succes.set(`${apercu.libelle} telecharge.`);
+  }
+
+  private periodeValide(): boolean {
+    if (this.debut > this.fin) {
+      this.erreur.set('La date de debut est posterieure a la date de fin.');
+      return false;
+    }
+    return true;
+  }
+
+  /** Un blob non revoque garde sa memoire jusqu'au rechargement de la page. */
+  private libererApercu(): void {
+    const apercu = this.apercu();
+    if (apercu) {
+      URL.revokeObjectURL(apercu.url);
+    }
   }
 
   private aujourdhui(): string {
@@ -156,4 +251,14 @@ export class Rapports implements OnInit {
     const jour = `${date.getDate()}`.padStart(2, '0');
     return `${date.getFullYear()}-${mois}-${jour}`;
   }
+}
+
+/** Le PDF affiche et ce qu'il faut pour le relire ou l'enregistrer. */
+interface Apercu {
+  fichier: Blob;
+  url: string;
+  urlSure: SafeResourceUrl;
+  libelle: string;
+  nomFichier: string;
+  taille: number;
 }

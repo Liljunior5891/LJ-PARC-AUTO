@@ -128,7 +128,9 @@ Restent à faire :
 
 - **export Excel natif** (chapitre 35). Le PDF est livré — menu **Rapports**, neuf
   rapports dont le global du parc et la fiche complète d'un ou plusieurs camions
-  (`RapportPdfService`, mise en page commune dans `MiseEnPagePdf`). Le CSV reste
+  (`RapportPdfService`, mise en page commune dans `MiseEnPagePdf`). Le document
+  s'affiche d'abord dans l'écran ; on ne l'enregistre qu'après l'avoir vu, et le
+  fichier déjà édité est réutilisé plutôt que redemandé au serveur. Le CSV reste
   proposé et s'ouvre dans Excel — séparateur point-virgule, virgule décimale et
   BOM UTF-8 pour les accents ; un `.xlsx` natif demanderait Apache POI ;
 - **application mobile chauffeur** (chapitre 32). C'est un projet Flutter ou React

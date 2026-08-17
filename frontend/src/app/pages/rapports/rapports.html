@@ -2,7 +2,7 @@
   <div>
     <h1>Rapports</h1>
     <p class="sous-titre">
-      Chapitre 35 — editez en PDF l'etat du parc, des camions, des finances et de la maintenance
+      Chapitre 35 — consultez le rapport a l'ecran, puis telechargez-le en PDF
     </p>
   </div>
 </div>
@@ -38,7 +38,7 @@
     </ul>
   </section>
 
-  <!-- Colonne de droite : les parametres du rapport choisi. -->
+  <!-- Colonne de droite : les parametres, puis l'apercu du document edite. -->
   <section class="parametres">
     @if (rapport(); as r) {
       <div class="carte">
@@ -49,11 +49,11 @@
         <div class="ligne-periode">
           <div class="champ">
             <label for="debut">Du</label>
-            <input id="debut" type="date" [(ngModel)]="debut" />
+            <input id="debut" type="date" [(ngModel)]="debut" (ngModelChange)="marquerPerime()" />
           </div>
           <div class="champ">
             <label for="fin">Au</label>
-            <input id="fin" type="date" [(ngModel)]="fin" />
+            <input id="fin" type="date" [(ngModel)]="fin" (ngModelChange)="marquerPerime()" />
           </div>
           <div class="raccourcis">
             <button class="bouton secondaire petit" type="button" (click)="periodeRapide('mois')">
@@ -102,11 +102,50 @@
         }
 
         <div class="actions-rapport">
-          <button class="bouton" type="button" [disabled]="edition()" (click)="telecharger()">
-            {{ edition() ? 'Edition en cours...' : 'Telecharger le PDF' }}
+          <button class="bouton" type="button" [disabled]="edition()" (click)="previsualiser()">
+            {{ edition() ? 'Edition en cours...'
+               : apercu() ? "Actualiser l'apercu" : "Afficher l'apercu" }}
+          </button>
+          <button class="bouton secondaire" type="button" [disabled]="edition()"
+                  (click)="telecharger()">
+            Telecharger le PDF
           </button>
         </div>
       </div>
+
+      <!-- Le document edite, tel qu'il sera enregistre. -->
+      @if (apercu(); as a) {
+        <figure class="carte apercu">
+          <figcaption>
+            <div>
+              <h3>Apercu — {{ a.libelle }}</h3>
+              <p class="sous-titre">{{ a.nomFichier }} · {{ poids(a.taille) }}</p>
+            </div>
+            <div class="actions-apercu">
+              <button class="bouton secondaire petit" type="button" (click)="ouvrirDansUnOnglet()">
+                Ouvrir en plein ecran
+              </button>
+              <button class="bouton petit" type="button" (click)="telecharger()">
+                Telecharger
+              </button>
+            </div>
+          </figcaption>
+
+          @if (apercuPerime()) {
+            <p class="message avertissement">
+              Les parametres ont change depuis cet apercu. Actualisez-le pour voir le rapport
+              correspondant — le telechargement l'actualisera de lui-meme.
+            </p>
+          }
+
+          <iframe class="lecteur-pdf" [src]="a.urlSure"
+                  [title]="'Apercu du rapport ' + a.libelle"></iframe>
+          <p class="aide">
+            Si le document ne s'affiche pas, votre navigateur n'a pas de lecteur PDF integre :
+            utilisez « Ouvrir en plein ecran » ou telechargez le fichier.
+          </p>
+        </figure>
+      }
     } @else {
       <div class="message vide">Selectionnez un rapport dans la liste.</div>
     }
