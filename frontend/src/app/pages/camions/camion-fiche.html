@@ -17,6 +17,9 @@
     <button type="button" [class.actif]="volet() === 'depenses'" (click)="ouvrirVolet('depenses')">
       DEPENSES
     </button>
+    <button type="button" [class.actif]="volet() === 'odometre'" (click)="ouvrirVolet('odometre')">
+      ODOMETRE
+    </button>
   </div>
 }
 
@@ -130,6 +133,91 @@
   <div class="message succes">{{ succes() }}</div>
 }
 
+@if (volet() === 'odometre') {
+  <div class="carte">
+    @if (odometre(); as o) {
+      <div class="entete-page" style="margin-bottom: 0.75rem">
+        <div>
+          <h2>Historique du compteur</h2>
+          <p class="sous-titre">
+            Releves issus des missions, des pleins, des interventions et du traceur GPS
+          </p>
+        </div>
+      </div>
+
+      <div class="grille-resume">
+        <div>
+          <span class="libelle-resume">Compteur actuel</span>
+          <strong class="valeur-resume">{{ o.kilometrageActuel | number }} km</strong>
+          <small>{{ o.immatriculation }}</small>
+        </div>
+        <div>
+          <span class="libelle-resume">Distance sur la periode</span>
+          <strong class="valeur-resume">{{ o.distanceSurPeriode | number }} km</strong>
+          <small>du {{ o.debut }} au {{ o.fin }}</small>
+        </div>
+        <div>
+          <span class="libelle-resume">Moyenne</span>
+          <strong class="valeur-resume">{{ o.moyenneKmParJour | number }} km/j</strong>
+          <small>sur la periode</small>
+        </div>
+        <div>
+          <span class="libelle-resume">Releves</span>
+          <strong class="valeur-resume">{{ o.nombreReleves }}</strong>
+          <small>toutes origines confondues</small>
+        </div>
+      </div>
+
+      <div class="tableau-conteneur" style="margin-top: 1.25rem">
+        <table class="tableau">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th class="numerique">Compteur</th>
+              <th class="numerique">Distance</th>
+              <th>Origine</th>
+              <th>Detail</th>
+              <th>Chauffeur</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (releve of o.releves; track $index) {
+              <tr>
+                <td>{{ releve.date }}</td>
+                <td class="numerique"><strong>{{ releve.kilometrage | number }}</strong> km</td>
+                <td class="numerique">
+                  {{ releve.distanceDepuisPrecedent !== undefined
+                      && releve.distanceDepuisPrecedent !== null
+                      ? '+ ' + (releve.distanceDepuisPrecedent | number) + ' km' : '—' }}
+                </td>
+                <td><span class="etiquette">{{ libelleSource(releve.source) }}</span></td>
+                <td>
+                  {{ releve.libelle || '—' }}
+                  @if (releve.reference) {
+                    <small> · {{ releve.reference }}</small>
+                  }
+                </td>
+                <td>{{ releve.chauffeurNom || '—' }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6">
+                  <div class="message vide">Aucun releve sur la periode.</div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="note-phase">
+        Les releves ne sont pas saisis a part : ils proviennent des operations deja enregistrees.
+      </p>
+    } @else {
+      <div class="message vide">Chargement de l'historique...</div>
+    }
+  </div>
+}
+
 @if (volet() === 'fiche') {
 <form class="carte" [formGroup]="formulaire" (ngSubmit)="soumettre()">
   <h2>Identification</h2>
@@ -146,12 +234,11 @@
     </div>
     <div class="champ">
       <label for="marqueId">Marque</label>
-      <select id="marqueId" formControlName="marqueId">
-        <option [ngValue]="null">Selectionner une marque</option>
-        @for (marque of marques(); track marque.id) {
-          <option [ngValue]="marque.id">{{ marque.nom }}</option>
-        }
-      </select>
+      <app-select-recherche
+        formControlName="marqueId"
+        [options]="optionsMarque()"
+        placeholder="Selectionner une marque"
+      />
       @if (marqueChoisie(); as m) {
         <span class="apercu-marque">
           <span class="logo-marque" [style.background]="m.couleur || '#6b7684'">
@@ -174,16 +261,24 @@
       <input id="annee" type="number" formControlName="annee" />
     </div>
     <div class="champ">
-      <label for="type">Type</label>
-      <input id="type" formControlName="type" placeholder="Benne, plateau, citerne..." />
+      <label for="typeId">Type</label>
+      <app-select-recherche
+        formControlName="typeId"
+        [options]="optionsType()"
+        placeholder="Benne, plateau, citerne..."
+      />
     </div>
     <div class="champ">
       <label for="categorie">Categorie</label>
       <input id="categorie" formControlName="categorie" />
     </div>
     <div class="champ">
-      <label for="couleur">Couleur</label>
-      <input id="couleur" formControlName="couleur" />
+      <label for="couleurId">Couleur</label>
+      <app-select-recherche
+        formControlName="couleurId"
+        [options]="optionsCouleur()"
+        placeholder="Selectionner une couleur"
+      />
     </div>
   </div>
 

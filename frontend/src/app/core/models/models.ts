@@ -45,6 +45,13 @@ export type StatutCamion =
 
 export type TypeCarburant = 'DIESEL' | 'ESSENCE' | 'GPL' | 'ELECTRIQUE' | 'HYBRIDE' | 'AUTRE';
 
+/** Entree de referentiel (type de camion, couleur). */
+export interface Referentiel {
+  id: number;
+  libelle: string;
+  complement?: string;
+}
+
 export interface Camion {
   id: number;
   immatriculation: string;
@@ -56,11 +63,14 @@ export interface Camion {
   marqueMonogramme?: string;
   modele?: string;
   annee?: number;
+  typeId?: number;
   type?: string;
   categorie?: string;
   numeroChassis?: string;
   numeroMoteur?: string;
+  couleurId?: number;
   couleur?: string;
+  couleurCodeHexa?: string;
   capaciteTonnes?: number;
   typeCarburant?: TypeCarburant;
   dateAcquisition?: string;
@@ -78,8 +88,48 @@ export interface Camion {
 
 export type CamionRequete = Omit<
   Camion,
-  'id' | 'statutLibelle' | 'kilometrageParcouru' | 'marqueLogoUrl' | 'marqueCouleur' | 'marqueMonogramme'
+  | 'id'
+  | 'statutLibelle'
+  | 'kilometrageParcouru'
+  | 'marqueLogoUrl'
+  | 'marqueCouleur'
+  | 'marqueMonogramme'
+  | 'couleurCodeHexa'
 >;
+
+/** Historique du compteur kilometrique (remarque 5). */
+export type SourceReleve = 'MISSION' | 'CARBURANT' | 'DEPENSE' | 'ENTRETIEN' | 'GPS' | 'SAISIE';
+
+export interface ReleveOdometre {
+  date: string;
+  kilometrage: number;
+  distanceDepuisPrecedent?: number;
+  source: SourceReleve;
+  libelle?: string;
+  reference?: string;
+  chauffeurNom?: string;
+}
+
+export interface Odometre {
+  camionId: number;
+  immatriculation: string;
+  debut: string;
+  fin: string;
+  kilometrageActuel: number;
+  distanceSurPeriode: number;
+  nombreReleves: number;
+  moyenneKmParJour: number;
+  releves: ReleveOdometre[];
+}
+
+export const LIBELLES_SOURCE_RELEVE: Record<SourceReleve, string> = {
+  MISSION: 'Mission',
+  CARBURANT: 'Plein de carburant',
+  DEPENSE: 'Depense',
+  ENTRETIEN: 'Entretien',
+  GPS: 'Traceur GPS',
+  SAISIE: 'Saisie manuelle'
+};
 
 /** Marque du referentiel (chapitre 6). */
 export interface MarqueCamion {

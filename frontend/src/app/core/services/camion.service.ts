@@ -2,7 +2,15 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Camion, CamionRequete, MarqueCamion, Page, StatutCamion } from '../models/models';
+import {
+  Camion,
+  CamionRequete,
+  MarqueCamion,
+  Odometre,
+  Page,
+  Referentiel,
+  StatutCamion
+} from '../models/models';
 
 export interface FiltreCamion {
   q?: string;
@@ -38,6 +46,28 @@ export class CamionService {
   /** Referentiel des marques, avec logo et couleur (chapitre 6). */
   marques(): Observable<MarqueCamion[]> {
     return this.http.get<MarqueCamion[]>(`${this.base}/marques`);
+  }
+
+  /** Referentiel des types de carrosserie. */
+  types(): Observable<Referentiel[]> {
+    return this.http.get<Referentiel[]>(`${this.base}/types`);
+  }
+
+  /** Referentiel des couleurs. */
+  couleurs(): Observable<Referentiel[]> {
+    return this.http.get<Referentiel[]>(`${this.base}/couleurs`);
+  }
+
+  /** Historique du compteur kilometrique (remarque 5). */
+  odometre(id: number, debut?: string, fin?: string): Observable<Odometre> {
+    let params = new HttpParams();
+    if (debut) {
+      params = params.set('debut', debut);
+    }
+    if (fin) {
+      params = params.set('fin', fin);
+    }
+    return this.http.get<Odometre>(`${this.base}/${id}/odometre`, { params });
   }
 
   parId(id: number): Observable<Camion> {
