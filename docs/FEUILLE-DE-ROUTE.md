@@ -118,6 +118,7 @@ Règles de maintenance :
 | 34 | Notifications consolidées | ✅ |
 | 35 | Rapports exportables | ✅ PDF (9 rapports) + CSV |
 | 36 | Fiche synthétique du camion | ✅ |
+| 40 | Rôles et gestion des utilisateurs | ✅ |
 | 32 | Application mobile chauffeur | ❌ non démarrée |
 
 Le service de pilotage n'a **aucune donnée propre** : il assemble celles des cinq

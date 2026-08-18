@@ -1,0 +1,66 @@
+<div class="entete-page">
+  <div>
+    <h1>Mon compte</h1>
+    <p class="sous-titre">Vos informations de connexion</p>
+  </div>
+</div>
+
+@if (utilisateur(); as u) {
+  <div class="carte identite">
+    <dl>
+      <div>
+        <dt>Nom</dt>
+        <dd>{{ u.nomComplet }}</dd>
+      </div>
+      <div>
+        <dt>Adresse e-mail</dt>
+        <dd>{{ u.email }}</dd>
+      </div>
+      <div>
+        <dt>Profils</dt>
+        <dd>
+          @for (role of u.roles; track role) {
+            <span class="etiquette-profil">{{ libelleRole(role) }}</span>
+          }
+        </dd>
+      </div>
+    </dl>
+    <p class="note">
+      Nom, adresse et profils sont geres par un administrateur. Adressez-vous a lui
+      pour les faire corriger.
+    </p>
+  </div>
+}
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="carte">
+  <h2>Changer mon mot de passe</h2>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="actuel">Mot de passe actuel</label>
+      <input id="actuel" type="password" autocomplete="current-password" [(ngModel)]="actuel" />
+    </div>
+    <div class="champ">
+      <label for="nouveau">Nouveau mot de passe</label>
+      <input id="nouveau" type="password" autocomplete="new-password" [(ngModel)]="nouveau" />
+      <small>{{ longueurMinimale }} caracteres minimum.</small>
+    </div>
+    <div class="champ">
+      <label for="confirmation">Confirmation</label>
+      <input id="confirmation" type="password" autocomplete="new-password"
+             [(ngModel)]="confirmation" />
+    </div>
+  </div>
+
+  <div class="actions-formulaire">
+    <button class="bouton" type="button" [disabled]="enregistrement()" (click)="changer()">
+      {{ enregistrement() ? 'Enregistrement...' : 'Changer le mot de passe' }}
+    </button>
+  </div>
+</div>

@@ -1,0 +1,204 @@
+<div class="entete-page">
+  <div>
+    <h1>Utilisateurs</h1>
+    <p class="sous-titre">
+      {{ page()?.totalElements ?? 0 }} compte(s) — chapitre 40, profils et acces
+    </p>
+  </div>
+  <button class="bouton" type="button" (click)="ouvrirCreation()">+ Nouveau compte</button>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<!-- Creation ou modification d'un compte. -->
+@if (formulaireOuvert()) {
+  <div class="carte formulaire-compte">
+    <h2>{{ edite() ? 'Modifier le compte' : 'Nouveau compte' }}</h2>
+
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="email">Adresse e-mail</label>
+        <input id="email" type="email" autocomplete="off" [(ngModel)]="email" />
+      </div>
+      <div class="champ">
+        <label for="nom">Nom</label>
+        <input id="nom" type="text" [(ngModel)]="nom" />
+      </div>
+      <div class="champ">
+        <label for="prenom">Prenom</label>
+        <input id="prenom" type="text" [(ngModel)]="prenom" />
+      </div>
+      <div class="champ">
+        <label for="telephone">Telephone</label>
+        <input id="telephone" type="tel" [(ngModel)]="telephone" />
+      </div>
+      @if (!edite()) {
+        <div class="champ">
+          <label for="motDePasse">Mot de passe initial</label>
+          <input id="motDePasse" type="password" autocomplete="new-password"
+                 [(ngModel)]="motDePasse" />
+          <small>{{ longueurMinimale }} caracteres minimum.</small>
+        </div>
+      }
+    </div>
+
+    <fieldset class="profils">
+      <legend>Profils</legend>
+      @for (profil of profils(); track profil.valeur) {
+        <label [class.coche]="aLeRole(profil.valeur)">
+          <input type="checkbox" [checked]="aLeRole(profil.valeur)"
+                 (change)="basculerRole(profil.valeur)" />
+          {{ profil.libelle }}
+        </label>
+      }
+    </fieldset>
+
+    <div class="actions-formulaire">
+      <button class="bouton" type="button" [disabled]="enregistrement()" (click)="enregistrer()">
+        {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
+      </button>
+      <button class="bouton secondaire" type="button" (click)="fermerFormulaire()">Annuler</button>
+    </div>
+  </div>
+}
+
+<!-- Reinitialisation du mot de passe par l'administrateur. -->
+@if (reinitialise(); as cible) {
+  <div class="carte formulaire-compte">
+    <h2>Reinitialiser le mot de passe de {{ cible.email }}</h2>
+    <p class="aide">
+      L'ancien mot de passe n'est pas demande. Transmettez le nouveau par un canal sur
+      et demandez a la personne de le changer des sa connexion.
+    </p>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="nouveau">Nouveau mot de passe</label>
+        <input id="nouveau" type="password" autocomplete="new-password"
+               [(ngModel)]="nouveauMotDePasse" />
+        <small>{{ longueurMinimale }} caracteres minimum.</small>
+      </div>
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton" type="button" [disabled]="enregistrement()" (click)="reinitialiser()">
+        {{ enregistrement() ? 'Enregistrement...' : 'Reinitialiser' }}
+      </button>
+      <button class="bouton secondaire" type="button" (click)="reinitialise.set(null)">
+        Annuler
+      </button>
+    </div>
+  </div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="recherche">Recherche</label>
+      <input id="recherche" type="search" placeholder="Nom, prenom, e-mail..."
+             [(ngModel)]="recherche" (keyup.enter)="filtrer()" />
+    </div>
+    <div class="champ">
+      <label for="filtreRole">Profil</label>
+      <select id="filtreRole" [(ngModel)]="filtreRole" (change)="filtrer()">
+        <option value="">Tous les profils</option>
+        @for (profil of profils(); track profil.valeur) {
+          <option [value]="profil.valeur">{{ profil.libelle }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="filtreActif">Etat</label>
+      <select id="filtreActif" [(ngModel)]="filtreActif" (change)="filtrer()">
+        <option value="">Tous les comptes</option>
+        <option value="true">Comptes actifs</option>
+        <option value="false">Comptes desactives</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Nom</th>
+          <th>Adresse e-mail</th>
+          <th>Telephone</th>
+          <th>Profils</th>
+          <th>Etat</th>
+          <th>Cree le</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (utilisateur of page()?.content ?? []; track utilisateur.id) {
+          <tr [class.compte-inactif]="!utilisateur.actif">
+            <td>
+              {{ utilisateur.nomComplet }}
+              @if (estMoi(utilisateur)) {
+                <span class="marque-moi">vous</span>
+              }
+            </td>
+            <td>{{ utilisateur.email }}</td>
+            <td>{{ utilisateur.telephone || '—' }}</td>
+            <td>
+              @for (libelle of utilisateur.rolesLibelles; track libelle) {
+                <span class="etiquette-profil">{{ libelle }}</span>
+              }
+            </td>
+            <td>
+              <span class="etiquette" [class.actif]="utilisateur.actif">
+                {{ utilisateur.actif ? 'Actif' : 'Desactive' }}
+              </span>
+            </td>
+            <td>{{ utilisateur.creeLe | date: 'dd/MM/yyyy' }}</td>
+            <td class="actions-ligne">
+              <button class="bouton secondaire petit" type="button"
+                      (click)="ouvrirEdition(utilisateur)">
+                Modifier
+              </button>
+              <button class="bouton secondaire petit" type="button"
+                      (click)="ouvrirReinitialisation(utilisateur)">
+                Mot de passe
+              </button>
+              <button class="bouton secondaire petit" type="button"
+                      [disabled]="estMoi(utilisateur) && utilisateur.actif"
+                      [attr.title]="estMoi(utilisateur) && utilisateur.actif
+                          ? 'Vous ne pouvez pas desactiver votre propre compte' : null"
+                      (click)="changerActivation(utilisateur)">
+                {{ utilisateur.actif ? 'Desactiver' : 'Activer' }}
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7">
+              <p class="message vide">
+                {{ chargement() ? 'Chargement...' : 'Aucun compte pour ce filtre.' }}
+              </p>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.number === 0"
+                (click)="changerPage(-1)">
+          Precedent
+        </button>
+        <span>Page {{ p.number + 1 }} sur {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button"
+                [disabled]="p.number + 1 >= p.totalPages" (click)="changerPage(1)">
+          Suivant
+        </button>
+      </div>
+    }
+  }
+</div>

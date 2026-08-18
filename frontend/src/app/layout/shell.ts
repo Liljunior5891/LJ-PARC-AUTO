@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
+import { Role } from '../core/models/models';
 
 interface EntreeMenu {
   libelle: string;
@@ -9,6 +10,8 @@ interface EntreeMenu {
   /** Section du menu principal, chapitre 37 du cahier des charges. */
   section: string;
   disponible: boolean;
+  /** Profils autorises ; absent, l'entree est visible de tous. */
+  roles?: Role[];
 }
 
 @Component({
@@ -40,15 +43,24 @@ export class Shell {
     { libelle: 'Carte du parc', route: '/gps', icone: '🗺️', section: 'GPS', disponible: true },
     { libelle: 'Maintenance', route: '/maintenance', icone: '🔧', section: 'Maintenance', disponible: true },
     { libelle: 'Direction', route: '/direction', icone: '🎯', section: 'Pilotage', disponible: true },
-    { libelle: 'Rapports PDF', route: '/rapports', icone: '📄', section: 'Rapports', disponible: true }
+    { libelle: 'Rapports PDF', route: '/rapports', icone: '📄', section: 'Rapports', disponible: true },
+    { libelle: 'Utilisateurs', route: '/utilisateurs', icone: '👥', section: 'Administration',
+      disponible: true, roles: ['ADMIN'] },
+    { libelle: 'Mon compte', route: '/mon-compte', icone: '🔑', section: 'Administration',
+      disponible: true }
   ];
 
+  /** Entrees que le profil connecte a le droit d'ouvrir. */
+  private get menuVisible(): EntreeMenu[] {
+    return this.menu.filter((entree) => !entree.roles || this.auth.aRole(...entree.roles));
+  }
+
   get sections(): string[] {
-    return [...new Set(this.menu.map((entree) => entree.section))];
+    return [...new Set(this.menuVisible.map((entree) => entree.section))];
   }
 
   entreesDe(section: string): EntreeMenu[] {
-    return this.menu.filter((entree) => entree.section === section);
+    return this.menuVisible.filter((entree) => entree.section === section);
   }
 
   basculerMenu(): void {

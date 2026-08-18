@@ -73,7 +73,13 @@ L'application est servie sur `http://localhost:4200`.
 
 ### Priorité 1 — Parc
 
-- Authentification JWT et six profils utilisateurs (chapitre 40)
+- Authentification JWT et gestion des comptes (chapitre 40) : écran **Utilisateurs**
+  réservé à l'administrateur — création, profils, activation, réinitialisation du
+  mot de passe — et écran **Mon compte** où chacun change le sien.
+  Trois profils : `ADMIN` (accès complet et gestion des comptes),
+  `GESTIONNAIRE_PARC` (toute l'activité) et `CHAUFFEUR` (actions de terrain :
+  démarrage et clôture de mission, confirmation de livraison, déclaration
+  d'incident, relevé du compteur)
 - Camions : fiche complète, statuts, kilométrage, archivage (chapitre 6)
 - Chauffeurs : fiche, permis, alertes d'expiration (chapitre 8)
 - Affectations chauffeur / camion avec historique et contrôle de chevauchement (chapitre 9)

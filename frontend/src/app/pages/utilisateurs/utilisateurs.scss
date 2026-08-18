@@ -1,0 +1,108 @@
+/* Gestion des comptes : formulaire au-dessus, liste en dessous. */
+.formulaire-compte {
+  margin-bottom: 1rem;
+  border-left: 4px solid var(--couleur-primaire);
+
+  h2 {
+    margin-top: 0;
+    font-size: 1.05rem;
+  }
+
+  .aide {
+    margin: 0 0 0.75rem;
+    font-size: 0.82rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  small {
+    font-size: 0.72rem;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.profils {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem 1rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: var(--rayon);
+
+  legend {
+    padding: 0 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--couleur-texte-doux);
+  }
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-right: 0.5rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    cursor: pointer;
+
+    &.coche {
+      border-color: var(--couleur-primaire);
+      background: #eef4fb;
+      font-weight: 600;
+    }
+  }
+}
+
+/* Un compte desactive reste lisible mais visiblement en retrait. */
+.compte-inactif {
+  color: var(--couleur-texte-doux);
+
+  td:first-child {
+    font-style: italic;
+  }
+}
+
+.etiquette-profil {
+  display: inline-block;
+  margin: 0 0.25rem 0.2rem 0;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.etiquette {
+  display: inline-block;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  background: #fce9e9;
+  color: var(--couleur-danger);
+  font-size: 0.72rem;
+  font-weight: 600;
+
+  &.actif {
+    background: #e3f5ea;
+    color: var(--couleur-succes);
+  }
+}
+
+.marque-moi {
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--couleur-primaire);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.actions-ligne {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

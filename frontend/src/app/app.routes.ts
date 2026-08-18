@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth/auth.guard';
+import { authGuard, roleGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
@@ -151,6 +151,17 @@ export const routes: Routes = [
         path: 'direction',
         loadComponent: () => import('./pages/direction/direction').then((m) => m.Direction),
         title: 'Pilotage — PARC AUTO'
+      },
+      {
+        path: 'utilisateurs',
+        loadComponent: () => import('./pages/utilisateurs/utilisateurs').then((m) => m.Utilisateurs),
+        canActivate: [roleGuard('ADMIN')],
+        title: 'Utilisateurs — PARC AUTO'
+      },
+      {
+        path: 'mon-compte',
+        loadComponent: () => import('./pages/mon-compte/mon-compte').then((m) => m.MonCompte),
+        title: 'Mon compte — PARC AUTO'
       },
       {
         path: 'rapports',
