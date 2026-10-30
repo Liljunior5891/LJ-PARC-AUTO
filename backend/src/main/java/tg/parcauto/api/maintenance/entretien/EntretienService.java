@@ -106,7 +106,7 @@ public class EntretienService {
         }
         Camion camion = entretien.getCamion();
         if (realisation.kilometrageRealise() < camion.getKilometrageInitial()) {
-            throw new BusinessException("Le kilometrage releve est anterieur a la mise en service du camion");
+            throw new BusinessException("Le kilometrage releve est anterieur a la mise en service du vehicule");
         }
 
         entretien.setStatut(StatutEntretien.REALISE);

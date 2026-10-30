@@ -1,7 +1,6 @@
 package tg.parcauto.api.pilotage;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -61,9 +60,8 @@ public class RapportPdfService {
     private final IncidentService incidentService;
     private final FactureService factureService;
     private final OdometreService odometreService;
+    private final tg.parcauto.api.parametrage.SocieteService societeService;
 
-    @Value("${parcauto.entreprise.nom:PARC AUTO}")
-    private String entreprise;
 
     /**
      * Produit le rapport demande.
@@ -74,6 +72,7 @@ public class RapportPdfService {
         if (debut.isAfter(fin)) {
             throw new BusinessException("La date de debut est posterieure a la date de fin");
         }
+        String entreprise = societeService.entite().getNom();
         try (MiseEnPagePdf pdf = new MiseEnPagePdf(entreprise, type.getLibelle(),
                 MiseEnPagePdf.periode(debut, fin), type.paysage())) {
             switch (type) {
@@ -106,10 +105,10 @@ public class RapportPdfService {
                         MiseEnPagePdf.montant(global.resultat()) + " F",
                         "marge " + MiseEnPagePdf.nombre(global.margePourcent()) + " %",
                         global.resultat().signum() >= 0 ? MiseEnPagePdf.VERT : MiseEnPagePdf.ROUGE),
-                MiseEnPagePdf.Indicateur.de("Camions", String.valueOf(global.nombreCamions()),
+                MiseEnPagePdf.Indicateur.de("Vehicules", String.valueOf(global.nombreCamions()),
                         MiseEnPagePdf.montant(global.recetteMoyenneParCamion()) + " F de recette moyenne")));
 
-        pdf.section("Rentabilite par camion");
+        pdf.section("Rentabilite par vehicule");
         List<String[]> lignes = new ArrayList<>();
         for (RentabiliteDto.LigneCamion camion : global.camions()) {
             lignes.add(new String[]{
@@ -134,7 +133,7 @@ public class RapportPdfService {
             pdf.section("Comparaison");
             pdf.tableau(
                     new float[]{40f, 30f, 30f},
-                    new String[]{"Critere", "Camion", "Valeur"},
+                    new String[]{"Critere", "Vehicule", "Valeur"},
                     "ggd",
                     List.of(
                             ligneP("Le plus rentable", global.palmares().plusRentable(),
@@ -167,7 +166,7 @@ public class RapportPdfService {
     private void camionsDetail(MiseEnPagePdf pdf, LocalDate debut, LocalDate fin, List<Long> camionIds) {
         List<Long> cibles = camionIds.isEmpty() ? tousLesCamions() : camionIds;
         if (cibles.isEmpty()) {
-            pdf.texte("Aucun camion a editer.");
+            pdf.texte("Aucun vehicule a editer.");
             return;
         }
 
@@ -186,7 +185,7 @@ public class RapportPdfService {
         FicheSyntheseDto synthese = pilotageService.ficheSynthese(camionId, debut, fin);
         RentabiliteDto.FicheCamion performance = rentabiliteService.ficheCamion(camionId, debut, fin);
 
-        pdf.section("Camion " + camion.immatriculation());
+        pdf.section("Vehicule " + camion.immatriculation());
         pdf.tableau(
                 new float[]{25f, 25f, 25f, 25f},
                 new String[]{"Marque et modele", "Type", "Annee", "Statut"},
@@ -301,9 +300,9 @@ public class RapportPdfService {
         pdf.tableau(new float[]{60f, 40f},
                 new String[]{"Indicateur", "Valeur"}, "gd",
                 List.of(
-                        new String[]{"Recette moyenne par camion",
+                        new String[]{"Recette moyenne par vehicule",
                                 MiseEnPagePdf.montant(kpi.recetteMoyenneParCamion()) + " F"},
-                        new String[]{"Depense moyenne par camion",
+                        new String[]{"Depense moyenne par vehicule",
                                 MiseEnPagePdf.montant(kpi.depenseMoyenneParCamion()) + " F"},
                         new String[]{"Cout au kilometre", MiseEnPagePdf.montant(kpi.coutParKm()) + " F"},
                         new String[]{"Revenu au kilometre", MiseEnPagePdf.montant(kpi.revenuParKm()) + " F"},
@@ -352,7 +351,7 @@ public class RapportPdfService {
                         valeur(recette.clientNom()),
                         MiseEnPagePdf.montant(recette.montant())}));
         pdf.tableau(new float[]{12f, 10f, 12f, 12f, 26f, 16f, 12f},
-                new String[]{"Numero", "Date", "Camion", "Type", "Libelle", "Client", "Montant"},
+                new String[]{"Numero", "Date", "Vehicule", "Type", "Libelle", "Client", "Montant"},
                 "ggggggd", lignes);
     }
 
@@ -381,7 +380,7 @@ public class RapportPdfService {
                         valeur(depense.fournisseur()),
                         MiseEnPagePdf.montant(depense.montant())}));
         pdf.tableau(new float[]{11f, 9f, 11f, 11f, 12f, 22f, 13f, 11f},
-                new String[]{"Numero", "Date", "Camion", "Categorie", "Nature", "Libelle",
+                new String[]{"Numero", "Date", "Vehicule", "Categorie", "Nature", "Libelle",
                         "Fournisseur", "Montant"},
                 "gggggggd", lignes);
         pdf.note("Les depenses refacturees au client figurent au detail mais sont exclues des totaux.");
@@ -391,7 +390,7 @@ public class RapportPdfService {
         List<Long> cibles = camionIds.isEmpty() ? tousLesCamions() : camionIds;
         for (Long camionId : cibles) {
             var synthese = carburantService.synthese(camionId, debut, fin);
-            pdf.section("Camion " + synthese.camionImmatriculation());
+            pdf.section("Vehicule " + synthese.camionImmatriculation());
             pdf.indicateurs(List.of(
                     MiseEnPagePdf.Indicateur.de("Consommation",
                             synthese.consommationMoyenneL100km() == null ? "—"
@@ -444,7 +443,7 @@ public class RapportPdfService {
                     entretien.statutLibelle()});
         }
         pdf.tableau(new float[]{12f, 12f, 14f, 22f, 12f, 10f, 10f, 8f},
-                new String[]{"Numero", "Camion", "Type", "Libelle", "Echeance km",
+                new String[]{"Numero", "Vehicule", "Type", "Libelle", "Echeance km",
                         "Echeance", "Restant", "Statut"},
                 "ggggddd g", interventions);
 
@@ -463,7 +462,7 @@ public class RapportPdfService {
                     pneu.etatLibelle()});
         }
         pdf.tableau(new float[]{16f, 14f, 10f, 16f, 16f, 12f, 16f},
-                new String[]{"Reference", "Camion", "Position", "Marque", "Kilometres",
+                new String[]{"Reference", "Vehicule", "Position", "Marque", "Kilometres",
                         "Usure", "Etat"},
                 "ggggdd g", pneus);
 
@@ -479,7 +478,7 @@ public class RapportPdfService {
                     incident.description(), incident.statutLibelle()});
         }
         pdf.tableau(new float[]{12f, 12f, 14f, 10f, 14f, 26f, 12f},
-                new String[]{"Numero", "Camion", "Type", "Gravite", "Chauffeur",
+                new String[]{"Numero", "Vehicule", "Type", "Gravite", "Chauffeur",
                         "Description", "Statut"},
                 "ggggggg", incidents);
     }

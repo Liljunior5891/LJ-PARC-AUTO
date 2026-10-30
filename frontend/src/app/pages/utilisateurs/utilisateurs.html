@@ -17,16 +17,17 @@
 
 <!-- Creation ou modification d'un compte. -->
 @if (formulaireOuvert()) {
+  <app-modale [titre]="edite() ? 'Modifier le compte' : 'Nouveau compte'" largeur="760px"
+              [erreur]="erreur()" (ferme)="fermerFormulaire()">
   <div class="carte formulaire-compte">
-    <h2>{{ edite() ? 'Modifier le compte' : 'Nouveau compte' }}</h2>
 
     <div class="grille-formulaire">
       <div class="champ">
-        <label for="email">Adresse e-mail</label>
+        <label for="email">Adresse e-mail <span class="requis">*</span></label>
         <input id="email" type="email" autocomplete="off" [(ngModel)]="email" />
       </div>
       <div class="champ">
-        <label for="nom">Nom</label>
+        <label for="nom">Nom <span class="requis">*</span></label>
         <input id="nom" type="text" [(ngModel)]="nom" />
       </div>
       <div class="champ">
@@ -39,7 +40,7 @@
       </div>
       @if (!edite()) {
         <div class="champ">
-          <label for="motDePasse">Mot de passe initial</label>
+          <label for="motDePasse">Mot de passe initial <span class="requis">*</span></label>
           <input id="motDePasse" type="password" autocomplete="new-password"
                  [(ngModel)]="motDePasse" />
           <small>{{ longueurMinimale }} caracteres minimum.</small>
@@ -48,7 +49,7 @@
     </div>
 
     <fieldset class="profils">
-      <legend>Profils</legend>
+      <legend>Profils <span class="requis">*</span></legend>
       @for (profil of profils(); track profil.valeur) {
         <label [class.coche]="aLeRole(profil.valeur)">
           <input type="checkbox" [checked]="aLeRole(profil.valeur)"
@@ -65,19 +66,21 @@
       <button class="bouton secondaire" type="button" (click)="fermerFormulaire()">Annuler</button>
     </div>
   </div>
+  </app-modale>
 }
 
 <!-- Reinitialisation du mot de passe par l'administrateur. -->
 @if (reinitialise(); as cible) {
+  <app-modale titre="Reinitialiser le mot de passe" [sousTitre]="cible.email" largeur="560px"
+              [erreur]="erreur()" (ferme)="reinitialise.set(null)">
   <div class="carte formulaire-compte">
-    <h2>Reinitialiser le mot de passe de {{ cible.email }}</h2>
     <p class="aide">
       L'ancien mot de passe n'est pas demande. Transmettez le nouveau par un canal sur
       et demandez a la personne de le changer des sa connexion.
     </p>
     <div class="grille-formulaire">
       <div class="champ">
-        <label for="nouveau">Nouveau mot de passe</label>
+        <label for="nouveau">Nouveau mot de passe <span class="requis">*</span></label>
         <input id="nouveau" type="password" autocomplete="new-password"
                [(ngModel)]="nouveauMotDePasse" />
         <small>{{ longueurMinimale }} caracteres minimum.</small>
@@ -92,6 +95,7 @@
       </button>
     </div>
   </div>
+  </app-modale>
 }
 
 <div class="carte">

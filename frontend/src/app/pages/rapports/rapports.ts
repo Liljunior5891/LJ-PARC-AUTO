@@ -73,7 +73,7 @@ export class Rapports implements OnInit, OnDestroy {
     });
     this.camionService.lister({ actif: true, size: 200 }).subscribe({
       next: (page) => this.camions.set(page.content),
-      error: () => this.erreur.set('Chargement des camions impossible.')
+      error: () => this.erreur.set('Chargement des vehicules impossible.')
     });
   }
 

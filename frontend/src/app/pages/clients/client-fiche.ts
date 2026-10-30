@@ -1,15 +1,16 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, input, output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TYPES_CLIENT } from '../../core/models/exploitation';
 import { ClientService } from '../../core/services/client.service';
 import { LocationService } from '../../core/services/location.service';
 import { Location } from '../../core/models/exploitation';
+import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 
 @Component({
   selector: 'app-client-fiche',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [ReactiveFormsModule, RouterLink, DecimalPipe, VALIDATION_FORMULAIRE],
   templateUrl: './client-fiche.html'
 })
 export class ClientFiche implements OnInit {
@@ -21,6 +22,11 @@ export class ClientFiche implements OnInit {
 
   readonly types = TYPES_CLIENT;
   readonly id = signal<number | null>(null);
+  /** Ouverte dans une fenetre depuis la liste : creation seule, sans en-tete de page. */
+  readonly enModale = input(false);
+  /** Creation terminee en mode fenetre : identifiant du nouvel enregistrement. */
+  readonly cree = output<number>();
+  readonly annule = output<void>();
   readonly enregistrement = signal(false);
   readonly erreur = signal<string | null>(null);
   readonly succes = signal<string | null>(null);
@@ -81,7 +87,9 @@ export class ClientFiche implements OnInit {
     requete.subscribe({
       next: (client) => {
         this.enregistrement.set(false);
-        if (id === null) {
+        if (id === null && this.enModale()) {
+          this.cree.emit(client.id);
+        } else if (id === null) {
           void this.router.navigate(['/clients', client.id]);
         } else {
           this.succes.set('Fiche enregistree.');

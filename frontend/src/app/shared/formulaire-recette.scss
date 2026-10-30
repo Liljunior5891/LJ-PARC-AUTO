@@ -1,0 +1,88 @@
+/* Formulaire de recette partage entre l'ecran Recettes et la fiche camion. */
+.formulaire-recette {
+  small {
+    font-size: 0.72rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  input[readonly] {
+    background: #f4f6f9;
+    color: var(--couleur-texte-doux);
+    cursor: default;
+  }
+
+  /* Un camion sans chauffeur affecte doit se voir, sans alarmer. */
+  input.vide {
+    font-style: italic;
+  }
+
+  .champ-large {
+    grid-column: 1 / -1;
+  }
+
+  /* Les champs qui dependent du type se distinguent de la saisie courante. */
+  .champ-conditionnel {
+    padding: 0.6rem 0.7rem;
+    border: 1px dashed var(--couleur-primaire);
+    border-radius: var(--rayon);
+    background: #f5f9fd;
+  }
+}
+
+/* Conditions de la location : un bloc a part, pour montrer qu'il depend du type. */
+.bloc-location {
+  margin: 0.5rem 0 1rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid var(--couleur-primaire);
+  border-radius: var(--rayon);
+  background: #f5f9fd;
+
+  legend {
+    padding: 0 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--couleur-primaire);
+  }
+
+  .aide {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+/* Le montant est un resultat, pas une saisie : il s'affiche comme tel. */
+.montant-calcule {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.9rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--couleur-primaire);
+
+  span {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--couleur-texte-doux);
+  }
+
+  strong {
+    font-size: 1.3rem;
+  }
+
+  small {
+    font-size: 0.75rem;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+/* Explique un bouton d'enregistrement grise : ce qu'il reste a saisir. */
+.manquants {
+  align-self: center;
+  font-size: 0.78rem;
+  color: #b8650a;
+}

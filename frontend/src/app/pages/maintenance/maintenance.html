@@ -7,8 +7,7 @@
   </div>
   @if (peutGerer || (onglet() === 'incidents' && peutDeclarer)) {
     <button class="bouton" type="button" (click)="basculerFormulaire()">
-      {{ formulaireVisible() ? 'Fermer' :
-         onglet() === 'entretiens' ? '+ Planifier une intervention' :
+      {{ onglet() === 'entretiens' ? '+ Planifier une intervention' :
          onglet() === 'pneus' ? '+ Nouveau pneu' : '+ Declarer un incident' }}
     </button>
   }
@@ -22,7 +21,7 @@
 }
 
 <section class="grille-indicateurs">
-  <div class="carte indicateur alerte">
+  <div class="carte indicateur" [class.alerte]="alertesEntretien().length > 0">
     <span class="libelle">Echeances a traiter</span>
     <strong class="valeur">{{ alertesEntretien().length }}</strong>
     <span class="detail">{{ entretiens().length }} intervention(s) ouverte(s)</span>
@@ -39,26 +38,34 @@
   </div>
 </section>
 
-<div class="onglets">
-  <button type="button" [class.actif]="onglet() === 'entretiens'" (click)="changerOnglet('entretiens')">
-    Entretiens
-  </button>
-  <button type="button" [class.actif]="onglet() === 'pneus'" (click)="changerOnglet('pneus')">
-    Pneumatiques
-  </button>
-  <button type="button" [class.actif]="onglet() === 'incidents'" (click)="changerOnglet('incidents')">
-    Incidents
-  </button>
+<!-- Onglets inclines, comme le menu principal : l'onglet ouvert passe devant. -->
+<div class="onglets-inclines" role="tablist">
+  @for (o of onglets; track o.id; let i = $index) {
+    <button
+      type="button"
+      role="tab"
+      [class.actif]="onglet() === o.id"
+      [style.z-index]="onglet() === o.id ? onglets.length + 1 : onglets.length - i"
+      [attr.aria-selected]="onglet() === o.id"
+      (click)="changerOnglet(o.id)"
+    >
+      <span class="icone" aria-hidden="true">{{ o.icone }}</span>
+      <span>{{ o.libelle }}</span>
+      @if (compte(o.id); as n) {
+        <span class="compteur">{{ n }}</span>
+      }
+    </button>
+  }
 </div>
 
 <!-- ------------------------------ Entretiens ------------------------------ -->
 @if (onglet() === 'entretiens') {
   @if (formulaireVisible()) {
-    <form class="carte" [formGroup]="formEntretien" (ngSubmit)="planifier()" style="margin-bottom: 1rem">
-      <h2>Planifier une intervention</h2>
+    <app-modale titre="Planifier une intervention" [erreur]="erreur()" (ferme)="basculerFormulaire()">
+      <form [formGroup]="formEntretien" (ngSubmit)="planifier()">
       <div class="grille-formulaire">
         <div class="champ">
-          <label for="camionId">Camion *</label>
+          <label for="camionId">Vehicule <span class="requis">*</span></label>
           <select id="camionId" formControlName="camionId">
             <option [ngValue]="null">Selectionner</option>
             @for (camion of camions(); track camion.id) {
@@ -69,7 +76,7 @@
           </select>
         </div>
         <div class="champ">
-          <label for="type">Type *</label>
+          <label for="type">Type <span class="requis">*</span></label>
           <select id="type" formControlName="type">
             @for (t of typesEntretien; track t.valeur) {
               <option [value]="t.valeur">{{ t.libelle }}</option>
@@ -77,7 +84,7 @@
           </select>
         </div>
         <div class="champ">
-          <label for="libelle">Libelle *</label>
+          <label for="libelle">Libelle <span class="requis">*</span></label>
           <input id="libelle" formControlName="libelle" placeholder="Vidange periodique" />
         </div>
         <div class="champ">
@@ -105,21 +112,23 @@
         <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
       </div>
     </form>
+    </app-modale>
   }
 
   @if (realisationEnCours(); as e) {
-    <div class="carte" style="margin-bottom: 1rem">
-      <h2>Realiser {{ e.numero }} — {{ e.libelle }}</h2>
+    <app-modale [titre]="'Realiser ' + e.numero" [sousTitre]="e.libelle" largeur="760px"
+                [erreur]="erreur()" (ferme)="realisationEnCours.set(null)">
+    <div class="carte">
       <div class="grille-formulaire">
         <div class="champ">
-          <label for="kilometrageRealise">Kilometrage releve *</label>
+          <label for="kilometrageRealise">Kilometrage releve <span class="requis">*</span></label>
           <input id="kilometrageRealise" type="number" [(ngModel)]="kilometrageRealise" />
         </div>
         <div class="champ">
           <label for="coutRealisation">Cout (FCFA)</label>
           <input id="coutRealisation" type="number" [(ngModel)]="coutRealisation" />
           <span class="erreur-champ" style="color: var(--couleur-texte-doux)">
-            Genere la depense rattachee au camion
+            Genere la depense rattachee au vehicule
           </span>
         </div>
         <div class="champ">
@@ -134,6 +143,7 @@
         </button>
       </div>
     </div>
+    </app-modale>
   }
 
   <div class="carte">
@@ -142,7 +152,7 @@
         <thead>
           <tr>
             <th>Numero</th>
-            <th>Camion</th>
+            <th>Vehicule</th>
             <th>Type</th>
             <th>Libelle</th>
             <th>Echeance</th>
@@ -195,11 +205,11 @@
 <!-- ------------------------------- Pneus ---------------------------------- -->
 @if (onglet() === 'pneus') {
   @if (formulaireVisible()) {
-    <form class="carte" [formGroup]="formPneu" (ngSubmit)="creerPneu()" style="margin-bottom: 1rem">
-      <h2>Enregistrer un pneu en stock</h2>
+    <app-modale titre="Enregistrer un pneu en stock" [erreur]="erreur()" (ferme)="basculerFormulaire()">
+      <form [formGroup]="formPneu" (ngSubmit)="creerPneu()">
       <div class="grille-formulaire">
         <div class="champ">
-          <label for="reference">Reference *</label>
+          <label for="reference">Reference <span class="requis">*</span></label>
           <input id="reference" formControlName="reference" placeholder="PN-0003" />
         </div>
         <div class="champ">
@@ -228,6 +238,7 @@
         <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
       </div>
     </form>
+    </app-modale>
   }
 
   <div class="carte">
@@ -237,7 +248,7 @@
           <tr>
             <th>Reference</th>
             <th>Marque / dimension</th>
-            <th>Camion</th>
+            <th>Vehicule</th>
             <th>Position</th>
             <th class="numerique">Kilometres</th>
             <th>Usure</th>
@@ -290,11 +301,11 @@
 <!-- ----------------------------- Incidents -------------------------------- -->
 @if (onglet() === 'incidents') {
   @if (formulaireVisible()) {
-    <form class="carte" [formGroup]="formIncident" (ngSubmit)="declarer()" style="margin-bottom: 1rem">
-      <h2>Declarer un incident</h2>
+    <app-modale titre="Declarer un incident" [erreur]="erreur()" (ferme)="basculerFormulaire()">
+      <form [formGroup]="formIncident" (ngSubmit)="declarer()">
       <div class="grille-formulaire">
         <div class="champ">
-          <label for="camionIncident">Camion *</label>
+          <label for="camionIncident">Vehicule <span class="requis">*</span></label>
           <select id="camionIncident" formControlName="camionId">
             <option [ngValue]="null">Selectionner</option>
             @for (camion of camions(); track camion.id) {
@@ -312,7 +323,7 @@
           </select>
         </div>
         <div class="champ">
-          <label for="typeIncident">Type *</label>
+          <label for="typeIncident">Type <span class="requis">*</span></label>
           <select id="typeIncident" formControlName="type">
             @for (t of typesIncident; track t.valeur) {
               <option [value]="t.valeur">{{ t.libelle }}</option>
@@ -333,7 +344,7 @@
         </div>
       </div>
       <div class="champ" style="margin-top: 1rem">
-        <label for="description">Description *</label>
+        <label for="description">Description <span class="requis">*</span></label>
         <textarea id="description" formControlName="description"></textarea>
       </div>
       <div class="actions-formulaire">
@@ -341,6 +352,7 @@
         <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
       </div>
     </form>
+    </app-modale>
   }
 
   <div class="carte">
@@ -349,7 +361,7 @@
         <thead>
           <tr>
             <th>Numero</th>
-            <th>Camion</th>
+            <th>Vehicule</th>
             <th>Type</th>
             <th>Gravite</th>
             <th>Description</th>

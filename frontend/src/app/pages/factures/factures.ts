@@ -15,14 +15,18 @@ import { Page } from '../../core/models/models';
 import { FactureService } from '../../core/services/facture.service';
 import { LocationService } from '../../core/services/location.service';
 import { MissionService } from '../../core/services/mission.service';
+import { Modale } from '../../shared/modale';
+import { OperationService } from '../../core/operation/operation.service';
+import { messageChampsManquants } from '../../shared/validation-formulaire';
 
 @Component({
   selector: 'app-factures',
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, Modale],
   templateUrl: './factures.html'
 })
 export class Factures implements OnInit {
   private readonly service = inject(FactureService);
+  private readonly operation = inject(OperationService);
   private readonly locationService = inject(LocationService);
   private readonly missionService = inject(MissionService);
   private readonly auth = inject(AuthService);
@@ -37,6 +41,7 @@ export class Factures implements OnInit {
   readonly detail = signal<Facture | null>(null);
   readonly chargement = signal(false);
   readonly erreur = signal<string | null>(null);
+  readonly telechargement = signal(false);
   readonly succes = signal<string | null>(null);
   readonly generationVisible = signal(false);
   readonly paiementVisible = signal(false);
@@ -49,7 +54,6 @@ export class Factures implements OnInit {
   sourceGeneration: 'contrat' | 'mission' = 'contrat';
   contratId?: number;
   missionId?: number;
-  tauxTva = 18;
 
   montantPaiement = 0;
   datePaiement = new Date().toISOString().slice(0, 10);
@@ -132,8 +136,8 @@ export class Factures implements OnInit {
     this.erreur.set(null);
     const appel =
       this.sourceGeneration === 'contrat'
-        ? this.contratId && this.service.depuisContrat(this.contratId, this.tauxTva)
-        : this.missionId && this.service.depuisMission(this.missionId, this.tauxTva);
+        ? this.contratId && this.service.depuisContrat(this.contratId)
+        : this.missionId && this.service.depuisMission(this.missionId);
     if (!appel) {
       this.erreur.set('Selectionnez un contrat ou une mission.');
       return;
@@ -154,7 +158,7 @@ export class Factures implements OnInit {
     this.service.emettre(facture.id).subscribe({
       next: (maj) => {
         this.detail.set(maj);
-        this.succes.set(`Facture ${maj.numero} emise : les recettes sont enregistrees par camion.`);
+        this.succes.set(`Facture ${maj.numero} emise : les recettes sont enregistrees par vehicule.`);
         this.charger();
       },
       error: (erreur) => this.erreur.set(erreur.error?.message ?? 'Emission impossible.')
@@ -163,6 +167,15 @@ export class Factures implements OnInit {
 
   payer(facture: Facture): void {
     this.erreur.set(null);
+    const manquants = messageChampsManquants({
+      Montant: this.montantPaiement || null,
+      Date: this.datePaiement,
+      Mode: this.modePaiement
+    });
+    if (manquants) {
+      this.erreur.set(manquants);
+      return;
+    }
     this.service
       .payer(facture.id, {
         montant: this.montantPaiement,
@@ -182,8 +195,14 @@ export class Factures implements OnInit {
       });
   }
 
-  annuler(facture: Facture): void {
-    if (!confirm(`Annuler la facture ${facture.numero} ?`)) {
+  async annuler(facture: Facture): Promise<void> {
+    const accepte = await this.operation.confirmer({
+      titre: `Annuler la facture ${facture.numero} ?`,
+      message: 'Cette action ne peut pas etre defaite.',
+      libelleAction: 'Annuler la facture',
+      danger: true
+    });
+    if (!accepte) {
       return;
     }
     this.service.annuler(facture.id).subscribe({
@@ -202,6 +221,30 @@ export class Factures implements OnInit {
         this.charger();
       },
       error: () => this.erreur.set('Mise a jour des retards impossible.')
+    });
+  }
+
+  /** Edite le PDF de la facture, celui qui est remis au client. */
+  telechargerPdf(facture: Facture): void {
+    if (this.telechargement()) {
+      return;
+    }
+    this.telechargement.set(true);
+    this.erreur.set(null);
+    this.service.pdf(facture.id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const lien = document.createElement('a');
+        lien.href = url;
+        lien.download = `facture_${facture.numero}.pdf`;
+        lien.click();
+        URL.revokeObjectURL(url);
+        this.telechargement.set(false);
+      },
+      error: () => {
+        this.telechargement.set(false);
+        this.erreur.set("Edition du PDF impossible.");
+      }
     });
   }
 

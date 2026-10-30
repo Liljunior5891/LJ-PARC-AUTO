@@ -1,13 +1,5 @@
-import {
-  Component,
-  ElementRef,
-  computed,
-  forwardRef,
-  inject,
-  input,
-  signal
-} from '@angular/core';
-import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { Component, computed, forwardRef, input, signal } from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 /** Une entree de la liste, telle que fournie par l'appelant. */
 export interface OptionSelect {
@@ -23,135 +15,67 @@ export interface OptionSelect {
 }
 
 /**
- * Liste deroulante avec recherche, equivalent de select2.
+ * Liste deroulante avec recherche, rendue par Select2.
  * <p>
- * Ecrite sans dependance : un composant de quelques dizaines de lignes evite
- * d'ajouter une bibliotheque tierce a maintenir, et permet d'afficher les
- * logos de marques et les pastilles de couleur du referentiel.
+ * Le composant pose un select natif que Select2Service habille, comme toutes
+ * les listes de l'application. Pastille, logo et ligne de detail passent par
+ * des attributs data-* que Select2 affiche. Les valeurs typees (nombre, texte,
+ * null) sont retrouvees par leur rang, le select ne connaissant que du texte.
  */
 @Component({
   selector: 'app-select-recherche',
-  imports: [FormsModule],
   template: `
-    <div class="select-recherche" [class.ouvert]="ouvert()" [class.desactive]="desactive()">
-      <button
-        type="button"
-        class="declencheur"
-        [disabled]="desactive()"
-        (click)="basculer()"
-        [attr.aria-expanded]="ouvert()"
-      >
-        @if (optionChoisie(); as choix) {
-          @if (choix.couleur || choix.logoUrl) {
-            <span class="pastille" [style.background]="choix.couleur || '#6b7684'">
-              @if (choix.logoUrl) {
-                <img [src]="choix.logoUrl" [alt]="choix.libelle" />
-              } @else {
-                {{ choix.monogramme || '' }}
-              }
-            </span>
-          }
-          <span class="libelle-choisi">{{ choix.libelle }}</span>
-        } @else {
-          <span class="libelle-vide">{{ placeholder() }}</span>
-        }
-        <span class="chevron">▾</span>
-      </button>
-
-      @if (ouvert()) {
-        <div class="panneau">
-          <input
-            #champRecherche
-            type="search"
-            class="champ-recherche"
-            [placeholder]="'Rechercher...'"
-            [(ngModel)]="recherche"
-            (ngModelChange)="filtrer($event)"
-            (keydown.escape)="fermer()"
-          />
-          <ul class="options">
-            @if (autoriserVide()) {
-              <li>
-                <button type="button" class="option" (click)="choisir(null)">
-                  <span class="libelle-vide">{{ placeholder() }}</span>
-                </button>
-              </li>
-            }
-            @for (option of optionsFiltrees(); track option.valeur) {
-              <li>
-                <button
-                  type="button"
-                  class="option"
-                  [class.selectionnee]="option.valeur === valeur()"
-                  (click)="choisir(option.valeur)"
-                >
-                  @if (option.couleur || option.logoUrl) {
-                    <span class="pastille" [style.background]="option.couleur || '#6b7684'">
-                      @if (option.logoUrl) {
-                        <img [src]="option.logoUrl" [alt]="option.libelle" />
-                      } @else {
-                        {{ option.monogramme || '' }}
-                      }
-                    </span>
-                  }
-                  <span class="textes">
-                    <span>{{ option.libelle }}</span>
-                    @if (option.detail) {
-                      <small>{{ option.detail }}</small>
-                    }
-                  </span>
-                </button>
-              </li>
-            } @empty {
-              <li class="aucun-resultat">Aucun resultat</li>
-            }
-          </ul>
-        </div>
+    <select
+      data-recherche="toujours"
+      [disabled]="desactive()"
+      (change)="surSelection($event)"
+      (blur)="surContact()"
+    >
+      @if (autoriserVide() || indexChoisi() < 0) {
+        <option value="" [selected]="indexChoisi() < 0">{{ placeholder() }}</option>
       }
-    </div>
+      @for (option of options(); track $index) {
+        <option
+          [value]="$index"
+          [selected]="$index === indexChoisi()"
+          [attr.data-couleur]="option.couleur || (option.logoUrl || option.monogramme ? '#6b7684' : null)"
+          [attr.data-logo]="option.logoUrl || null"
+          [attr.data-monogramme]="option.monogramme || null"
+          [attr.data-detail]="option.detail || null"
+        >{{ option.libelle }}</option>
+      }
+    </select>
   `,
-  styleUrl: './select-recherche.scss',
+  styles: `
+    :host {
+      display: block;
+      width: 100%;
+    }
+  `,
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => SelectRecherche),
       multi: true
     }
-  ],
-  host: {
-    '(document:click)': 'clicExterieur($event)'
-  }
+  ]
 })
 export class SelectRecherche implements ControlValueAccessor {
-  private readonly element: ElementRef<HTMLElement> = inject(ElementRef);
-
   readonly options = input<OptionSelect[]>([]);
   readonly placeholder = input('Selectionner');
   /** Autorise le choix « aucune valeur ». */
   readonly autoriserVide = input(true);
 
   readonly valeur = signal<string | number | null>(null);
-  readonly ouvert = signal(false);
   readonly desactive = signal(false);
-  readonly recherche = signal('');
 
-  readonly optionChoisie = computed(() =>
-    this.options().find((option) => option.valeur === this.valeur()) ?? null
+  /** Rang de l'option choisie, -1 sans choix. */
+  readonly indexChoisi = computed(() =>
+    this.options().findIndex((option) => option.valeur === this.valeur())
   );
 
-  /** Filtre sur le libelle et sur le detail, sans tenir compte des accents. */
-  readonly optionsFiltrees = computed(() => {
-    const terme = this.normaliser(this.recherche());
-    if (!terme) {
-      return this.options();
-    }
-    return this.options().filter((option) =>
-      this.normaliser(option.libelle + ' ' + (option.detail ?? '')).includes(terme)
-    );
-  });
-
   private surChangement: (valeur: string | number | null) => void = () => undefined;
-  private surContact: () => void = () => undefined;
+  surContact: () => void = () => undefined;
 
   writeValue(valeur: string | number | null): void {
     this.valeur.set(valeur ?? null);
@@ -169,47 +93,10 @@ export class SelectRecherche implements ControlValueAccessor {
     this.desactive.set(desactive);
   }
 
-  basculer(): void {
-    if (this.desactive()) {
-      return;
-    }
-    this.ouvert.update((ouvert) => !ouvert);
-    if (this.ouvert()) {
-      this.recherche.set('');
-      // Le champ de recherche prend le focus des l'ouverture.
-      setTimeout(() => {
-        this.element.nativeElement.querySelector<HTMLInputElement>('.champ-recherche')?.focus();
-      });
-    }
-  }
-
-  filtrer(terme: string): void {
-    this.recherche.set(terme);
-  }
-
-  choisir(valeur: string | number | null): void {
+  surSelection(evenement: Event): void {
+    const rang = (evenement.target as HTMLSelectElement).value;
+    const valeur = rang === '' ? null : (this.options()[Number(rang)]?.valeur ?? null);
     this.valeur.set(valeur);
     this.surChangement(valeur);
-    this.surContact();
-    this.fermer();
-  }
-
-  fermer(): void {
-    this.ouvert.set(false);
-  }
-
-  /** Un clic hors du composant referme la liste. */
-  clicExterieur(evenement: Event): void {
-    if (this.ouvert() && !this.element.nativeElement.contains(evenement.target as Node)) {
-      this.fermer();
-    }
-  }
-
-  private normaliser(texte: string): string {
-    return texte
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .trim();
   }
 }

@@ -21,7 +21,7 @@ public class CarburantController {
     private final CarburantService service;
 
     @GetMapping("/camions/{camionId}")
-    @Operation(summary = "Pleins, consommation moyenne et cout au kilometre d'un camion")
+    @Operation(summary = "Pleins, consommation moyenne et cout au kilometre d'un vehicule")
     public CarburantDto.Synthese synthese(
             @PathVariable Long camionId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,

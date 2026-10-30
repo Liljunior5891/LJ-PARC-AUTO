@@ -4,9 +4,16 @@
     <p class="sous-titre">{{ page()?.totalElements ?? 0 }} mission(s) — chapitre 13 du cahier des charges</p>
   </div>
   @if (peutGerer) {
-    <a class="bouton" routerLink="/missions/nouvelle">+ Nouvelle mission</a>
+    <button class="bouton" type="button" (click)="ouvrirCreation()">+ Nouvelle mission</button>
   }
 </div>
+
+<!-- Creation dans une fenetre : la fiche complete reste accessible ensuite depuis la liste. -->
+@if (creation()) {
+  <app-modale titre="Nouvelle mission" largeur="1000px" (ferme)="creation.set(false)">
+    <app-mission-fiche [enModale]="true" (cree)="creationTerminee()" (annule)="creation.set(false)" />
+  </app-modale>
+}
 
 @if (erreur()) {
   <div class="message erreur">{{ erreur() }}</div>
@@ -52,7 +59,7 @@
       <thead>
         <tr>
           <th>Mission</th>
-          <th>Camion</th>
+          <th>Vehicule</th>
           <th>Chauffeur</th>
           <th>Client</th>
           <th>Trajet</th>
@@ -78,25 +85,14 @@
             </td>
             <td><span [class]="classeStatut(mission.statut)">{{ mission.statutLibelle }}</span></td>
             <td>
-              @if (clotureEnCours() === mission.id) {
-                <input type="number" placeholder="km arrivee" [(ngModel)]="kilometrageArrivee"
-                       [ngModelOptions]="{ standalone: true }" style="width: 110px" />
-                <input type="number" placeholder="recette" [(ngModel)]="recetteReelle"
-                       [ngModelOptions]="{ standalone: true }" style="width: 110px" />
-                <button class="bouton petit" type="button" (click)="cloturer(mission)">Valider</button>
-                <button class="bouton secondaire petit" type="button" (click)="clotureEnCours.set(null)">
-                  Annuler
-                </button>
-              } @else {
-                @if (peutPiloter && mission.statut === 'PLANIFIEE') {
-                  <button class="bouton petit" type="button" (click)="demarrer(mission)">Demarrer</button>
-                }
-                @if (peutPiloter && mission.statut === 'EN_COURS') {
-                  <button class="bouton petit" type="button" (click)="ouvrirCloture(mission)">Cloturer</button>
-                }
-                @if (peutGerer && mission.statut !== 'TERMINEE' && mission.statut !== 'ANNULEE') {
-                  <button class="bouton danger petit" type="button" (click)="annuler(mission)">Annuler</button>
-                }
+              @if (peutPiloter && mission.statut === 'PLANIFIEE') {
+                <button class="bouton petit" type="button" (click)="demarrer(mission)">Demarrer</button>
+              }
+              @if (peutPiloter && mission.statut === 'EN_COURS') {
+                <button class="bouton petit" type="button" (click)="ouvrirCloture(mission)">Cloturer</button>
+              }
+              @if (peutGerer && mission.statut !== 'TERMINEE' && mission.statut !== 'ANNULEE') {
+                <button class="bouton danger petit" type="button" (click)="annuler(mission)">Annuler</button>
               }
             </td>
           </tr>
@@ -127,3 +123,35 @@
     }
   }
 </div>
+
+<!-- Cloture d'une mission : compteur d'arrivee et recette encaissee. -->
+@if (clotureEnCours(); as m) {
+  <app-modale titre="Cloturer la mission"
+              [sousTitre]="m.numero + ' — ' + (m.lieuDepart || '?') + ' → ' + (m.destination || '?')"
+              largeur="600px" [erreur]="erreur()" (ferme)="clotureEnCours.set(null)">
+    <div class="carte">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="kilometrageArrivee">Compteur a l'arrivee (km) <span class="requis">*</span></label>
+          <input id="kilometrageArrivee" type="number" [(ngModel)]="kilometrageArrivee"
+                 [ngModelOptions]="{ standalone: true }" />
+          @if (m.kilometrageDepart) {
+            <small>Depart : {{ m.kilometrageDepart | number }} km</small>
+          }
+        </div>
+        <div class="champ">
+          <label for="recetteReelle">Recette reelle (FCFA)</label>
+          <input id="recetteReelle" type="number" [(ngModel)]="recetteReelle"
+                 [ngModelOptions]="{ standalone: true }" />
+          @if (m.recettePrevue) {
+            <small>Prevue : {{ m.recettePrevue | number }} FCFA</small>
+          }
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton" type="button" (click)="cloturer(m)">Valider la cloture</button>
+        <button class="bouton secondaire" type="button" (click)="clotureEnCours.set(null)">Annuler</button>
+      </div>
+    </div>
+  </app-modale>
+}

@@ -1,0 +1,77 @@
+/* Parametrage : le logo en tete, puis l'identite et les mentions. */
+.bloc-logo {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+
+  h2 {
+    margin-top: 0;
+  }
+}
+
+/* Fond damier : un logo transparent reste lisible quel que soit son fond. */
+.apercu-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 190px;
+  height: 110px;
+  flex: none;
+  border: 1px dashed var(--couleur-bordure);
+  border-radius: var(--rayon);
+  background:
+    linear-gradient(45deg, #eef2f7 25%, transparent 25%, transparent 75%, #eef2f7 75%) 0 0 / 16px 16px,
+    linear-gradient(45deg, #eef2f7 25%, transparent 25%, transparent 75%, #eef2f7 75%) 8px 8px / 16px 16px,
+    #fff;
+
+  img {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+  }
+
+  .sans-logo {
+    font-size: 0.78rem;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.actions-logo {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+/* Le champ fichier est masque : c'est l'etiquette qui joue le bouton. */
+label.bouton {
+  cursor: pointer;
+
+  &.desactive {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.aide {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--couleur-texte-doux);
+}
+
+.champ-large {
+  grid-column: 1 / -1;
+}
+
+.requis {
+  color: var(--couleur-danger);
+}
+
+h2 {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1rem;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+}

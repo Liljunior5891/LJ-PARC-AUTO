@@ -74,7 +74,7 @@ public class DepenseController {
     }
 
     @GetMapping("/repartition/natures")
-    @Operation(summary = "Depenses d'un camion par nature")
+    @Operation(summary = "Depenses d'un vehicule par nature")
     public List<DepenseDto.LigneNature> repartitionNatures(
             @RequestParam Long camionId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
@@ -91,7 +91,7 @@ public class DepenseController {
     @PostMapping
     @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Enregistre une depense rattachee a un camion")
+    @Operation(summary = "Enregistre une depense rattachee a un vehicule")
     public DepenseDto.Reponse creer(@Valid @RequestBody DepenseDto.Requete requete) {
         return service.creer(requete);
     }

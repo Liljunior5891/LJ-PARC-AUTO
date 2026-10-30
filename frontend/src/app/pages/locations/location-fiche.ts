@@ -1,5 +1,6 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, input, output } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -15,14 +16,18 @@ import { CamionService } from '../../core/services/camion.service';
 import { ChauffeurService } from '../../core/services/chauffeur.service';
 import { ClientService } from '../../core/services/client.service';
 import { LocationService } from '../../core/services/location.service';
+import { Modale } from '../../shared/modale';
+import { OperationService } from '../../core/operation/operation.service';
+import { VALIDATION_FORMULAIRE, messageChampsManquants } from '../../shared/validation-formulaire';
 
 @Component({
   selector: 'app-location-fiche',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, Modale, VALIDATION_FORMULAIRE],
   templateUrl: './location-fiche.html'
 })
 export class LocationFiche implements OnInit {
   private readonly fb = inject(FormBuilder);
+  private readonly operation = inject(OperationService);
   private readonly service = inject(LocationService);
   private readonly clientService = inject(ClientService);
   private readonly camionService = inject(CamionService);
@@ -33,6 +38,11 @@ export class LocationFiche implements OnInit {
 
   readonly types = TYPES_LOCATION;
   readonly id = signal<number | null>(null);
+  /** Ouverte dans une fenetre depuis la liste : creation seule, sans en-tete de page. */
+  readonly enModale = input(false);
+  /** Creation terminee en mode fenetre : identifiant du nouvel enregistrement. */
+  readonly cree = output<number>();
+  readonly annule = output<void>();
   readonly contrat = signal<Location | null>(null);
   readonly clients = signal<ClientParc[]>([]);
   readonly camions = signal<Camion[]>([]);
@@ -66,9 +76,14 @@ export class LocationFiche implements OnInit {
     observations: ['']
   });
 
+  /** Type de location courant, sous forme de signal pour que l'unite le suive. */
+  private readonly typeLocation = toSignal(this.formulaire.controls.typeLocation.valueChanges, {
+    initialValue: this.formulaire.controls.typeLocation.value
+  });
+
   /** Unite du tarif, dependante du modele choisi (chapitre 12). */
   readonly uniteTarif = computed(() => {
-    const type = this.formulaire.controls.typeLocation.value;
+    const type = this.typeLocation();
     return this.types.find((t) => t.valeur === type)?.unite ?? 'FCFA';
   });
 
@@ -139,7 +154,9 @@ export class LocationFiche implements OnInit {
     requete.subscribe({
       next: (contrat) => {
         this.enregistrement.set(false);
-        if (id === null) {
+        if (id === null && this.enModale()) {
+          this.cree.emit(contrat.id);
+        } else if (id === null) {
           void this.router.navigate(['/locations', contrat.id]);
         } else {
           this.contrat.set(contrat);
@@ -162,7 +179,7 @@ export class LocationFiche implements OnInit {
     this.service.activer(id).subscribe({
       next: (contrat) => {
         this.contrat.set(contrat);
-        this.succes.set('Contrat active : le camion est engage aupres du client.');
+        this.succes.set('Contrat active : le vehicule est engage aupres du client.');
         this.recharger();
       },
       error: (erreur) => this.erreur.set(erreur.error?.message ?? 'Activation impossible.')
@@ -174,6 +191,11 @@ export class LocationFiche implements OnInit {
     if (id === null) {
       return;
     }
+    const manquants = messageChampsManquants({ 'Date de fin effective': this.dateFinReelle });
+    if (manquants) {
+      this.erreur.set(manquants);
+      return;
+    }
     this.erreur.set(null);
     this.service
       .cloturer(id, this.dateFinReelle, this.kilometrageReel, this.observationsCloture)
@@ -181,16 +203,25 @@ export class LocationFiche implements OnInit {
         next: (contrat) => {
           this.contrat.set(contrat);
           this.clotureVisible.set(false);
-          this.succes.set('Contrat cloture : le camion est libere.');
+          this.succes.set('Contrat cloture : le vehicule est libere.');
           this.recharger();
         },
         error: (erreur) => this.erreur.set(erreur.error?.message ?? 'Cloture impossible.')
       });
   }
 
-  annuler(): void {
+  async annuler(): Promise<void> {
     const id = this.id();
-    if (id === null || !confirm('Annuler definitivement ce contrat ?')) {
+    if (id === null) {
+      return;
+    }
+    const accepte = await this.operation.confirmer({
+      titre: 'Annuler definitivement ce contrat ?',
+      message: 'Cette action ne peut pas etre defaite.',
+      libelleAction: 'Annuler le contrat',
+      danger: true
+    });
+    if (!accepte) {
       return;
     }
     this.service.annuler(id).subscribe({

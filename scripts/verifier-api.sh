@@ -111,6 +111,10 @@ verifier "export rapport financier"  "pilotage/rapports/FINANCIER?$PERIODE"
 verifier "export rentabilite"        "pilotage/rapports/RENTABILITE_CAMIONS?$PERIODE"
 verifier "export etat du parc"       "pilotage/rapports/PARC?$PERIODE"
 
+# Parametrage de l'entreprise (chapitre 39).
+verifier "identite publique"         "public/societe"
+verifier "parametrage societe"       "parametrage/societe"
+
 # Comptes utilisateurs (chapitre 40).
 verifier "profils utilisateurs"      "utilisateurs/profils"
 verifier "liste des utilisateurs"    "utilisateurs"

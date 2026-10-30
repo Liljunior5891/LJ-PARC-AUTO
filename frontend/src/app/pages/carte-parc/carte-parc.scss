@@ -1,144 +1,717 @@
-.disposition-carte {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 1rem;
-  align-items: start;
-
-  @media (max-width: 1100px) {
-    grid-template-columns: 1fr;
-  }
-}
-
-.panneau-carte {
-  padding: 0;
+/* Carte plein ecran : outils et tuiles flottent au-dessus du fond de carte. */
+.ecran-carte {
+  position: relative;
+  /* Hauteur de l'ecran moins l'en-tete et le menu horizontal. */
+  height: calc(100vh - 230px);
+  min-height: 600px;
+  border-radius: 18px;
   overflow: hidden;
+  background: #e9ecee;
+  box-shadow: 0 6px 24px rgba(16, 24, 40, 0.1);
 }
 
 .conteneur-carte {
-  height: 62vh;
-  min-height: 420px;
-  width: 100%;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
 }
 
-.legende {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.9rem;
-  padding: 0.75rem 1.25rem;
-  border-top: 1px solid var(--couleur-bordure);
-  font-size: 0.78rem;
-  color: var(--couleur-texte-doux);
-
-  span {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  i {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-  }
+/* Les elements flottants passent au-dessus des volets Leaflet (z-index 400). */
+.titre-flottant,
+.barre-outils,
+.bouton-alertes,
+.panneau-alertes,
+.tuiles {
+  z-index: 500;
 }
 
-.resume-trajet {
-  padding: 1rem 1.25rem;
-  border-top: 1px solid var(--couleur-bordure);
-  background: #fafbfc;
-
-  .bouton {
-    margin-top: 0.75rem;
-  }
-}
-
-.colonne-laterale {
+.titre-flottant {
+  position: absolute;
+  top: 14px;
+  left: 14px;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.1);
+
+  strong {
+    font-size: 0.95rem;
+  }
+
+  small {
+    font-size: 0.7rem;
+    color: var(--couleur-texte-doux);
+  }
 }
 
-.liste-camions {
-  list-style: none;
-  margin: 0.75rem 0 0;
-  padding: 0;
+.barre-outils {
+  position: absolute;
+  top: 14px;
+  left: 50%;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  max-height: 34vh;
-  overflow-y: auto;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(16, 24, 40, 0.12);
+  transform: translateX(-50%);
 
-  li {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.55rem;
-    border: 1px solid var(--couleur-bordure);
+  button {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
     border-radius: 8px;
+    background: transparent;
+    font-size: 1rem;
+    color: var(--couleur-texte-doux);
+    cursor: pointer;
+
+    &:hover {
+      background: #f1f3f5;
+    }
 
     &.actif {
-      border-color: var(--couleur-primaire);
-      background: #f2f7fc;
+      background: #1d2b26;
+      color: #fff;
     }
   }
 
-  .details {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    flex: 1;
-
-    small {
-      color: var(--couleur-texte-doux);
-      font-size: 0.74rem;
-    }
-  }
-
-  .actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+  .date-trajet input {
+    height: 32px;
+    padding: 0 0.4rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.78rem;
   }
 }
 
-.pastille-statut {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex: none;
+.bouton-alertes {
+  position: absolute;
+  top: 14px;
+  right: 58px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(16, 24, 40, 0.12);
+  cursor: pointer;
+
+  .badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--couleur-danger);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 18px;
+  }
 }
 
-.liste-alertes-gps {
-  list-style: none;
-  margin: 0.75rem 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  max-height: 30vh;
+.panneau-alertes {
+  position: absolute;
+  top: 60px;
+  right: 14px;
+  width: 320px;
+  max-height: 46%;
   overflow-y: auto;
+  padding: 0.8rem;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(16, 24, 40, 0.18);
+
+  h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
 
   li {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 0.5rem;
-    padding-bottom: 0.6rem;
-    border-bottom: 1px solid var(--couleur-bordure);
+    gap: 0.6rem;
+    padding: 0.55rem 0;
+    border-top: 1px solid var(--couleur-bordure);
+    font-size: 0.78rem;
 
-    &:last-child {
-      border-bottom: none;
+    p {
+      margin: 0.2rem 0;
+    }
+
+    small {
+      color: var(--couleur-texte-doux);
+    }
+
+    &.vide {
+      color: var(--couleur-texte-doux);
+    }
+  }
+}
+
+.gravite {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: #eef1f4;
+  font-size: 0.68rem;
+  font-weight: 700;
+
+  &.critique {
+    background: #fde8e8;
+    color: var(--couleur-danger);
+  }
+
+  &.avertissement {
+    background: #fff3d6;
+    color: #a86b00;
+  }
+}
+
+/* ------------------------------- Tuiles -------------------------------- */
+.tuiles {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  display: grid;
+  grid-template-columns: 1.55fr 0.9fr 0.9fr 1.45fr;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(233, 236, 238, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+.colonne-tuiles {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 10px;
+  min-width: 0;
+}
+
+.paire {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.tuile {
+  min-width: 0;
+  padding: 0.7rem 0.8rem;
+  border-radius: 12px;
+  background: #fff;
+
+  > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+
+    small {
+      font-weight: 400;
+      color: var(--couleur-texte-doux);
+    }
+
+    button {
+      border: 0;
+      background: none;
+      color: var(--couleur-texte-doux);
+      cursor: pointer;
+    }
+  }
+}
+
+/* Fiche du camion suivi, illustration a droite qui deborde du cadre. */
+.fiche-camion {
+  position: relative;
+  overflow: hidden;
+
+  header {
+    margin-bottom: 0.6rem;
+  }
+
+  .immat {
+    padding: 0.25rem 0.55rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font-weight: 700;
+  }
+
+  .statut {
+    margin-right: auto;
+    padding: 0.25rem 0.6rem;
+    border-radius: 8px;
+    background: var(--statut);
+    color: #fff;
+    font-size: 0.75rem;
+  }
+
+  .fleches {
+    display: flex;
+    gap: 4px;
+
+    button {
+      width: 26px;
+      height: 26px;
+      border: 1px solid var(--couleur-bordure);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--couleur-texte);
     }
   }
 
-  p {
-    margin: 0.25rem 0;
-    font-size: 0.82rem;
+  dl {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    max-width: 58%;
+
+    div {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.74rem;
+    }
+
+    dt {
+      flex: none;
+      width: 62px;
+      color: var(--couleur-texte-doux);
+    }
+
+    dd {
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+  }
+
+  .pastille-info {
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    background: #f1f3f5;
+  }
+
+  .chauffeur {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #1d2b26;
+    color: #fff;
+    font-size: 0.6rem;
+  }
+
+  .actions-fiche {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+  }
+
+  .illustration {
+    position: absolute;
+    right: -30px;
+    bottom: 6px;
+    width: 52%;
+    max-width: 230px;
+  }
+}
+
+/* Jauges en demi-cercle. */
+.jauge {
+  position: relative;
+  overflow: hidden;
+
+  strong {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 1.7rem;
+    font-weight: 500;
+
+    small {
+      font-size: 0.8rem;
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  svg {
+    display: block;
+    width: 100%;
+    max-height: 56px;
+    margin-top: 0.2rem;
+  }
+
+  .piste,
+  .remplissage {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+  }
+
+  .piste {
+    stroke: #eef0f2;
+  }
+
+  .remplissage.orange {
+    stroke: #f0a202;
+  }
+
+  .remplissage.vert {
+    stroke: #7cc47f;
+  }
+}
+
+.trajet {
+  .frise {
+    display: flex;
+    align-items: center;
+    margin: 0.7rem 0 0.25rem;
+
+    .point {
+      width: 9px;
+      height: 9px;
+      border: 2px solid #1d2b26;
+      border-radius: 50%;
+      background: #fff;
+
+      &.milieu {
+        border-color: #f0a202;
+      }
+    }
+
+    .ligne {
+      flex: 1;
+      height: 2px;
+      background: #d5d9de;
+    }
+  }
+
+  .legende-frise {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.lien-effacer {
+  margin-top: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--couleur-primaire);
+  cursor: pointer;
+}
+
+.icones-alertes {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+
+  span {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #f1f3f5;
+    font-size: 0.85rem;
+  }
+
+  strong {
+    margin-left: auto;
+    font-size: 1.3rem;
+  }
+}
+
+.chiffre-graphe {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+
+  strong {
+    font-size: 2rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+}
+
+.mini-barres {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 28px;
+
+  i {
+    width: 5px;
+    border-radius: 2px;
+    background: #cfd5da;
+
+    &.active {
+      background: #1d2b26;
+    }
+  }
+}
+
+.courbe {
+  width: 60px;
+
+  path {
+    fill: none;
+    stroke: #1d2b26;
+    stroke-width: 1.6;
+  }
+}
+
+.repartition .segments {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 0.7rem;
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+
+  strong {
+    font-size: 0.85rem;
+  }
+
+  i {
+    height: 5px;
+    border-radius: 999px;
   }
 
   small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.68rem;
     color: var(--couleur-texte-doux);
-    font-size: 0.72rem;
+  }
+}
+
+/* Petit ecran : les tuiles passent sous la carte au lieu de la recouvrir. */
+@media (max-width: 1100px) {
+  .ecran-carte {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    background: none;
+    box-shadow: none;
+  }
+
+  .conteneur-carte {
+    position: relative;
+    height: 440px;
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
+  .tuiles {
+    position: static;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 10px;
+    padding: 0;
+    background: none;
+    backdrop-filter: none;
+
+    .fiche-camion,
+    .large {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .barre-outils {
+    top: 64px;
+  }
+}
+
+@media (max-width: 600px) {
+  .tuiles {
+    grid-template-columns: 1fr;
+  }
+
+  .panneau-alertes {
+    width: auto;
+    left: 14px;
+  }
+}
+
+/* ------------------- Elements dessines par Leaflet ------------------- */
+/* Leaflet insere marqueurs et popups hors du gabarit : styles non encapsules. */
+:host ::ng-deep {
+  .fond-clair {
+    filter: grayscale(0.85) brightness(1.06) contrast(0.92);
+  }
+
+  .marqueur-parc {
+    background: none;
+    border: 0;
+  }
+
+  .pion-camion {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 2px solid var(--statut);
+    border-radius: 50%;
+    background: #fff;
+    color: #1d2b26;
+    box-shadow: 0 3px 10px rgba(16, 24, 40, 0.22);
+    transition: transform 0.15s ease;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    /* En mouvement : carre orange, comme le vehicule en route de la maquette. */
+    &.en-mouvement {
+      border: 0;
+      border-radius: 10px;
+      background: #f0a202;
+      color: #fff;
+    }
+
+    &.hors-connexion {
+      opacity: 0.6;
+      filter: grayscale(1);
+    }
+
+    /* Camion suivi : pastille sombre cerclee. */
+    &.choisi {
+      background: #1d2b26;
+      color: #fff;
+      box-shadow: 0 0 0 5px rgba(29, 43, 38, 0.18), 0 3px 10px rgba(16, 24, 40, 0.3);
+    }
+  }
+
+  .popup-parc {
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+      padding: 0;
+      box-shadow: 0 10px 26px rgba(16, 24, 40, 0.2);
+    }
+
+    .leaflet-popup-content {
+      width: 270px !important;
+      margin: 0;
+      font: inherit;
+      font-size: 0.78rem;
+    }
+
+    .entete-popup {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.7rem 0.8rem;
+
+      div {
+        flex: 1;
+        min-width: 0;
+      }
+
+      strong {
+        display: block;
+        font-size: 0.9rem;
+      }
+
+      small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--couleur-texte-doux);
+      }
+    }
+
+    .picto-popup svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .anneau-popup {
+      width: 40px;
+      height: 40px;
+      flex: none;
+
+      circle {
+        fill: none;
+        stroke-width: 3.5;
+      }
+
+      .fond {
+        stroke: #eef0f2;
+      }
+
+      .valeur {
+        stroke: #f0a202;
+        stroke-linecap: round;
+      }
+
+      text {
+        font-size: 10px;
+        font-weight: 700;
+        text-anchor: middle;
+      }
+    }
+
+    .ligne-popup {
+      padding: 0.5rem 0.8rem;
+      border-top: 1px solid var(--couleur-bordure);
+      color: var(--couleur-texte-doux);
+
+      b {
+        color: var(--couleur-texte);
+      }
+    }
   }
 }

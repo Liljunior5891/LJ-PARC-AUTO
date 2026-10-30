@@ -16,12 +16,14 @@ import { Camion, Chauffeur } from '../../core/models/models';
 import { CamionService } from '../../core/services/camion.service';
 import { ChauffeurService } from '../../core/services/chauffeur.service';
 import { MaintenanceService } from '../../core/services/maintenance.service';
+import { Modale } from '../../shared/modale';
+import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 
 type Onglet = 'entretiens' | 'pneus' | 'incidents';
 
 @Component({
   selector: 'app-maintenance',
-  imports: [FormsModule, ReactiveFormsModule, DecimalPipe, DatePipe],
+  imports: [FormsModule, ReactiveFormsModule, DecimalPipe, DatePipe, Modale, VALIDATION_FORMULAIRE],
   templateUrl: './maintenance.html',
   styleUrl: './maintenance.scss'
 })
@@ -37,6 +39,13 @@ export class Maintenance implements OnInit {
   readonly gravites = GRAVITES_INCIDENT;
 
   readonly onglet = signal<Onglet>('entretiens');
+
+  /** Onglets de la page. */
+  readonly onglets: { id: Onglet; libelle: string; icone: string }[] = [
+    { id: 'entretiens', libelle: 'Entretiens', icone: '🔧' },
+    { id: 'pneus', libelle: 'Pneumatiques', icone: '🛞' },
+    { id: 'incidents', libelle: 'Incidents', icone: '⚠️' }
+  ];
   readonly entretiens = signal<Entretien[]>([]);
   readonly pneus = signal<Pneu[]>([]);
   readonly incidents = signal<Incident[]>([]);
@@ -106,6 +115,12 @@ export class Maintenance implements OnInit {
     this.service.incidents(0, 50).subscribe({ next: (page) => this.incidents.set(page.content) });
   }
 
+  /** Nombre de lignes de l'onglet, rappele a cote de son libelle. */
+  compte(onglet: Onglet): number | null {
+    const lignes = { entretiens: this.entretiens(), pneus: this.pneus(), incidents: this.incidents() }[onglet];
+    return lignes.length || null;
+  }
+
   changerOnglet(onglet: Onglet): void {
     this.onglet.set(onglet);
     this.formulaireVisible.set(false);
@@ -139,7 +154,7 @@ export class Maintenance implements OnInit {
   demarrer(entretien: Entretien): void {
     this.service.demarrerEntretien(entretien.id).subscribe({
       next: () => {
-        this.succes.set(`${entretien.numero} : le camion passe a l'atelier.`);
+        this.succes.set(`${entretien.numero} : le vehicule passe a l'atelier.`);
         this.charger();
       },
       error: (erreur) => this.erreur.set(erreur.error?.message ?? 'Demarrage impossible.')
@@ -206,7 +221,7 @@ export class Maintenance implements OnInit {
     this.service.declarerIncident({ ...brut, camionId: brut.camionId! } as never).subscribe({
       next: (incident) => {
         this.succes.set(
-          `Incident ${incident.numero} declare.${incident.immobilisant ? ' Le camion est immobilise.' : ''}`
+          `Incident ${incident.numero} declare.${incident.immobilisant ? ' Le vehicule est immobilise.' : ''}`
         );
         this.formIncident.reset({ type: 'PANNE', gravite: 'MOYENNE' });
         this.formulaireVisible.set(false);

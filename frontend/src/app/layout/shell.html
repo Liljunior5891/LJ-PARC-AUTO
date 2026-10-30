@@ -1,53 +1,68 @@
-<div class="coquille" [class.menu-replie]="!menuOuvert()">
-  <aside class="barre-laterale">
-    <div class="marque">
-      <span class="logo">🚛</span>
-      <span class="nom">PARC AUTO</span>
-    </div>
-
-    <nav>
-      @for (section of sections; track section) {
-        <div class="section">
-          <span class="titre-section">{{ section }}</span>
-          @for (entree of entreesDe(section); track entree.route) {
-            @if (entree.disponible) {
-              <a
-                class="lien"
-                [routerLink]="entree.route"
-                routerLinkActive="actif"
-              >
-                <span class="icone">{{ entree.icone }}</span>
-                <span class="libelle">{{ entree.libelle }}</span>
-              </a>
-            } @else {
-              <span class="lien desactive" title="Module prevu dans une prochaine phase">
-                <span class="icone">{{ entree.icone }}</span>
-                <span class="libelle">{{ entree.libelle }}</span>
-                <span class="badge-bientot">a venir</span>
-              </span>
-            }
-          }
-        </div>
+<div class="coquille">
+  <header class="barre-haute">
+    <a class="marque" routerLink="/tableau-bord">
+      @if (societe()?.logo; as logo) {
+        <img class="logo-image" [src]="logo" [alt]="societe()?.nom || 'Logo'" />
+      } @else {
+        <span class="logo">🚛</span>
       }
-    </nav>
-  </aside>
+      <span class="nom">{{ societe()?.nom || 'PARC AUTO' }}</span>
+    </a>
 
-  <div class="zone-principale">
-    <header class="barre-haute">
-      <button class="bouton-menu" type="button" (click)="basculerMenu()" aria-label="Afficher ou masquer le menu">
-        ☰
-      </button>
-      <div class="utilisateur">
-        <div class="identite">
+    <div class="utilisateur">
+      <app-cloche-notifications />
+      <a class="profil" routerLink="/mon-compte" title="Mon compte">
+        <span class="avatar">{{ initiales() }}</span>
+        <span class="identite">
           <strong>{{ utilisateur()?.nomComplet }}</strong>
           <small>{{ utilisateur()?.roles?.join(', ') }}</small>
-        </div>
-        <button class="bouton secondaire petit" type="button" (click)="deconnexion()">Deconnexion</button>
-      </div>
-    </header>
+        </span>
+      </a>
+      <button class="bouton secondaire petit" type="button" (click)="deconnexion()">Deconnexion</button>
+    </div>
+  </header>
 
-    <main class="contenu">
-      <router-outlet />
-    </main>
-  </div>
+  <!-- Menu horizontal : des onglets inclines, puis le panneau des pages de l'onglet ouvert. -->
+  <nav class="navigation" aria-label="Menu principal">
+    <div class="rangee-onglets" role="tablist">
+      @for (onglet of onglets; track onglet.id; let i = $index) {
+        <button
+          type="button"
+          role="tab"
+          class="onglet"
+          [class.actif]="onglet.id === ongletOuvert().id"
+          [class.courant]="estOngletDeLaPage(onglet)"
+          [style.z-index]="onglet.id === ongletOuvert().id ? onglets.length + 1 : onglets.length - i"
+          [attr.aria-selected]="onglet.id === ongletOuvert().id"
+          [attr.aria-controls]="'panneau-' + onglet.id"
+          (click)="ouvrirOnglet(onglet)"
+        >
+          <span>{{ onglet.libelle }}</span>
+        </button>
+      }
+      <button class="replier" type="button" (click)="basculerPanneau()"
+              [attr.aria-expanded]="panneauOuvert()"
+              [attr.aria-label]="panneauOuvert() ? 'Replier le menu' : 'Deplier le menu'">
+        {{ panneauOuvert() ? '▴' : '▾' }}
+      </button>
+    </div>
+
+    @if (panneauOuvert()) {
+      <div class="panneau" role="tabpanel" [id]="'panneau-' + ongletOuvert().id">
+        @for (entree of ongletOuvert().entrees; track entree.route) {
+          <a class="entree" [routerLink]="entree.route" routerLinkActive="actif">
+            <span class="chevrons" aria-hidden="true">»</span>
+            <span class="textes">
+              <strong>{{ entree.libelle }}</strong>
+              <small>{{ entree.description }}</small>
+            </span>
+          </a>
+        }
+      </div>
+    }
+  </nav>
+
+  <main class="contenu" #contenu>
+    <router-outlet />
+  </main>
 </div>

@@ -5,7 +5,7 @@
   </div>
   @if (peutGerer) {
     <button class="bouton" type="button" (click)="basculerFormulaire()">
-      {{ formulaireVisible() ? 'Fermer' : '+ Nouveau document' }}
+      + Nouveau document
     </button>
   }
 </div>
@@ -18,19 +18,19 @@
 }
 
 @if (formulaireVisible()) {
-  <form class="carte" [formGroup]="formulaire" (ngSubmit)="enregistrer()" style="margin-bottom: 1rem">
-    <h2>Enregistrer un document</h2>
+  <app-modale titre="Enregistrer un document" [erreur]="erreur()" (ferme)="basculerFormulaire()">
+    <form [formGroup]="formulaire" (ngSubmit)="enregistrer()">
     <div class="grille-formulaire">
       <div class="champ">
-        <label for="proprietaireType">Rattache a *</label>
+        <label for="proprietaireType">Rattache a <span class="requis">*</span></label>
         <select id="proprietaireType" formControlName="proprietaireType">
-          <option value="CAMION">Un camion</option>
+          <option value="CAMION">Un vehicule</option>
           <option value="CHAUFFEUR">Un chauffeur</option>
         </select>
       </div>
       <div class="champ">
         <label for="proprietaireId">
-          {{ formulaire.controls.proprietaireType.value === 'CAMION' ? 'Camion *' : 'Chauffeur *' }}
+          {{ formulaire.controls.proprietaireType.value === 'CAMION' ? 'Vehicule *' : 'Chauffeur *' }}
         </label>
         <select id="proprietaireId" formControlName="proprietaireId">
           <option [ngValue]="null">Selectionner</option>
@@ -46,7 +46,7 @@
         </select>
       </div>
       <div class="champ">
-        <label for="type">Type de document *</label>
+        <label for="type">Type de document <span class="requis">*</span></label>
         <select id="type" formControlName="type">
           @for (type of types; track type.valeur) {
             <option [value]="type.valeur">{{ type.libelle }}</option>
@@ -54,7 +54,7 @@
         </select>
       </div>
       <div class="champ">
-        <label for="libelle">Libelle *</label>
+        <label for="libelle">Libelle <span class="requis">*</span></label>
         <input id="libelle" formControlName="libelle" placeholder="Assurance 2026" />
       </div>
       <div class="champ">
@@ -91,6 +91,7 @@
       <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
     </div>
   </form>
+  </app-modale>
 }
 
 <div class="carte">
@@ -99,7 +100,7 @@
       <label for="filtreProprietaire">Rattachement</label>
       <select id="filtreProprietaire" [(ngModel)]="filtreProprietaire" (change)="filtrer()">
         <option value="">Tous</option>
-        <option value="CAMION">Camions</option>
+        <option value="CAMION">Vehicules</option>
         <option value="CHAUFFEUR">Chauffeurs</option>
       </select>
     </div>

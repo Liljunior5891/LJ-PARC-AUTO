@@ -33,7 +33,14 @@
               }
             ],
             "styles": [
+              "node_modules/@fontsource-variable/plus-jakarta-sans/index.css",
+              "node_modules/select2/dist/css/select2.min.css",
               "src/styles.scss"
+            ],
+            "scripts": [
+              "node_modules/jquery/dist/jquery.min.js",
+              "node_modules/select2/dist/js/select2.min.js",
+              "node_modules/select2/dist/js/i18n/fr.js"
             ]
           },
           "configurations": {
@@ -46,8 +53,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "16kB",
+                  "maximumError": "24kB"
                 }
               ],
               "outputHashing": "all"

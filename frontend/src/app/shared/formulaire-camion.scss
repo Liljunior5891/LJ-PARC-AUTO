@@ -1,0 +1,12 @@
+/* Titres de section du formulaire de creation, dans la fenetre modale. */
+.formulaire-camion h3 {
+  margin: 1rem 0 0.6rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--couleur-primaire);
+
+  &:first-child {
+    margin-top: 0;
+  }
+}

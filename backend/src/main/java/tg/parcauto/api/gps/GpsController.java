@@ -58,7 +58,7 @@ public class GpsController {
     }
 
     @GetMapping("/camions/{camionId}/trajet")
-    @Operation(summary = "Trajet d'un camion sur une periode : itineraire, distance, vitesses, arrets")
+    @Operation(summary = "Trajet d'un vehicule sur une periode : itineraire, distance, vitesses, arrets")
     public PositionGpsDto.Trajet trajet(
             @PathVariable Long camionId,
             @RequestParam(required = false)
@@ -71,7 +71,7 @@ public class GpsController {
     }
 
     @GetMapping("/camions/{camionId}/dernieres")
-    @Operation(summary = "Dernieres positions connues d'un camion")
+    @Operation(summary = "Dernieres positions connues d'un vehicule")
     public List<PositionGpsDto.Reponse> dernieres(@PathVariable Long camionId,
                                                   @RequestParam(defaultValue = "20") int nombre) {
         return positionService.dernieres(camionId, nombre).stream()

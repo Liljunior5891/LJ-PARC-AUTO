@@ -18,6 +18,7 @@ import tg.parcauto.api.exploitation.mission.StatutMission;
 import tg.parcauto.api.finance.recette.Recette;
 import tg.parcauto.api.finance.recette.RecetteRepository;
 import tg.parcauto.api.finance.recette.TypeRecette;
+import tg.parcauto.api.parametrage.SocieteService;
 import tg.parcauto.api.parc.camion.CamionService;
 
 import java.math.BigDecimal;
@@ -29,12 +30,12 @@ import java.util.List;
 @Transactional
 public class FactureService {
 
-    private static final BigDecimal TVA_PAR_DEFAUT = BigDecimal.valueOf(18);
     private static final int DELAI_PAIEMENT_DEFAUT = 30;
 
     private final FactureRepository repository;
     private final PaiementRepository paiementRepository;
     private final RecetteRepository recetteRepository;
+    private final SocieteService societeService;
     private final ClientService clientService;
     private final CamionService camionService;
     private final LocationService locationService;
@@ -96,7 +97,7 @@ public class FactureService {
         Client client = contrat.getClient();
 
         Facture facture = nouvelleFacture(client, requete.dateEmission(),
-                requete.delaiPaiementJours(), requete.tauxTva());
+                requete.delaiPaiementJours());
         facture.setLocation(contrat);
         facture.setPeriodeDebut(contrat.getDateDebut());
         facture.setPeriodeFin(contrat.finRetenue());
@@ -131,7 +132,7 @@ public class FactureService {
         }
 
         Facture facture = nouvelleFacture(mission.getClient(), requete.dateEmission(),
-                requete.delaiPaiementJours(), requete.tauxTva());
+                requete.delaiPaiementJours());
         facture.setMission(mission);
 
         FactureLigne ligne = new FactureLigne();
@@ -169,6 +170,42 @@ public class FactureService {
         }
         enregistrerRecettes(facture);
         return FactureDto.Reponse.complete(repository.save(facture));
+    }
+
+    /**
+     * Facture emise pour une recette qui vient d'etre enregistree.
+     * <p>
+     * La recette est rattachee a la facture <em>avant</em> l'emission : sans ce
+     * rattachement, l'emission creerait une seconde recette pour la meme
+     * prestation et le camion serait credite deux fois.
+     *
+     * @return la facture emise, ou null si la recette n'a pas de client a qui
+     *         l'adresser
+     */
+    public Facture facturerRecette(Recette recette) {
+        if (recette.getClient() == null) {
+            return null;
+        }
+
+        Facture facture = nouvelleFacture(recette.getClient(), recette.getDateRecette(), null);
+        facture.setLocation(recette.getLocation());
+        facture.setMission(recette.getMission());
+
+        FactureLigne ligne = new FactureLigne();
+        ligne.setCamion(recette.getCamion());
+        ligne.setDesignation(recette.getLibelle());
+        ligne.setQuantite(BigDecimal.ONE);
+        ligne.setUnite("forfait");
+        ligne.setPrixUnitaire(recette.getMontant());
+        facture.ajouterLigne(ligne);
+        facture.recalculer();
+        facture = repository.save(facture);
+
+        recette.setFacture(facture);
+        recetteRepository.save(recette);
+
+        facture.setStatut(StatutFacture.NON_PAYEE);
+        return repository.save(facture);
     }
 
     /** Enregistre un reglement et met a jour le statut de la facture. */
@@ -232,8 +269,7 @@ public class FactureService {
                 .orElseThrow(() -> ResourceNotFoundException.of("Facture", id));
     }
 
-    private Facture nouvelleFacture(Client client, LocalDate dateEmission, Integer delaiPaiement,
-                                    BigDecimal tauxTva) {
+    private Facture nouvelleFacture(Client client, LocalDate dateEmission, Integer delaiPaiement) {
         Facture facture = new Facture();
         facture.setNumero(numerotation.prochainNumero("FAC"));
         facture.setClient(client);
@@ -242,7 +278,8 @@ public class FactureService {
                 : client.getDelaiPaiementJours() != null ? client.getDelaiPaiementJours()
                 : DELAI_PAIEMENT_DEFAUT;
         facture.setDateEcheance(facture.getDateEmission().plusDays(delai));
-        facture.setTauxTva(tauxTva == null ? TVA_PAR_DEFAUT : tauxTva);
+        // Le taux vient du parametrage de l'entreprise, et y reste fige sur la facture.
+        facture.setTauxTva(societeService.tauxTva());
         return facture;
     }
 
@@ -297,7 +334,7 @@ public class FactureService {
         f.setDateEcheance(r.dateEcheance());
         f.setPeriodeDebut(r.periodeDebut());
         f.setPeriodeFin(r.periodeFin());
-        f.setTauxTva(r.tauxTva() == null ? TVA_PAR_DEFAUT : r.tauxTva());
+        f.setTauxTva(societeService.tauxTva());
         f.setObservations(r.observations());
 
         for (FactureDto.LigneRequete ligneRequete : r.lignes()) {

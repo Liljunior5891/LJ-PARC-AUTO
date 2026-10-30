@@ -1,13 +1,20 @@
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { FichePerformance, LigneRentabilite, RentabiliteGlobale } from '../../core/models/finance';
+import { FichePerformance, RentabiliteGlobale } from '../../core/models/finance';
 import { RentabiliteService } from '../../core/services/rentabilite.service';
+import { Modale } from '../../shared/modale';
+import { Periode, aujourdhui, debutPeriode, estPeriode } from '../../shared/periode';
+
+/** Seuils de lecture de la marge d'un camion : en dessous, la pastille vire a l'orange puis au rouge. */
+const MARGE_CONFORTABLE = 30;
+const MARGE_FAIBLE = 10;
 
 @Component({
   selector: 'app-rentabilite',
-  imports: [FormsModule, DecimalPipe],
-  templateUrl: './rentabilite.html'
+  imports: [FormsModule, DecimalPipe, DatePipe, Modale],
+  templateUrl: './rentabilite.html',
+  styleUrl: './rentabilite.scss'
 })
 export class Rentabilite implements OnInit {
   private readonly service = inject(RentabiliteService);
@@ -17,12 +24,15 @@ export class Rentabilite implements OnInit {
   readonly chargement = signal(false);
   readonly erreur = signal<string | null>(null);
 
-  debut = this.premierJourDuMois();
-  fin = this.aujourdhui();
+  debut = debutPeriode('mois');
+  fin = aujourdhui();
 
-  /** Reference d'echelle pour les barres de comparaison des camions. */
-  readonly recetteMax = computed(() =>
-    Math.max(...(this.global()?.camions ?? []).map((c) => c.recettes), 0)
+  /**
+   * Echelle commune des barres recettes et depenses : le plus gros montant du
+   * tableau, toutes colonnes confondues, pour que les longueurs se comparent.
+   */
+  readonly echelle = computed(() =>
+    Math.max(1, ...(this.global()?.camions ?? []).flatMap((c) => [c.recettes, c.depenses]))
   );
 
   ngOnInit(): void {
@@ -49,6 +59,16 @@ export class Rentabilite implements OnInit {
     }
   }
 
+  choisirPeriode(periode: Periode): void {
+    this.debut = debutPeriode(periode);
+    this.fin = aujourdhui();
+    this.charger();
+  }
+
+  estPeriode(periode: Periode): boolean {
+    return estPeriode(periode, this.debut, this.fin);
+  }
+
   ouvrirFiche(camionId: number): void {
     this.service.camion(camionId, this.debut, this.fin).subscribe({
       next: (fiche) => this.fiche.set(fiche),
@@ -60,22 +80,25 @@ export class Rentabilite implements OnInit {
     this.fiche.set(null);
   }
 
-  /** Largeur de la barre de recettes, relative au camion le plus productif. */
-  largeurRecette(ligne: LigneRentabilite): number {
-    const maximum = this.recetteMax();
-    return maximum === 0 ? 0 : Math.round((ligne.recettes / maximum) * 100);
+  /** Longueur d'une barre du tableau, sur l'echelle commune. */
+  largeur(montant: number): number {
+    return montant <= 0 ? 0 : Math.max(2, (montant / this.echelle()) * 100);
   }
 
-  classeResultat(valeur: number): string {
-    return valeur >= 0 ? 'resultat-positif' : 'resultat-negatif';
+  /** Part d'un montant dans son total, pour les barres de repartition de la fiche. */
+  part(montant: number, total: number): number {
+    return total <= 0 ? 0 : Math.max(2, (montant / total) * 100);
   }
 
-  private aujourdhui(): string {
-    return new Date().toISOString().slice(0, 10);
+  /** Pourcentage ramene entre 0 et 100, pour les jauges. */
+  borne(valeur: number): number {
+    return Math.min(100, Math.max(0, valeur));
   }
 
-  private premierJourDuMois(): string {
-    const date = new Date();
-    return new Date(date.getFullYear(), date.getMonth(), 1).toISOString().slice(0, 10);
+  niveauMarge(marge: number): string {
+    if (marge >= MARGE_CONFORTABLE) {
+      return 'bonne';
+    }
+    return marge >= MARGE_FAIBLE ? 'moyenne' : 'faible';
   }
 }

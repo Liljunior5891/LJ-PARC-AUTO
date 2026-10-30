@@ -1,130 +1,251 @@
-/* Vue du parc en blocs : un bloc par camion, colore selon son statut. */
-.grille-blocs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
+/* Vue du parc : un apercu chiffre, puis une carte par camion. */
+.actions-entete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.bloc-camion {
-  position: relative;
-  border: 1px solid var(--couleur-bordure);
-  border-radius: var(--rayon);
+.panneau {
+  margin-bottom: 1.25rem;
+  padding: 1.1rem 1.25rem 1.25rem;
+  border-radius: 16px;
   background: var(--couleur-surface);
-  box-shadow: var(--ombre);
-  overflow: hidden;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-
-  /* Bandeau superieur aux couleurs du statut. */
-  &::before {
-    content: '';
-    display: block;
-    height: 6px;
-    background: var(--couleur-statut);
-  }
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 22px rgba(16, 24, 40, 0.14);
-  }
+  box-shadow: 0 4px 18px rgba(16, 40, 30, 0.06);
 }
 
-.lien-bloc {
-  display: block;
-  padding: 0.9rem 1rem 1rem;
-  color: inherit;
-}
-
-.bloc-camion header {
+.entete-panneau {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+}
+
+.mise-a-jour {
+  font-size: 0.78rem;
+  color: var(--couleur-texte-doux);
+}
+
+/* Quatre colonnes separees par un filet vertical. */
+/* --------------------------- Barre d'outils ---------------------------- */
+.outils {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 0.2rem;
+}
+
+.recherche {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--couleur-texte-doux);
+
+  input {
+    width: 190px;
+    padding: 0.45rem 0;
+    border: 0;
+    outline: none;
+    font: inherit;
+    font-size: 0.82rem;
+    background: transparent;
+  }
+
+  &:focus-within {
+    border-color: var(--couleur-primaire);
+  }
+}
+
+.selecteur {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 10px;
+  background: #fff;
+
+  button {
+    padding: 0.4rem 0.75rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--couleur-texte-doux);
+    cursor: pointer;
+
+    &:hover:not(.actif) {
+      color: var(--couleur-texte);
+    }
+
+    &.actif {
+      background: var(--couleur-primaire);
+      color: #fff;
+    }
+  }
+}
+
+/* ---------------------------- Cartes camion ---------------------------- */
+.grille-camions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1rem;
+}
+
+.carte-camion {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 14px;
+  background: #f6f7f8;
+  color: inherit;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(16, 24, 40, 0.12);
+    text-decoration: none;
+  }
+}
+
+/* Haut de carte : statut, immatriculation, et le camion qui sort du cadre. */
+.vitrine {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 132px;
+  padding: 0.75rem 0.9rem 0.8rem;
+  background: #fff;
+  overflow: hidden;
+
+  .illustration {
+    position: absolute;
+    right: -12px;
+    bottom: 8px;
+    width: 60%;
+    max-width: 230px;
+  }
+}
+
+.puce-statut {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+
+  i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--couleur-statut);
+  }
 }
 
 .immatriculation {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
   font-size: 1.05rem;
   letter-spacing: 0.02em;
 }
 
-.statut {
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  background: var(--couleur-statut);
-  color: #fff;
-  font-size: 0.68rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.modele {
-  margin: 0 0 0.7rem;
-  font-size: 0.82rem;
+.kilometrage {
+  position: relative;
+  z-index: 1;
+  max-width: 48%;
+  font-size: 0.75rem;
   color: var(--couleur-texte-doux);
 }
 
-.infos {
+/* Bas de carte : trajet, equipage et barre de marge. */
+.details {
+  margin: 0.55rem;
+  padding: 0.75rem 0.8rem 0.8rem;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.trajet {
   display: flex;
-  gap: 1rem;
-  margin: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding-bottom: 0.65rem;
+  margin-bottom: 0.65rem;
+  border-bottom: 1px solid var(--couleur-bordure);
+  font-size: 0.8rem;
 
-  div {
-    min-width: 0;
-  }
-
-  dt {
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--couleur-texte-doux);
-  }
-
-  dd {
-    margin: 0.1rem 0 0;
-    font-weight: 600;
-    font-size: 0.88rem;
+  strong {
+    flex: none;
+    max-width: 50%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--couleur-texte-doux);
+  }
 }
 
-/* Les finances se devoilent au survol, sans deplacer le contenu du bloc. */
-.survol-finances {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
-  margin-top: 0.85rem;
-  padding-top: 0.7rem;
-  border-top: 1px dashed var(--couleur-bordure);
-  max-height: 0;
-  opacity: 0;
+.progression {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--couleur-texte-doux);
+
+  strong {
+    color: var(--couleur-texte);
+  }
+}
+
+/* Piste hachuree : la part non remplie reste lisible sans couleur. */
+.piste {
+  height: 6px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(
+    -45deg,
+    #e6e9ec 0 4px,
+    #f4f5f7 4px 8px
+  );
   overflow: hidden;
-  transition: max-height 0.18s ease, opacity 0.18s ease, margin 0.18s ease, padding 0.18s ease;
 
   span {
     display: block;
-    font-size: 0.66rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--couleur-texte-doux);
-  }
-
-  strong {
-    font-size: 0.85rem;
+    height: 100%;
+    border-radius: 999px;
+    background: #1e9b4c;
   }
 }
 
-.bloc-camion:hover .survol-finances,
-.bloc-camion:focus-within .survol-finances {
-  max-height: 120px;
-  opacity: 1;
-}
-
-/* Sur ecran tactile, le survol n'existe pas : les montants restent visibles. */
-@media (hover: none) {
-  .survol-finances {
-    max-height: 120px;
-    opacity: 1;
-  }
+.montants {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+  font-size: 0.7rem;
+  color: var(--couleur-texte-doux);
 }

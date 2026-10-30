@@ -11,7 +11,7 @@
   padding: 2px;
   border: 1px solid var(--couleur-bordure);
   border-radius: 8px;
-  background: #eef2f7;
+  background: #fff;
 
   button {
     padding: 0.4rem 0.8rem;
@@ -32,60 +32,6 @@
       background: var(--couleur-primaire);
       color: #fff;
     }
-  }
-}
-
-.grille-indicateurs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.indicateur {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  color: inherit;
-  border-left: 4px solid var(--couleur-primaire);
-
-  &.succes {
-    border-left-color: var(--couleur-succes);
-  }
-
-  &.info {
-    border-left-color: var(--couleur-info);
-  }
-
-  &.alerte {
-    border-left-color: var(--couleur-accent);
-  }
-
-  .libelle {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--couleur-texte-doux);
-  }
-
-  .valeur {
-    font-size: 1.9rem;
-    line-height: 1.1;
-  }
-
-  .detail {
-    font-size: 0.78rem;
-    color: var(--couleur-texte-doux);
-  }
-}
-
-.deux-colonnes {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 1rem;
-
-  @media (max-width: 950px) {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -127,19 +73,6 @@
   margin: 0;
 }
 
-/* --------------------------- Graphiques du bord -------------------------- */
-.graphique {
-  margin: 0;
-
-  figcaption {
-    margin-bottom: 0.75rem;
-
-    h2 {
-      margin-bottom: 0.1rem;
-    }
-  }
-}
-
 .legende-graphique {
   display: flex;
   gap: 1rem;
@@ -162,114 +95,6 @@
   border-radius: 3px;
   display: inline-block;
   flex: none;
-}
-
-/* Colonnes mensuelles : deux barres fines par mois, separees d un filet blanc. */
-.colonnes-mois {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
-  min-height: 190px;
-  padding-top: 0.5rem;
-
-  .mois {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.3rem;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .paire-barres {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 2px;
-    height: 150px;
-    width: 100%;
-  }
-
-  .barre {
-    width: 14px;
-    min-height: 2px;
-    border-radius: 4px 4px 0 0;
-    transition: opacity 0.15s ease;
-  }
-
-  .mois:hover .barre {
-    opacity: 0.82;
-  }
-
-  .etiquette-mois {
-    font-size: 0.72rem;
-    color: var(--couleur-texte-doux);
-    text-transform: capitalize;
-  }
-
-  .resultat-mois {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--couleur-succes);
-  }
-
-  /* Sans ce rappel, le vert ci-dessus l'emportait sur la regle globale. */
-  .resultat-mois.resultat-negatif {
-    color: var(--couleur-danger);
-  }
-}
-
-/* Barres horizontales classees, chacune directement etiquetee. */
-.barres-categories {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-
-  li {
-    display: grid;
-    grid-template-columns: 130px 1fr 110px;
-    align-items: center;
-    gap: 0.6rem;
-    font-size: 0.82rem;
-  }
-
-  .nom-categorie {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .piste {
-    height: 10px;
-    background: #eceff3;
-    border-radius: 999px;
-    overflow: hidden;
-  }
-
-  .remplissage {
-    display: block;
-    height: 100%;
-    border-radius: 999px;
-    min-width: 3px;
-  }
-
-  .valeur-categorie {
-    text-align: right;
-    font-weight: 600;
-
-    small {
-      display: block;
-      font-weight: 400;
-      font-size: 0.7rem;
-      color: var(--couleur-texte-doux);
-    }
-  }
 }
 
 /* Colonnes par camion : meme lecture que les colonnes mensuelles, camions en abscisse. */
@@ -338,10 +163,493 @@
   }
 }
 
-.note-graphique {
-  margin: 1rem 0 0;
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--couleur-bordure);
-  font-size: 0.74rem;
-  color: var(--couleur-texte-doux);
+/* ============================ Charte du bord ============================ */
+$vert: #1f7a5c;
+$sarcelle: #22c3a6;
+$encre: #1d2b26;
+
+.panneau {
+  margin: 0;
+  border: 0;
+  border-radius: 18px;
+  box-shadow: 0 6px 20px rgba(23, 99, 75, 0.07);
+
+  figcaption {
+    margin-bottom: 0.75rem;
+
+    h2 {
+      margin-bottom: 0.1rem;
+    }
+  }
+
+  .sous-titre {
+    margin: 0;
+    font-size: 0.75rem;
+  }
+}
+
+/* Trois cartes en degrade ; l'illustration deborde en bas a droite. */
+.cartes-tete {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0.25rem 0 1.5rem;
+
+  @media (max-width: 950px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.carte-tete {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-height: 122px;
+  padding: 0.85rem 1.1rem;
+  border-radius: 14px;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(15, 77, 58, 0.18);
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
+
+  &.vert {
+    background: linear-gradient(135deg, #2fb383 0%, #1f7a5c 100%);
+  }
+
+  &.olive {
+    background: linear-gradient(135deg, #a9bd2c 0%, #6f8216 100%);
+  }
+
+  &.violet {
+    background: linear-gradient(135deg, #3d8bc9 0%, #5b3a9a 100%);
+  }
+
+  .titre {
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  /* Le montant est l'information de la carte : grand, gras, lisible de loin. */
+  strong {
+    margin: 0.1rem 0 0.35rem;
+    font-size: clamp(2.1rem, 3vw, 2.9rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    /* Espace des milliers elargie : a cette taille, l'espace fine se perd. */
+    word-spacing: 0.1em;
+    white-space: nowrap;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+    small {
+      margin-left: 0.45rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      opacity: 0.85;
+    }
+  }
+
+  .detail {
+    margin-top: auto;
+    font-size: 0.74rem;
+    opacity: 0.9;
+    max-width: 62%;
+  }
+
+  .illustration {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    width: 22%;
+    max-width: 100px;
+    opacity: 0.95;
+    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.18));
+  }
+}
+
+.rangee {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+
+  &.large-etroit {
+    grid-template-columns: 1.7fr 1fr;
+  }
+
+  &.etroit-large {
+    grid-template-columns: 1fr 1.7fr;
+  }
+
+  &.egale {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Etat du parc en large, alertes et repartition en colonnes etroites. */
+  &.trois {
+    grid-template-columns: 1.6fr 1fr 1fr;
+
+    @media (max-width: 1250px) {
+      grid-template-columns: 1fr 1fr;
+
+      > :first-child {
+        grid-column: 1 / -1;
+      }
+    }
+  }
+
+  @media (max-width: 950px) {
+    &.large-etroit,
+    &.etroit-large,
+    &.egale,
+    &.trois {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+.entete-panneau {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.lien-tout {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--couleur-primaire);
+}
+
+/* ------------------------- Billets des missions ------------------------- */
+.table-billets {
+  overflow: hidden;
+
+  .ligne-entete,
+  .billet {
+    display: grid;
+    grid-template-columns: 1.5fr 1.2fr 0.5fr 0.8fr;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .ligne-entete {
+    padding: 0 0.75rem 0.5rem;
+    font-size: 0.72rem;
+    color: var(--couleur-texte-doux);
+
+    span:nth-child(n + 3) {
+      text-align: center;
+    }
+  }
+
+  /* Bordure pointillee et encoches laterales : la mission lue comme un billet. */
+  .billet {
+    position: relative;
+    padding: 0.7rem 0.75rem;
+    border-top: 2px dashed #cfe3da;
+    color: inherit;
+
+    &:hover {
+      background: #f4faf7;
+      text-decoration: none;
+    }
+
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      top: -9px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #eef6f2;
+    }
+
+    &::before {
+      left: -8px;
+    }
+
+    &::after {
+      right: -8px;
+    }
+
+    > span:nth-child(n + 3) {
+      text-align: center;
+    }
+  }
+
+  .personne {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+
+    > span:last-child {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+  }
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #dff3ea;
+    color: $vert;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  strong,
+  small,
+  .client {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  .client {
+    font-size: 0.82rem;
+  }
+
+  .pastille-km {
+    display: inline-grid;
+    place-items: center;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: #3aa57f;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .montant {
+    font-weight: 700;
+  }
+}
+
+/* ------------------------- Barres empilees ------------------------- */
+.graphe-empile {
+  display: flex;
+  gap: 0.5rem;
+  height: 200px;
+  margin-bottom: 0.75rem;
+
+  .axe-y {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 34px;
+    padding-bottom: 1.3rem;
+    font-size: 0.66rem;
+    color: var(--couleur-texte-doux);
+    text-align: right;
+  }
+
+  .zone-barres {
+    flex: 1;
+    display: flex;
+    justify-content: space-around;
+    gap: 0.4rem;
+  }
+
+  .colonne {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    flex: 1;
+  }
+
+  .pile {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    width: 14px;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .marge {
+    background: $sarcelle;
+  }
+
+  .socle {
+    background: $encre;
+  }
+
+  .mois-court {
+    font-size: 0.68rem;
+    color: var(--couleur-texte-doux);
+    text-transform: capitalize;
+  }
+}
+
+/* ------------------------- Donut ------------------------- */
+.donut {
+  position: relative;
+  width: 180px;
+  margin: 0.25rem auto 1rem;
+
+  svg {
+    display: block;
+    width: 100%;
+  }
+
+  .centre-donut {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    strong {
+      font-size: 1.1rem;
+    }
+
+    small {
+      font-size: 0.68rem;
+      color: var(--couleur-texte-doux);
+    }
+  }
+}
+
+.legende-donut {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem 1rem;
+  font-size: 0.78rem;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .nom {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ------------------------- Courbes ------------------------- */
+.courbes {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: 0.5rem;
+
+  .grille {
+    stroke: #e3ece8;
+    stroke-width: 1;
+  }
+
+  .ligne-zero {
+    stroke: #b9cbc3;
+    stroke-width: 1;
+  }
+
+  .graduation {
+    font-size: 10px;
+    fill: var(--couleur-texte-doux);
+    text-anchor: end;
+  }
+
+  .etiquette-mois {
+    font-size: 10px;
+    fill: var(--couleur-texte-doux);
+    text-anchor: middle;
+    text-transform: capitalize;
+  }
+}
+
+/* ------------------------- Etat du parc ------------------------- */
+.barre-etats {
+  display: flex;
+  gap: 3px;
+  height: 14px;
+  margin: 0.5rem 0 0.9rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #eef2f0;
+}
+
+.liste-etats {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.4rem 1rem;
+  font-size: 0.8rem;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+
+    strong {
+      margin-left: auto;
+    }
+  }
+}
+
+.mini-indicateurs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+
+  a {
+    flex: 1 1 120px;
+    padding: 0.6rem 0.75rem;
+    border-radius: 12px;
+    background: #f1f8f5;
+    color: var(--couleur-texte-doux);
+    font-size: 0.75rem;
+
+    strong {
+      display: block;
+      font-size: 1.2rem;
+      color: var(--couleur-primaire);
+    }
+  }
+}
+
+/* Les alertes documentaires s'empilent : le panneau est etroit. */
+.cartes-apercu.alertes-documents {
+  grid-template-columns: 1fr;
+  gap: 0.7rem;
+  margin-bottom: 0.9rem;
+}
+
+/* La barre d'etats reste au-dessus des cartes, comme une legende resumee. */
+.barre-etats {
+  margin-bottom: 1rem;
 }

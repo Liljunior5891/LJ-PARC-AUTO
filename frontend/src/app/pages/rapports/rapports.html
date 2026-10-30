@@ -28,7 +28,7 @@
             <strong>{{ rapport.libelle }}</strong>
             <span class="description">{{ rapport.description }}</span>
             @if (rapport.selectionCamions) {
-              <span class="marque-selection">Selection de camions possible</span>
+              <span class="marque-selection">Selection de vehicules possible</span>
             }
           </button>
         </li>
@@ -69,14 +69,14 @@
         </div>
 
         @if (choixCamions()) {
-          <h3>Camions</h3>
+          <h3>Vehicules</h3>
           <p class="aide">
-            Sans selection, le rapport porte sur tout le parc. Cochez un ou plusieurs camions
+            Sans selection, le rapport porte sur tout le parc. Cochez un ou plusieurs vehicules
             pour le restreindre.
           </p>
           <div class="barre-selection">
-            <input type="search" class="recherche-camion" placeholder="Rechercher un camion"
-                   aria-label="Rechercher un camion" [(ngModel)]="recherche" />
+            <input type="search" class="recherche-camion" placeholder="Rechercher un vehicule"
+                   aria-label="Rechercher un vehicule" [(ngModel)]="recherche" />
             <button class="bouton secondaire petit" type="button" (click)="toutSelectionner()">
               Tout cocher
             </button>
@@ -96,7 +96,7 @@
                 </label>
               </li>
             } @empty {
-              <li class="message vide">Aucun camion pour cette recherche.</li>
+              <li class="message vide">Aucun vehicule pour cette recherche.</li>
             }
           </ul>
         }

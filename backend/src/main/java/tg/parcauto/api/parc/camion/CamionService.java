@@ -35,7 +35,7 @@ public class CamionService {
 
     @Transactional(readOnly = true)
     public Camion charger(Long id) {
-        return repository.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Camion", id));
+        return repository.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Vehicule", id));
     }
 
     /** Referentiel des marques, pour les listes deroulantes et les logos. */
@@ -74,7 +74,7 @@ public class CamionService {
 
     public CamionDto.Reponse creer(CamionDto.Requete requete) {
         if (repository.existsByImmatriculationIgnoreCase(requete.immatriculation())) {
-            throw new BusinessException("Un camion existe deja avec l'immatriculation " + requete.immatriculation());
+            throw new BusinessException("Un vehicule existe deja avec l'immatriculation " + requete.immatriculation());
         }
         Camion camion = new Camion();
         appliquer(camion, requete);
@@ -138,7 +138,7 @@ public class CamionService {
         // Le referentiel prime ; le libelle libre sert de repli.
         if (r.typeId() != null) {
             TypeCamion type = typeRepository.findById(r.typeId())
-                    .orElseThrow(() -> ResourceNotFoundException.of("Type de camion", r.typeId()));
+                    .orElseThrow(() -> ResourceNotFoundException.of("Type de vehicule", r.typeId()));
             camion.setTypeReference(type);
             camion.setType(type.getNom());
         } else {

@@ -7,7 +7,7 @@
   </div>
   @if (peutGerer) {
     <button class="bouton" type="button" (click)="basculerFormulaire()">
-      {{ formulaireVisible() ? 'Fermer' : '+ Nouvelle livraison' }}
+      + Nouvelle livraison
     </button>
   }
 </div>
@@ -20,13 +20,13 @@
 }
 
 @if (formulaireVisible()) {
-  <form class="carte" [formGroup]="formulaire" (ngSubmit)="enregistrer()" style="margin-bottom: 1rem">
-    <h2>Nouvelle livraison</h2>
+  <app-modale titre="Nouvelle livraison" [erreur]="erreur()" (ferme)="basculerFormulaire()">
+    <form [formGroup]="formulaire" (ngSubmit)="enregistrer()">
     <div class="grille-formulaire">
       <div class="champ">
-        <label for="camionId">Camion *</label>
+        <label for="camionId">Vehicule <span class="requis">*</span></label>
         <select id="camionId" formControlName="camionId">
-          <option [ngValue]="null">Selectionner un camion</option>
+          <option [ngValue]="null">Selectionner un vehicule</option>
           @for (camion of camions(); track camion.id) {
             <option [ngValue]="camion.id">{{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }}</option>
           }
@@ -69,7 +69,7 @@
         <input id="expediteur" formControlName="expediteur" />
       </div>
       <div class="champ">
-        <label for="destinataire">Destinataire *</label>
+        <label for="destinataire">Destinataire <span class="requis">*</span></label>
         <input id="destinataire" formControlName="destinataire" />
         @if (formulaire.controls.destinataire.touched && formulaire.controls.destinataire.invalid) {
           <span class="erreur-champ">Destinataire requis</span>
@@ -80,7 +80,7 @@
         <input id="telephoneDestinataire" formControlName="telephoneDestinataire" />
       </div>
       <div class="champ">
-        <label for="marchandise">Marchandise *</label>
+        <label for="marchandise">Marchandise <span class="requis">*</span></label>
         <input id="marchandise" formControlName="marchandise" placeholder="Ciment CPJ 35" />
         @if (formulaire.controls.marchandise.touched && formulaire.controls.marchandise.invalid) {
           <span class="erreur-champ">Marchandise requise</span>
@@ -120,17 +120,17 @@
       <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
     </div>
   </form>
+  </app-modale>
 }
 
 @if (confirmationEnCours(); as livraison) {
-  <div class="carte" style="margin-bottom: 1rem">
-    <h2>Preuve de livraison — {{ livraison.numero }}</h2>
-    <p class="sous-titre">
-      {{ livraison.marchandise }} pour {{ livraison.destinataire }}
-    </p>
+  <app-modale [titre]="'Preuve de livraison — ' + livraison.numero"
+              [sousTitre]="livraison.marchandise + ' pour ' + livraison.destinataire"
+              largeur="760px" [erreur]="erreur()" (ferme)="confirmationEnCours.set(null)">
+  <div class="carte">
     <div class="grille-formulaire">
       <div class="champ">
-        <label for="statutConfirmation">Issue *</label>
+        <label for="statutConfirmation">Issue <span class="requis">*</span></label>
         <select id="statutConfirmation" [(ngModel)]="statutConfirmation">
           <option value="LIVREE">Livree</option>
           <option value="PARTIELLE">Livree partiellement</option>
@@ -147,7 +147,7 @@
       </div>
       @if (statutConfirmation === 'REFUSEE') {
         <div class="champ">
-          <label for="motifRefus">Motif du refus *</label>
+          <label for="motifRefus">Motif du refus <span class="requis">*</span></label>
           <input id="motifRefus" [(ngModel)]="motifRefus" />
         </div>
       }
@@ -157,6 +157,7 @@
       <button class="bouton secondaire" type="button" (click)="confirmationEnCours.set(null)">Annuler</button>
     </div>
   </div>
+  </app-modale>
 }
 
 <div class="carte">
@@ -190,7 +191,7 @@
           <th>Destinataire</th>
           <th>Marchandise</th>
           <th class="numerique">Poids</th>
-          <th>Camion</th>
+          <th>Vehicule</th>
           <th>Date prevue</th>
           <th>Preuve</th>
           <th>Statut</th>

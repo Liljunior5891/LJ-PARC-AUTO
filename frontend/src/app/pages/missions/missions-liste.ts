@@ -12,14 +12,18 @@ import {
 } from '../../core/models/exploitation';
 import { Page } from '../../core/models/models';
 import { MissionService } from '../../core/services/mission.service';
+import { Modale } from '../../shared/modale';
+import { MissionFiche } from '../missions/mission-fiche';
+import { OperationService } from '../../core/operation/operation.service';
 
 @Component({
   selector: 'app-missions-liste',
-  imports: [FormsModule, RouterLink, DecimalPipe, DatePipe],
+  imports: [FormsModule, RouterLink, DecimalPipe, DatePipe, Modale, MissionFiche],
   templateUrl: './missions-liste.html'
 })
 export class MissionsListe implements OnInit {
   private readonly service = inject(MissionService);
+  private readonly operation = inject(OperationService);
   private readonly auth = inject(AuthService);
 
   readonly statuts = STATUTS_MISSION;
@@ -27,10 +31,13 @@ export class MissionsListe implements OnInit {
   readonly page = signal<Page<Mission> | null>(null);
   readonly chargement = signal(false);
   readonly erreur = signal<string | null>(null);
+  /** Fenetre de creation, ouverte par-dessus la liste. */
+  readonly creation = signal(false);
   readonly succes = signal<string | null>(null);
 
   /** Mission dont le formulaire de cloture est ouvert. */
-  readonly clotureEnCours = signal<number | null>(null);
+  /** Mission dont la fenetre de cloture est ouverte. */
+  readonly clotureEnCours = signal<Mission | null>(null);
   kilometrageArrivee: number | null = null;
   recetteReelle: number | null = null;
 
@@ -43,6 +50,18 @@ export class MissionsListe implements OnInit {
   readonly peutGerer = this.auth.peutGererParc();
 
   ngOnInit(): void {
+    this.charger();
+  }
+
+  ouvrirCreation(): void {
+    this.succes.set(null);
+    this.creation.set(true);
+  }
+
+  /** Le nouvel enregistrement rejoint la liste, rechargee. */
+  creationTerminee(): void {
+    this.creation.set(false);
+    this.succes.set('Mission enregistree.');
     this.charger();
   }
 
@@ -95,7 +114,7 @@ export class MissionsListe implements OnInit {
   ouvrirCloture(mission: Mission): void {
     this.kilometrageArrivee = mission.kilometrageDepart ?? null;
     this.recetteReelle = mission.recettePrevue ?? null;
-    this.clotureEnCours.set(mission.id);
+    this.clotureEnCours.set(mission);
   }
 
   cloturer(mission: Mission): void {
@@ -114,8 +133,14 @@ export class MissionsListe implements OnInit {
     });
   }
 
-  annuler(mission: Mission): void {
-    if (!confirm(`Annuler la mission ${mission.numero} ?`)) {
+  async annuler(mission: Mission): Promise<void> {
+    const accepte = await this.operation.confirmer({
+      titre: `Annuler la mission ${mission.numero} ?`,
+      message: 'Cette action ne peut pas etre defaite.',
+      libelleAction: 'Annuler la mission',
+      danger: true
+    });
+    if (!accepte) {
       return;
     }
     this.service.annuler(mission.id).subscribe({

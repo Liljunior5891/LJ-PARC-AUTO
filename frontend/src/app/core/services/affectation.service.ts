@@ -38,6 +38,14 @@ export class AffectationService {
     return this.http.get<Affectation[]>(`${this.base}/en-cours`);
   }
 
+  /**
+   * Affectation en cours d'un camion, c'est-a-dire le chauffeur qui le conduit.
+   * Repond 404 quand le camion n'est affecte a personne.
+   */
+  couranteDuCamion(camionId: number): Observable<Affectation> {
+    return this.http.get<Affectation>(`${this.base}/camion/${camionId}/courante`);
+  }
+
   affecter(requete: AffectationRequete): Observable<Affectation> {
     return this.http.post<Affectation>(this.base, requete);
   }

@@ -27,6 +27,35 @@ public final class RecetteDto {
             ModePaiement modePaiement,
             @Size(max = 80) String reference,
             @Size(max = 500) String justificatif,
+            String observations,
+            LocalDate dateDebut,
+            LocalDate dateFin,
+            @Size(max = 180) String lieuDepart,
+            @Size(max = 180) String destination,
+            @Size(max = 255) String marchandise,
+            @PositiveOrZero Long kilometres) {
+    }
+
+    /**
+     * Recette de location saisie avec les conditions du contrat.
+     * <p>
+     * Le montant n'est pas transmis : il se deduit du modele tarifaire, de la
+     * periode et du tarif, exactement comme sur un contrat.
+     */
+    public record RequeteLocation(
+            @NotNull Long camionId,
+            @NotNull Long clientId,
+            Long chauffeurId,
+            @NotNull tg.parcauto.api.exploitation.location.TypeLocation typeLocation,
+            @NotNull LocalDate dateDebut,
+            LocalDate dateFin,
+            @NotNull @PositiveOrZero BigDecimal tarif,
+            @PositiveOrZero Long kilometrage,
+            @Size(max = 180) String lieuDepart,
+            @Size(max = 180) String destination,
+            @NotNull LocalDate dateRecette,
+            ModePaiement modePaiement,
+            @Size(max = 80) String reference,
             String observations) {
     }
 
@@ -51,7 +80,13 @@ public final class RecetteDto {
             ModePaiement modePaiement,
             String reference,
             String justificatif,
-            String observations) {
+            String observations,
+            LocalDate dateDebut,
+            LocalDate dateFin,
+            String lieuDepart,
+            String destination,
+            String marchandise,
+            Long kilometres) {
 
         public static Reponse de(Recette r) {
             return new Reponse(
@@ -67,7 +102,9 @@ public final class RecetteDto {
                     r.getFacture() == null ? null : r.getFacture().getNumero(),
                     r.getType(), r.getType().getLibelle(), r.getLibelle(), r.getMontant(),
                     r.getDateRecette(), r.getModePaiement(), r.getReference(),
-                    r.getJustificatif(), r.getObservations());
+                    r.getJustificatif(), r.getObservations(),
+                    r.getDateDebut(), r.getDateFin(), r.getLieuDepart(), r.getDestination(),
+                    r.getMarchandise(), r.getKilometres());
         }
     }
 

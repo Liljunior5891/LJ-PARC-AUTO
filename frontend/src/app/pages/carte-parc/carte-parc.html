@@ -1,119 +1,41 @@
-<div class="entete-page">
-  <div>
-    <h1>Carte du parc</h1>
-    <p class="sous-titre">
-      Chapitre 23 — position, statut et activite de chaque camion en temps reel
-      @if (derniereMaj(); as maj) {
-        · actualise a {{ maj | date: 'HH:mm:ss' }}
-      }
-    </p>
-  </div>
-  <div style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap">
-    <div class="champ">
-      <label for="dateTrajet">Journee du trajet</label>
-      <input id="dateTrajet" type="date" [(ngModel)]="dateTrajet" />
-    </div>
-    <div class="champ">
-      <label for="afficherZones">Zones</label>
-      <select id="afficherZones" [(ngModel)]="afficherZones" (change)="basculerZones()">
-        <option [ngValue]="true">Afficher les zones</option>
-        <option [ngValue]="false">Masquer les zones</option>
-      </select>
-    </div>
-    <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
-  </div>
-</div>
-
 @if (erreur()) {
   <div class="message erreur">{{ erreur() }}</div>
 }
 
-<div class="disposition-carte">
-  <div class="carte panneau-carte">
-    <div id="carte-parc" class="conteneur-carte"></div>
+<!-- La carte occupe tout l'ecran ; outils et tuiles flottent par-dessus. -->
+<div class="ecran-carte">
+  <div id="carte-parc" class="conteneur-carte"></div>
 
-    <div class="legende">
-      <span><i style="background: #1e874b"></i> Disponible</span>
-      <span><i style="background: #1565c0"></i> En mission</span>
-      <span><i style="background: #f0a202"></i> En location</span>
-      <span><i style="background: #6b3fa0"></i> En maintenance</span>
-      <span><i style="background: #c62828"></i> Immobilise</span>
-      <span><i style="background: #333d47"></i> Hors connexion</span>
-    </div>
-
-    @if (trajet(); as t) {
-      <div class="resume-trajet">
-        <div class="grille-resume">
-          <div>
-            <span class="libelle-resume">Distance</span>
-            <strong class="valeur-resume">{{ t.distanceKm | number }} km</strong>
-            <small>{{ t.nombrePoints }} points releves</small>
-          </div>
-          <div>
-            <span class="libelle-resume">Duree</span>
-            <strong class="valeur-resume">{{ t.dureeMinutes }} min</strong>
-            <small>{{ t.nombreArrets }} arret(s)</small>
-          </div>
-          <div>
-            <span class="libelle-resume">Vitesse moyenne</span>
-            <strong class="valeur-resume">{{ t.vitesseMoyenne | number }} km/h</strong>
-            <small>maximale {{ t.vitesseMaximale | number }} km/h</small>
-          </div>
-          <div>
-            <span class="libelle-resume">Camion</span>
-            <strong class="valeur-resume">{{ t.immatriculation }}</strong>
-            <small>{{ t.debut | date: 'dd/MM HH:mm' }} → {{ t.fin | date: 'HH:mm' }}</small>
-          </div>
-        </div>
-        <button class="bouton secondaire petit" type="button" (click)="effacerTrajet()">
-          Effacer le trajet
-        </button>
-      </div>
+  <div class="titre-flottant">
+    <strong>Carte du parc</strong>
+    @if (derniereMaj(); as maj) {
+      <small>actualise a {{ maj | date: 'HH:mm:ss' }}</small>
     }
   </div>
 
-  <div class="colonne-laterale">
-    <div class="carte">
-      <h2>Camions localises</h2>
-      <ul class="liste-camions">
-        @for (marqueur of marqueurs(); track marqueur.camionId) {
-          <li [class.actif]="camionSuivi()?.camionId === marqueur.camionId">
-            <span class="pastille-statut" [style.background]="couleurStatut(marqueur)"></span>
-            <div class="details">
-              <strong>{{ marqueur.immatriculation }}</strong>
-              <small>
-                {{ marqueur.statutLibelle }}
-                @if (marqueur.vitesseKmh) {
-                  · {{ marqueur.vitesseKmh | number }} km/h
-                }
-                @if (marqueur.horsConnexion) {
-                  · <span class="etiquette vendu">hors connexion</span>
-                }
-              </small>
-              <small>{{ marqueur.chauffeurNom || 'sans chauffeur' }}</small>
-            </div>
-            <div class="actions">
-              <button class="bouton secondaire petit" type="button" (click)="centrerSur(marqueur)">
-                Centrer
-              </button>
-              <button class="bouton petit" type="button" (click)="afficherTrajet(marqueur.camionId)">
-                Trajet
-              </button>
-            </div>
-          </li>
-        } @empty {
-          <li>
-            <div class="message vide">
-              Aucun camion localise. Associez un traceur a un camion et transmettez une position.
-            </div>
-          </li>
-        }
-      </ul>
-    </div>
+  <!-- Barre d'outils centrale, a la maniere d'une palette. -->
+  <div class="barre-outils" role="toolbar" aria-label="Outils de la carte">
+    <button type="button" [class.actif]="afficherZones()" (click)="basculerZones()"
+            [attr.aria-pressed]="afficherZones()" title="Afficher ou masquer les zones">◎</button>
+    <button type="button" (click)="cadrerParc()" title="Voir tout le parc">⤢</button>
+    <button type="button" (click)="charger()" title="Actualiser les positions">↻</button>
+    <label class="date-trajet" title="Journee du trajet">
+      <input type="date" [(ngModel)]="dateTrajet" aria-label="Journee du trajet" />
+    </label>
+  </div>
 
-    <div class="carte">
-      <h2>Alertes recentes</h2>
-      <ul class="liste-alertes-gps">
+  <button class="bouton-alertes" type="button" (click)="alertesOuvertes.set(!alertesOuvertes())"
+          [attr.aria-expanded]="alertesOuvertes()" title="Alertes GPS">
+    🔔
+    @if (alertes().length) {
+      <span class="badge">{{ alertes().length }}</span>
+    }
+  </button>
+
+  @if (alertesOuvertes()) {
+    <div class="panneau-alertes">
+      <h3>Alertes recentes</h3>
+      <ul>
         @for (alerte of alertes(); track alerte.id) {
           <li>
             <div>
@@ -121,14 +43,148 @@
               <p>{{ alerte.message }}</p>
               <small>{{ alerte.horodatage | date: 'dd/MM HH:mm' }}</small>
             </div>
-            <button class="bouton secondaire petit" type="button" (click)="traiter(alerte)">
-              Traiter
-            </button>
+            <button class="bouton secondaire petit" type="button" (click)="traiter(alerte)">Traiter</button>
           </li>
         } @empty {
-          <li><div class="message vide">Aucune alerte en attente.</div></li>
+          <li class="vide">Aucune alerte en attente.</li>
         }
       </ul>
+    </div>
+  }
+
+  <!-- Tuiles du bas : fiche du camion suivi, puis indicateurs du parc. -->
+  <div class="tuiles">
+    @if (selection(); as m) {
+      <section class="tuile fiche-camion">
+        <header>
+          <span class="immat">{{ m.immatriculation }}</span>
+          <span class="statut" [style.--statut]="couleurStatut(m)">
+            {{ m.horsConnexion ? 'Hors connexion' : m.statutLibelle }}
+          </span>
+          <span class="fleches">
+            <button type="button" (click)="parcourir(-1)" aria-label="Vehicule precedent">←</button>
+            <button type="button" (click)="parcourir(1)" aria-label="Vehicule suivant">→</button>
+          </span>
+        </header>
+        <dl>
+          <div><dt>Activite</dt><dd>{{ m.activite || 'Aucune mission en cours' }}</dd></div>
+          <div><dt>Marque</dt><dd><span class="pastille-info">{{ m.marque || '—' }}</span></dd></div>
+          <div><dt>Vitesse</dt><dd><span class="pastille-info">{{ m.vitesseKmh ?? 0 | number: '1.0-0' }} km/h</span></dd></div>
+          <div><dt>Signal</dt><dd>{{ m.derniereCommunication | date: 'HH:mm' }}</dd></div>
+          <div><dt>Chauffeur</dt><dd class="chauffeur">
+            <span class="avatar">{{ (m.chauffeurNom || '?').charAt(0) }}</span>{{ m.chauffeurNom || 'Sans chauffeur' }}
+          </dd></div>
+        </dl>
+        <div class="actions-fiche">
+          <button class="bouton secondaire petit" type="button" (click)="suivre(m)">Centrer</button>
+          <button class="bouton petit" type="button" (click)="afficherTrajet(m.camionId)">Trajet du jour</button>
+        </div>
+        <svg class="illustration" viewBox="0 0 220 120" aria-hidden="true">
+          <ellipse cx="120" cy="110" rx="100" ry="6" fill="rgba(0,0,0,0.12)" />
+          <rect x="70" y="10" width="150" height="80" rx="3" fill="#f7f8f9" stroke="#d5d9de" />
+          <path d="M18 40h34c5 0 8 2 10 6l8 16v32H10V52c0-7 3-12 8-12z" fill="#fff" stroke="#d5d9de" />
+          <path d="M22 46h26c3 0 5 1 6 3l6 13H18V52c0-4 2-6 4-6z" fill="#2c3e50" opacity="0.85" />
+          <rect x="10" y="88" width="210" height="8" fill="#3b4148" />
+          <circle cx="40" cy="98" r="12" fill="#22272c" /><circle cx="40" cy="98" r="5" fill="#c9cfd4" />
+          <circle cx="160" cy="98" r="12" fill="#22272c" /><circle cx="160" cy="98" r="5" fill="#c9cfd4" />
+          <circle cx="188" cy="98" r="12" fill="#22272c" /><circle cx="188" cy="98" r="5" fill="#c9cfd4" />
+        </svg>
+      </section>
+
+      <div class="colonne-tuiles">
+        <section class="tuile jauge">
+          <header><span>Vitesse</span><small>limite {{ limiteVitesse }} km/h</small></header>
+          <strong>{{ m.vitesseKmh ?? 0 | number: '1.0-0' }}<small>km/h</small></strong>
+          <svg viewBox="0 0 120 64" aria-hidden="true">
+            <path d="M10 60 A50 50 0 0 1 110 60" class="piste" />
+            @if (m.vitesseKmh) {
+              <path d="M10 60 A50 50 0 0 1 110 60" class="remplissage orange"
+                    [attr.stroke-dasharray]="arc(m.vitesseKmh / limiteVitesse)" />
+            }
+          </svg>
+        </section>
+        <section class="tuile trajet">
+          <header><span>Trajet du jour</span></header>
+          @if (trajet(); as t) {
+            <div class="frise">
+              <span class="point"></span><span class="ligne"></span>
+              <span class="point milieu"></span><span class="ligne"></span><span class="point"></span>
+            </div>
+            <div class="legende-frise">
+              <small>{{ t.debut | date: 'HH:mm' }}</small>
+              <small><b>{{ t.distanceKm | number: '1.0-1' }} km</b> · {{ t.nombreArrets }} arret(s)</small>
+              <small>{{ t.fin | date: 'HH:mm' }}</small>
+            </div>
+            <button class="lien-effacer" type="button" (click)="effacerTrajet()">Effacer le trajet</button>
+          } @else {
+            <button class="lien-effacer" type="button" (click)="afficherTrajet(m.camionId)">
+              Afficher l'itineraire →
+            </button>
+          }
+        </section>
+      </div>
+
+      <div class="colonne-tuiles">
+        <section class="tuile jauge">
+          <header><span>Signal GPS</span><small>il y a {{ minutesDepuis(m) }} min</small></header>
+          <strong>{{ m.horsConnexion ? 'Perdu' : 'Actif' }}</strong>
+          <svg viewBox="0 0 120 64" aria-hidden="true">
+            <path d="M10 60 A50 50 0 0 1 110 60" class="piste" />
+            @if (fraicheur(m) > 0) {
+              <path d="M10 60 A50 50 0 0 1 110 60" class="remplissage vert"
+                    [attr.stroke-dasharray]="arc(fraicheur(m))" />
+            }
+          </svg>
+        </section>
+        <section class="tuile alertes-resume">
+          <header><span>Alertes</span>
+            <button type="button" (click)="alertesOuvertes.set(true)" aria-label="Voir les alertes">↗</button>
+          </header>
+          <div class="icones-alertes">
+            <span title="Exces de vitesse">⚡</span>
+            <span title="Zones">◎</span>
+            <span title="Signal">📡</span>
+            <strong>{{ alertes().length }}</strong>
+          </div>
+        </section>
+      </div>
+    }
+
+    <div class="colonne-tuiles large">
+      <div class="paire">
+        <section class="tuile chiffre">
+          <header><span>Vehicules localises</span></header>
+          <div class="chiffre-graphe">
+            <strong>{{ marqueurs().length }}</strong>
+            <span class="mini-barres">
+              @for (b of barresVitesse(); track b.immatriculation) {
+                <i [style.height.%]="b.hauteur" [class.active]="b.active" [attr.title]="b.immatriculation"></i>
+              }
+            </span>
+          </div>
+        </section>
+        <section class="tuile chiffre">
+          <header><span>En mouvement</span></header>
+          <div class="chiffre-graphe">
+            <strong>{{ nombreEnMouvement() }}</strong>
+            <svg class="courbe" viewBox="0 0 60 24" aria-hidden="true">
+              <path d="M2 18 C10 18 12 6 20 10 S32 20 40 12 S52 4 58 6" />
+            </svg>
+          </div>
+        </section>
+      </div>
+      <section class="tuile repartition">
+        <header><span>Etat du parc localise</span></header>
+        <div class="segments">
+          @for (r of repartition(); track r.libelle) {
+            <div>
+              <strong>{{ r.pourcent }}%</strong>
+              <i [style.background]="r.couleur"></i>
+              <small>{{ r.libelle }}</small>
+            </div>
+          }
+        </div>
+      </section>
     </div>
   </div>
 </div>

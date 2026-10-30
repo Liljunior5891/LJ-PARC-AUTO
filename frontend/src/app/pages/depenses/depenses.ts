@@ -1,56 +1,42 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import {
   CATEGORIES_DEPENSE,
   CategorieDepense,
   Depense,
-  DepenseRequete,
-  LigneCategorieDepense,
-  MODES_PAIEMENT
+  LigneCategorieDepense
 } from '../../core/models/finance';
-import { Camion, Chauffeur, Page } from '../../core/models/models';
+import { Camion, Page } from '../../core/models/models';
 import { CamionService } from '../../core/services/camion.service';
-import { ChauffeurService } from '../../core/services/chauffeur.service';
-import { DepenseService, NaturesParCategorie } from '../../core/services/depense.service';
+import { DepenseService } from '../../core/services/depense.service';
+import { FormulaireDepense } from '../../shared/formulaire-depense';
+import { Modale } from '../../shared/modale';
+import { OperationService } from '../../core/operation/operation.service';
 
 @Component({
   selector: 'app-depenses',
-  imports: [FormsModule, ReactiveFormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, Modale, FormulaireDepense],
   templateUrl: './depenses.html'
 })
 export class Depenses implements OnInit {
-  private readonly fb = inject(FormBuilder);
+  private readonly operation = inject(OperationService);
   private readonly service = inject(DepenseService);
   private readonly camionService = inject(CamionService);
-  private readonly chauffeurService = inject(ChauffeurService);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
 
   readonly categories = CATEGORIES_DEPENSE;
-  readonly modes = MODES_PAIEMENT;
 
   readonly page = signal<Page<Depense> | null>(null);
   readonly camions = signal<Camion[]>([]);
-  readonly chauffeurs = signal<Chauffeur[]>([]);
-  readonly natures = signal<NaturesParCategorie | null>(null);
   readonly repartition = signal<LigneCategorieDepense[]>([]);
   readonly chargement = signal(false);
   readonly erreur = signal<string | null>(null);
   readonly succes = signal<string | null>(null);
   readonly formulaireVisible = signal(false);
-
-  /** Categorie choisie dans le formulaire, qui pilote la liste des natures. */
-  readonly categorieSaisie = signal<CategorieDepense>('CARBURANT');
-
-  readonly naturesDisponibles = computed(
-    () => this.natures()?.[this.categorieSaisie()] ?? []
-  );
-
-  /** Vrai si la categorie saisie exige les informations de plein (chapitre 18). */
-  readonly saisieCarburant = computed(() => this.categorieSaisie() === 'CARBURANT');
 
   readonly totalPeriode = computed(() =>
     this.repartition().reduce((cumul, ligne) => cumul + ligne.total, 0)
@@ -65,43 +51,22 @@ export class Depenses implements OnInit {
 
   readonly peutGerer = this.auth.peutGererParc();
 
-  readonly formulaire = this.fb.nonNullable.group({
-    camionId: [null as number | null, [Validators.required]],
-    chauffeurId: [null as number | null],
-    sousCategorie: ['DIESEL', [Validators.required]],
-    libelle: ['', [Validators.required]],
-    montant: [0, [Validators.required, Validators.min(0)]],
-    dateDepense: [this.aujourdhui(), [Validators.required]],
-    fournisseur: [''],
-    modePaiement: [null as string | null],
-    reference: [''],
-    kilometrage: [null as number | null],
-    station: [''],
-    quantiteLitres: [null as number | null],
-    prixLitre: [null as number | null],
-    aChargeClient: [false],
-    observations: ['']
-  });
+  /** Vehicule impose a la saisie quand on arrive de sa fiche pour une nouvelle depense. */
+  camionImposeSaisie: number | null = null;
 
   ngOnInit(): void {
     // Arrivee depuis la fiche d'un camion : filtre et formulaire prets.
     const camionId = this.route.snapshot.queryParamMap.get('camionId');
     if (camionId) {
       this.camionId = Number(camionId);
-      this.formulaire.controls.camionId.setValue(Number(camionId));
       if (this.route.snapshot.queryParamMap.get('nouvelle') === 'true') {
+        this.camionImposeSaisie = Number(camionId);
         this.formulaireVisible.set(true);
       }
     }
     this.charger();
-    this.service.natures().subscribe({
-      next: (natures) => this.natures.set(natures)
-    });
     this.camionService.lister({ actif: true, size: 200 }).subscribe({
       next: (page) => this.camions.set(page.content)
-    });
-    this.chauffeurService.lister({ actif: true, size: 200 }).subscribe({
-      next: (page) => this.chauffeurs.set(page.content)
     });
   }
 
@@ -156,45 +121,21 @@ export class Depenses implements OnInit {
     this.succes.set(null);
   }
 
-  /** Change la categorie de saisie et positionne la premiere nature disponible. */
-  changerCategorieSaisie(categorie: string): void {
-    this.categorieSaisie.set(categorie as CategorieDepense);
-    const premiere = this.naturesDisponibles()[0];
-    if (premiere) {
-      this.formulaire.controls.sousCategorie.setValue(premiere.valeur);
-    }
+  /** Depense enregistree par le formulaire partage : on ferme et on recharge. */
+  depenseEnregistree(depense: Depense): void {
+    this.succes.set(`Depense ${depense.numero} enregistree.`);
+    this.formulaireVisible.set(false);
+    this.charger();
   }
 
-  enregistrer(): void {
-    if (this.formulaire.invalid) {
-      this.formulaire.markAllAsTouched();
-      return;
-    }
-    const brut = this.formulaire.getRawValue();
-    const requete: DepenseRequete = {
-      ...brut,
-      camionId: brut.camionId!,
-      modePaiement: (brut.modePaiement || null) as DepenseRequete['modePaiement']
-    };
-    this.service.creer(requete).subscribe({
-      next: (depense) => {
-        this.succes.set(`Depense ${depense.numero} enregistree.`);
-        this.formulaire.reset({
-          sousCategorie: 'DIESEL',
-          dateDepense: this.aujourdhui(),
-          montant: 0,
-          aChargeClient: false
-        });
-        this.categorieSaisie.set('CARBURANT');
-        this.formulaireVisible.set(false);
-        this.charger();
-      },
-      error: (erreur) => this.erreur.set(erreur.error?.message ?? 'Enregistrement impossible.')
+  async supprimer(depense: Depense): Promise<void> {
+    const accepte = await this.operation.confirmer({
+      titre: `Supprimer la depense ${depense.numero} ?`,
+      message: `${depense.montant.toLocaleString('fr-FR')} FCFA seront retires des comptes du vehicule.`,
+      libelleAction: 'Supprimer',
+      danger: true
     });
-  }
-
-  supprimer(depense: Depense): void {
-    if (!confirm(`Supprimer la depense ${depense.numero} de ${depense.montant} FCFA ?`)) {
+    if (!accepte) {
       return;
     }
     this.service.supprimer(depense.id).subscribe({

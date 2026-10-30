@@ -19,7 +19,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("PARC AUTO - API")
                         .version("0.1.0")
-                        .description("Gestion, suivi et rentabilite d'un parc de camions de location"))
+                        .description("Gestion, suivi et rentabilite d'un parc de vehicules de location"))
                 .addSecurityItem(new SecurityRequirement().addList(SCHEME))
                 .components(new Components().addSecuritySchemes(SCHEME,
                         new SecurityScheme()

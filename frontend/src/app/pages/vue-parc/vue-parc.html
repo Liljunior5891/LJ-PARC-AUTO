@@ -2,79 +2,193 @@
   <div>
     <h1>Vue globale du parc</h1>
     <p class="sous-titre">
-      Chapitre 5 — etat, chauffeur, client et activite de chaque camion en un coup d'oeil
+      Chapitre 5 — etat, chauffeur, client et activite de chaque vehicule en un coup d'oeil
     </p>
   </div>
-  <div style="display: flex; gap: 0.5rem; align-items: flex-end">
-    <div class="champ" style="min-width: 220px">
-      <label for="filtre">Affichage</label>
-      <select id="filtre" [ngModel]="filtre()" (ngModelChange)="changerFiltre($event)">
-        <option value="tous">Tout le parc</option>
-        <option value="engages">Camions engages</option>
-        <option value="disponibles">Camions disponibles</option>
-      </select>
-    </div>
-    <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
+  <div class="actions-entete">
+    <button class="bouton secondaire" type="button" (click)="charger()">↻ Actualiser</button>
+    @if (peutGerer) {
+      <button class="bouton" type="button" (click)="succes.set(null); creation.set(true)">+ Nouveau vehicule</button>
+    }
   </div>
 </div>
 
 @if (erreur()) {
   <div class="message erreur">{{ erreur() }}</div>
 }
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+@if (creation()) {
+  <app-formulaire-camion (enregistre)="camionCree($event)" (ferme)="creation.set(false)" />
+}
 
-<div class="grille-blocs">
-  @for (ligne of lignesAffichees(); track ligne.camionId) {
-    <!-- La couleur du bandeau porte le statut ; les finances apparaissent au survol. -->
-    <article class="bloc-camion" [style.--couleur-statut]="couleurStatut(ligne.statut)">
-      <a class="lien-bloc" [routerLink]="['/camions', ligne.camionId]">
-        <header>
-          <strong class="immatriculation">{{ ligne.immatriculation }}</strong>
-          <span class="statut">{{ ligne.statutLibelle }}</span>
-        </header>
+<!-- Apercu : quatre chiffres de tete, separes par un filet. -->
+<section class="panneau apercu">
+  <header class="entete-panneau">
+    <h2>Apercu du parc</h2>
+    @if (misAJour(); as heure) {
+      <span class="mise-a-jour">
+        Mis a jour : aujourd'hui, {{ heure.getHours() }}:{{ heure.getMinutes().toString().padStart(2, '0') }}
+      </span>
+    }
+  </header>
+  @if (apercu(); as a) {
+    <!-- Quatre cartes : une icone et une couleur par information, une jauge pour la part du parc. -->
+    <div class="cartes-apercu">
+      <button type="button" class="carte-apercu bleu" [class.active]="filtre() === 'tous'"
+              (click)="changerFiltre('tous')" title="Afficher tout le parc">
+        <span class="icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M2 7h11v9H2zM13 10h4.5l3 3.5V16H13" /><circle cx="6" cy="17.5" r="1.8" /><circle cx="16.5" cy="17.5" r="1.8" /></svg>
+        </span>
+        <span class="textes">
+          <span class="libelle">Vehicules au parc</span>
+          <strong>{{ a.total }}</strong>
+          <small>
+            @if (a.sansChauffeur) {
+              <b class="attention">{{ a.sansChauffeur }} sans chauffeur</b>
+            } @else {
+              tous ont un chauffeur
+            }
+          </small>
+        </span>
+        <span class="jauge"><i [style.width.%]="100"></i></span>
+      </button>
 
-        <p class="modele">{{ ligne.marqueModele || 'Marque non renseignee' }}</p>
+      <button type="button" class="carte-apercu orange" [class.active]="filtre() === 'engages'"
+              (click)="changerFiltre('engages')" title="Afficher les vehicules engages">
+        <span class="icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="6" r="2.2" /><path d="M8.2 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.8" /></svg>
+        </span>
+        <span class="textes">
+          <span class="libelle">Vehicules engages</span>
+          <strong>{{ a.engages }}</strong>
+          <small>en mission, location ou livraison</small>
+        </span>
+        <span class="jauge"><i [style.width.%]="part(a.engages, a.total)"></i></span>
+      </button>
 
-        <dl class="infos">
-          <div>
-            <dt>Dernier kilometrage</dt>
-            <dd>{{ ligne.kilometrageActuel | number }} km</dd>
-          </div>
-          <div>
-            <dt>Chauffeur</dt>
-            <dd>{{ ligne.chauffeurNom || '—' }}</dd>
-          </div>
-        </dl>
+      <button type="button" class="carte-apercu vert" [class.active]="filtre() === 'disponibles'"
+              (click)="changerFiltre('disponibles')" title="Afficher les vehicules disponibles">
+        <span class="icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" /><path d="M9.5 16.5v-9h3.2a2.7 2.7 0 0 1 0 5.4H9.5" /></svg>
+        </span>
+        <span class="textes">
+          <span class="libelle">Disponibles</span>
+          <strong>{{ a.disponibles }}<em>/{{ a.total }}</em></strong>
+          <small>{{ a.tauxDisponibilite }} % du parc pret a partir</small>
+        </span>
+        <span class="jauge"><i [style.width.%]="a.tauxDisponibilite"></i></span>
+      </button>
 
-        @if (finances(ligne.camionId); as f) {
-          <div class="survol-finances">
-            <div>
-              <span>Recettes</span>
-              <strong>{{ f.recettes | number }}</strong>
-            </div>
-            <div>
-              <span>Depenses</span>
-              <strong>{{ f.depenses | number }}</strong>
-            </div>
-            <div>
-              <span>Resultat</span>
-              <strong [class]="classeResultat(f.resultat)">{{ f.resultat | number }}</strong>
-            </div>
-          </div>
-        } @else {
-          <div class="survol-finances">
-            <div><span>Aucun mouvement ce mois-ci</span></div>
-          </div>
-        }
-      </a>
-    </article>
-  } @empty {
-    <div class="message vide">
-      {{ chargement() ? 'Chargement...' : 'Aucun camion pour ce filtre.' }}
+      <div class="carte-apercu rouge">
+        <span class="icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.2 5.2l-5.3 5.3a1.8 1.8 0 0 0 2.5 2.5l5.3-5.3a4 4 0 0 0 5.2-5.2l-2.4 2.4-2.3-.6-.6-2.3z" /></svg>
+        </span>
+        <span class="textes">
+          <span class="libelle">A l'atelier</span>
+          <strong>{{ a.atelier }}</strong>
+          <small>{{ a.atelier ? 'maintenance, immobilises ou accidentes' : 'aucun vehicule immobilise' }}</small>
+        </span>
+        <span class="jauge"><i [style.width.%]="part(a.atelier, a.total)"></i></span>
+      </div>
     </div>
   }
-</div>
+</section>
+
+<section class="panneau">
+  <header class="entete-panneau barre-outils">
+    <h2>Vehicules du parc</h2>
+    <div class="outils">
+      <label class="recherche">
+        <span aria-hidden="true">⌕</span>
+        <input type="search" placeholder="Rechercher un vehicule..." aria-label="Rechercher un vehicule"
+               [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" />
+      </label>
+      <div class="selecteur" role="group" aria-label="Affichage">
+        @for (f of filtres; track f.valeur) {
+          <button type="button" [class.actif]="filtre() === f.valeur"
+                  [attr.aria-pressed]="filtre() === f.valeur" (click)="changerFiltre(f.valeur)">
+            {{ f.libelle }}
+          </button>
+        }
+      </div>
+    </div>
+  </header>
+
+  <!-- Illustration commune a toutes les cartes : porteur vu de profil. -->
+  <ng-template #illustration>
+    <svg class="illustration" viewBox="0 0 230 110" aria-hidden="true">
+      <ellipse cx="120" cy="100" rx="112" ry="5" fill="rgba(0,0,0,0.12)" />
+      <rect x="4" y="8" width="150" height="74" rx="3" fill="#f7f8f9" stroke="#d5d9de" />
+      @for (x of [30, 56, 82, 108, 134]; track x) {
+        <line [attr.x1]="x" y1="12" [attr.x2]="x" y2="78" stroke="#e4e7ea" />
+      }
+      <rect x="4" y="80" width="200" height="8" fill="#3b4148" />
+      <path d="M158 26h38c5 0 9 3 11 7l12 22c1 2 2 4 2 6v19h-63z" fill="#ffffff" stroke="#d5d9de" />
+      <path d="M166 32h28c3 0 5 2 6 4l9 17h-43z" fill="#2c3e50" opacity="0.85" />
+      <rect x="160" y="58" width="12" height="3" rx="1.5" fill="#aab2ba" />
+      <rect x="214" y="70" width="8" height="6" rx="2" fill="#f0a202" />
+      @for (x of [30, 58, 184]; track x) {
+        <circle [attr.cx]="x" cy="90" r="12" fill="#22272c" />
+        <circle [attr.cx]="x" cy="90" r="5" fill="#c9cfd4" />
+      }
+    </svg>
+  </ng-template>
+
+  <div class="grille-camions">
+    @for (ligne of lignesAffichees(); track ligne.camionId) {
+      <a class="carte-camion" [routerLink]="['/camions', ligne.camionId]"
+         [style.--couleur-statut]="filtre() === 'archives' ? '#8a94a0' : couleurStatut(ligne.statut)">
+        <div class="vitrine">
+          <span class="puce-statut"><i></i>{{ ligne.statutLibelle }}</span>
+          <strong class="immatriculation">{{ ligne.immatriculation }}</strong>
+          <span class="kilometrage">
+            {{ ligne.kilometrageActuel | number }} km
+            @if (ligne.marqueModele) { · {{ ligne.marqueModele }} }
+          </span>
+          <ng-container [ngTemplateOutlet]="illustration" />
+        </div>
+
+        <div class="details">
+          <div class="trajet">
+            <strong>{{ ligne.localisation?.replace('->', '→') || 'Au depot' }}</strong>
+            <span>
+              {{ ligne.chauffeurNom || 'Sans chauffeur' }}
+              @if (ligne.clientNom) { • {{ ligne.clientNom }} }
+            </span>
+          </div>
+          @if (finances(ligne.camionId); as f) {
+            <div class="progression">
+              <span>Marge du mois</span>
+              <strong [class]="classeResultat(f.resultat)">{{ f.margePourcent | number: '1.0-0' }} %</strong>
+            </div>
+            <div class="piste" [attr.title]="'Recettes ' + f.recettes + ', depenses ' + f.depenses
+                + ', resultat ' + f.resultat">
+              <span [style.width.%]="largeurMarge(f.margePourcent)"></span>
+            </div>
+            <div class="montants">
+              <span>{{ f.recettes | number }} recettes</span>
+              <span [class]="classeResultat(f.resultat)">{{ f.resultat | number }} FCFA</span>
+            </div>
+          } @else {
+            <div class="progression">
+              <span>Marge du mois</span>
+              <strong>—</strong>
+            </div>
+            <div class="piste"><span style="width: 0"></span></div>
+            <div class="montants"><span>Aucun mouvement ce mois-ci</span></div>
+          }
+        </div>
+      </a>
+    } @empty {
+      <div class="message vide">
+        {{ chargement() ? 'Chargement...' : 'Aucun vehicule pour ce filtre.' }}
+      </div>
+    }
+  </div>
+</section>
 
 <p class="note-phase">
-  Les montants portent sur le mois en cours et apparaissent au survol d'un bloc.
-  Le detail par camion est disponible depuis l'ecran Rentabilite.
+  La marge porte sur le mois en cours. Le detail par vehicule est disponible depuis l'ecran Rentabilite.
 </p>

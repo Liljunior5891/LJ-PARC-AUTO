@@ -66,9 +66,18 @@ public class RecetteController {
     @PostMapping
     @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Enregistre une recette rattachee a un camion")
+    @Operation(summary = "Enregistre une recette rattachee a un vehicule")
     public RecetteDto.Reponse creer(@Valid @RequestBody RecetteDto.Requete requete) {
         return service.creer(requete);
+    }
+
+    @PostMapping("/location")
+    @PreAuthorize(Autorisations.GESTION)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Enregistre une recette de location et le contrat correspondant")
+    public RecetteDto.Reponse enregistrerLocation(
+            @Valid @RequestBody RecetteDto.RequeteLocation demande) {
+        return service.enregistrerLocation(demande);
     }
 
     @PutMapping("/{id}")

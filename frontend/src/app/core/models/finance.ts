@@ -1,4 +1,5 @@
 /** Types de la phase 3 : recettes, depenses, carburant, facturation, rentabilite. */
+import { TypeLocation } from './exploitation';
 
 export type ModePaiement =
   | 'ESPECES'
@@ -42,6 +43,13 @@ export interface Recette {
   reference?: string;
   justificatif?: string;
   observations?: string;
+  /** Details selon le type : periode, trajet, marchandise, kilometres. */
+  dateDebut?: string;
+  dateFin?: string;
+  lieuDepart?: string;
+  destination?: string;
+  marchandise?: string;
+  kilometres?: number;
 }
 
 export interface RecetteRequete {
@@ -52,6 +60,33 @@ export interface RecetteRequete {
   type: TypeRecette;
   libelle: string;
   montant: number;
+  dateRecette: string;
+  modePaiement?: ModePaiement | null;
+  reference?: string;
+  observations?: string;
+  dateDebut?: string | null;
+  dateFin?: string | null;
+  lieuDepart?: string | null;
+  destination?: string | null;
+  marchandise?: string | null;
+  kilometres?: number | null;
+}
+
+/**
+ * Recette de location : les conditions du contrat remplacent le montant, qui
+ * est calcule par le serveur a partir du tarif et de la periode.
+ */
+export interface RecetteLocationRequete {
+  camionId: number;
+  clientId: number;
+  chauffeurId?: number | null;
+  typeLocation: TypeLocation;
+  dateDebut: string;
+  dateFin?: string | null;
+  tarif: number;
+  kilometrage?: number | null;
+  lieuDepart?: string;
+  destination?: string;
   dateRecette: string;
   modePaiement?: ModePaiement | null;
   reference?: string;

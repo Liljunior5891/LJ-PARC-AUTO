@@ -1,8 +1,6 @@
 package tg.parcauto.api.finance.facture;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -36,7 +34,6 @@ public final class FactureDto {
             LocalDate dateEcheance,
             LocalDate periodeDebut,
             LocalDate periodeFin,
-            @DecimalMin("0") @DecimalMax("100") BigDecimal tauxTva,
             String observations,
             @NotEmpty @Valid List<LigneRequete> lignes) {
     }
@@ -45,16 +42,14 @@ public final class FactureDto {
     public record DepuisContrat(
             @NotNull Long locationId,
             LocalDate dateEmission,
-            Integer delaiPaiementJours,
-            @DecimalMin("0") @DecimalMax("100") BigDecimal tauxTva) {
+            Integer delaiPaiementJours) {
     }
 
     /** Generation d'une facture a partir d'une mission terminee. */
     public record DepuisMission(
             @NotNull Long missionId,
             LocalDate dateEmission,
-            Integer delaiPaiementJours,
-            @DecimalMin("0") @DecimalMax("100") BigDecimal tauxTva) {
+            Integer delaiPaiementJours) {
     }
 
     public record PaiementRequete(

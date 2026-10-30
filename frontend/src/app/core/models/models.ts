@@ -214,6 +214,7 @@ export type TypeDocument =
   | 'PIECE_IDENTITE'
   | 'VISITE_MEDICALE'
   | 'GARANT_PIECE_IDENTITE'
+  | 'GARANT_PERMIS_CONDUIRE'
   | 'GARANT_ATTESTATION'
   | 'GARANT_JUSTIFICATIF'
   | 'AUTRE';
@@ -269,6 +270,22 @@ export interface TableauBordParc {
   permisAExpirer: number;
 }
 
+/**
+ * Couleur de chaque statut, commune a la vue du parc et a la liste des camions.
+ * Elle sert de legende visuelle : un meme statut porte partout la meme teinte.
+ */
+export const COULEURS_STATUT_CAMION: Record<StatutCamion, string> = {
+  DISPONIBLE: '#1e874b',
+  EN_MISSION: '#1565c0',
+  EN_LIVRAISON: '#1565c0',
+  EN_LOCATION: '#e07b00',
+  EN_MAINTENANCE: '#8455c8',
+  IMMOBILISE: '#c62828',
+  ACCIDENTE: '#c62828',
+  HORS_SERVICE: '#6b7684',
+  VENDU: '#6b7684'
+};
+
 export const STATUTS_CAMION: { valeur: StatutCamion; libelle: string }[] = [
   { valeur: 'DISPONIBLE', libelle: 'Disponible' },
   { valeur: 'EN_LOCATION', libelle: 'En location' },
@@ -310,6 +327,7 @@ export const TYPES_DOCUMENT: { valeur: TypeDocument; libelle: string }[] = [
   { valeur: 'PIECE_IDENTITE', libelle: "Piece d'identite" },
   { valeur: 'VISITE_MEDICALE', libelle: 'Visite medicale' },
   { valeur: 'GARANT_PIECE_IDENTITE', libelle: "Piece d'identite du garant" },
+  { valeur: 'GARANT_PERMIS_CONDUIRE', libelle: 'Permis de conduire du garant' },
   { valeur: 'GARANT_ATTESTATION', libelle: 'Attestation de garantie' },
   { valeur: 'GARANT_JUSTIFICATIF', libelle: 'Justificatif du garant' },
   { valeur: 'AUTRE', libelle: 'Autre' }

@@ -1,0 +1,56 @@
+<button class="cloche" type="button" (click)="basculer()" [class.active]="ouvert()"
+        [attr.aria-expanded]="ouvert()"
+        [attr.aria-label]="notifications().length + ' notification(s) en attente'"
+        title="A decider maintenant">
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
+    <path d="M10 20.5a2 2 0 0 0 4 0" />
+  </svg>
+  @if (notifications().length) {
+    <span class="badge" [class.critique]="critiques() > 0">
+      {{ notifications().length > 99 ? '99+' : notifications().length }}
+    </span>
+  }
+</button>
+
+@if (ouvert()) {
+  <section class="panneau" role="dialog" aria-label="A decider maintenant">
+    <header>
+      <div>
+        <strong>A decider maintenant</strong>
+        <small>Documents, entretiens, incidents et alertes GPS</small>
+      </div>
+      <button class="actualiser" type="button" (click)="charger()" [disabled]="chargement()"
+              title="Actualiser">↻</button>
+    </header>
+
+    <div class="compteurs">
+      <span class="compteur critique" [class.vide]="!compte('CRITIQUE')">{{ compte('CRITIQUE') }} critique(s)</span>
+      <span class="compteur avertissement" [class.vide]="!compte('AVERTISSEMENT')">{{ compte('AVERTISSEMENT') }} a surveiller</span>
+      <span class="compteur information" [class.vide]="!compte('INFORMATION')">{{ compte('INFORMATION') }} pour info</span>
+    </div>
+
+    <ul>
+      @for (notification of triees(); track $index) {
+        <li [class]="'niveau-' + notification.niveau.toLowerCase()">
+          <a [routerLink]="notification.cible" (click)="ouvert.set(false)">
+            <span class="categorie">{{ notification.categorie }}</span>
+            <span class="message">{{ notification.message }}</span>
+            @if (notification.horodatage) {
+              <small>{{ notification.horodatage | date: 'dd/MM HH:mm' }}</small>
+            }
+          </a>
+        </li>
+      } @empty {
+        <li class="rien">
+          <span aria-hidden="true">✓</span>
+          Aucune action en attente : le parc est a jour.
+        </li>
+      }
+    </ul>
+
+    <footer>
+      <a routerLink="/direction" (click)="ouvert.set(false)">Voir le pilotage du parc →</a>
+    </footer>
+  </section>
+}

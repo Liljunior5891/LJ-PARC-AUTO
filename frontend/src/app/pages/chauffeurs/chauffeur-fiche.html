@@ -1,3 +1,4 @@
+@if (!enModale()) {
 <div class="entete-page">
   <div>
     <h1>{{ titre }}</h1>
@@ -5,6 +6,7 @@
   </div>
   <a class="bouton secondaire" routerLink="/chauffeurs">Retour a la liste</a>
 </div>
+}
 
 @if (erreur()) {
   <div class="message erreur">{{ erreur() }}</div>
@@ -17,21 +19,21 @@
   <h2>Identite</h2>
   <div class="grille-formulaire">
     <div class="champ">
-      <label for="matricule">Matricule *</label>
+      <label for="matricule">Matricule <span class="requis">*</span></label>
       <input id="matricule" formControlName="matricule" placeholder="CH-001" />
       @if (formulaire.controls.matricule.touched && formulaire.controls.matricule.invalid) {
         <span class="erreur-champ">Matricule requis</span>
       }
     </div>
     <div class="champ">
-      <label for="nom">Nom *</label>
+      <label for="nom">Nom <span class="requis">*</span></label>
       <input id="nom" formControlName="nom" />
       @if (formulaire.controls.nom.touched && formulaire.controls.nom.invalid) {
         <span class="erreur-champ">Nom requis</span>
       }
     </div>
     <div class="champ">
-      <label for="prenom">Prenom *</label>
+      <label for="prenom">Prenom <span class="requis">*</span></label>
       <input id="prenom" formControlName="prenom" />
       @if (formulaire.controls.prenom.touched && formulaire.controls.prenom.invalid) {
         <span class="erreur-champ">Prenom requis</span>
@@ -42,7 +44,7 @@
       <input id="dateNaissance" type="date" formControlName="dateNaissance" />
     </div>
     <div class="champ">
-      <label for="telephone">Telephone *</label>
+      <label for="telephone">Telephone <span class="requis">*</span></label>
       <input id="telephone" formControlName="telephone" placeholder="+228 90 00 00 00" />
       @if (formulaire.controls.telephone.touched && formulaire.controls.telephone.invalid) {
         <span class="erreur-champ">Telephone requis</span>
@@ -60,6 +62,11 @@
       <label for="adresse">Adresse</label>
       <input id="adresse" formControlName="adresse" />
     </div>
+  </div>
+  <div class="grille-pieces">
+    <app-piece-jointe libelle="Piece d'identite du chauffeur" [existant]="documentDe('PIECE_IDENTITE')"
+                      [fichier]="piecesChoisies()['PIECE_IDENTITE'] ?? null" (fichierChange)="choisirPiece('PIECE_IDENTITE', $event)"
+                      (telecharger)="telecharger($event)" />
   </div>
 
   <h2 style="margin-top: 1.5rem">Permis de conduire</h2>
@@ -80,6 +87,11 @@
       <label for="permisExpiration">Date d'expiration</label>
       <input id="permisExpiration" type="date" formControlName="permisExpiration" />
     </div>
+  </div>
+  <div class="grille-pieces">
+    <app-piece-jointe libelle="Permis de conduire du chauffeur" [existant]="documentDe('PERMIS_CONDUIRE')"
+                      [fichier]="piecesChoisies()['PERMIS_CONDUIRE'] ?? null" (fichierChange)="choisirPiece('PERMIS_CONDUIRE', $event)"
+                      (telecharger)="telecharger($event)" />
   </div>
 
   <h2 style="margin-top: 1.5rem">Garant — personne a prevenir</h2>
@@ -115,6 +127,14 @@
       <label for="garantAdresse">Adresse</label>
       <input id="garantAdresse" formControlName="garantAdresse" />
     </div>
+  </div>
+  <div class="grille-pieces">
+    <app-piece-jointe libelle="Piece d'identite du garant" [existant]="documentDe('GARANT_PIECE_IDENTITE')"
+                      [fichier]="piecesChoisies()['GARANT_PIECE_IDENTITE'] ?? null" (fichierChange)="choisirPiece('GARANT_PIECE_IDENTITE', $event)"
+                      (telecharger)="telecharger($event)" />
+    <app-piece-jointe libelle="Permis de conduire du garant" [existant]="documentDe('GARANT_PERMIS_CONDUIRE')"
+                      [fichier]="piecesChoisies()['GARANT_PERMIS_CONDUIRE'] ?? null" (fichierChange)="choisirPiece('GARANT_PERMIS_CONDUIRE', $event)"
+                      (telecharger)="telecharger($event)" />
   </div>
 
   <h2 style="margin-top: 1.5rem">Emploi</h2>
@@ -153,7 +173,11 @@
     <button class="bouton" type="submit" [disabled]="enregistrement()">
       {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
     </button>
-    <a class="bouton secondaire" routerLink="/chauffeurs">Annuler</a>
+    @if (enModale()) {
+      <button class="bouton secondaire" type="button" (click)="annule.emit()">Annuler</button>
+    } @else {
+      <a class="bouton secondaire" routerLink="/chauffeurs">Annuler</a>
+    }
   </div>
 </form>
 
@@ -164,13 +188,16 @@
         <h2>Dossiers</h2>
         <p class="sous-titre">Pieces du chauffeur et de son garant</p>
       </div>
-      <button class="bouton" type="button" (click)="televersementVisible.set(!televersementVisible())">
-        {{ televersementVisible() ? 'Fermer' : '+ Televerser un document' }}
+      <button class="bouton" type="button" (click)="televersementVisible.set(true)">
+        + Televerser un document
       </button>
     </div>
 
     @if (televersementVisible()) {
-      <div class="grille-formulaire" style="margin-bottom: 1rem">
+      <app-modale titre="Televerser un document" sousTitre="Piece du chauffeur ou de son garant"
+                  largeur="760px" [erreur]="erreur()" (ferme)="televersementVisible.set(false)">
+      <div class="carte">
+      <div class="grille-formulaire">
         <div class="champ">
           <label for="typeDocument">Type de document</label>
           <app-select-recherche
@@ -192,9 +219,12 @@
           <input id="fichier" type="file" (change)="fichierChoisi($event)" />
         </div>
       </div>
-      <div class="actions-formulaire" style="margin-top: 0">
+      <div class="actions-formulaire">
         <button class="bouton" type="button" (click)="televerser()">Televerser</button>
+        <button class="bouton secondaire" type="button" (click)="televersementVisible.set(false)">Annuler</button>
       </div>
+      </div>
+      </app-modale>
     }
 
     <div class="tableau-conteneur" style="margin-top: 1rem">

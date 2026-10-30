@@ -1,3 +1,4 @@
+@if (!enModale()) {
 <div class="entete-page">
   <div>
     <h1>{{ titre }}</h1>
@@ -5,6 +6,7 @@
   </div>
   <a class="bouton secondaire" routerLink="/clients">Retour a la liste</a>
 </div>
+}
 
 @if (erreur()) {
   <div class="message erreur">{{ erreur() }}</div>
@@ -21,7 +23,7 @@
       <input id="code" formControlName="code" placeholder="Genere automatiquement" />
     </div>
     <div class="champ">
-      <label for="raisonSociale">Raison sociale *</label>
+      <label for="raisonSociale">Raison sociale <span class="requis">*</span></label>
       <input id="raisonSociale" formControlName="raisonSociale" />
       @if (formulaire.controls.raisonSociale.touched && formulaire.controls.raisonSociale.invalid) {
         <span class="erreur-champ">Raison sociale requise</span>
@@ -105,7 +107,11 @@
     <button class="bouton" type="submit" [disabled]="enregistrement()">
       {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
     </button>
-    <a class="bouton secondaire" routerLink="/clients">Annuler</a>
+    @if (enModale()) {
+      <button class="bouton secondaire" type="button" (click)="annule.emit()">Annuler</button>
+    } @else {
+      <a class="bouton secondaire" routerLink="/clients">Annuler</a>
+    }
   </div>
 </form>
 
@@ -117,7 +123,7 @@
         <thead>
           <tr>
             <th>Contrat</th>
-            <th>Camion</th>
+            <th>Vehicule</th>
             <th>Type</th>
             <th>Periode</th>
             <th class="numerique">Montant</th>

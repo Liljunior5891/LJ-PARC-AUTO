@@ -1,3 +1,4 @@
+@if (!enModale()) {
 <div class="entete-page">
   <div>
     <h1>{{ titre }}</h1>
@@ -24,6 +25,7 @@
     <a class="bouton secondaire" routerLink="/locations">Retour a la liste</a>
   </div>
 </div>
+}
 
 @if (erreur()) {
   <div class="message erreur">{{ erreur() }}</div>
@@ -60,11 +62,12 @@
 }
 
 @if (clotureVisible()) {
-  <div class="carte" style="margin-bottom: 1rem">
-    <h2>Cloture du contrat</h2>
+  <app-modale titre="Cloture du contrat" [sousTitre]="contrat()?.numero ?? ''" largeur="720px"
+              [erreur]="erreur()" (ferme)="clotureVisible.set(false)">
+  <div class="carte">
     <div class="grille-formulaire">
       <div class="champ">
-        <label for="dateFinReelle">Date de fin effective *</label>
+        <label for="dateFinReelle">Date de fin effective <span class="requis">*</span></label>
         <input id="dateFinReelle" type="date" [(ngModel)]="dateFinReelle" />
       </div>
       <div class="champ">
@@ -84,13 +87,14 @@
       <button class="bouton secondaire" type="button" (click)="clotureVisible.set(false)">Annuler</button>
     </div>
   </div>
+  </app-modale>
 }
 
 <form class="carte" [formGroup]="formulaire" (ngSubmit)="soumettre()">
   <h2>Parties et vehicule</h2>
   <div class="grille-formulaire">
     <div class="champ">
-      <label for="clientId">Client *</label>
+      <label for="clientId">Client <span class="requis">*</span></label>
       <select id="clientId" formControlName="clientId">
         <option [ngValue]="null">Selectionner un client</option>
         @for (client of clients(); track client.id) {
@@ -99,9 +103,9 @@
       </select>
     </div>
     <div class="champ">
-      <label for="camionId">Camion *</label>
+      <label for="camionId">Vehicule <span class="requis">*</span></label>
       <select id="camionId" formControlName="camionId">
-        <option [ngValue]="null">Selectionner un camion</option>
+        <option [ngValue]="null">Selectionner un vehicule</option>
         @for (camion of camions(); track camion.id) {
           <option [ngValue]="camion.id">
             {{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }} ({{ camion.statutLibelle }})
@@ -123,7 +127,7 @@
   <h2 style="margin-top: 1.5rem">Modele tarifaire</h2>
   <div class="grille-formulaire">
     <div class="champ">
-      <label for="typeLocation">Type de location *</label>
+      <label for="typeLocation">Type de location <span class="requis">*</span></label>
       <select id="typeLocation" formControlName="typeLocation">
         @for (t of types; track t.valeur) {
           <option [value]="t.valeur">{{ t.libelle }}</option>
@@ -150,7 +154,7 @@
   <h2 style="margin-top: 1.5rem">Periode et trajet</h2>
   <div class="grille-formulaire">
     <div class="champ">
-      <label for="dateDebut">Date de debut *</label>
+      <label for="dateDebut">Date de debut <span class="requis">*</span></label>
       <input id="dateDebut" type="date" formControlName="dateDebut" />
     </div>
     <div class="champ">
@@ -194,7 +198,11 @@
       <button class="bouton" type="submit" [disabled]="enregistrement()">
         {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
       </button>
-      <a class="bouton secondaire" routerLink="/locations">Annuler</a>
+      @if (enModale()) {
+        <button class="bouton secondaire" type="button" (click)="annule.emit()">Annuler</button>
+      } @else {
+        <a class="bouton secondaire" routerLink="/locations">Annuler</a>
+      }
     </div>
   } @else {
     <p class="message vide" style="margin-top: 1.25rem">

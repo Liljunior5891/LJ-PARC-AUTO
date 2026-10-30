@@ -4,6 +4,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { Role } from '../../core/models/models';
 import { LONGUEUR_MOT_DE_PASSE, ProfilRole } from '../../core/models/utilisateur';
 import { UtilisateurService } from '../../core/services/utilisateur.service';
+import { messageChampsManquants } from '../../shared/validation-formulaire';
 
 /**
  * Compte de la personne connectee.
@@ -49,6 +50,15 @@ export class MonCompte implements OnInit {
     this.erreur.set(null);
     this.succes.set(null);
 
+    const manquants = messageChampsManquants({
+      'Mot de passe actuel': this.actuel,
+      'Nouveau mot de passe': this.nouveau,
+      Confirmation: this.confirmation
+    });
+    if (manquants) {
+      this.erreur.set(manquants);
+      return;
+    }
     if (this.nouveau.length < this.longueurMinimale) {
       this.erreur.set(`Le nouveau mot de passe doit faire ${this.longueurMinimale} caracteres au minimum.`);
       return;

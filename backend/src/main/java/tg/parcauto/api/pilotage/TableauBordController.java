@@ -40,7 +40,7 @@ public class TableauBordController {
     }
 
     @GetMapping("/vue-parc")
-    @Operation(summary = "Vue globale du parc : camion, chauffeur, statut, activite et client")
+    @Operation(summary = "Vue globale du parc : vehicule, chauffeur, statut, activite et client")
     public List<VueParcDto> vueParc() {
         return service.vueParc();
     }

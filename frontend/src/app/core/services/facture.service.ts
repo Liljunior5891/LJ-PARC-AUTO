@@ -23,7 +23,6 @@ export interface FactureRequete {
   dateEcheance?: string | null;
   periodeDebut?: string | null;
   periodeFin?: string | null;
-  tauxTva?: number | null;
   observations?: string;
   lignes: LigneFacture[];
 }
@@ -90,12 +89,13 @@ export class FactureService {
   }
 
   /** Genere une facture a partir d'un contrat de location (chapitre 27). */
-  depuisContrat(locationId: number, tauxTva?: number): Observable<Facture> {
-    return this.http.post<Facture>(`${this.base}/depuis-contrat`, { locationId, tauxTva });
+  /** Le taux de TVA vient du parametrage de l'entreprise : il n'est pas transmis. */
+  depuisContrat(locationId: number): Observable<Facture> {
+    return this.http.post<Facture>(`${this.base}/depuis-contrat`, { locationId });
   }
 
-  depuisMission(missionId: number, tauxTva?: number): Observable<Facture> {
-    return this.http.post<Facture>(`${this.base}/depuis-mission`, { missionId, tauxTva });
+  depuisMission(missionId: number): Observable<Facture> {
+    return this.http.post<Facture>(`${this.base}/depuis-mission`, { missionId });
   }
 
   emettre(id: number): Observable<Facture> {

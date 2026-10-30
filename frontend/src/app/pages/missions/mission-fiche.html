@@ -1,3 +1,4 @@
+@if (!enModale()) {
 <div class="entete-page">
   <div>
     <h1>{{ titre }}</h1>
@@ -11,6 +12,7 @@
   </div>
   <a class="bouton secondaire" routerLink="/missions">Retour a la liste</a>
 </div>
+}
 
 @if (erreur()) {
   <div class="message erreur">{{ erreur() }}</div>
@@ -61,9 +63,9 @@
   <h2>Affectation</h2>
   <div class="grille-formulaire">
     <div class="champ">
-      <label for="camionId">Camion *</label>
+      <label for="camionId">Vehicule <span class="requis">*</span></label>
       <select id="camionId" formControlName="camionId">
-        <option [ngValue]="null">Selectionner un camion</option>
+        <option [ngValue]="null">Selectionner un vehicule</option>
         @for (camion of camions(); track camion.id) {
           <option [ngValue]="camion.id">
             {{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }} ({{ camion.statutLibelle }})
@@ -108,7 +110,7 @@
   <h2 style="margin-top: 1.5rem">Trajet</h2>
   <div class="grille-formulaire">
     <div class="champ">
-      <label for="typeMission">Type de mission *</label>
+      <label for="typeMission">Type de mission <span class="requis">*</span></label>
       <select id="typeMission" formControlName="typeMission">
         @for (t of types; track t.valeur) {
           <option [value]="t.valeur">{{ t.libelle }}</option>
@@ -116,7 +118,7 @@
       </select>
     </div>
     <div class="champ">
-      <label for="dateDepart">Date et heure de depart *</label>
+      <label for="dateDepart">Date et heure de depart <span class="requis">*</span></label>
       <input id="dateDepart" type="datetime-local" formControlName="dateDepart" />
     </div>
     <div class="champ">
@@ -147,7 +149,11 @@
       <button class="bouton" type="submit" [disabled]="enregistrement()">
         {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
       </button>
-      <a class="bouton secondaire" routerLink="/missions">Annuler</a>
+      @if (enModale()) {
+        <button class="bouton secondaire" type="button" (click)="annule.emit()">Annuler</button>
+      } @else {
+        <a class="bouton secondaire" routerLink="/missions">Annuler</a>
+      }
     </div>
   } @else {
     <p class="message vide" style="margin-top: 1.25rem">

@@ -1,0 +1,83 @@
+<div class="ecran-carte-camion">
+  <div #conteneur class="conteneur-carte"></div>
+
+  <!-- Barre d'outils flottante : journee du trajet et recadrages. -->
+  <div class="outils">
+    <label title="Journee du trajet">
+      <input type="date" [(ngModel)]="dateTrajet" (ngModelChange)="changerJournee()"
+             aria-label="Journee du trajet" />
+    </label>
+    <button type="button" (click)="centrer()" [disabled]="!position()" title="Centrer sur le vehicule">◎</button>
+    <button type="button" (click)="cadrerTrajet()" title="Voir tout le trajet">⤢</button>
+    <button type="button" (click)="charger()" title="Actualiser la position">↻</button>
+  </div>
+
+  <!-- Fiche de position, posee sur la carte. -->
+  <section class="panneau-position" [style.--statut]="couleurStatut()">
+    @if (chargement()) {
+      <p class="vide">Recherche de la position...</p>
+    } @else if (erreur()) {
+      <p class="vide">{{ erreur() }}</p>
+    } @else if (position(); as p) {
+      <header>
+        <span class="statut"><i></i>{{ p.horsConnexion ? 'Hors connexion' : p.statutLibelle }}</span>
+        <strong>{{ p.immatriculation }}</strong>
+        <small>{{ p.activite || 'Aucune mission en cours' }}</small>
+      </header>
+
+      <dl>
+        <div>
+          <dt>Vitesse</dt>
+          <dd><b>{{ p.vitesseKmh ?? 0 | number: '1.0-0' }}</b> km/h</dd>
+        </div>
+        <div>
+          <dt>Chauffeur</dt>
+          <dd>{{ p.chauffeurNom || 'Sans chauffeur' }}</dd>
+        </div>
+        <div>
+          <dt>Dernier signal</dt>
+          <dd>
+            {{ p.derniereCommunication | date: 'dd/MM HH:mm' }}
+            <small>il y a {{ depuis(p.derniereCommunication) }}</small>
+          </dd>
+        </div>
+        <div>
+          <dt>Coordonnees</dt>
+          <dd class="coordonnees">{{ p.latitude | number: '1.5-5' }}, {{ p.longitude | number: '1.5-5' }}</dd>
+        </div>
+      </dl>
+      <div class="signal" [attr.title]="'Fraicheur du signal'">
+        <span [style.width.%]="fraicheur(p.derniereCommunication) * 100"></span>
+      </div>
+
+      <div class="trajet">
+        <h4>Trajet du {{ dateTrajet | date: 'dd/MM/yyyy' }}</h4>
+        @if (trajet(); as t) {
+          @if (t.points.length) {
+            <div class="chiffres">
+              <div><b>{{ t.distanceKm | number: '1.0-1' }}</b><small>km</small></div>
+              <div><b>{{ t.dureeMinutes / 60 | number: '1.0-1' }}</b><small>heures</small></div>
+              <div><b>{{ t.vitesseMoyenne | number: '1.0-0' }}</b><small>km/h moy.</small></div>
+              <div><b>{{ t.nombreArrets }}</b><small>arret(s)</small></div>
+            </div>
+            <small class="horaires">{{ t.debut | date: 'HH:mm' }} → {{ t.fin | date: 'HH:mm' }}
+              · pointe a {{ t.vitesseMaximale | number: '1.0-0' }} km/h</small>
+          } @else {
+            <p class="vide">Aucun deplacement enregistre ce jour-la.</p>
+          }
+        }
+      </div>
+
+      <a class="bouton secondaire petit" routerLink="/gps">Ouvrir la carte du parc →</a>
+    } @else {
+      <header>
+        <span class="statut"><i></i>Non localise</span>
+        <strong>Aucune position GPS</strong>
+      </header>
+      <p class="vide">
+        Ce vehicule n'a encore transmis aucune position. Verifiez qu'un identifiant de traceur
+        est renseigne dans la fiche du vehicule.
+      </p>
+    }
+  </section>
+</div>

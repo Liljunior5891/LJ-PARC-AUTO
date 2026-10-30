@@ -1,0 +1,186 @@
+/* Au-dessus des fenetres de formulaire (z-index 1000-1001) et des listes Select2 (1051). */
+.voile {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(16, 30, 24, 0.4);
+  backdrop-filter: blur(2px);
+  animation: fondu 0.15s ease-out;
+}
+
+.boite {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1101;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(400px, calc(100vw - 32px));
+  padding: 1.6rem 1.5rem 1.3rem;
+  border-radius: 18px;
+  background: var(--couleur-surface);
+  box-shadow: 0 24px 60px rgba(16, 40, 30, 0.3);
+  text-align: center;
+  transform: translate(-50%, -50%);
+  animation: apparition 0.18s ease-out;
+}
+
+@keyframes fondu {
+  from { opacity: 0; }
+}
+
+@keyframes apparition {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.97);
+  }
+}
+
+/* ---------------------------- Confirmation ----------------------------- */
+.confirmation {
+  --accent: #1f6fd1;
+
+  &.danger {
+    --accent: #d9452b;
+  }
+
+  .pictogramme {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 0.9rem;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--accent) 12%, #fff);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 6%, #fff);
+    color: var(--accent);
+    font-size: 1.6rem;
+    font-weight: 800;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 1.12rem;
+  }
+
+  p {
+    margin: 0.45rem 0 0;
+    font-size: 0.86rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  .boutons {
+    display: flex;
+    gap: 0.6rem;
+    width: 100%;
+    margin-top: 1.3rem;
+
+    .bouton {
+      flex: 1;
+      justify-content: center;
+    }
+  }
+}
+
+/* ---------------------------- Progression ------------------------------ */
+.progression {
+  --accent: #1f6fd1;
+  width: min(300px, calc(100vw - 32px));
+
+  &.succes {
+    --accent: #1f9d6b;
+  }
+
+  &.echec {
+    --accent: #d9452b;
+  }
+
+  .libelle {
+    margin: 0.9rem 0 0;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .detail {
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.anneau {
+  position: relative;
+  width: 120px;
+  height: 120px;
+
+  > svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  circle {
+    fill: none;
+    stroke-width: 9;
+  }
+
+  .piste {
+    stroke: color-mix(in srgb, var(--accent) 12%, #fff);
+  }
+
+  .arc {
+    stroke: var(--accent);
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.25s ease, stroke 0.2s ease;
+  }
+
+  .centre {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+
+    strong {
+      font-size: 1.7rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--couleur-texte);
+
+      small {
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .coche,
+  .croix {
+    width: 46px;
+    height: 46px;
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 30;
+    stroke-dashoffset: 30;
+    animation: trace 0.35s ease-out forwards;
+  }
+}
+
+@keyframes trace {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voile,
+  .boite {
+    animation: none;
+  }
+
+  .anneau .coche,
+  .anneau .croix {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

@@ -1,0 +1,130 @@
+/* Fenetre modale des formulaires d'enregistrement. */
+.voile-modale {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(16, 30, 24, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.modale {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  width: min(var(--largeur), calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  border-radius: 16px;
+  background: var(--couleur-surface);
+  box-shadow: 0 24px 60px rgba(16, 40, 30, 0.28);
+  transform: translate(-50%, -50%);
+  animation: apparition-modale 0.18s ease-out;
+}
+
+@keyframes apparition-modale {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%);
+  }
+}
+
+/* En-tete bleu, du meme degrade que le bandeau des sous-menus de la navigation. */
+.entete-modale {
+  --bleu-menu: #1f6fd1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.4rem 1rem;
+  border-radius: 16px 16px 0 0;
+  background: linear-gradient(180deg, var(--bleu-menu) 0%, color-mix(in srgb, var(--bleu-menu) 82%, #000) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  color: #fff;
+
+  h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    color: #fff;
+  }
+
+  p {
+    margin: 0.2rem 0 0;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.82);
+  }
+}
+
+.fermer {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+}
+
+.modale > .message {
+  margin: 0.9rem 1.4rem 0;
+}
+
+.corps-modale {
+  overflow-y: auto;
+  padding: 1rem 1.4rem 0;
+}
+
+/*
+ * Le formulaire projete etait une carte de la page : dans la fenetre, il perd
+ * son cadre, et sa barre d'actions reste collee au bas de la fenetre.
+ */
+:host ::ng-deep .corps-modale {
+  > form,
+  > .carte,
+  > * > .carte {
+    margin: 0 !important;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  /* Seule la barre principale colle au bas : pas celles des sous-blocs. */
+  form > .actions-formulaire,
+  > .carte > .actions-formulaire {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    justify-content: flex-end;
+    margin: 1.25rem -1.4rem 0;
+    padding: 0.9rem 1.4rem;
+    border-top: 1px solid var(--couleur-bordure);
+    background: var(--couleur-surface);
+  }
+}
+
+@media (max-width: 600px) {
+  .modale {
+    top: auto;
+    bottom: 0;
+    width: 100vw;
+    max-height: 94vh;
+    border-radius: 16px 16px 0 0;
+    transform: translateX(-50%);
+    animation: none;
+  }
+}

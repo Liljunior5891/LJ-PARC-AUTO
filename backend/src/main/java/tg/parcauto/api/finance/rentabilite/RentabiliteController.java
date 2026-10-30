@@ -21,7 +21,7 @@ public class RentabiliteController {
     private final RentabiliteService service;
 
     @GetMapping("/global")
-    @Operation(summary = "Rentabilite du parc, repartition par camion et palmares")
+    @Operation(summary = "Rentabilite du parc, repartition par vehicule et palmares")
     public RentabiliteDto.Global global(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
@@ -30,7 +30,7 @@ public class RentabiliteController {
     }
 
     @GetMapping("/camions/{camionId}")
-    @Operation(summary = "Fiche performance d'un camion : revenus, depenses, marge, utilisation")
+    @Operation(summary = "Fiche performance d'un vehicule : revenus, depenses, marge, utilisation")
     public RentabiliteDto.FicheCamion camion(
             @PathVariable Long camionId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,

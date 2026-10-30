@@ -6,9 +6,16 @@
     </p>
   </div>
   @if (peutGerer) {
-    <a class="bouton" routerLink="/locations/nouveau">+ Nouveau contrat</a>
+    <button class="bouton" type="button" (click)="ouvrirCreation()">+ Nouveau contrat</button>
   }
 </div>
+
+<!-- Creation dans une fenetre : la fiche complete reste accessible ensuite depuis la liste. -->
+@if (creation()) {
+  <app-modale titre="Nouveau contrat de location" largeur="1000px" (ferme)="creation.set(false)">
+    <app-location-fiche [enModale]="true" (cree)="creationTerminee()" (annule)="creation.set(false)" />
+  </app-modale>
+}
 
 @if (erreur()) {
   <div class="message erreur">{{ erreur() }}</div>
@@ -55,7 +62,7 @@
         <tr>
           <th>Contrat</th>
           <th>Client</th>
-          <th>Camion</th>
+          <th>Vehicule</th>
           <th>Modele</th>
           <th>Periode</th>
           <th class="numerique">Tarif</th>

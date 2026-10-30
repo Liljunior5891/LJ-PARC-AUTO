@@ -11,6 +11,7 @@ import localeFr from '@angular/common/locales/fr';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
+import { operationInterceptor } from './core/operation/operation.interceptor';
 
 registerLocaleData(localeFr);
 
@@ -19,7 +20,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, operationInterceptor])),
     { provide: LOCALE_ID, useValue: 'fr' }
   ]
 };

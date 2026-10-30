@@ -1,11 +1,11 @@
 <div class="entete-page">
   <div>
-    <h1>Affectations chauffeur / camion</h1>
+    <h1>Affectations chauffeur / vehicule</h1>
     <p class="sous-titre">Chapitre 9 du cahier des charges — historique complet conserve</p>
   </div>
   @if (peutGerer) {
     <button class="bouton" type="button" (click)="basculerFormulaire()">
-      {{ formulaireVisible() ? 'Fermer' : '+ Nouvelle affectation' }}
+      + Nouvelle affectation
     </button>
   }
 </div>
@@ -18,30 +18,35 @@
 }
 
 @if (formulaireVisible()) {
-  <form class="carte" [formGroup]="formulaire" (ngSubmit)="affecter()" style="margin-bottom: 1rem">
-    <h2>Affecter un chauffeur a un camion</h2>
+  <app-modale titre="Affecter un chauffeur a un vehicule" [erreur]="erreur()" (ferme)="basculerFormulaire()">
+    <form [formGroup]="formulaire" (ngSubmit)="affecter()">
     <div class="grille-formulaire">
       <div class="champ">
-        <label for="camionId">Camion *</label>
+        <label for="camionId">Vehicule <span class="requis">*</span></label>
         <app-select-recherche
           formControlName="camionId"
           [options]="optionsCamion()"
-          placeholder="Selectionner un camion"
+          placeholder="Selectionner un vehicule"
         />
       </div>
-      <div class="champ">
-        <label for="chauffeurId">Chauffeur *</label>
-        <app-select-recherche
-          formControlName="chauffeurId"
-          [options]="optionsChauffeur()"
-          placeholder="Selectionner un chauffeur"
-        />
-        <button class="lien-creation" type="button" (click)="basculerCreationChauffeur()">
-          {{ creationChauffeurVisible() ? 'Annuler la creation' : '+ Creer un nouveau chauffeur' }}
-        </button>
+      <div class="champ champ-double">
+        <label for="chauffeurId">Chauffeur <span class="requis">*</span></label>
+        <!-- La liste et, a cote, de quoi creer le chauffeur s'il n'existe pas encore. -->
+        <div class="liste-et-creation">
+          <app-select-recherche
+            formControlName="chauffeurId"
+            [options]="optionsChauffeur()"
+            placeholder="Selectionner un chauffeur"
+          />
+          <button class="bouton" type="button" [class.secondaire]="creationChauffeurVisible()"
+                  [class.actif]="creationChauffeurVisible()"
+                  [attr.aria-expanded]="creationChauffeurVisible()" (click)="basculerCreationChauffeur()">
+            {{ creationChauffeurVisible() ? 'Annuler' : '+ Nouveau chauffeur' }}
+          </button>
+        </div>
       </div>
       <div class="champ">
-        <label for="dateDebut">Date de debut *</label>
+        <label for="dateDebut">Date de debut <span class="requis">*</span></label>
         <input id="dateDebut" type="date" formControlName="dateDebut" />
       </div>
       <div class="champ">
@@ -65,19 +70,19 @@
         </p>
         <div class="grille-formulaire">
           <div class="champ">
-            <label for="matriculeChauffeur">Matricule *</label>
+            <label for="matriculeChauffeur">Matricule <span class="requis">*</span></label>
             <input id="matriculeChauffeur" formControlName="matricule" placeholder="CH-002" />
           </div>
           <div class="champ">
-            <label for="nomChauffeur">Nom *</label>
+            <label for="nomChauffeur">Nom <span class="requis">*</span></label>
             <input id="nomChauffeur" formControlName="nom" />
           </div>
           <div class="champ">
-            <label for="prenomChauffeur">Prenom *</label>
+            <label for="prenomChauffeur">Prenom <span class="requis">*</span></label>
             <input id="prenomChauffeur" formControlName="prenom" />
           </div>
           <div class="champ">
-            <label for="telephoneChauffeur">Telephone *</label>
+            <label for="telephoneChauffeur">Telephone <span class="requis">*</span></label>
             <input id="telephoneChauffeur" formControlName="telephone" />
           </div>
           <div class="champ">
@@ -110,6 +115,7 @@
       <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
     </div>
   </form>
+  </app-modale>
 }
 
 <div class="carte">
@@ -126,7 +132,7 @@
     <table class="tableau">
       <thead>
         <tr>
-          <th>Camion</th>
+          <th>Vehicule</th>
           <th>Chauffeur</th>
           <th>Debut</th>
           <th>Fin</th>
@@ -153,15 +159,9 @@
             </td>
             <td>
               @if (peutGerer && affectation.enCours) {
-                @if (clotureEnCours() === affectation.id) {
-                  <input type="date" [(ngModel)]="dateCloture" [ngModelOptions]="{ standalone: true }" />
-                  <button class="bouton petit" type="button" (click)="cloturer(affectation)">Valider</button>
-                  <button class="bouton secondaire petit" type="button" (click)="annulerCloture()">Annuler</button>
-                } @else {
-                  <button class="bouton secondaire petit" type="button" (click)="ouvrirCloture(affectation)">
-                    Cloturer
-                  </button>
-                }
+                <button class="bouton secondaire petit" type="button" (click)="ouvrirCloture(affectation)">
+                  Cloturer
+                </button>
               }
             </td>
           </tr>
@@ -192,3 +192,22 @@
     }
   }
 </div>
+
+<!-- Cloture d'une affectation : date de fin, puis le camion redevient libre. -->
+@if (clotureEnCours(); as a) {
+  <app-modale titre="Cloturer l'affectation" [sousTitre]="a.camionImmatriculation + ' — ' + a.chauffeurNom"
+              largeur="520px" [erreur]="erreur()" (ferme)="annulerCloture()">
+    <div class="carte">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="dateCloture">Date de fin <span class="requis">*</span></label>
+          <input id="dateCloture" type="date" [(ngModel)]="dateCloture" [ngModelOptions]="{ standalone: true }" />
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton" type="button" (click)="cloturer(a)">Valider la cloture</button>
+        <button class="bouton secondaire" type="button" (click)="annulerCloture()">Annuler</button>
+      </div>
+    </div>
+  </app-modale>
+}

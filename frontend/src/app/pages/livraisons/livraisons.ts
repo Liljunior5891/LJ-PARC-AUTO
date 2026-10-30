@@ -16,10 +16,12 @@ import { ChauffeurService } from '../../core/services/chauffeur.service';
 import { ClientService } from '../../core/services/client.service';
 import { LivraisonService } from '../../core/services/livraison.service';
 import { MissionService } from '../../core/services/mission.service';
+import { Modale } from '../../shared/modale';
+import { VALIDATION_FORMULAIRE, messageChampsManquants } from '../../shared/validation-formulaire';
 
 @Component({
   selector: 'app-livraisons',
-  imports: [FormsModule, ReactiveFormsModule, DecimalPipe, DatePipe],
+  imports: [FormsModule, ReactiveFormsModule, DecimalPipe, DatePipe, Modale, VALIDATION_FORMULAIRE],
   templateUrl: './livraisons.html'
 })
 export class Livraisons implements OnInit {
@@ -165,6 +167,13 @@ export class Livraisons implements OnInit {
   confirmer(): void {
     const livraison = this.confirmationEnCours();
     if (!livraison) {
+      return;
+    }
+    const manquants = this.statutConfirmation === 'REFUSEE'
+      ? messageChampsManquants({ 'Motif du refus': this.motifRefus })
+      : null;
+    if (manquants) {
+      this.erreur.set(manquants);
       return;
     }
     this.erreur.set(null);

@@ -1,0 +1,149 @@
+<form class="formulaire-recette" [formGroup]="formulaire" (ngSubmit)="enregistrer()">
+  @if (erreur()) {
+    <div class="message erreur">{{ erreur() }}</div>
+  }
+
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="camionId">Vehicule</label>
+      @if (camionImpose() !== null) {
+        <!-- Le camion vient de la fiche ouverte : il n'y a rien a choisir. -->
+        <input id="camionId" type="text" readonly [value]="camionLibelle()" />
+      } @else {
+        <app-select-recherche formControlName="camionId" [options]="optionsCamion()"
+                              placeholder="Selectionner un vehicule" />
+      }
+    </div>
+
+    <!-- Le chauffeur n'est pas saisi : il decoule de l'affectation du camion. -->
+    <div class="champ">
+      <label for="chauffeur">Chauffeur</label>
+      <input id="chauffeur" type="text" readonly
+             [value]="chauffeur() ?? 'Aucun chauffeur affecte'"
+             [class.vide]="!chauffeur()" />
+      <small>Renseigne d'apres l'affectation en cours du vehicule.</small>
+    </div>
+
+    <div class="champ">
+      <label for="categorie">Categorie</label>
+      <select id="categorie" formControlName="categorie" data-recherche="toujours">
+        @for (c of categories; track c.valeur) {
+          <option [value]="c.valeur">{{ c.libelle }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="champ">
+      <label for="sousCategorie">Nature</label>
+      <select id="sousCategorie" formControlName="sousCategorie" data-recherche="toujours">
+        @for (nature of naturesDisponibles(); track nature.valeur) {
+          <option [value]="nature.valeur">{{ nature.libelle }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <!-- Informations du plein : elles n'ont de sens que pour le carburant. -->
+  @if (saisieCarburant()) {
+    <fieldset class="bloc-location">
+      <legend>Details du plein</legend>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="station">Station</label>
+          <input id="station" type="text" formControlName="station" />
+        </div>
+        <div class="champ">
+          <label for="quantiteLitres">Quantite (litres) <span class="requis">*</span></label>
+          <input id="quantiteLitres" type="number" min="0" step="0.01"
+                 formControlName="quantiteLitres" />
+        </div>
+        <div class="champ">
+          <label for="prixLitre">Prix au litre (FCFA) <span class="requis">*</span></label>
+          <input id="prixLitre" type="number" min="0" step="1" formControlName="prixLitre" />
+        </div>
+        <div class="champ">
+          <label for="kilometrage">Kilometrage au compteur <span class="requis">*</span></label>
+          <input id="kilometrage" type="number" min="0" step="1" formControlName="kilometrage" />
+        </div>
+      </div>
+      <!-- Le montant d'un plein ne se saisit pas : il se deduit des litres et du prix. -->
+      <p class="montant-calcule">
+        <span>Montant du plein</span>
+        <strong>{{ montantCarburant() | number }} FCFA</strong>
+        <small>{{ (formulaire.controls.quantiteLitres.value || 0) | number: '1.0-2' }} L
+          × {{ (formulaire.controls.prixLitre.value || 0) | number }} FCFA</small>
+      </p>
+      <p class="aide">
+        Le kilometrage alimente le calcul de consommation, d'un plein a l'autre.
+      </p>
+    </fieldset>
+  }
+
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="libelle">Libelle <span class="requis">*</span></label>
+      <input id="libelle" type="text" formControlName="libelle"
+             placeholder="Objet de la depense" />
+    </div>
+
+    @if (!saisieCarburant()) {
+      <div class="champ">
+        <label for="montant">Montant (FCFA) <span class="requis">*</span></label>
+        <input id="montant" type="number" min="0" step="1" formControlName="montant" />
+      </div>
+    }
+
+    <div class="champ">
+      <label for="dateDepense">Date</label>
+      <input id="dateDepense" type="date" formControlName="dateDepense" />
+    </div>
+
+    <div class="champ">
+      <label for="fournisseur">Fournisseur</label>
+      <input id="fournisseur" type="text" formControlName="fournisseur" />
+    </div>
+
+    <div class="champ">
+      <label for="modePaiement">Mode de paiement</label>
+      <select id="modePaiement" formControlName="modePaiement">
+        <option [ngValue]="null">Non precise</option>
+        @for (mode of modes; track mode.valeur) {
+          <option [ngValue]="mode.valeur">{{ mode.libelle }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="champ">
+      <label for="reference">Reference</label>
+      <input id="reference" type="text" formControlName="reference"
+             placeholder="Numero de facture, recu..." />
+    </div>
+
+    @if (!saisieCarburant()) {
+      <div class="champ">
+        <label for="kilometrage">Kilometrage au compteur</label>
+        <input id="kilometrage" type="number" min="0" step="1" formControlName="kilometrage" />
+      </div>
+    }
+
+    <div class="champ champ-large">
+      <label for="observations">Observations</label>
+      <textarea id="observations" rows="2" formControlName="observations"></textarea>
+    </div>
+
+    <div class="champ champ-large">
+      <label class="case-a-cocher">
+        <input type="checkbox" formControlName="aChargeClient" />
+        Depense refacturee au client
+      </label>
+      <small>Une depense refacturee est exclue du resultat du vehicule.</small>
+    </div>
+  </div>
+
+  <div class="actions-formulaire">
+    <button class="bouton" type="submit" [disabled]="enregistrement()">
+      {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer la depense' }}
+    </button>
+    <button class="bouton secondaire" type="button" (click)="annuler()">Annuler</button>
+  </div>
+</form>

@@ -1,0 +1,390 @@
+/* Rentabilite : chiffres de la periode, palmares, puis le detail camion par camion. */
+
+.chiffres-periode {
+  margin-bottom: 1.1rem;
+}
+
+/* ------------------------------ Palmares ------------------------------- */
+.palmares {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+
+  @media (max-width: 1150px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.badge-palmares {
+  --accent: #1f6fd1;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto auto;
+  column-gap: 0.7rem;
+  align-items: center;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--couleur-texte);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &.vert { --accent: #1f9d6b; }
+  &.rouge { --accent: #d9452b; }
+  &.bleu { --accent: #1f6fd1; }
+  &.orange { --accent: #e8870e; }
+  &.violet { --accent: #7a4fd1; }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .icone {
+    display: grid;
+    grid-row: 1 / span 3;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--accent) 14%, #fff);
+
+    svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
+
+  .libelle {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  strong {
+    font-size: 1.05rem;
+    white-space: nowrap;
+  }
+
+  small {
+    font-size: 0.74rem;
+    color: var(--couleur-texte-doux);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ------------------------- Tableau des camions ------------------------- */
+.bloc-camions {
+  margin-bottom: 1.25rem;
+}
+
+.entete-bloc {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  h2 {
+    margin: 0;
+  }
+
+  .sous-titre {
+    margin: 0.2rem 0 0;
+  }
+}
+
+.legende {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  color: var(--couleur-texte-doux);
+
+  i {
+    display: inline-block;
+    width: 12px;
+    height: 8px;
+    margin-right: 0.3rem;
+    border-radius: 3px;
+  }
+
+  .recette { background: #1f9d6b; }
+  .depense { background: #e0603f; }
+}
+
+.tableau-rentabilite {
+  tbody tr {
+    transition: background 0.15s ease;
+
+    &.en-perte {
+      background: #fff8f6;
+    }
+  }
+
+  .camion {
+    display: flex;
+    flex-direction: column;
+
+    small {
+      font-size: 0.74rem;
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  .colonne-barres {
+    width: 32%;
+    min-width: 220px;
+  }
+
+  .resultat {
+    color: #1a7f57;
+
+    &.negatif {
+      color: #c63d22;
+    }
+  }
+}
+
+/* Deux barres superposees, sur une echelle commune a tout le tableau. */
+.barres {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* Place reservee au montant affiche apres la plus longue barre. */
+  padding-right: 5.5rem;
+
+  .barre {
+    position: relative;
+    display: block;
+    min-width: 2px;
+    height: 12px;
+    border-radius: 0 6px 6px 0;
+
+    &.recette {
+      background: linear-gradient(90deg, #1f9d6b, #4cc896);
+    }
+
+    &.depense {
+      background: linear-gradient(90deg, #e0603f, #f39a83);
+    }
+
+    /* Montant affiche a droite de la barre. */
+    em {
+      position: absolute;
+      top: 50%;
+      left: calc(100% + 6px);
+      font-size: 0.68rem;
+      font-style: normal;
+      line-height: 1;
+      white-space: nowrap;
+      color: var(--couleur-texte-doux);
+      transform: translateY(-50%);
+    }
+  }
+}
+
+.pastille-marge {
+  display: inline-block;
+  min-width: 3.2rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+
+  &.bonne {
+    background: #e3f6ed;
+    color: #1a7f57;
+  }
+
+  &.moyenne {
+    background: #fff2df;
+    color: #b8650a;
+  }
+
+  &.faible {
+    background: #fdecea;
+    color: #c63d22;
+  }
+}
+
+/* ------------------------ Fiche de performance ------------------------- */
+.fiche-performance {
+  h3 {
+    margin: 1.4rem 0 0.7rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--couleur-primaire);
+  }
+
+  .quatre {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+
+    @media (max-width: 860px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    strong em {
+      margin-left: 0.1rem;
+      font-size: 0.8rem;
+    }
+  }
+}
+
+/* Revenus du camion, du jour au cumul : une frise de cinq etapes. */
+.frise-revenus {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    padding: 0.65rem 0.8rem;
+    border-radius: 10px;
+    background: #f3f7fd;
+
+    &.cumul {
+      background: var(--couleur-primaire);
+      color: #fff;
+
+      span {
+        color: rgba(255, 255, 255, 0.8);
+      }
+    }
+  }
+
+  span {
+    font-size: 0.7rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  strong {
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 700px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.deux-repartitions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Repartition en barres horizontales, en part du total. */
+.repartition {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.25rem 0.75rem;
+    padding: 0.45rem 0;
+
+    & + li {
+      border-top: 1px solid #f0f2f4;
+    }
+  }
+
+  .nom {
+    font-size: 0.85rem;
+
+    small {
+      font-size: 0.7rem;
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  strong {
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .piste {
+    grid-column: 1 / -1;
+    height: 6px;
+    border-radius: 999px;
+    background: #eef1f4;
+    overflow: hidden;
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+    }
+  }
+
+  &.recettes .piste i {
+    background: linear-gradient(90deg, #1f9d6b, #4cc896);
+  }
+
+  &.depenses .piste i {
+    background: linear-gradient(90deg, #e0603f, #f39a83);
+  }
+
+  .vide {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.pastilles-utilisation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    background: #eef3fb;
+    color: #1f5fae;
+    font-size: 0.82rem;
+
+    &.alerte {
+      background: #fdecea;
+      color: #c63d22;
+    }
+  }
+}

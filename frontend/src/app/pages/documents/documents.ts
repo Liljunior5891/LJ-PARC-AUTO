@@ -14,14 +14,18 @@ import {
 import { CamionService } from '../../core/services/camion.service';
 import { ChauffeurService } from '../../core/services/chauffeur.service';
 import { DocumentService } from '../../core/services/document.service';
+import { Modale } from '../../shared/modale';
+import { OperationService } from '../../core/operation/operation.service';
+import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 
 @Component({
   selector: 'app-documents',
-  imports: [FormsModule, ReactiveFormsModule],
+  imports: [FormsModule, ReactiveFormsModule, Modale, VALIDATION_FORMULAIRE],
   templateUrl: './documents.html'
 })
 export class Documents implements OnInit {
   private readonly fb = inject(FormBuilder);
+  private readonly operation = inject(OperationService);
   private readonly service = inject(DocumentService);
   private readonly camionService = inject(CamionService);
   private readonly chauffeurService = inject(ChauffeurService);
@@ -161,8 +165,14 @@ export class Documents implements OnInit {
     });
   }
 
-  archiver(document: DocumentParc): void {
-    if (!confirm(`Archiver le document "${document.libelle}" ?`)) {
+  async archiver(document: DocumentParc): Promise<void> {
+    const accepte = await this.operation.confirmer({
+      titre: `Archiver le document « ${document.libelle} » ?`,
+      message: "Il ne sera plus suivi dans les alertes d'echeance.",
+      libelleAction: 'Archiver',
+      danger: true
+    });
+    if (!accepte) {
       return;
     }
     this.service.archiver(document.id).subscribe({

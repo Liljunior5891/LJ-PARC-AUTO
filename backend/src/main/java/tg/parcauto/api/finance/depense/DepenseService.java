@@ -142,7 +142,7 @@ public class DepenseService {
         }
         if (d.getMission() != null && !d.getMission().getCamion().getId().equals(camion.getId())) {
             throw new BusinessException("La mission " + d.getMission().getNumero()
-                    + " porte sur un autre camion que celui de la depense");
+                    + " porte sur un autre vehicule que celui de la depense");
         }
     }
 }

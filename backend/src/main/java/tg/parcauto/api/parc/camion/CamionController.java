@@ -29,7 +29,7 @@ import tg.parcauto.api.security.Autorisations;
 @RestController
 @RequestMapping("/api/camions")
 @RequiredArgsConstructor
-@Tag(name = "Camions")
+@Tag(name = "Vehicules")
 public class CamionController {
 
     /** Roles autorises a modifier le parc. */
@@ -38,7 +38,7 @@ public class CamionController {
     private final OdometreService odometreService;
 
     @GetMapping
-    @Operation(summary = "Liste paginee des camions avec recherche et filtres")
+    @Operation(summary = "Liste paginee des vehicules avec recherche et filtres")
     public Page<CamionDto.Reponse> lister(@RequestParam(required = false) String q,
                                           @RequestParam(required = false) StatutCamion statut,
                                           @RequestParam(required = false) Boolean actif,
@@ -48,13 +48,13 @@ public class CamionController {
     }
 
     @GetMapping("/marques")
-    @Operation(summary = "Referentiel des marques de camions, avec logo et couleur")
+    @Operation(summary = "Referentiel des marques de vehicules, avec logo et couleur")
     public List<MarqueCamionDto.Reponse> marques() {
         return service.marques();
     }
 
     @GetMapping("/types")
-    @Operation(summary = "Referentiel des types de camions")
+    @Operation(summary = "Referentiel des types de vehicules")
     public List<ReferentielDto> types() {
         return service.types();
     }
@@ -66,14 +66,14 @@ public class CamionController {
     }
 
     @GetMapping("/statistiques/statuts")
-    @Operation(summary = "Repartition des camions actifs par statut")
+    @Operation(summary = "Repartition des vehicules actifs par statut")
     public Map<StatutCamion, Long> repartition() {
         return service.repartitionParStatut();
     }
 
     /** Historique des releves kilometriques, tous modules confondus. */
     @GetMapping("/{id}/odometre")
-    @Operation(summary = "Historique du compteur kilometrique d'un camion")
+    @Operation(summary = "Historique du compteur kilometrique d'un vehicule")
     public OdometreDto odometre(
             @PathVariable Long id,
             @RequestParam(required = false)
@@ -90,7 +90,7 @@ public class CamionController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Fiche detaillee d'un camion")
+    @Operation(summary = "Fiche detaillee d'un vehicule")
     public CamionDto.Reponse detail(@PathVariable Long id) {
         return service.parId(id);
     }
@@ -98,14 +98,14 @@ public class CamionController {
     @PostMapping
     @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Cree un camion")
+    @Operation(summary = "Cree un vehicule")
     public CamionDto.Reponse creer(@Valid @RequestBody CamionDto.Requete requete) {
         return service.creer(requete);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize(Autorisations.GESTION)
-    @Operation(summary = "Met a jour la fiche d'un camion")
+    @Operation(summary = "Met a jour la fiche d'un vehicule")
     public CamionDto.Reponse modifier(@PathVariable Long id, @Valid @RequestBody CamionDto.Requete requete) {
         return service.modifier(id, requete);
     }
@@ -120,7 +120,7 @@ public class CamionController {
 
     @PatchMapping("/{id}/statut")
     @PreAuthorize(Autorisations.GESTION)
-    @Operation(summary = "Change le statut d'exploitation du camion")
+    @Operation(summary = "Change le statut d'exploitation du vehicule")
     public CamionDto.Reponse majStatut(@PathVariable Long id, @RequestBody CamionDto.MajStatut requete) {
         return service.majStatut(id, requete.statut());
     }
@@ -128,7 +128,7 @@ public class CamionController {
     @DeleteMapping("/{id}")
     @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Archive un camion (suppression logique)")
+    @Operation(summary = "Archive un vehicule (suppression logique)")
     public void archiver(@PathVariable Long id) {
         service.archiver(id);
     }

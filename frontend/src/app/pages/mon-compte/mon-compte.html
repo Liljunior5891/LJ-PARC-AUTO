@@ -43,16 +43,16 @@
   <h2>Changer mon mot de passe</h2>
   <div class="grille-formulaire">
     <div class="champ">
-      <label for="actuel">Mot de passe actuel</label>
+      <label for="actuel">Mot de passe actuel <span class="requis">*</span></label>
       <input id="actuel" type="password" autocomplete="current-password" [(ngModel)]="actuel" />
     </div>
     <div class="champ">
-      <label for="nouveau">Nouveau mot de passe</label>
+      <label for="nouveau">Nouveau mot de passe <span class="requis">*</span></label>
       <input id="nouveau" type="password" autocomplete="new-password" [(ngModel)]="nouveau" />
       <small>{{ longueurMinimale }} caracteres minimum.</small>
     </div>
     <div class="champ">
-      <label for="confirmation">Confirmation</label>
+      <label for="confirmation">Confirmation <span class="requis">*</span></label>
       <input id="confirmation" type="password" autocomplete="new-password"
              [(ngModel)]="confirmation" />
     </div>

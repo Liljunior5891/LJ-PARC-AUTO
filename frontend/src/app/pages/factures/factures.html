@@ -9,7 +9,7 @@
         Actualiser les retards
       </button>
       <button class="bouton" type="button" (click)="basculerGeneration()">
-        {{ generationVisible() ? 'Fermer' : '+ Generer une facture' }}
+        + Generer une facture
       </button>
     </div>
   }
@@ -50,8 +50,9 @@
 }
 
 @if (generationVisible()) {
-  <div class="carte" style="margin-bottom: 1rem">
-    <h2>Generer une facture</h2>
+  <app-modale titre="Generer une facture" sousTitre="La facture est creee en brouillon, a emettre ensuite"
+              largeur="640px" [erreur]="erreur()" (ferme)="basculerGeneration()">
+  <div class="carte">
     <div class="grille-formulaire">
       <div class="champ">
         <label for="source">Source</label>
@@ -85,16 +86,13 @@
           </select>
         </div>
       }
-      <div class="champ">
-        <label for="tauxTva">Taux de TVA (%)</label>
-        <input id="tauxTva" type="number" [(ngModel)]="tauxTva" />
-      </div>
     </div>
     <div class="actions-formulaire">
       <button class="bouton" type="button" (click)="generer()">Generer en brouillon</button>
       <button class="bouton secondaire" type="button" (click)="basculerGeneration()">Annuler</button>
     </div>
   </div>
+  </app-modale>
 }
 
 @if (detail(); as f) {
@@ -120,6 +118,10 @@
             Enregistrer un reglement
           </button>
         }
+        <button class="bouton" type="button" [disabled]="telechargement()"
+                (click)="telechargerPdf(f)">
+          {{ telechargement() ? 'Edition...' : 'Telecharger le PDF' }}
+        </button>
         <button class="bouton secondaire" type="button" (click)="fermerDetail()">Fermer</button>
       </div>
     </div>
@@ -129,7 +131,7 @@
         <thead>
           <tr>
             <th>Designation</th>
-            <th>Camion</th>
+            <th>Vehicule</th>
             <th class="numerique">Quantite</th>
             <th class="numerique">Prix unitaire</th>
             <th class="numerique">Montant</th>
@@ -173,17 +175,21 @@
     </div>
 
     @if (paiementVisible()) {
-      <div class="grille-formulaire" style="margin-top: 1.25rem">
+      <app-modale titre="Enregistrer un reglement"
+                  [sousTitre]="f.numero + ' — ' + f.clientNom + ' · reste a payer ' + (f.resteAPayer | number) + ' FCFA'"
+                  largeur="640px" [erreur]="erreur()" (ferme)="paiementVisible.set(false)">
+      <div class="carte">
+      <div class="grille-formulaire">
         <div class="champ">
-          <label for="montantPaiement">Montant *</label>
+          <label for="montantPaiement">Montant <span class="requis">*</span></label>
           <input id="montantPaiement" type="number" [(ngModel)]="montantPaiement" />
         </div>
         <div class="champ">
-          <label for="datePaiement">Date *</label>
+          <label for="datePaiement">Date <span class="requis">*</span></label>
           <input id="datePaiement" type="date" [(ngModel)]="datePaiement" />
         </div>
         <div class="champ">
-          <label for="modePaiement">Mode *</label>
+          <label for="modePaiement">Mode <span class="requis">*</span></label>
           <select id="modePaiement" [(ngModel)]="modePaiement">
             @for (mode of modes; track mode.valeur) {
               <option [value]="mode.valeur">{{ mode.libelle }}</option>
@@ -201,6 +207,8 @@
           Annuler
         </button>
       </div>
+      </div>
+      </app-modale>
     }
 
     @if (f.paiements.length > 0) {
@@ -286,6 +294,10 @@
             <td>
               <button class="bouton secondaire petit" type="button" (click)="ouvrir(facture)">
                 Ouvrir
+              </button>
+              <button class="bouton secondaire petit" type="button"
+                      [disabled]="telechargement()" (click)="telechargerPdf(facture)">
+                PDF
               </button>
             </td>
           </tr>

@@ -9,6 +9,8 @@ import {
   Utilisateur
 } from '../../core/models/utilisateur';
 import { UtilisateurService } from '../../core/services/utilisateur.service';
+import { Modale } from '../../shared/modale';
+import { messageChampsManquants } from '../../shared/validation-formulaire';
 
 /**
  * Gestion des comptes (chapitre 40), reservee a l'administrateur.
@@ -19,7 +21,7 @@ import { UtilisateurService } from '../../core/services/utilisateur.service';
  */
 @Component({
   selector: 'app-utilisateurs',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, Modale],
   templateUrl: './utilisateurs.html',
   styleUrl: './utilisateurs.scss'
 })
@@ -152,6 +154,15 @@ export class Utilisateurs implements OnInit {
     if (this.enregistrement()) {
       return;
     }
+    const manquants = messageChampsManquants({
+      'Adresse e-mail': this.email,
+      Nom: this.nom,
+      ...(this.edite() ? {} : { 'Mot de passe initial': this.motDePasse })
+    });
+    if (manquants) {
+      this.erreur.set(manquants);
+      return;
+    }
     if (this.rolesChoisis.length === 0) {
       this.erreur.set('Choisissez au moins un profil.');
       return;
@@ -213,6 +224,11 @@ export class Utilisateurs implements OnInit {
   reinitialiser(): void {
     const cible = this.reinitialise();
     if (!cible || this.enregistrement()) {
+      return;
+    }
+    const manquants = messageChampsManquants({ 'Nouveau mot de passe': this.nouveauMotDePasse });
+    if (manquants) {
+      this.erreur.set(manquants);
       return;
     }
     this.messages();

@@ -12,21 +12,25 @@ import {
   LIBELLES_SOURCE_RELEVE
 } from '../../core/models/models';
 import { OptionSelect, SelectRecherche } from '../../shared/select-recherche';
-import { Location } from '../../core/models/exploitation';
-import { Depense } from '../../core/models/finance';
+import { Depense, Recette } from '../../core/models/finance';
 import { CamionService } from '../../core/services/camion.service';
 import { DepenseService } from '../../core/services/depense.service';
-import { LocationService } from '../../core/services/location.service';
+import { RecetteService } from '../../core/services/recette.service';
+import { FormulaireDepense } from '../../shared/formulaire-depense';
+import { FormulaireRecette } from '../../shared/formulaire-recette';
+import { CarteCamion } from '../../shared/carte-camion';
+import { Modale } from '../../shared/modale';
+import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 
 @Component({
   selector: 'app-camion-fiche',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe, SelectRecherche],
+  imports: [ReactiveFormsModule, RouterLink, DecimalPipe, SelectRecherche, FormulaireRecette, FormulaireDepense, CarteCamion, Modale, VALIDATION_FORMULAIRE],
   templateUrl: './camion-fiche.html'
 })
 export class CamionFiche implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(CamionService);
-  private readonly locationService = inject(LocationService);
+  private readonly recetteService = inject(RecetteService);
   private readonly depenseService = inject(DepenseService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -65,12 +69,24 @@ export class CamionFiche implements OnInit {
       couleur: couleur.complement
     }))
   );
-  /** Onglet ouvert sous la fiche : contrats de location ou depenses du camion. */
-  readonly volet = signal<'fiche' | 'recettes' | 'depenses' | 'odometre'>('fiche');
-  readonly contrats = signal<Location[]>([]);
+  /** Onglet ouvert sous la fiche : recettes, depenses ou releves du camion. */
+  readonly volet = signal<Volet>('fiche');
+
+  /** Volets de la fiche. */
+  readonly volets: { id: Volet; libelle: string; icone: string }[] = [
+    { id: 'fiche', libelle: 'Fiche du vehicule', icone: '🚛' },
+    { id: 'recettes', libelle: 'Recettes', icone: '💰' },
+    { id: 'depenses', libelle: 'Depenses', icone: '💸' },
+    { id: 'odometre', libelle: 'Odometre', icone: '⏱️' },
+    { id: 'carte', libelle: 'Carte', icone: '📍' }
+  ];
+  readonly recettes = signal<Recette[]>([]);
   readonly depenses = signal<Depense[]>([]);
-  readonly totalContrats = computed(() =>
-    this.contrats().reduce((cumul, contrat) => cumul + contrat.montant, 0)
+  /** Formulaires de saisie, ouverts a la demande. */
+  readonly saisieRecette = signal(false);
+  readonly saisieDepense = signal(false);
+  readonly totalRecettes = computed(() =>
+    this.recettes().reduce((cumul, recette) => cumul + recette.montant, 0)
   );
   readonly totalDepenses = computed(() =>
     this.depenses().reduce((cumul, depense) => cumul + depense.montant, 0)
@@ -113,7 +129,7 @@ export class CamionFiche implements OnInit {
   private readonly marqueSelectionnee = signal<number | null>(null);
 
   get titre(): string {
-    return this.id() === null ? 'Nouveau camion' : 'Fiche du camion';
+    return this.id() === null ? 'Nouveau vehicule' : 'Fiche du vehicule';
   }
 
   ngOnInit(): void {
@@ -134,32 +150,75 @@ export class CamionFiche implements OnInit {
           this.formulaire.patchValue(camion as never);
           this.marqueSelectionnee.set(camion.marqueId ?? null);
         },
-        error: () => this.erreur.set('Camion introuvable.')
+        error: () => this.erreur.set('Vehicule introuvable.')
       });
     }
   }
 
   /** Ouvre un volet et charge ses donnees a la demande. */
-  ouvrirVolet(volet: 'fiche' | 'recettes' | 'depenses' | 'odometre'): void {
+  ouvrirVolet(volet: Volet): void {
     this.volet.set(volet);
     const id = this.id();
     if (id === null) {
       return;
     }
-    if (volet === 'recettes' && this.contrats().length === 0) {
-      this.locationService.lister({ camionId: id, size: 100 }).subscribe({
-        next: (page) => this.contrats.set(page.content)
-      });
+    if (volet === 'recettes' && this.recettes().length === 0) {
+      this.chargerRecettes(id);
     }
     if (volet === 'depenses' && this.depenses().length === 0) {
-      this.depenseService.lister({ camionId: id, size: 100 }).subscribe({
-        next: (page) => this.depenses.set(page.content)
-      });
+      this.chargerDepenses(id);
     }
     if (volet === 'odometre' && this.odometre() === null) {
       this.service.odometre(id).subscribe({
         next: (odometre) => this.odometre.set(odometre)
       });
+    }
+  }
+
+  /** Nombre de lignes d'un volet deja charge, rappele sur son onglet. */
+  compte(volet: Volet): number | null {
+    if (volet === 'recettes') {
+      return this.recettes().length || null;
+    }
+    if (volet === 'depenses') {
+      return this.depenses().length || null;
+    }
+    if (volet === 'odometre') {
+      return this.odometre()?.nombreReleves || null;
+    }
+    return null;
+  }
+
+  /** Toutes les recettes du camion, quel que soit leur type. */
+  private chargerRecettes(camionId: number): void {
+    this.recetteService.lister({ camionId, size: 200 }).subscribe({
+      next: (page) => this.recettes.set(page.content)
+    });
+  }
+
+  /** Recharge la liste apres une saisie et referme le formulaire. */
+  recetteEnregistree(): void {
+    this.saisieRecette.set(false);
+    const id = this.id();
+    if (id !== null) {
+      this.chargerRecettes(id);
+      this.succes.set('Recette enregistree.');
+    }
+  }
+
+  private chargerDepenses(camionId: number): void {
+    this.depenseService.lister({ camionId, size: 200 }).subscribe({
+      next: (page) => this.depenses.set(page.content)
+    });
+  }
+
+  /** Recharge la liste apres une saisie et referme le formulaire. */
+  depenseEnregistree(): void {
+    this.saisieDepense.set(false);
+    const id = this.id();
+    if (id !== null) {
+      this.chargerDepenses(id);
+      this.succes.set('Depense enregistree.');
     }
   }
 
@@ -197,3 +256,5 @@ export class CamionFiche implements OnInit {
     });
   }
 }
+
+type Volet = 'fiche' | 'recettes' | 'depenses' | 'odometre' | 'carte';

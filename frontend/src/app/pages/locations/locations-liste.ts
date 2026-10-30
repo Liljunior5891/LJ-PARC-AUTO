@@ -12,10 +12,12 @@ import {
 } from '../../core/models/exploitation';
 import { Page } from '../../core/models/models';
 import { LocationService } from '../../core/services/location.service';
+import { Modale } from '../../shared/modale';
+import { LocationFiche } from '../locations/location-fiche';
 
 @Component({
   selector: 'app-locations-liste',
-  imports: [FormsModule, RouterLink, DecimalPipe],
+  imports: [FormsModule, RouterLink, DecimalPipe, Modale, LocationFiche],
   templateUrl: './locations-liste.html'
 })
 export class LocationsListe implements OnInit {
@@ -27,6 +29,8 @@ export class LocationsListe implements OnInit {
   readonly page = signal<Page<Location> | null>(null);
   readonly chargement = signal(false);
   readonly erreur = signal<string | null>(null);
+  /** Fenetre de creation, ouverte par-dessus la liste. */
+  readonly creation = signal(false);
   readonly succes = signal<string | null>(null);
 
   recherche = '';
@@ -37,6 +41,18 @@ export class LocationsListe implements OnInit {
   readonly peutGerer = this.auth.peutGererParc();
 
   ngOnInit(): void {
+    this.charger();
+  }
+
+  ouvrirCreation(): void {
+    this.succes.set(null);
+    this.creation.set(true);
+  }
+
+  /** Le nouvel enregistrement rejoint la liste, rechargee. */
+  creationTerminee(): void {
+    this.creation.set(false);
+    this.succes.set('Contrat enregistre.');
     this.charger();
   }
 
@@ -79,7 +95,7 @@ export class LocationsListe implements OnInit {
     this.erreur.set(null);
     this.service.activer(contrat.id).subscribe({
       next: () => {
-        this.succes.set(`Contrat ${contrat.numero} active : le camion passe en location.`);
+        this.succes.set(`Contrat ${contrat.numero} active : le vehicule passe en location.`);
         this.charger();
       },
       error: (erreur) => this.erreur.set(erreur.error?.message ?? 'Activation impossible.')

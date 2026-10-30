@@ -14,9 +14,9 @@
 <div class="carte" style="margin-bottom: 1rem">
   <div class="grille-formulaire">
     <div class="champ">
-      <label for="camionId">Camion</label>
+      <label for="camionId">Vehicule</label>
       <select id="camionId" [(ngModel)]="camionId" (change)="charger()">
-        <option [ngValue]="undefined">Selectionner un camion</option>
+        <option [ngValue]="undefined">Selectionner un vehicule</option>
         @for (camion of camions(); track camion.id) {
           <option [ngValue]="camion.id">
             {{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }}
@@ -129,5 +129,5 @@
     </p>
   </div>
 } @else {
-  <div class="message vide">Selectionnez un camion pour afficher sa consommation.</div>
+  <div class="message vide">Selectionnez un vehicule pour afficher sa consommation.</div>
 }

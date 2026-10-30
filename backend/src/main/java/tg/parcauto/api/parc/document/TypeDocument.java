@@ -14,6 +14,7 @@ public enum TypeDocument {
     PIECE_IDENTITE("Piece d'identite", true),
     VISITE_MEDICALE("Visite medicale", true),
     GARANT_PIECE_IDENTITE("Piece d'identite du garant", false),
+    GARANT_PERMIS_CONDUIRE("Permis de conduire du garant", false),
     GARANT_ATTESTATION("Attestation de garantie", false),
     GARANT_JUSTIFICATIF("Justificatif du garant", false),
     AUTRE("Autre", false);

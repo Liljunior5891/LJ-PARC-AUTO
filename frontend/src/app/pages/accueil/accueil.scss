@@ -1,0 +1,1034 @@
+/* ===================================================================
+   Site vitrine public : page unique, lisible sans authentification.
+   Les couleurs reprennent la charte de l'application.
+   =================================================================== */
+
+:host {
+  display: block;
+  background: #fff;
+  scroll-behavior: smooth;
+}
+
+/* --------------------------- En-tete ------------------------------ */
+.entete {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.1rem clamp(1rem, 5vw, 4rem);
+  background: linear-gradient(180deg, rgba(5, 20, 36, 0.88), rgba(5, 20, 36, 0.15));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transition: padding 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+
+  /* Des que la page defile, l'entete se resserre et s'opacifie pour rester
+     lisible au-dessus des sections claires. */
+  &.compacte {
+    padding: 0.6rem clamp(1rem, 5vw, 4rem);
+    background: rgba(8, 26, 45, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(4, 14, 26, 0.35);
+  }
+}
+
+.marque {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #fff;
+  text-decoration: none;
+  margin-right: auto;
+
+  img {
+    max-height: 52px;
+    max-width: 160px;
+    object-fit: contain;
+    padding: 0.2rem 0.35rem;
+    border-radius: 8px;
+    background: transparent;
+    transition: max-height 0.3s ease, background 0.3s ease;
+    /* Un logo sombre resterait illisible sur la photo : une ombre portee le
+       detache sans lui ajouter de cartouche. */
+    filter: drop-shadow(0 2px 6px rgba(2, 12, 24, 0.65));
+  }
+
+  .embleme {
+    font-size: 1.6rem;
+  }
+
+  .identite {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+
+  .nom {
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    font-size: 1.02rem;
+  }
+
+  .sigle {
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--couleur-accent);
+  }
+}
+
+.compacte .marque img {
+  max-height: 36px;
+  filter: none;
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+
+  a {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.88rem;
+    font-weight: 500;
+    text-decoration: none;
+
+    &:hover {
+      color: #fff;
+    }
+  }
+
+  .bouton-nav {
+    padding: 0.55rem 1.1rem;
+    border-radius: 8px;
+    background: linear-gradient(120deg, var(--couleur-primaire-clair), var(--couleur-primaire));
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 8px 20px rgba(15, 76, 129, 0.4);
+
+    &:hover {
+      background: linear-gradient(120deg, #2a82c4, var(--couleur-primaire-clair));
+      color: #fff;
+    }
+  }
+}
+
+.bascule-menu {
+  display: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: #fff;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+
+/* -------------------------- Carrousel ------------------------------ */
+.carrousel {
+  position: relative;
+  height: clamp(600px, 92vh, 900px);
+  overflow: hidden;
+  background: #061523;
+}
+
+.diapositive {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: clamp(3rem, 9vw, 7rem) clamp(1rem, 5vw, 4rem) clamp(5rem, 10vw, 8rem);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 1s ease, visibility 1s ease;
+
+  &.active {
+    opacity: 1;
+    visibility: visible;
+    z-index: 2;
+  }
+}
+
+/* Le fond est un calque separe du contenu : il peut ainsi zoomer lentement
+   sans entrainer le texte, qui doit rester net. */
+.fond {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center bottom;
+  transform: scale(1.06);
+  transition: transform 8s ease-out;
+
+  /* Visuel de faible definition : un leger flou vaut mieux qu'un
+     agrandissement pixelise. */
+  &.adouci {
+    filter: blur(3px) saturate(115%);
+    transform: scale(1.12);
+  }
+}
+
+.active .fond {
+  transform: scale(1);
+
+  &.adouci {
+    transform: scale(1.06);
+  }
+}
+
+.diapositive .voile {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    rgba(5, 20, 36, 0.94) 0%,
+    rgba(6, 28, 50, 0.84) 38%,
+    rgba(8, 42, 74, 0.42) 68%,
+    rgba(10, 55, 96, 0.05) 100%
+  );
+}
+
+/* Un visuel adouci est plus clair : il demande un voile plus dense pour que
+   le texte conserve son contraste. */
+.fond.adouci + .voile {
+  background: linear-gradient(
+    100deg,
+    rgba(4, 16, 30, 0.95) 0%,
+    rgba(5, 22, 40, 0.9) 45%,
+    rgba(7, 34, 60, 0.66) 75%,
+    rgba(9, 44, 78, 0.4) 100%
+  );
+}
+
+.contenu-diapositive {
+  position: relative;
+  max-width: 660px;
+  color: #fff;
+
+  .surtitre,
+  h1,
+  .accroche,
+  .actions-diapositive {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+
+  .surtitre {
+    margin: 0 0 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    font-size: 0.72rem;
+    color: var(--couleur-accent);
+  }
+
+  h1 {
+    margin: 0 0 1rem;
+    font-size: clamp(1.9rem, 4.6vw, 3.1rem);
+    line-height: 1.15;
+    color: #fff;
+  }
+
+  .accroche {
+    margin: 0 0 1.8rem;
+    font-size: clamp(0.95rem, 1.4vw, 1.08rem);
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+/* Le texte entre en cascade a chaque changement de diapositive. */
+.active .contenu-diapositive {
+  .surtitre {
+    animation: entree-texte 0.7s 0.15s ease-out forwards;
+  }
+
+  h1 {
+    animation: entree-texte 0.7s 0.3s ease-out forwards;
+  }
+
+  .accroche {
+    animation: entree-texte 0.7s 0.45s ease-out forwards;
+  }
+
+  .actions-diapositive {
+    animation: entree-texte 0.7s 0.6s ease-out forwards;
+  }
+}
+
+@keyframes entree-texte {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.actions-diapositive {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.bouton-principal,
+.bouton-secondaire {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.8rem 1.6rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.bouton-principal {
+  background: linear-gradient(120deg, var(--couleur-primaire-clair), var(--couleur-primaire));
+  color: #fff;
+  box-shadow: 0 12px 26px rgba(15, 76, 129, 0.45);
+
+  &:hover {
+    background: linear-gradient(120deg, #2a82c4, var(--couleur-primaire-clair));
+    transform: translateY(-1px);
+    box-shadow: 0 16px 32px rgba(15, 76, 129, 0.55);
+  }
+}
+
+.bouton-secondaire {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+}
+
+/* --------------------- Commandes du carrousel --------------------- */
+.fleche {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(6, 22, 38, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.2s ease, background 0.2s ease;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+    background: rgba(6, 22, 38, 0.75);
+  }
+
+  &.precedente {
+    left: clamp(0.5rem, 2vw, 1.5rem);
+  }
+
+  &.suivante {
+    right: clamp(0.5rem, 2vw, 1.5rem);
+  }
+}
+
+.pastilles {
+  position: absolute;
+  z-index: 3;
+  bottom: clamp(1.5rem, 4vw, 2.5rem);
+  left: clamp(1rem, 5vw, 4rem);
+  display: flex;
+  gap: 0.6rem;
+}
+
+.pastille {
+  width: 34px;
+  height: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: background 0.3s ease, width 0.3s ease;
+
+  &.active {
+    width: 54px;
+    background: var(--couleur-accent);
+  }
+
+  &:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.55);
+  }
+}
+
+/* Fleche qui invite a descendre, animee en continu. */
+.indicateur-defilement {
+  position: absolute;
+  z-index: 3;
+  bottom: clamp(1.2rem, 3.5vw, 2rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 42px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 14px;
+
+  span {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 4px;
+    height: 8px;
+    margin-left: -2px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.85);
+    animation: molette 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes molette {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+/* ------------------- Apparition au defilement --------------------- */
+.a-reveler {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.65s ease-out, transform 0.65s ease-out;
+}
+
+.revele {
+  opacity: 1;
+  transform: none;
+}
+
+/* ------------------------- Engagements ---------------------------- */
+.bande-engagements {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1px;
+  background: var(--couleur-bordure);
+  border-bottom: 1px solid var(--couleur-bordure);
+
+  /* Chaque carte tire sa couleur de la teinte posee par le gabarit. */
+  article {
+    position: relative;
+    background: #fff;
+    padding: 1.7rem clamp(1rem, 2.5vw, 2rem);
+    overflow: hidden;
+    transition: background 0.3s ease;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--teinte, var(--couleur-primaire));
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.45s ease;
+    }
+
+    &.revele::before {
+      transform: scaleX(1);
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--teinte, #0f4c81) 6%, #fff);
+    }
+  }
+
+  .pictogramme {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 0.8rem;
+    border-radius: 12px;
+    font-size: 1.15rem;
+    background: color-mix(in srgb, var(--teinte, #0f4c81) 14%, transparent);
+  }
+
+  h3 {
+    margin: 0 0 0.4rem;
+    font-size: 0.98rem;
+    color: var(--teinte, var(--couleur-primaire));
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+/* --------------------------- Sections ----------------------------- */
+.section {
+  padding: clamp(3rem, 7vw, 5.5rem) clamp(1rem, 5vw, 4rem);
+  scroll-margin-top: 70px;
+
+  &.sombre {
+    background: linear-gradient(150deg, #0a1c2e, #10456f);
+    color: #fff;
+
+    h2,
+    h3 {
+      color: #fff;
+    }
+
+    .entete-section p {
+      color: rgba(255, 255, 255, 0.75);
+    }
+  }
+}
+
+.entete-section {
+  max-width: 720px;
+  margin: 0 auto 2.5rem;
+  text-align: center;
+
+  h2 {
+    margin: 0.6rem 0 0.7rem;
+    font-size: clamp(1.4rem, 2.8vw, 2rem);
+    line-height: 1.25;
+  }
+
+  p {
+    margin: 0;
+    line-height: 1.7;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.etiquette-section {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(15, 76, 129, 0.1);
+  color: var(--couleur-primaire);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.sombre .etiquette-section {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--couleur-accent);
+}
+
+/* --------------------------- Services ----------------------------- */
+.grille-services {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.25rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.carte-service {
+  padding: 1.75rem 1.5rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 14px;
+  background: #fff;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    border-color: rgba(15, 76, 129, 0.35);
+    box-shadow: 0 18px 40px rgba(16, 24, 40, 0.12);
+  }
+
+  .icone {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: rgba(15, 76, 129, 0.09);
+    font-size: 1.4rem;
+    margin-bottom: 0.9rem;
+  }
+
+  h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+  }
+
+  p {
+    margin: 0 0 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: var(--couleur-texte-doux);
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  li {
+    position: relative;
+    padding-left: 1.15rem;
+    font-size: 0.83rem;
+    color: var(--couleur-texte);
+
+    &::before {
+      content: '\2713';
+      position: absolute;
+      left: 0;
+      color: var(--couleur-succes);
+      font-weight: 700;
+    }
+  }
+}
+
+
+/* --------------------------- La flotte ---------------------------- */
+.flotte {
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(15, 76, 129, 0.09), transparent 60%),
+    var(--couleur-fond);
+}
+
+/* Trois colonnes au plus : les six vehicules se repartissent alors en deux
+   rangees pleines, sans case vide en fin de grille. */
+.grille-flotte {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  max-width: 1020px;
+  margin: 0 auto;
+}
+
+.carte-vehicule {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #0a1c2e;
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.12);
+  transition: transform 0.25s ease, box-shadow 0.3s ease;
+
+  &:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 24px 50px rgba(16, 24, 40, 0.22);
+  }
+
+  /* Le visuel cadre un camion precis de la photo panoramique : le zoom au
+     survol donne du relief sans recadrer. */
+  .visuel {
+    height: 210px;
+    background-repeat: no-repeat;
+    transition: transform 0.6s ease;
+  }
+
+  &:hover .visuel {
+    transform: scale(1.07);
+  }
+
+  .legende {
+    position: relative;
+    padding: 1.1rem 1.25rem 1.35rem;
+    background: linear-gradient(180deg, rgba(10, 28, 46, 0.96), #0a1c2e);
+    color: #fff;
+
+    /* Fond le visuel dans la legende plutot que de les separer nettement. */
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: -48px;
+      height: 48px;
+      background: linear-gradient(180deg, rgba(10, 28, 46, 0), rgba(10, 28, 46, 0.96));
+      pointer-events: none;
+    }
+  }
+
+  h3 {
+    margin: 0 0 0.3rem;
+    font-size: 1.02rem;
+    color: #fff;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.72);
+  }
+}
+
+.note-flotte {
+  max-width: 720px;
+  margin: 2rem auto 0;
+  text-align: center;
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+}
+
+/* ----------------------- Bandeau d'appel -------------------------- */
+.bandeau-appel {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(3rem, 8vw, 5rem) clamp(1rem, 5vw, 4rem);
+  text-align: center;
+  color: #fff;
+
+  .fond-bandeau {
+    position: absolute;
+    inset: 0;
+    background-image: url('/siontruk.jpg');
+    background-size: cover;
+    background-position: center;
+    filter: blur(4px) saturate(120%);
+    transform: scale(1.08);
+  }
+
+  /* Le visuel n'est qu'une texture : le voile garantit le contraste du texte. */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(5, 20, 36, 0.92), rgba(8, 42, 74, 0.82));
+  }
+}
+
+.contenu-bandeau {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  margin: 0 auto;
+
+  h2 {
+    margin: 0 0 0.6rem;
+    color: #fff;
+    font-size: clamp(1.35rem, 2.6vw, 1.9rem);
+  }
+
+  p {
+    margin: 0 0 1.5rem;
+    color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+/* ------------------ Colonne d'appui de l'entreprise --------------- */
+.colonne-atouts {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cartouche-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--couleur-bordure);
+
+  img {
+    max-width: 220px;
+    max-height: 110px;
+    object-fit: contain;
+  }
+}
+
+/* --------------------------- Methode ------------------------------ */
+.grille-etapes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.carte-etape {
+  padding: 1.75rem 1.5rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+
+  .numero {
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: var(--couleur-accent);
+    opacity: 0.9;
+  }
+
+  h3 {
+    margin: 0.4rem 0 0.5rem;
+    font-size: 1.05rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: rgba(255, 255, 255, 0.78);
+  }
+}
+
+/* ------------------------- L'entreprise --------------------------- */
+.deux-colonnes {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  align-items: start;
+  max-width: 1200px;
+  margin: 0 auto;
+
+  h2 {
+    margin: 0.6rem 0 0.3rem;
+    font-size: clamp(1.4rem, 2.8vw, 2rem);
+  }
+
+  p {
+    line-height: 1.75;
+    color: var(--couleur-texte-doux);
+  }
+
+  .mention-legale {
+    margin: 0 0 1rem;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+}
+
+.liste-atouts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 1rem 1.15rem;
+    border-radius: 12px;
+    background: var(--couleur-fond);
+    border-left: 3px solid var(--couleur-primaire);
+
+    strong {
+      font-size: 0.92rem;
+    }
+
+    span {
+      font-size: 0.83rem;
+      color: var(--couleur-texte-doux);
+    }
+  }
+}
+
+/* --------------------------- Contact ------------------------------ */
+.contact {
+  background: var(--couleur-fond);
+  text-align: center;
+
+  .bouton-principal {
+    margin-top: 0.5rem;
+  }
+}
+
+.repli-coordonnees {
+  margin: 0 auto 1rem;
+  max-width: 640px;
+  color: var(--couleur-texte-doux);
+}
+
+.coordonnees {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  max-width: 950px;
+  margin: 0 auto 2rem;
+
+  article {
+    padding: 1.25rem 1rem;
+    background: #fff;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 12px;
+  }
+
+  h3 {
+    margin: 0 0 0.35rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--couleur-texte-doux);
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+    word-break: break-word;
+  }
+}
+
+/* --------------------------- Pied de page ------------------------- */
+.pied-page {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.5rem clamp(1rem, 5vw, 4rem);
+  background: #0a1c2e;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.82rem;
+
+  p {
+    margin: 0;
+  }
+
+  nav {
+    display: flex;
+    gap: 1.2rem;
+  }
+
+  a {
+    color: rgba(255, 255, 255, 0.75);
+    text-decoration: none;
+
+    &:hover {
+      color: #fff;
+    }
+  }
+}
+
+/* --------------------------- Mobile ------------------------------- */
+@media (max-width: 860px) {
+  .bascule-menu {
+    display: inline-block;
+  }
+
+  .navigation {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    padding: 0.75rem clamp(1rem, 5vw, 4rem) 1rem;
+    background: rgba(8, 26, 45, 0.98);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+    &.ouverte {
+      display: flex;
+    }
+
+    a {
+      padding: 0.6rem 0;
+    }
+
+    .bouton-nav {
+      text-align: center;
+      margin-top: 0.4rem;
+    }
+  }
+
+  .deux-colonnes {
+    grid-template-columns: 1fr;
+  }
+
+  .marque .nom {
+    font-size: 0.92rem;
+  }
+
+  .carte-vehicule .visuel {
+    height: 180px;
+  }
+
+  .fleche {
+    display: none;
+  }
+
+  .pastilles {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .indicateur-defilement {
+    display: none;
+  }
+}
+
+/* Une page qui bouge en permanence n'est pas confortable pour tout le monde :
+   le carrousel reste utilisable, mais fige. */
+@media (prefers-reduced-motion: reduce) {
+  .carte-service:hover,
+  .bouton-principal:hover {
+    transform: none;
+  }
+
+  .fond,
+  .active .fond {
+    transition: none;
+    transform: none;
+  }
+
+  .fond.adouci,
+  .active .fond.adouci {
+    transform: scale(1.02);
+  }
+
+  .diapositive {
+    transition: opacity 0.2s linear;
+  }
+
+  .active .contenu-diapositive :is(.surtitre, h1, .accroche, .actions-diapositive) {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .indicateur-defilement span {
+    animation: none;
+  }
+
+  .carte-vehicule:hover {
+    transform: none;
+  }
+
+  .carte-vehicule:hover .visuel {
+    transform: none;
+  }
+
+  .a-reveler {
+    transition: none;
+  }
+}

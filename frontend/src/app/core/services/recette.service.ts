@@ -2,7 +2,13 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LigneTypeRecette, Recette, RecetteRequete, TypeRecette } from '../models/finance';
+import {
+  LigneTypeRecette,
+  Recette,
+  RecetteLocationRequete,
+  RecetteRequete,
+  TypeRecette
+} from '../models/finance';
 import { Page } from '../models/models';
 
 export interface FiltreRecette {
@@ -53,6 +59,11 @@ export class RecetteService {
       params = params.set('camionId', camionId);
     }
     return this.http.get<LigneTypeRecette[]>(`${this.base}/repartition`, { params });
+  }
+
+  /** Recette de location : le serveur cree aussi le contrat correspondant. */
+  enregistrerLocation(requete: RecetteLocationRequete): Observable<Recette> {
+    return this.http.post<Recette>(`${this.base}/location`, requete);
   }
 
   creer(requete: RecetteRequete): Observable<Recette> {

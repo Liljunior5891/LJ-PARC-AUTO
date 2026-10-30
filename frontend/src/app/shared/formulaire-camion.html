@@ -1,0 +1,114 @@
+<app-modale titre="Nouveau vehicule"
+            sousTitre="Seule l'immatriculation est obligatoire ; le reste se complete plus tard sur la fiche."
+            [erreur]="erreur()" (ferme)="fermer()">
+  <form class="formulaire-camion" [formGroup]="formulaire" (ngSubmit)="soumettre()">
+    <h3>Identification</h3>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="nc-immatriculation">Immatriculation <span class="requis">*</span></label>
+        <input id="nc-immatriculation" formControlName="immatriculation" placeholder="TG-1234-AB"
+               autofocus />
+        @if (formulaire.controls.immatriculation.touched && formulaire.controls.immatriculation.invalid) {
+          <span class="erreur-champ">Immatriculation requise</span>
+        }
+      </div>
+      <div class="champ">
+        <label for="nc-marque">Marque</label>
+        <app-select-recherche formControlName="marqueId" [options]="optionsMarque()"
+                              placeholder="Selectionner une marque" />
+      </div>
+      <div class="champ">
+        <label for="nc-modele">Modele</label>
+        <input id="nc-modele" formControlName="modele" />
+      </div>
+      <div class="champ">
+        <label for="nc-annee">Annee</label>
+        <input id="nc-annee" type="number" formControlName="annee" />
+      </div>
+      <div class="champ">
+        <label for="nc-type">Type</label>
+        <app-select-recherche formControlName="typeId" [options]="optionsType()"
+                              placeholder="Benne, plateau, citerne..." />
+      </div>
+      <div class="champ">
+        <label for="nc-categorie">Categorie</label>
+        <input id="nc-categorie" formControlName="categorie" />
+      </div>
+      <div class="champ">
+        <label for="nc-couleur">Couleur</label>
+        <app-select-recherche formControlName="couleurId" [options]="optionsCouleur()"
+                              placeholder="Selectionner une couleur" />
+      </div>
+    </div>
+
+    <h3>Caracteristiques techniques</h3>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="nc-chassis">Numero de chassis</label>
+        <input id="nc-chassis" formControlName="numeroChassis" />
+      </div>
+      <div class="champ">
+        <label for="nc-moteur">Numero moteur</label>
+        <input id="nc-moteur" formControlName="numeroMoteur" />
+      </div>
+      <div class="champ">
+        <label for="nc-capacite">Capacite (tonnes)</label>
+        <input id="nc-capacite" type="number" step="0.01" formControlName="capaciteTonnes" />
+      </div>
+      <div class="champ">
+        <label for="nc-carburant">Carburant</label>
+        <select id="nc-carburant" formControlName="typeCarburant">
+          @for (carburant of carburants; track carburant) {
+            <option [value]="carburant">{{ carburant }}</option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="nc-gps">Identifiant traceur GPS</label>
+        <input id="nc-gps" formControlName="gpsDeviceId" placeholder="Reserve au module GPS" />
+      </div>
+    </div>
+
+    <h3>Acquisition et exploitation</h3>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="nc-date">Date d'acquisition</label>
+        <input id="nc-date" type="date" formControlName="dateAcquisition" />
+      </div>
+      <div class="champ">
+        <label for="nc-prix">Prix d'achat (FCFA)</label>
+        <input id="nc-prix" type="number" formControlName="prixAchat" />
+      </div>
+      <div class="champ">
+        <label for="nc-km-initial">Kilometrage initial</label>
+        <input id="nc-km-initial" type="number" formControlName="kilometrageInitial" />
+      </div>
+      <div class="champ">
+        <label for="nc-km-actuel">Kilometrage actuel</label>
+        <input id="nc-km-actuel" type="number" formControlName="kilometrageActuel" />
+      </div>
+      <div class="champ">
+        <label for="nc-statut">Statut</label>
+        <select id="nc-statut" formControlName="statut">
+          @for (s of statuts; track s.valeur) {
+            <option [value]="s.valeur">{{ s.libelle }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="champ">
+      <label for="nc-observations">Observations</label>
+      <textarea id="nc-observations" formControlName="observations"></textarea>
+    </div>
+
+    <div class="actions-formulaire">
+      <button class="bouton secondaire" type="button" (click)="fermer()" [disabled]="enregistrement()">
+        Annuler
+      </button>
+      <button class="bouton" type="submit" [disabled]="enregistrement()">
+        {{ enregistrement() ? 'Enregistrement...' : 'Ajouter au parc' }}
+      </button>
+    </div>
+  </form>
+</app-modale>

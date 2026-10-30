@@ -1,7 +1,7 @@
 <div class="entete-page">
   <div>
     <h1>Tableau de bord</h1>
-    <p class="sous-titre">Vision globale du parc de camions</p>
+    <p class="sous-titre">Vision globale du parc de vehicules — {{ libellePeriode() }}</p>
   </div>
   <div class="commandes-bord">
     <!-- Etendue des donnees observees : tout le volet financier la suit. -->
@@ -18,6 +18,59 @@
   </div>
 </div>
 
+<!-- Illustrations des cartes de tete : billets, portefeuille, pieces. -->
+<ng-template #illustrationBillets>
+  <svg class="illustration" viewBox="0 0 160 110" aria-hidden="true">
+    <ellipse cx="82" cy="102" rx="64" ry="5" fill="rgba(0,0,0,0.18)" />
+    <g transform="rotate(-12 80 60)">
+      <rect x="22" y="36" width="112" height="58" rx="7" fill="#d9f2e6" />
+      <rect x="16" y="28" width="112" height="58" rx="7" fill="#eefaf4" />
+      <rect x="10" y="20" width="112" height="58" rx="7" fill="#ffffff" />
+      <rect x="18" y="28" width="96" height="42" rx="5" fill="none" stroke="#bfe6d3" stroke-width="2" />
+      <circle cx="66" cy="49" r="14" fill="#2fb383" />
+      <text x="66" y="55" text-anchor="middle" font-size="17" font-weight="800" fill="#fff">F</text>
+      <circle cx="30" cy="49" r="4" fill="#bfe6d3" /><circle cx="102" cy="49" r="4" fill="#bfe6d3" />
+    </g>
+    <ellipse cx="128" cy="92" rx="16" ry="6" fill="#d39b16" />
+    <rect x="112" y="80" width="32" height="12" fill="#e8b423" />
+    <ellipse cx="128" cy="80" rx="16" ry="6" fill="#ffd45c" />
+    <text x="128" y="83.5" text-anchor="middle" font-size="9" font-weight="800" fill="#b07a06">F</text>
+  </svg>
+</ng-template>
+
+<ng-template #illustrationPortefeuille>
+  <svg class="illustration" viewBox="0 0 160 110" aria-hidden="true">
+    <ellipse cx="80" cy="102" rx="64" ry="5" fill="rgba(0,0,0,0.18)" />
+    <rect x="34" y="14" width="78" height="40" rx="5" fill="#eaf5d0" transform="rotate(-10 73 34)" />
+    <rect x="44" y="10" width="78" height="40" rx="5" fill="#ffffff" transform="rotate(6 83 30)" />
+    <circle cx="84" cy="30" r="8" fill="#a9bd2c" />
+    <rect x="16" y="34" width="124" height="64" rx="12" fill="#3f4a12" />
+    <rect x="16" y="34" width="124" height="16" rx="8" fill="#56631c" />
+    <rect x="102" y="56" width="44" height="26" rx="8" fill="#2c340b" />
+    <circle cx="116" cy="69" r="6" fill="#ffd45c" />
+    <circle cx="116" cy="69" r="2.5" fill="#b07a06" />
+  </svg>
+</ng-template>
+
+<ng-template #illustrationPieces>
+  <svg class="illustration" viewBox="0 0 160 110" aria-hidden="true">
+    <ellipse cx="80" cy="102" rx="64" ry="5" fill="rgba(0,0,0,0.18)" />
+    <!-- Trois piles de pieces de plus en plus hautes. -->
+    @for (pile of [{ x: 52, pieces: [0, 1, 2] }, { x: 88, pieces: [0, 1, 2, 3, 4] },
+                   { x: 124, pieces: [0, 1, 2, 3, 4, 5, 6] }]; track pile.x) {
+      @for (i of pile.pieces; track i) {
+        <ellipse [attr.cx]="pile.x" [attr.cy]="98 - i * 9" rx="16" ry="6" fill="#d39b16" />
+        <rect [attr.x]="pile.x - 16" [attr.y]="90 - i * 9" width="32" height="8" fill="#e8b423" />
+        <ellipse [attr.cx]="pile.x" [attr.cy]="90 - i * 9" rx="16" ry="6" fill="#ffd45c" />
+      }
+    }
+    <path d="M24 60 L60 44 L84 52 L130 14" fill="none" stroke="#ffffff" stroke-width="5"
+          stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M116 12 L132 12 L132 28" fill="none" stroke="#ffffff" stroke-width="5"
+          stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+</ng-template>
+
 @if (erreur()) {
   <div class="message erreur">{{ erreur() }}</div>
 }
@@ -25,146 +78,285 @@
 @if (chargement()) {
   <div class="message vide">Chargement des indicateurs...</div>
 } @else if (indicateurs(); as k) {
-  <section class="grille-indicateurs">
-    <a class="carte indicateur" routerLink="/camions">
-      <span class="libelle">Camions au parc</span>
-      <strong class="valeur">{{ k.totalCamions }}</strong>
-      <span class="detail">Taux de disponibilite : {{ tauxDisponibilite() }} %</span>
-    </a>
-    <a class="carte indicateur succes" routerLink="/camions">
-      <span class="libelle">Disponibles</span>
-      <strong class="valeur">{{ k.camionsDisponibles }}</strong>
-      <span class="detail">Prets a etre affectes</span>
-    </a>
-    <div class="carte indicateur info">
-      <span class="libelle">En mission</span>
-      <strong class="valeur">{{ k.camionsEnMission }}</strong>
-      <span class="detail">{{ k.camionsEnLocation }} en location</span>
-    </div>
-    <div class="carte indicateur alerte">
-      <span class="libelle">En maintenance</span>
-      <strong class="valeur">{{ k.camionsEnMaintenance }}</strong>
-      <span class="detail">{{ k.camionsImmobilises }} immobilises</span>
-    </div>
-    <a class="carte indicateur" routerLink="/chauffeurs">
-      <span class="libelle">Chauffeurs actifs</span>
-      <strong class="valeur">{{ k.chauffeursActifs }}</strong>
-      <span class="detail">{{ k.permisAExpirer }} permis a renouveler</span>
-    </a>
-    <a class="carte indicateur" routerLink="/affectations">
-      <span class="libelle">Affectations en cours</span>
-      <strong class="valeur">{{ k.affectationsEnCours }}</strong>
-      <span class="detail">{{ k.camionsSansChauffeur }} camions sans chauffeur</span>
-    </a>
-  </section>
-
+  <!-- Trois cartes de tete : ce que le parc rapporte, coute et degage. -->
   @if (finances(); as f) {
-    <h2 style="margin: 1.5rem 0 0.75rem">Finances — {{ libellePeriode() }}</h2>
-    <section class="grille-indicateurs">
-      <a class="carte indicateur succes" routerLink="/recettes">
-        <span class="libelle">Chiffre d'affaires</span>
-        <strong class="valeur">{{ f.chiffreAffaires | number }}</strong>
-        <span class="detail">FCFA depuis le {{ f.debut }}</span>
+    <section class="cartes-tete">
+      <a class="carte-tete vert" routerLink="/recettes">
+        <span class="titre">Chiffre d'affaires</span>
+        <strong>{{ grosMontant(f.chiffreAffaires) }}<small>FCFA</small></strong>
+        <span class="detail">{{ k.totalCamions }} vehicules · dispo. {{ tauxDisponibilite() }} %</span>
+        <ng-container [ngTemplateOutlet]="illustrationBillets" />
       </a>
-      <a class="carte indicateur alerte" routerLink="/depenses">
-        <span class="libelle">Depenses</span>
-        <strong class="valeur">{{ f.totalDepenses | number }}</strong>
-        <span class="detail">moyenne {{ f.depenseMoyenneParCamion | number }} / camion</span>
+      <a class="carte-tete olive" routerLink="/depenses">
+        <span class="titre">Depenses</span>
+        <strong>{{ grosMontant(f.totalDepenses) }}<small>FCFA</small></strong>
+        <span class="detail">moyenne {{ f.depenseMoyenneParCamion | number }} / vehicule</span>
+        <ng-container [ngTemplateOutlet]="illustrationPortefeuille" />
       </a>
-      <a class="carte indicateur info" routerLink="/rentabilite">
-        <span class="libelle">Resultat</span>
-        <strong class="valeur" [class.resultat-negatif]="f.resultat < 0">
-          {{ f.resultat | number }}
-        </strong>
-        <span class="detail">marge {{ f.margePourcent | number }} %</span>
-      </a>
-      <a class="carte indicateur" routerLink="/facturation">
-        <span class="libelle">Creances</span>
-        <strong class="valeur">{{ f.creancesRestantes | number }}</strong>
+      <a class="carte-tete violet" routerLink="/rentabilite">
+        <span class="titre">Resultat</span>
+        <strong>{{ grosMontant(f.resultat) }}<small>FCFA</small></strong>
         <span class="detail">
-          {{ f.facturesImpayees }} impayee(s), {{ f.facturesEnRetard }} en retard
+          marge {{ f.margePourcent | number }} % · {{ f.creancesRestantes | number }} en creances
         </span>
+        <ng-container [ngTemplateOutlet]="illustrationPieces" />
       </a>
     </section>
   }
 
-  <section class="deux-colonnes" style="margin-top: 1.5rem">
-    <!-- Depenses par rapport aux recettes, mois par mois : un seul axe, deux series. -->
-    <figure class="carte graphique">
-      <figcaption>
-        <h2>Recettes et depenses</h2>
-        <p class="sous-titre">{{ moisEvolution() }} derniers mois, en FCFA</p>
-      </figcaption>
-
-      <ul class="legende-graphique">
-        <li><span class="puce" [style.background]="couleurRecettes"></span> Recettes</li>
-        <li><span class="puce" [style.background]="couleurDepenses"></span> Depenses</li>
-      </ul>
-
-      <div class="colonnes-mois">
-        @for (point of evolution(); track point.mois) {
-          <div class="mois" [attr.title]="point.moisLibelle + ' ' + point.annee
-              + ' — recettes ' + point.recettes + ', depenses ' + point.depenses
-              + ', resultat ' + point.resultat">
-            <div class="paire-barres">
-              <div class="barre recette" [style.height.%]="hauteur(point.recettes)"
-                   [style.background]="couleurRecettes"></div>
-              <div class="barre depense" [style.height.%]="hauteur(point.depenses)"
-                   [style.background]="couleurDepenses"></div>
-            </div>
-            <span class="etiquette-mois">{{ point.moisLibelle }}</span>
-            <span class="resultat-mois" [class.resultat-negatif]="point.resultat < 0">
-              {{ point.resultat | number }}
-            </span>
-          </div>
-        } @empty {
-          <p class="message vide">Aucune donnee sur la periode.</p>
+  <!-- Etat du parc, alertes et repartition des depenses : le volet exploitation du bord. -->
+  <section class="rangee trois">
+    <div class="carte panneau">
+      <div class="entete-panneau">
+        <h2>Etat du parc</h2>
+        <a class="lien-tout" routerLink="/vue-parc">{{ k.totalCamions }} vehicules</a>
+      </div>
+      <div class="barre-etats">
+        @for (e of etatsParc(); track e.libelle) {
+          @if (e.valeur > 0) {
+            <span [style.flex]="e.valeur" [style.background]="e.couleur"
+                  [attr.title]="e.libelle + ' : ' + e.valeur"></span>
+          }
         }
       </div>
-      <p class="note-graphique">
-        Les deux series partagent la meme echelle. Le chiffre sous chaque mois est le resultat.
+      <!-- Une carte par etat : icone et couleur parlantes, jauge de la part du parc. -->
+      <div class="cartes-apercu compactes">
+        <a class="carte-apercu vert" routerLink="/vue-parc">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" /><path d="M9.5 16.5v-9h3.2a2.7 2.7 0 0 1 0 5.4H9.5" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Disponibles</span>
+            <strong>{{ k.camionsDisponibles }}<em>/{{ k.totalCamions }}</em></strong>
+            <small>{{ part(k.camionsDisponibles, k.totalCamions) }} % du parc pret a partir</small>
+          </span>
+          <span class="jauge"><i [style.width.%]="part(k.camionsDisponibles, k.totalCamions)"></i></span>
+        </a>
+
+        <a class="carte-apercu bleu" routerLink="/missions">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="6" r="2.2" /><path d="M8.2 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.8" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">En mission</span>
+            <strong>{{ k.camionsEnMission }}</strong>
+            <small>sur la route pour un client</small>
+          </span>
+          <span class="jauge"><i [style.width.%]="part(k.camionsEnMission, k.totalCamions)"></i></span>
+        </a>
+
+        <a class="carte-apercu violet" routerLink="/locations">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M10.8 12.2 19 4M16 7l2.5 2.5M14 9l2 2" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">En location</span>
+            <strong>{{ k.camionsEnLocation }}</strong>
+            <small>confies sous contrat</small>
+          </span>
+          <span class="jauge"><i [style.width.%]="part(k.camionsEnLocation, k.totalCamions)"></i></span>
+        </a>
+
+        <a class="carte-apercu rouge" routerLink="/maintenance">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.2 5.2l-5.3 5.3a1.8 1.8 0 0 0 2.5 2.5l5.3-5.3a4 4 0 0 0 5.2-5.2l-2.4 2.4-2.3-.6-.6-2.3z" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">A l'atelier</span>
+            <strong>{{ k.camionsEnMaintenance + k.camionsImmobilises }}</strong>
+            <small>{{ k.camionsEnMaintenance }} en maintenance · {{ k.camionsImmobilises }} immobilise(s)</small>
+          </span>
+          <span class="jauge">
+            <i [style.width.%]="part(k.camionsEnMaintenance + k.camionsImmobilises, k.totalCamions)"></i>
+          </span>
+        </a>
+
+        <a class="carte-apercu bleu" routerLink="/chauffeurs">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6" /><path d="M5 20a7 7 0 0 1 14 0" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Chauffeurs actifs</span>
+            <strong>{{ k.chauffeursActifs }}</strong>
+            <small>{{ k.affectationsEnCours }} affectation(s) en cours</small>
+          </span>
+        </a>
+
+        <a class="carte-apercu orange" routerLink="/affectations">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.6" /><path d="M3 20a7 7 0 0 1 11.5-5.4M16 15l5 5M21 15l-5 5" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Sans chauffeur</span>
+            <strong>{{ k.camionsSansChauffeur }}</strong>
+            <small>{{ k.camionsSansChauffeur ? 'vehicule(s) a affecter' : 'tous les vehicules sont pourvus' }}</small>
+          </span>
+          <span class="jauge"><i [style.width.%]="part(k.camionsSansChauffeur, k.totalCamions)"></i></span>
+        </a>
+      </div>
+    </div>
+
+    <div class="carte panneau">
+      <h2>Alertes documentaires</h2>
+      <!-- Echeances documentaires : rouge si deja depassees, orange a renouveler. -->
+      <div class="cartes-apercu compactes alertes-documents">
+        <a class="carte-apercu rouge" routerLink="/documents" [class.calme]="k.documentsExpires === 0">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M10 12l4 4M14 12l-4 4" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Documents expires</span>
+            <strong>{{ k.documentsExpires }}</strong>
+            <small>{{ k.documentsExpires ? 'a regulariser sans attendre' : 'aucun document perime' }}</small>
+          </span>
+        </a>
+
+        <a class="carte-apercu orange" routerLink="/documents" [class.calme]="k.documentsAExpirer === 0">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4M12 13v3l2 1" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">A renouveler sous 30 jours</span>
+            <strong>{{ k.documentsAExpirer }}</strong>
+            <small>assurances, visites, cartes grises...</small>
+          </span>
+        </a>
+
+        <a class="carte-apercu orange" routerLink="/chauffeurs" [class.calme]="k.permisAExpirer === 0">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><circle cx="8.5" cy="11" r="2.2" /><path d="M5.5 16a3 3 0 0 1 6 0M14 10h4.5M14 13.5h3" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Permis a renouveler</span>
+            <strong>{{ k.permisAExpirer }}</strong>
+            <small>permis de conduire des chauffeurs</small>
+          </span>
+        </a>
+      </div>
+      <p class="note">
+        Les echeances de maintenance et les alertes GPS sont suivies dans leurs ecrans respectifs ;
+        l'ecran Direction en donne la liste consolidee.
       </p>
-    </figure>
+    </div>
 
-    <!-- Repartition des depenses par categorie : barres classees, chaque categorie etiquetee. -->
-    <figure class="carte graphique">
+    <!-- Repartition des depenses en anneau, total au centre. -->
+    <figure class="carte panneau">
       <figcaption>
-        <h2>Depenses par categorie</h2>
-        <p class="sous-titre">
-          {{ libellePeriode() }} — {{ totalDepensesCategories() | number }} FCFA
-        </p>
+        <h2>Repartition des depenses</h2>
+        <p class="sous-titre">{{ libellePeriode() }}</p>
       </figcaption>
-
-      <ul class="barres-categories">
-        @for (ligne of depensesParCategorie(); track ligne.categorie; let i = $index) {
+      <div class="donut">
+        <svg viewBox="0 0 160 160" role="img" aria-label="Repartition des depenses par categorie">
+          <circle cx="80" cy="80" r="60" fill="none" stroke="#eef2f0" stroke-width="22" />
+          @for (arc of arcsDonut(); track arc.libelle) {
+            <circle cx="80" cy="80" r="60" fill="none" [attr.stroke]="arc.couleur" stroke-width="22"
+                    [attr.stroke-dasharray]="arc.longueur + ' ' + circonference"
+                    [attr.stroke-dashoffset]="arc.decalage" transform="rotate(-90 80 80)">
+              <title>{{ arc.libelle }} : {{ arc.total | number }} FCFA ({{ arc.pourcent }} %)</title>
+            </circle>
+          }
+        </svg>
+        <div class="centre-donut">
+          <strong>{{ abrege(totalDepensesCategories()) }}</strong>
+          <small>FCFA</small>
+        </div>
+      </div>
+      <ul class="legende-donut">
+        @for (arc of arcsDonut(); track arc.libelle) {
           <li>
-            <span class="nom-categorie">
-              <span class="puce" [style.background]="couleurCategorie(i)"></span>
-              {{ ligne.libelle }}
-            </span>
-            <span class="piste">
-              <span class="remplissage" [style.width.%]="partCategorie(ligne)"
-                    [style.background]="couleurCategorie(i)"></span>
-            </span>
-            <span class="valeur-categorie">
-              {{ ligne.total | number }}
-              <small>{{ partCategorie(ligne) }} %</small>
-            </span>
+            <span class="puce" [style.background]="arc.couleur"></span>
+            <span class="nom">{{ arc.libelle }}</span>
+            <strong>{{ arc.pourcent }} %</strong>
           </li>
         } @empty {
-          <li><p class="message vide">Aucune depense sur cette periode.</p></li>
+          <li class="message vide">Aucune depense sur cette periode.</li>
         }
       </ul>
-      <p class="note-graphique">
-        Les depenses refacturees au client sont exclues.
-      </p>
     </figure>
   </section>
-  <section class="deux-colonnes">
-    <!-- Ce que chaque camion rapporte et ce qu'il coute : la question du chapitre 2. -->
-    <figure class="carte graphique">
+
+  <!-- Dernieres missions a gauche, evolution mensuelle a droite, plus large. -->
+  <section class="rangee etroit-large">
+    <!-- Dernieres missions, presentees comme des billets. -->
+    <div class="carte panneau">
+      <div class="entete-panneau">
+        <div>
+          <h2>Dernieres missions</h2>
+          <p class="sous-titre">Apercu des missions les plus recentes</p>
+        </div>
+        <a class="lien-tout" routerLink="/missions">Tout voir</a>
+      </div>
+      <div class="table-billets">
+        <div class="ligne-entete">
+          <span>Chauffeur</span><span>Client</span><span>Km</span><span>Recette</span>
+        </div>
+        @for (m of dernieresMissions(); track m.id) {
+          <a class="billet" [routerLink]="['/missions', m.id]">
+            <span class="personne">
+              <span class="avatar">{{ initiales(m.chauffeurNom) }}</span>
+              <span>
+                <strong>{{ m.chauffeurNom || 'Sans chauffeur' }}</strong>
+                <small>{{ m.camionImmatriculation }} · {{ m.statutLibelle }}</small>
+              </span>
+            </span>
+            <span class="client">
+              {{ m.clientNom || '—' }}
+              <small>{{ m.destination || m.typeLibelle }}</small>
+            </span>
+            <span><span class="pastille-km">{{ m.distance ?? '—' }}</span></span>
+            <span class="montant">{{ (m.recetteReelle ?? m.recettePrevue ?? 0) | number }}</span>
+          </a>
+        } @empty {
+          <p class="message vide">Aucune mission enregistree.</p>
+        }
+      </div>
+    </div>
+
+    <!-- Courbes mensuelles : recettes, depenses et resultat sur un seul axe. -->
+    <figure class="carte panneau">
       <figcaption>
-        <h2>Recettes et depenses par camion</h2>
+        <h2>Evolution</h2>
+        <p class="sous-titre">{{ moisEvolution() }} derniers mois, en FCFA</p>
+      </figcaption>
+      @if (courbes(); as c) {
+        <svg class="courbes" [attr.viewBox]="'0 0 ' + largeurCourbes + ' ' + hauteurCourbes"
+             role="img" aria-label="Evolution mensuelle des recettes, depenses et resultat">
+          @for (g of c.graduations; track $index) {
+            <line [attr.x1]="44" [attr.x2]="largeurCourbes - 16" [attr.y1]="g.y" [attr.y2]="g.y"
+                  class="grille" />
+            <text [attr.x]="38" [attr.y]="g.y + 4" class="graduation">{{ abrege(g.valeur) }}</text>
+          }
+          <line [attr.x1]="44" [attr.x2]="largeurCourbes - 16" [attr.y1]="c.zero" [attr.y2]="c.zero"
+                class="ligne-zero" />
+          @for (s of c.series; track s.libelle) {
+            <polyline [attr.points]="points(s)" fill="none" [attr.stroke]="s.couleur"
+                      stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+            @for (p of s.points; track $index) {
+              <circle [attr.cx]="p.x" [attr.cy]="p.y" r="4" fill="#fff" [attr.stroke]="s.couleur"
+                      stroke-width="2">
+                <title>{{ s.libelle }} {{ p.mois }} : {{ p.valeur | number }} FCFA</title>
+              </circle>
+            }
+          }
+          @for (m of c.mois; track $index) {
+            <text [attr.x]="m.x" [attr.y]="hauteurCourbes - 4" class="etiquette-mois">{{ m.libelle }}</text>
+          }
+        </svg>
+        <ul class="legende-graphique">
+          @for (s of c.series; track s.libelle) {
+            <li><span class="puce" [style.background]="s.couleur"></span> {{ s.libelle }}</li>
+          }
+        </ul>
+      }
+    </figure>
+  </section>
+
+  <!-- Par camion et par mois : recettes et depenses par camion, barres mensuelles, kilometrage. -->
+  <section class="rangee trois">
+    <!-- Ce que chaque camion rapporte et ce qu'il coute : la question du chapitre 2. -->
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>Recettes et depenses par vehicule</h2>
         <p class="sous-titre">{{ libellePeriode() }}, en FCFA</p>
       </figcaption>
 
@@ -195,15 +387,43 @@
           <p class="message vide">Aucun mouvement enregistre sur cette periode.</p>
         }
       </div>
-      <p class="note-graphique">
-        Les deux series partagent la meme echelle. Le chiffre sous chaque camion est son resultat.
-      </p>
     </figure>
 
-    <!-- Kilometres parcourus sur le mois, camion par camion. -->
-    <figure class="carte graphique">
+    <!-- Barres empilees : la depense en socle, la marge degagee au-dessus. -->
+    <figure class="carte panneau">
       <figcaption>
-        <h2>Kilometrage par camion</h2>
+        <h2>Statistiques</h2>
+        <p class="sous-titre">Depenses et marge par mois, en FCFA</p>
+      </figcaption>
+      <div class="graphe-empile">
+        <div class="axe-y">
+          @for (g of graduationsBarres(); track $index) {
+            <span>{{ abrege(g) }}</span>
+          }
+        </div>
+        <div class="zone-barres">
+          @for (b of barresEmpilees(); track b.point.mois) {
+            <div class="colonne" [attr.title]="b.point.moisLibelle + ' — recettes ' + b.point.recettes
+                + ', depenses ' + b.point.depenses + ', resultat ' + b.point.resultat">
+              <span class="pile">
+                <span class="marge" [style.height.%]="b.marge"></span>
+                <span class="socle" [style.height.%]="b.socle"></span>
+              </span>
+              <span class="mois-court">{{ b.point.moisLibelle }}</span>
+            </div>
+          }
+        </div>
+      </div>
+      <ul class="legende-graphique">
+        <li><span class="puce" style="background: #1d2b26"></span> Depenses</li>
+        <li><span class="puce" style="background: #22c3a6"></span> Marge</li>
+      </ul>
+    </figure>
+
+    <!-- Kilometres parcourus, camion par camion. -->
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>Kilometrage par vehicule</h2>
         <p class="sous-titre">
           {{ libellePeriode() }} — {{ totalKilometres() | number }} km au total
         </p>
@@ -225,33 +445,6 @@
           <p class="message vide">Aucun kilometre enregistre sur cette periode.</p>
         }
       </div>
-      <p class="note-graphique">
-        Distance calculee sur les releves du compteur : missions, pleins et entretiens.
-      </p>
     </figure>
-  </section>
-
-  <section>
-    <div class="carte">
-      <h2>Alertes documentaires</h2>
-      <ul class="liste-alertes">
-        <li>
-          <span class="pastille danger"></span>
-          <a routerLink="/documents">{{ k.documentsExpires }} document(s) expire(s)</a>
-        </li>
-        <li>
-          <span class="pastille attention"></span>
-          <a routerLink="/documents">{{ k.documentsAExpirer }} document(s) a renouveler sous 30 jours</a>
-        </li>
-        <li>
-          <span class="pastille attention"></span>
-          <a routerLink="/chauffeurs">{{ k.permisAExpirer }} permis de conduire a renouveler</a>
-        </li>
-      </ul>
-      <p class="note">
-        Les echeances de maintenance et les alertes GPS sont suivies dans leurs ecrans respectifs ;
-        l'ecran Direction en donne la liste consolidee.
-      </p>
-    </div>
   </section>
 }

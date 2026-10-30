@@ -1,20 +1,20 @@
 <div class="entete-page">
   <div>
-    <h1>Pilotage de la direction</h1>
-    <p class="sous-titre">
-      Chapitres 34 a 41 — indicateurs, fiche synthetique, rapports et notifications
-    </p>
+    <h1>Pilotage</h1>
+    <p class="sous-titre">Ce que la periode dit du parc, et ce qui reste a decider</p>
   </div>
-  <div style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap">
-    <div class="champ">
-      <label for="debut">Du</label>
-      <input id="debut" type="date" [(ngModel)]="debut" (change)="charger()" />
+  <div class="filtres-periode">
+    <div class="raccourcis" role="group" aria-label="Periode">
+      <button type="button" [class.actif]="estPeriode('mois')" (click)="choisirPeriode('mois')">Ce mois</button>
+      <button type="button" [class.actif]="estPeriode('trimestre')" (click)="choisirPeriode('trimestre')">Trimestre</button>
+      <button type="button" [class.actif]="estPeriode('annee')" (click)="choisirPeriode('annee')">Annee</button>
     </div>
-    <div class="champ">
-      <label for="fin">Au</label>
-      <input id="fin" type="date" [(ngModel)]="fin" (change)="charger()" />
+    <div class="dates">
+      <input type="date" [(ngModel)]="debut" (change)="charger()" aria-label="Debut de la periode" />
+      <span aria-hidden="true">→</span>
+      <input type="date" [(ngModel)]="fin" (change)="charger()" aria-label="Fin de la periode" />
     </div>
-    <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
+    <button class="bouton secondaire" type="button" (click)="charger()" title="Actualiser">↻</button>
   </div>
 </div>
 
@@ -28,213 +28,343 @@
 @if (chargement()) {
   <div class="message vide">Calcul des indicateurs...</div>
 } @else if (kpi(); as k) {
-  <h2 class="titre-section-kpi">Parc</h2>
-  <section class="grille-indicateurs">
-    <a class="carte indicateur" routerLink="/camions">
-      <span class="libelle">Camions</span>
-      <strong class="valeur">{{ k.nombreCamions }}</strong>
-      <span class="detail">{{ k.camionsActifs }} exploitables</span>
-    </a>
-    <div class="carte indicateur succes">
-      <span class="libelle">Taux de disponibilite</span>
-      <strong class="valeur">{{ k.tauxDisponibilitePourcent | number }} %</strong>
-      <span class="detail">part du parc prete a partir</span>
+  <!-- Le verdict de la periode : un seul chiffre, et ce qu'il faut en penser. -->
+  <section class="bandeau-verdict" [class.negatif]="k.resultat < 0">
+    <div class="verdict-texte">
+      <p class="periode">Du {{ debut | date: 'd MMMM' }} au {{ fin | date: 'd MMMM y' }}</p>
+      <span class="libelle">Resultat de la periode</span>
+      <strong class="valeur">{{ grosMontant(k.resultat) }}<small>FCFA</small></strong>
+      <div class="mentions">
+        @if (evolutionResultat() !== null) {
+          <span class="mention" [class.hausse]="evolutionResultat()! >= 0" [class.baisse]="evolutionResultat()! < 0">
+            {{ evolutionResultat()! >= 0 ? '▲' : '▼' }} {{ evolutionResultat() | number: '1.0-0' }} %
+            <em>vs periode precedente</em>
+          </span>
+        }
+        @if (evolutionMarge() !== null) {
+          <span class="mention" [class.hausse]="evolutionMarge()! >= 0" [class.baisse]="evolutionMarge()! < 0">
+            {{ evolutionMarge()! >= 0 ? '▲' : '▼' }} {{ evolutionMarge() | number: '1.0-1' }} pts
+            <em>de marge</em>
+          </span>
+        }
+      </div>
+      <p class="verdict">{{ verdict() }}</p>
     </div>
-    <a class="carte indicateur info" routerLink="/vue-parc">
-      <span class="libelle">Taux d'utilisation</span>
-      <strong class="valeur">{{ k.tauxUtilisationPourcent | number }} %</strong>
-      <span class="detail">jours exploites sur la periode</span>
+
+    <!-- Anneau de marge : la part du chiffre d'affaires qui reste une fois les charges payees. -->
+    <div class="anneau-marge" [attr.title]="'Marge ' + (k.margePourcent | number: '1.0-1') + ' %'">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <circle cx="60" cy="60" r="50" class="piste" />
+        @if (k.margePourcent > 0) {
+          <circle cx="60" cy="60" r="50" class="arc" [attr.stroke-dasharray]="arcMarge(k.margePourcent)" />
+        }
+      </svg>
+      <div class="centre">
+        <strong>{{ k.margePourcent | number: '1.0-0' }}<small>%</small></strong>
+        <span>de marge</span>
+      </div>
+    </div>
+
+    <div class="rappels">
+      <div>
+        <span>Chiffre d'affaires</span>
+        <strong>{{ k.chiffreAffaires | number }}</strong>
+      </div>
+      <div>
+        <span>Depenses</span>
+        <strong>{{ k.depenses | number }}</strong>
+      </div>
+      <div>
+        <span>Missions</span>
+        <strong>{{ k.nombreMissions }}</strong>
+      </div>
+      <div>
+        <span>Kilometres</span>
+        <strong>{{ k.kilometresParcourus | number }}</strong>
+      </div>
+    </div>
+  </section>
+
+  <!-- Les indicateurs d'exploitation, chacun avec son icone et sa jauge. -->
+  <section class="cartes-apercu indicateurs-pilotage">
+    <a class="carte-apercu vert" routerLink="/vue-parc">
+      <span class="icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" /><path d="M9.5 16.5v-9h3.2a2.7 2.7 0 0 1 0 5.4H9.5" /></svg>
+      </span>
+      <span class="textes">
+        <span class="libelle">Disponibilite du parc</span>
+        <strong>{{ k.tauxDisponibilitePourcent | number: '1.0-0' }}<em>%</em></strong>
+        <small>{{ k.camionsActifs }}/{{ k.nombreCamions }} vehicules · {{ k.joursImmobilisation }} j d'immobilisation</small>
+      </span>
+      <span class="jauge"><i [style.width.%]="borne(k.tauxDisponibilitePourcent)"></i></span>
     </a>
-    <a class="carte indicateur alerte" routerLink="/maintenance">
-      <span class="libelle">Jours d'immobilisation</span>
-      <strong class="valeur">{{ k.joursImmobilisation }}</strong>
-      <span class="detail">interventions realisees</span>
+
+    <a class="carte-apercu orange" routerLink="/missions">
+      <span class="icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" /><path d="M12 13l4-3M12 5V3M9 3h6" /></svg>
+      </span>
+      <span class="textes">
+        <span class="libelle">Taux d'utilisation</span>
+        <strong>{{ k.tauxUtilisationPourcent | number: '1.0-0' }}<em>%</em></strong>
+        <small>part du temps ou les vehicules roulent</small>
+      </span>
+      <span class="jauge"><i [style.width.%]="borne(k.tauxUtilisationPourcent)"></i></span>
+    </a>
+
+    <a class="carte-apercu bleu" routerLink="/rentabilite">
+      <span class="icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></svg>
+      </span>
+      <span class="textes">
+        <span class="libelle">Revenu par kilometre</span>
+        <strong>{{ k.revenuParKm | number: '1.0-0' }}<em>FCFA</em></strong>
+        <small>{{ k.recetteMoyenneParCamion | number: '1.0-0' }} FCFA de recette par vehicule</small>
+      </span>
+    </a>
+
+    <a class="carte-apercu rouge" routerLink="/depenses">
+      <span class="icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M3 7l6 6 4-4 8 8" /><path d="M15 17h6v-6" /></svg>
+      </span>
+      <span class="textes">
+        <span class="libelle">Cout par kilometre</span>
+        <strong>{{ k.coutParKm | number: '1.0-0' }}<em>FCFA</em></strong>
+        <small>
+          maintenance {{ k.coutMaintenance | number: '1.0-0' }} FCFA
+          @if (k.consommationMoyenneL100km) { · {{ k.consommationMoyenneL100km | number: '1.0-1' }} L/100 km }
+        </small>
+      </span>
     </a>
   </section>
 
-  <h2 class="titre-section-kpi">Finances</h2>
-  <section class="grille-indicateurs">
-    <a class="carte indicateur succes" routerLink="/recettes">
-      <span class="libelle">Chiffre d'affaires</span>
-      <strong class="valeur">{{ k.chiffreAffaires | number }}</strong>
-      <span class="detail">{{ k.recetteMoyenneParCamion | number }} par camion</span>
-    </a>
-    <a class="carte indicateur alerte" routerLink="/depenses">
-      <span class="libelle">Depenses</span>
-      <strong class="valeur">{{ k.depenses | number }}</strong>
-      <span class="detail">dont {{ k.coutMaintenance | number }} de maintenance</span>
-    </a>
-    <a class="carte indicateur info" routerLink="/rentabilite">
-      <span class="libelle">Resultat</span>
-      <strong class="valeur" [class]="classeResultat(k.resultat)">{{ k.resultat | number }}</strong>
-      <span class="detail">marge {{ k.margePourcent | number }} %</span>
-    </a>
-    <div class="carte indicateur">
-      <span class="libelle">Cout / revenu au km</span>
-      <strong class="valeur">{{ k.coutParKm | number }}</strong>
-      <span class="detail">revenu {{ k.revenuParKm | number }} FCFA/km</span>
-    </div>
-  </section>
+  <!-- Trois colonnes de lecture : ce qui tient, ce qui derive, et le resultat camion par camion. -->
+  <div class="colonnes-constats">
+    <section class="carte bloc-constats va">
+      <header>
+        <span class="pastille-entete" aria-hidden="true">✓</span>
+        <h2>Ce qui va</h2>
+        <span class="nombre">{{ pointsForts().length }}</span>
+      </header>
+      <ul>
+        @for (constat of pointsForts(); track constat.titre) {
+          <li>
+            @if (constat.lien) {
+              <a [routerLink]="constat.lien">
+                <strong>{{ constat.titre }}</strong>
+                <small>{{ constat.detail }}</small>
+                <span class="fleche" aria-hidden="true">→</span>
+              </a>
+            } @else {
+              <div>
+                <strong>{{ constat.titre }}</strong>
+                <small>{{ constat.detail }}</small>
+              </div>
+            }
+          </li>
+        } @empty {
+          <li class="aucun">Aucun indicateur au-dessus des seuils sur cette periode.</li>
+        }
+      </ul>
+    </section>
 
-  <h2 class="titre-section-kpi">Exploitation</h2>
-  <section class="grille-indicateurs">
-    <a class="carte indicateur" routerLink="/missions">
-      <span class="libelle">Kilometres parcourus</span>
-      <strong class="valeur">{{ k.kilometresParcourus | number }}</strong>
-      <span class="detail">{{ k.nombreMissions }} mission(s) terminee(s)</span>
-    </a>
-    <a class="carte indicateur" routerLink="/carburant">
-      <span class="libelle">Consommation moyenne</span>
-      <strong class="valeur">{{ k.consommationMoyenneL100km | number }}</strong>
-      <span class="detail">litres aux 100 km</span>
-    </a>
-    <a class="carte indicateur alerte" routerLink="/gps">
-      <span class="libelle">Notifications</span>
-      <strong class="valeur">{{ notifications().length }}</strong>
-      <span class="detail">{{ critiques().length }} critique(s)</span>
-    </a>
-  </section>
+    <section class="carte bloc-constats coince">
+      <header>
+        <span class="pastille-entete" aria-hidden="true">!</span>
+        <h2>Ce qui coince</h2>
+        <span class="nombre">{{ pointsFaibles().length }}</span>
+      </header>
+      <ul>
+        @for (constat of pointsFaibles(); track constat.titre) {
+          <li>
+            @if (constat.lien) {
+              <a [routerLink]="constat.lien">
+                <strong>{{ constat.titre }}</strong>
+                <small>{{ constat.detail }}</small>
+                <span class="fleche" aria-hidden="true">→</span>
+              </a>
+            } @else {
+              <div>
+                <strong>{{ constat.titre }}</strong>
+                <small>{{ constat.detail }}</small>
+              </div>
+            }
+          </li>
+        } @empty {
+          <li class="aucun">Rien a signaler : tous les indicateurs sont dans leurs seuils.</li>
+        }
+      </ul>
+    </section>
+
+    <!-- Classement des camions : barres vers la droite pour un gain, vers la gauche pour une perte. -->
+    @if (classementCamions().length) {
+      <section class="carte bloc-classement">
+        <div class="entete-bloc">
+          <div>
+            <h2>Resultat par vehicule</h2>
+            <p class="sous-titre">Du plus rentable au moins rentable</p>
+          </div>
+          <a class="lien-bloc" routerLink="/rentabilite">Detail →</a>
+        </div>
+        <ul class="classement">
+          @for (ligne of classementCamions(); track ligne.camionId) {
+            <li [class.perte]="ligne.resultat < 0">
+              <span class="immat">{{ ligne.immatriculation }}</span>
+              <span class="axe">
+                <span class="cote-perte">
+                  @if (ligne.resultat < 0) {
+                    <i [style.width.%]="largeurResultat(ligne.resultat)"></i>
+                  }
+                </span>
+                <span class="cote-gain">
+                  @if (ligne.resultat > 0) {
+                    <i [style.width.%]="largeurResultat(ligne.resultat)"></i>
+                  }
+                </span>
+              </span>
+              <span class="montant">{{ ligne.resultat | number }}</span>
+              <span class="marge">{{ ligne.margePourcent | number: '1.0-0' }} %</span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  </div>
+
 }
 
-<div class="deux-colonnes" style="margin-top: 1.5rem">
-  <div class="carte">
-    <h2>Notifications</h2>
-    <p class="sous-titre">Chapitre 34 — tout ce qui reclame une action, tous modules confondus</p>
-    <ul class="liste-notifications">
-      @for (notification of notifications(); track $index) {
-        <li>
-          <span [class]="classeNiveau(notification)">{{ notification.categorie }}</span>
-          <a [routerLink]="notification.cible">{{ notification.message }}</a>
-          @if (notification.horodatage) {
-            <small>{{ notification.horodatage | date: 'dd/MM HH:mm' }}</small>
-          }
-        </li>
-      } @empty {
-        <li><div class="message vide">Aucune notification en attente.</div></li>
-      }
-    </ul>
-  </div>
+<!-- Outils de second plan : replies pour ne pas encombrer la lecture. -->
+<details class="carte bloc-repliable">
+  <summary>
+    <span class="icone-outil" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M2 7h11v9H2zM13 10h4.5l3 3.5V16H13" /><circle cx="6" cy="17.5" r="1.8" /><circle cx="16.5" cy="17.5" r="1.8" /></svg>
+    </span>
+    <span class="titres">
+      <strong>Fiche synthetique d'un vehicule</strong>
+      <small>toutes les informations d'un vehicule sur la periode</small>
+    </span>
+  </summary>
 
-  <div class="carte">
-    <h2>Rapports de gestion</h2>
-    <p class="sous-titre">Chapitre 35 — export CSV, ouvrable dans Excel</p>
-    <ul class="liste-rapports">
-      @for (rapport of rapports(); track rapport.valeur) {
-        <li>
-          <span>{{ rapport.libelle }}</span>
-          <button class="bouton secondaire petit" type="button" (click)="exporter(rapport)">
-            Exporter
-          </button>
-        </li>
+  <div class="champ champ-camion">
+    <label for="camionSynthese">Vehicule</label>
+    <select id="camionSynthese" [(ngModel)]="camionSynthese" (change)="afficherSynthese()">
+      <option [ngValue]="undefined">Selectionner un vehicule</option>
+      @for (camion of camions(); track camion.id) {
+        <option [ngValue]="camion.id">
+          {{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }}
+        </option>
       }
-    </ul>
-    <p class="note-phase">
-      Ces exports CSV s'ouvrent directement dans un tableur. Pour un document a diffuser,
-      le menu <a routerLink="/rapports">Rapports</a> edite les memes donnees en PDF.
-    </p>
-  </div>
-</div>
-
-<div class="carte" style="margin-top: 1rem">
-  <div class="entete-page" style="margin-bottom: 0.75rem">
-    <div>
-      <h2>Fiche synthetique d'un camion</h2>
-      <p class="sous-titre">Chapitre 36 — toutes les informations essentielles en un seul endroit</p>
-    </div>
-    <div class="champ" style="min-width: 260px">
-      <label for="camionSynthese">Camion</label>
-      <select id="camionSynthese" [(ngModel)]="camionSynthese" (change)="afficherSynthese()">
-        <option [ngValue]="undefined">Selectionner un camion</option>
-        @for (camion of camions(); track camion.id) {
-          <option [ngValue]="camion.id">
-            {{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }}
-          </option>
-        }
-      </select>
-    </div>
+    </select>
   </div>
 
   @if (fiche(); as f) {
-    <div class="bandeau-synthese">
+    <div class="identite-camion">
       <div>
-        <span class="libelle-resume">Camion</span>
-        <strong class="valeur-resume">{{ f.immatriculation }}</strong>
-        <small>{{ f.marqueModele }} · {{ f.statutLibelle }}</small>
+        <strong>{{ f.immatriculation }}</strong>
+        <small>{{ f.marqueModele || '—' }} · {{ f.statutLibelle }}</small>
       </div>
       <div>
-        <span class="libelle-resume">Chauffeur</span>
-        <strong class="valeur-resume">{{ f.chauffeurNom || '—' }}</strong>
+        <span>Chauffeur</span>
+        <strong>{{ f.chauffeurNom || '—' }}</strong>
         <small>{{ f.clientNom || 'sans client' }}</small>
       </div>
       <div>
-        <span class="libelle-resume">Activite</span>
-        <strong class="valeur-resume">{{ f.activite || '—' }}</strong>
+        <span>Activite</span>
+        <strong>{{ f.activite || '—' }}</strong>
         <small>{{ f.localisation || 'localisation inconnue' }}</small>
       </div>
       <div>
-        <span class="libelle-resume">Kilometrage</span>
-        <strong class="valeur-resume">{{ f.kilometrageActuel | number }} km</strong>
+        <span>Compteur</span>
+        <strong>{{ f.kilometrageActuel | number }} km</strong>
         <small>{{ f.kilometresSurPeriode | number }} km sur la periode</small>
       </div>
     </div>
 
-    <h2 style="margin-top: 1.5rem">Ce mois</h2>
-    <div class="grille-resume">
-      <div>
-        <span class="libelle-resume">Recettes</span>
-        <strong class="valeur-resume">{{ f.recettes | number }}</strong>
-        <small>revenu/km {{ f.revenuParKm ? (f.revenuParKm | number) : '—' }}</small>
+    <div class="cartes-apercu compactes fiche-chiffres">
+      <div class="carte-apercu vert">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Recettes</span>
+          <strong>{{ f.recettes | number }}</strong>
+          <small>revenu/km {{ f.revenuParKm ? (f.revenuParKm | number) : '—' }}</small>
+        </span>
       </div>
-      <div>
-        <span class="libelle-resume">Depenses</span>
-        <strong class="valeur-resume">{{ f.depenses | number }}</strong>
-        <small>cout/km {{ f.coutParKm ? (f.coutParKm | number) : '—' }}</small>
+      <div class="carte-apercu rouge">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7l6 6 4-4 8 8" /><path d="M15 17h6v-6" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Depenses</span>
+          <strong>{{ f.depenses | number }}</strong>
+          <small>cout/km {{ f.coutParKm ? (f.coutParKm | number) : '—' }}</small>
+        </span>
       </div>
-      <div>
-        <span class="libelle-resume">Resultat</span>
-        <strong class="valeur-resume" [class]="classeResultat(f.resultat)">
-          {{ f.resultat | number }}
-        </strong>
-        <small>marge {{ f.margePourcent | number }} %</small>
+      <div class="carte-apercu" [class.bleu]="f.resultat >= 0" [class.rouge]="f.resultat < 0">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.4 0-2.5.8-2.5 2s1.1 1.7 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6.5V8M12 16v1.5" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Resultat</span>
+          <strong>{{ f.resultat | number }}</strong>
+          <small>marge {{ f.margePourcent | number }} %</small>
+        </span>
       </div>
-      <div>
-        <span class="libelle-resume">Carburant</span>
-        <strong class="valeur-resume">
-          {{ f.consommationMoyenneL100km ? (f.consommationMoyenneL100km | number) : '—' }}
-        </strong>
-        <small>litres / 100 km</small>
+      <div class="carte-apercu orange">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 20V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v14M4 20h12M8 8h4M15 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V9l-3-3" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Carburant</span>
+          <strong>{{ f.consommationMoyenneL100km ? (f.consommationMoyenneL100km | number) : '—' }}</strong>
+          <small>litres / 100 km</small>
+        </span>
       </div>
-      @for (ligne of f.depensesParCategorie; track ligne.categorie) {
-        <div>
-          <span class="libelle-resume">{{ ligne.libelle }}</span>
-          <strong class="valeur-resume">{{ ligne.total | number }}</strong>
-          <small>{{ ligne.nombre }} operation(s)</small>
-        </div>
-      }
     </div>
 
-    <h2 style="margin-top: 1.5rem">Points d'attention</h2>
-    <ul class="liste-alertes">
-      <li>
-        <span class="pastille" [class.danger]="f.entretiensEnRetard > 0"
-              [class.attention]="f.entretiensEnRetard === 0"></span>
-        {{ f.entretiensAVenir }} entretien(s) a venir, {{ f.entretiensEnRetard }} en retard
+    @if (f.depensesParCategorie.length) {
+      <h3>Depenses par categorie</h3>
+      <ul class="categories-depenses">
+        @for (ligne of f.depensesParCategorie; track ligne.categorie) {
+          <li>
+            <span>{{ ligne.libelle }}</span>
+            <strong>{{ ligne.total | number }}</strong>
+            <small>{{ ligne.nombre }} operation(s)</small>
+          </li>
+        }
+      </ul>
+    }
+
+    <h3>Points d'attention</h3>
+    <ul class="points-attention">
+      <li [class.alerte]="f.entretiensEnRetard > 0">
+        <strong>{{ f.entretiensAVenir }}</strong> entretien(s) a venir
+        @if (f.entretiensEnRetard) { · <b>{{ f.entretiensEnRetard }} en retard</b> }
       </li>
-      <li>
-        <span class="pastille attention"></span>
-        {{ f.pneusARemplacer }} pneu(s) a remplacer
-      </li>
-      <li>
-        <span class="pastille" [class.danger]="f.incidentsOuverts > 0"
-              [class.attention]="f.incidentsOuverts === 0"></span>
-        {{ f.incidentsOuverts }} incident(s) ouvert(s)
-      </li>
-      <li>
-        <span class="pastille attention"></span>
-        {{ f.documentsAExpirer }} document(s) a renouveler, {{ f.alertesGpsNonTraitees }} alerte(s) GPS
-      </li>
+      <li [class.alerte]="f.pneusARemplacer > 0"><strong>{{ f.pneusARemplacer }}</strong> pneu(s) a remplacer</li>
+      <li [class.alerte]="f.incidentsOuverts > 0"><strong>{{ f.incidentsOuverts }}</strong> incident(s) ouvert(s)</li>
+      <li [class.alerte]="f.documentsAExpirer > 0"><strong>{{ f.documentsAExpirer }}</strong> document(s) a renouveler</li>
+      <li [class.alerte]="f.alertesGpsNonTraitees > 0"><strong>{{ f.alertesGpsNonTraitees }}</strong> alerte(s) GPS</li>
     </ul>
   } @else {
-    <div class="message vide">Selectionnez un camion pour afficher sa fiche synthetique.</div>
+    <div class="message vide">Selectionnez un vehicule pour afficher sa fiche.</div>
   }
-</div>
+</details>
+
+<details class="carte bloc-repliable">
+  <summary>
+    <span class="icone-outil" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14" /></svg>
+    </span>
+    <span class="titres">
+      <strong>Exporter les donnees</strong>
+      <small>fichiers CSV ouvrables dans un tableur, sur la periode choisie</small>
+    </span>
+  </summary>
+
+  <ul class="liste-rapports">
+    @for (rapport of rapports(); track rapport.valeur) {
+      <li>
+        <span class="fichier" aria-hidden="true">CSV</span>
+        <span>{{ rapport.libelle }}</span>
+        <button class="bouton secondaire petit" type="button" (click)="exporter(rapport)">Exporter</button>
+      </li>
+    }
+  </ul>
+  <p class="note-phase">
+    Pour un document a diffuser plutot qu'a retraiter, le menu
+    <a routerLink="/rapports">Rapports</a> edite les memes donnees en PDF.
+  </p>
+</details>

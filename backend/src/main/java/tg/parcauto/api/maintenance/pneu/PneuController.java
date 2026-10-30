@@ -41,7 +41,7 @@ public class PneuController {
     }
 
     @GetMapping("/camions/{camionId}")
-    @Operation(summary = "Pneus d'un camion, par position")
+    @Operation(summary = "Pneus d'un vehicule, par position")
     public List<PneuDto.Reponse> duCamion(@PathVariable Long camionId) {
         return service.duCamion(camionId);
     }
@@ -69,7 +69,7 @@ public class PneuController {
 
     @PatchMapping("/{id}/montage")
     @PreAuthorize(Autorisations.GESTION)
-    @Operation(summary = "Monte le pneu sur un camion, a une position libre")
+    @Operation(summary = "Monte le pneu sur un vehicule, a une position libre")
     public PneuDto.Reponse monter(@PathVariable Long id, @Valid @RequestBody PneuDto.Montage montage) {
         return service.monter(id, montage);
     }

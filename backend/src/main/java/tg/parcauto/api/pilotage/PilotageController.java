@@ -41,7 +41,7 @@ public class PilotageController {
     }
 
     @GetMapping("/camions/{camionId}/synthese")
-    @Operation(summary = "Fiche synthetique d'un camion : chapitre 36")
+    @Operation(summary = "Fiche synthetique d'un vehicule : chapitre 36")
     public FicheSyntheseDto synthese(
             @PathVariable Long camionId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,

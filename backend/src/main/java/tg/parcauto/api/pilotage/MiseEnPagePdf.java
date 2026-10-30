@@ -3,7 +3,6 @@ package tg.parcauto.api.pilotage;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
-import com.lowagie.text.FontFactory;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
@@ -12,6 +11,7 @@ import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfPageEventHelper;
 import com.lowagie.text.pdf.PdfWriter;
+import tg.parcauto.api.common.PolicesPdf;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
@@ -219,8 +219,9 @@ public class MiseEnPagePdf implements AutoCloseable {
         return alignements.charAt(colonne) == 'd' ? Element.ALIGN_RIGHT : Element.ALIGN_LEFT;
     }
 
+    /** Police du projet (Plus Jakarta Sans), commune aux rapports et aux factures. */
     private static Font police(int taille, int style, Color couleur) {
-        return FontFactory.getFont(FontFactory.HELVETICA, taille, style, couleur);
+        return PolicesPdf.police(taille, style, couleur);
     }
 
     private Paragraph filet() {

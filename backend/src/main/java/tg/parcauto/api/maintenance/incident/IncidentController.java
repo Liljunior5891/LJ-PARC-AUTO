@@ -58,7 +58,7 @@ public class IncidentController {
 
     @PatchMapping("/{id}/traitement")
     @PreAuthorize(Autorisations.GESTION)
-    @Operation(summary = "Fait avancer le traitement et libere le camion s'il est resolu")
+    @Operation(summary = "Fait avancer le traitement et libere le vehicule s'il est resolu")
     public IncidentDto.Reponse traiter(@PathVariable Long id,
                                        @Valid @RequestBody IncidentDto.Traitement traitement) {
         return service.traiter(id, traitement);

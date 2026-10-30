@@ -118,6 +118,7 @@ Règles de maintenance :
 | 34 | Notifications consolidées | ✅ |
 | 35 | Rapports exportables | ✅ PDF (9 rapports) + CSV |
 | 36 | Fiche synthétique du camion | ✅ |
+| 39 | Paramétrage de l'entreprise | ✅ |
 | 40 | Rôles et gestion des utilisateurs | ✅ |
 | 32 | Application mobile chauffeur | ❌ non démarrée |
 

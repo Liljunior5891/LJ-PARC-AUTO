@@ -1,88 +1,660 @@
-.titre-section-kpi {
-  margin: 1.5rem 0 0.75rem;
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--couleur-texte-doux);
+/* Pilotage : un verdict, des indicateurs, les constats, puis ce qui reste a decider. */
 
-  &:first-of-type {
-    margin-top: 0;
+/* ------------------------------ Verdict -------------------------------- */
+.bandeau-verdict {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.25rem 2rem;
+  margin-bottom: 1.25rem;
+  padding: 1.5rem 1.75rem 1.25rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(255, 255, 255, 0.16), transparent 55%),
+    linear-gradient(135deg, #2b7de0 0%, #1f5fae 55%, #3b3f9e 100%);
+  box-shadow: 0 14px 30px rgba(31, 95, 174, 0.28);
+  color: #fff;
+
+  &.negatif {
+    background:
+      radial-gradient(120% 90% at 100% 0%, rgba(255, 255, 255, 0.16), transparent 55%),
+      linear-gradient(135deg, #e0603f 0%, #b8332a 60%, #7d1f2a 100%);
+    box-shadow: 0 14px 30px rgba(184, 51, 42, 0.28);
+  }
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+    padding: 1.25rem;
   }
 }
 
-.bandeau-synthese {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  padding: 1rem;
-  border-radius: var(--rayon);
-  background: #f2f7fc;
+.verdict-texte {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 
-  > div {
+  .periode {
+    margin: 0 0 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  .libelle {
+    font-size: 0.95rem;
+    font-weight: 600;
+    opacity: 0.92;
+  }
+
+  .valeur {
+    margin: 0.15rem 0 0.7rem;
+    font-size: clamp(2.4rem, 4.2vw, 3.6rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    word-spacing: 0.1em;
+    white-space: nowrap;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+
+    small {
+      margin-left: 0.45rem;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      opacity: 0.85;
+    }
+  }
+
+  .verdict {
+    margin: 0.9rem 0 0;
+    max-width: 62ch;
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+}
+
+.mentions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.mention {
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 0.8rem;
+  font-weight: 700;
+
+  em {
+    font-style: normal;
+    font-weight: 500;
+    opacity: 0.85;
+  }
+
+  &.hausse {
+    background: rgba(120, 230, 170, 0.25);
+  }
+
+  &.baisse {
+    background: rgba(255, 140, 120, 0.3);
+  }
+}
+
+/* Anneau de marge, a droite du resultat. */
+.anneau-marge {
+  position: relative;
+  align-self: center;
+  width: 150px;
+  height: 150px;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  circle {
+    fill: none;
+    stroke-width: 12;
+  }
+
+  .piste {
+    stroke: rgba(255, 255, 255, 0.18);
+  }
+
+  .arc {
+    stroke: #fff;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.6s ease;
+  }
+
+  .centre {
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
+    align-items: center;
+    justify-content: center;
+
+    strong {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+
+      small {
+        font-size: 1rem;
+      }
+    }
+
+    span {
+      font-size: 0.72rem;
+      opacity: 0.85;
+    }
+  }
+
+  @media (max-width: 760px) {
+    display: none;
+  }
+}
+
+/* Rappels chiffres, en pied de bandeau. */
+.rappels {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+
+  div {
+    display: flex;
+    flex-direction: column;
+  }
+
+  span {
+    font-size: 0.72rem;
+    opacity: 0.8;
+  }
+
+  strong {
+    font-size: 1.15rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------------------------- Indicateurs ------------------------------ */
+.indicateurs-pilotage {
+  margin-bottom: 1.25rem;
+
+  strong em {
+    margin-left: 0.15rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* ------------------------------ Constats ------------------------------- */
+.colonnes-constats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+
+  @media (max-width: 1150px) {
+    grid-template-columns: 1fr 1fr;
+
+    /* Le classement passe dessous, sur toute la largeur. */
+    .bloc-classement {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bloc-constats {
+  --accent: #1f9d6b;
+  --fond: #e9f7f0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border-top: 4px solid var(--accent);
+
+  &.coince {
+    --accent: #d9452b;
+    --fond: #fdecea;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 1rem 1.2rem 0.75rem;
+
+    h2 {
+      flex: 1;
+      margin: 0;
+      font-size: 1.05rem;
+    }
+  }
+
+  .pastille-entete {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 800;
+  }
+
+  .nombre {
+    min-width: 1.8rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: var(--fond);
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  ul {
+    margin: 0;
+    padding: 0 0.6rem 0.75rem;
+    list-style: none;
+  }
+
+  li > a,
+  li > div {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 0.7rem 2.2rem 0.7rem 0.75rem;
+    border-radius: 10px;
+    color: var(--couleur-texte);
+    text-decoration: none;
+  }
+
+  li > a:hover {
+    background: var(--fond);
+
+    .fleche {
+      transform: translateX(3px);
+    }
+  }
+
+  li + li {
+    border-top: 1px dashed var(--couleur-bordure);
+  }
+
+  strong {
+    font-size: 0.92rem;
   }
 
   small {
+    margin-top: 0.15rem;
+    font-size: 0.78rem;
     color: var(--couleur-texte-doux);
-    font-size: 0.75rem;
   }
-}
 
-.liste-notifications {
-  list-style: none;
-  margin: 0.75rem 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  max-height: 42vh;
-  overflow-y: auto;
+  .fleche {
+    position: absolute;
+    top: 50%;
+    right: 0.8rem;
+    margin-top: -0.6rem;
+    color: var(--accent);
+    font-weight: 700;
+    transition: transform 0.15s ease;
+  }
 
-  li {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--couleur-bordure);
+  .aucun {
+    padding: 0.8rem 0.75rem;
     font-size: 0.85rem;
+    color: var(--couleur-texte-doux);
+  }
+}
 
-    &:last-child {
-      border-bottom: none;
+/* ------------------------- Resultat par camion ------------------------- */
+.entete-bloc {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  h2 {
+    margin: 0;
+  }
+
+  .sous-titre {
+    margin: 0.2rem 0 0;
+  }
+}
+
+.lien-bloc {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.bloc-classement {
+  margin: 0;
+  border-top: 4px solid var(--couleur-primaire);
+}
+
+/* Axe central : la perte s'etend vers la gauche, le gain vers la droite. */
+.classement {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* Tout le parc y figure : la liste defile en interne. */
+  max-height: 360px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  li {
+    display: grid;
+    grid-template-columns: 86px 1fr 84px 40px;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0;
+
+    & + li {
+      border-top: 1px solid #f0f2f4;
+    }
+  }
+
+  .immat {
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .axe {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 14px;
+  }
+
+  .cote-perte {
+    display: flex;
+    justify-content: flex-end;
+    border-right: 2px solid #c9d1d9;
+
+    i {
+      height: 100%;
+      border-radius: 6px 0 0 6px;
+      background: linear-gradient(270deg, #e0603f, #f39a83);
+    }
+  }
+
+  .cote-gain i {
+    display: block;
+    height: 100%;
+    border-radius: 0 6px 6px 0;
+    background: linear-gradient(90deg, #1f9d6b, #4cc896);
+  }
+
+  .montant {
+    font-size: 0.82rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: #1a7f57;
+  }
+
+  .marge {
+    font-size: 0.72rem;
+    text-align: right;
+    color: var(--couleur-texte-doux);
+  }
+
+  .perte .montant {
+    color: #c63d22;
+  }
+
+  @media (max-width: 600px) {
+    li {
+      grid-template-columns: 90px 1fr 90px;
     }
 
-    a {
-      flex: 1;
-      min-width: 0;
-    }
-
-    small {
-      color: var(--couleur-texte-doux);
-      font-size: 0.72rem;
-      white-space: nowrap;
+    .marge {
+      display: none;
     }
   }
 }
 
-.liste-rapports {
-  list-style: none;
-  margin: 0.75rem 0 0;
+/* ------------------------- Outils repliables --------------------------- */
+.bloc-repliable {
+  margin-bottom: 1rem;
   padding: 0;
+
+  summary {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 1rem 1.2rem;
+    list-style: none;
+    cursor: pointer;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    /* Chevron qui pivote a l'ouverture. */
+    &::after {
+      content: '';
+      width: 9px;
+      height: 9px;
+      margin-left: auto;
+      border-right: 2px solid var(--couleur-texte-doux);
+      border-bottom: 2px solid var(--couleur-texte-doux);
+      transform: rotate(45deg);
+      transition: transform 0.2s ease;
+    }
+  }
+
+  &[open] summary {
+    border-bottom: 1px solid var(--couleur-bordure);
+
+    &::after {
+      transform: rotate(-135deg);
+    }
+  }
+
+  > :not(summary) {
+    margin-left: 1.2rem;
+    margin-right: 1.2rem;
+  }
+
+  > :last-child {
+    margin-bottom: 1.2rem;
+  }
+
+  h3 {
+    margin: 1.25rem 1.2rem 0.6rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--couleur-primaire);
+  }
+}
+
+.icone-outil {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #eaf2fe;
+
+  svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: var(--couleur-primaire);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+.titres {
   display: flex;
   flex-direction: column;
+
+  strong {
+    font-size: 0.98rem;
+  }
+
+  small {
+    font-size: 0.78rem;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.champ-camion {
+  max-width: 420px;
+  margin-top: 1rem;
+}
+
+/* Identite du camion choisi, en bandeau. */
+.identite-camion {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: #f5f8fc;
+
+  div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  div:first-child strong {
+    font-size: 1.25rem;
+  }
+
+  span {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--couleur-texte-doux);
+  }
+
+  small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  @media (max-width: 760px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.fiche-chiffres {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 1rem;
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.categories-depenses {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 0.6rem;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 10px;
+  }
+
+  span {
+    font-size: 0.75rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  small {
+    font-size: 0.7rem;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.points-attention {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    background: #eef7f2;
+    color: #1a7f57;
+    font-size: 0.82rem;
+
+    &.alerte {
+      background: #fdecea;
+      color: #c63d22;
+    }
+  }
+}
+
+/* Exports CSV. */
+.liste-rapports {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding: 0;
+  list-style: none;
 
   li {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.45rem 0;
-    border-bottom: 1px solid var(--couleur-bordure);
+    gap: 0.7rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 10px;
 
-    &:last-child {
-      border-bottom: none;
+    > span:nth-child(2) {
+      flex: 1;
+      font-size: 0.86rem;
     }
+  }
+
+  .fichier {
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    background: #e3f6ed;
+    color: #1a7f57;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
   }
 }

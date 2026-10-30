@@ -3,23 +3,28 @@
     <h1>{{ titre }}</h1>
     <p class="sous-titre">Chapitre 6 du cahier des charges — identification et etat du vehicule</p>
   </div>
-  <a class="bouton secondaire" routerLink="/camions">Retour a la liste</a>
+  <a class="bouton secondaire" routerLink="/vue-parc">Retour au parc</a>
 </div>
 
 @if (id() !== null) {
-  <div class="onglets">
-    <button type="button" [class.actif]="volet() === 'fiche'" (click)="ouvrirVolet('fiche')">
-      Fiche du vehicule
-    </button>
-    <button type="button" [class.actif]="volet() === 'recettes'" (click)="ouvrirVolet('recettes')">
-      RECETTES
-    </button>
-    <button type="button" [class.actif]="volet() === 'depenses'" (click)="ouvrirVolet('depenses')">
-      DEPENSES
-    </button>
-    <button type="button" [class.actif]="volet() === 'odometre'" (click)="ouvrirVolet('odometre')">
-      ODOMETRE
-    </button>
+  <!-- Volets de la fiche : onglets inclines, comme le menu principal ; le volet ouvert passe devant. -->
+  <div class="onglets-inclines" role="tablist">
+    @for (v of volets; track v.id; let i = $index) {
+      <button
+        type="button"
+        role="tab"
+        [class.actif]="volet() === v.id"
+        [style.z-index]="volet() === v.id ? volets.length + 1 : volets.length - i"
+        [attr.aria-selected]="volet() === v.id"
+        (click)="ouvrirVolet(v.id)"
+      >
+        <span class="icone" aria-hidden="true">{{ v.icone }}</span>
+        <span>{{ v.libelle }}</span>
+        @if (compte(v.id); as n) {
+          <span class="compteur">{{ n }}</span>
+        }
+      </button>
+    }
   </div>
 }
 
@@ -27,41 +32,69 @@
   <div class="carte">
     <div class="entete-page" style="margin-bottom: 0.75rem">
       <div>
-        <h2>Contrats de ce camion</h2>
+        <h2>Recettes de ce vehicule</h2>
         <p class="sous-titre">
-          {{ contrats().length }} contrat(s) — {{ totalContrats() | number }} FCFA au total
+          {{ recettes().length }} recette(s) — {{ totalRecettes() | number }} FCFA au total
         </p>
       </div>
-      <a class="bouton" [routerLink]="['/locations/nouveau']" [queryParams]="{ camionId: id() }">
-        + Nouveau contrat
-      </a>
+      <button class="bouton" type="button" (click)="saisieRecette.set(true)">
+        + Nouvelle recette
+      </button>
     </div>
+
+    <!-- Le camion est deja connu : le formulaire ne le redemande pas. -->
+    @if (saisieRecette()) {
+      <app-modale titre="Nouvelle recette" [erreur]="erreur()" (ferme)="saisieRecette.set(false)">
+        <app-formulaire-recette
+          [camionImpose]="id()"
+          (enregistree)="recetteEnregistree()"
+          (annulee)="saisieRecette.set(false)"
+        />
+      </app-modale>
+    }
+
     <div class="tableau-conteneur">
       <table class="tableau">
         <thead>
           <tr>
-            <th>Contrat</th>
+            <th>Numero</th>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Libelle</th>
             <th>Client</th>
-            <th>Modele</th>
-            <th>Periode</th>
+            <th>Rattachement</th>
             <th class="numerique">Montant</th>
-            <th>Statut</th>
           </tr>
         </thead>
         <tbody>
-          @for (contrat of contrats(); track contrat.id) {
+          @for (recette of recettes(); track recette.id) {
             <tr>
-              <td><a [routerLink]="['/locations', contrat.id]">{{ contrat.numero }}</a></td>
-              <td><strong>{{ contrat.clientNom }}</strong></td>
-              <td>{{ contrat.typeLibelle }}</td>
-              <td>{{ contrat.dateDebut }} → {{ contrat.dateFinReelle || contrat.dateFin || '—' }}</td>
-              <td class="numerique"><strong>{{ contrat.montant | number }}</strong></td>
-              <td><span class="etiquette">{{ contrat.statutLibelle }}</span></td>
+              <td>{{ recette.numero }}</td>
+              <td>{{ recette.dateRecette }}</td>
+              <td><span class="etiquette">{{ recette.typeLibelle }}</span></td>
+              <td>{{ recette.libelle }}</td>
+              <td>{{ recette.clientNom || '—' }}</td>
+              <td>
+                @if (recette.locationNumero) {
+                  <a [routerLink]="['/locations', recette.locationId]">
+                    {{ recette.locationNumero }}
+                  </a>
+                } @else if (recette.missionNumero) {
+                  <a [routerLink]="['/missions', recette.missionId]">
+                    {{ recette.missionNumero }}
+                  </a>
+                } @else if (recette.factureNumero) {
+                  {{ recette.factureNumero }}
+                } @else {
+                  —
+                }
+              </td>
+              <td class="numerique"><strong>{{ recette.montant | number }}</strong></td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="6">
-                <div class="message vide">Aucun contrat pour ce camion.</div>
+              <td colspan="7">
+                <div class="message vide">Aucune recette pour ce vehicule.</div>
               </td>
             </tr>
           }
@@ -75,15 +108,26 @@
   <div class="carte">
     <div class="entete-page" style="margin-bottom: 0.75rem">
       <div>
-        <h2>Depenses de ce camion</h2>
+        <h2>Depenses de ce vehicule</h2>
         <p class="sous-titre">
           {{ depenses().length }} depense(s) — {{ totalDepenses() | number }} FCFA au total
         </p>
       </div>
-      <a class="bouton" routerLink="/depenses" [queryParams]="{ camionId: id(), nouvelle: true }">
+      <button class="bouton" type="button" (click)="saisieDepense.set(true)">
         + Nouvelle depense
-      </a>
+      </button>
     </div>
+
+    <!-- Le camion et son chauffeur sont deja connus : le formulaire ne les redemande pas. -->
+    @if (saisieDepense()) {
+      <app-modale titre="Nouvelle depense" largeur="1060px" [erreur]="erreur()" (ferme)="saisieDepense.set(false)">
+        <app-formulaire-depense
+          [camionImpose]="id()"
+          (enregistree)="depenseEnregistree()"
+          (annulee)="saisieDepense.set(false)"
+        />
+      </app-modale>
+    }
     <div class="tableau-conteneur">
       <table class="tableau">
         <thead>
@@ -116,7 +160,7 @@
           } @empty {
             <tr>
               <td colspan="7">
-                <div class="message vide">Aucune depense pour ce camion.</div>
+                <div class="message vide">Aucune depense pour ce vehicule.</div>
               </td>
             </tr>
           }
@@ -131,6 +175,11 @@
 }
 @if (succes()) {
   <div class="message succes">{{ succes() }}</div>
+}
+
+<!-- Localisation du camion : position GPS et trajet de la journee choisie. -->
+@if (volet() === 'carte' && id(); as camionId) {
+  <app-carte-camion [camionId]="camionId" />
 }
 
 @if (volet() === 'odometre') {
@@ -223,10 +272,10 @@
   <h2>Identification</h2>
   <div class="grille-formulaire">
     <div class="champ">
-      <label for="immatriculation">Immatriculation *</label>
+      <label for="immatriculation">Immatriculation <span class="requis">*</span></label>
       <input id="immatriculation" formControlName="immatriculation" placeholder="TG-1234-AB" />
       <span class="erreur-champ" style="color: var(--couleur-texte-doux)">
-        C'est la plaque qui identifie le camion
+        C'est la plaque qui identifie le vehicule
       </span>
       @if (formulaire.controls.immatriculation.touched && formulaire.controls.immatriculation.invalid) {
         <span class="erreur-champ">Immatriculation requise</span>
@@ -354,7 +403,7 @@
     <button class="bouton" type="submit" [disabled]="enregistrement()">
       {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
     </button>
-    <a class="bouton secondaire" routerLink="/camions">Annuler</a>
+    <a class="bouton secondaire" routerLink="/vue-parc">Annuler</a>
   </div>
 </form>
 }

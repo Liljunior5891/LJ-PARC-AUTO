@@ -1,0 +1,283 @@
+<form class="formulaire-recette" [formGroup]="formulaire" (ngSubmit)="enregistrer()">
+  @if (erreur()) {
+    <div class="message erreur">{{ erreur() }}</div>
+  }
+
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="camionId">Vehicule <span class="requis">*</span></label>
+      @if (camionImpose() !== null) {
+        <!-- Le vehicule vient de la fiche ouverte : il n'y a rien a choisir. -->
+        <input id="camionId" type="text" readonly [value]="camionLibelle()" />
+      } @else {
+        <app-select-recherche formControlName="camionId" [options]="optionsCamion()"
+                              placeholder="Selectionner un vehicule" />
+      }
+    </div>
+
+    <!-- Le chauffeur n'est pas saisi : il decoule de l'affectation du vehicule. -->
+    <div class="champ">
+      <label for="chauffeur">Chauffeur</label>
+      <input id="chauffeur" type="text" readonly
+             [value]="chauffeur() ?? 'Aucun chauffeur affecte'"
+             [class.vide]="!chauffeur()" />
+      <small>Renseigne d'apres l'affectation en cours du vehicule.</small>
+    </div>
+
+    <div class="champ">
+      <label for="type">Type de recette <span class="requis">*</span></label>
+      <select id="type" formControlName="type">
+        @for (t of types; track t.valeur) {
+          <option [value]="t.valeur">{{ t.libelle }}</option>
+        }
+      </select>
+      @if (profil(); as p) {
+        <small>{{ p.aide }}</small>
+      } @else {
+        <small>Mise a disposition du vehicule : le contrat est cree avec la recette.</small>
+      }
+    </div>
+
+    <div class="champ champ-double">
+      <label for="clientId">
+        Client @if (estLocation() || profil()?.clientRequis) { <span class="requis">*</span> }
+      </label>
+      <!-- La liste et, a cote, de quoi creer le client s'il n'existe pas encore. -->
+      <div class="liste-et-creation">
+        <app-select-recherche formControlName="clientId" [options]="optionsClient()"
+                              placeholder="Aucun client" />
+        <button class="bouton" type="button" [class.secondaire]="creationClient()" [class.actif]="creationClient()"
+                [attr.aria-expanded]="creationClient()" (click)="basculerCreationClient()">
+          {{ creationClient() ? 'Annuler' : '+ Nouveau client' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Creation d'un client sans quitter la saisie de la recette. -->
+  @if (creationClient()) {
+    <fieldset class="bloc-location">
+      <legend>Nouveau client</legend>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="nouveauClientNom">Raison sociale <span class="requis">*</span></label>
+          <input id="nouveauClientNom" type="text" [(ngModel)]="nouveauClientNom"
+                 [ngModelOptions]="{ standalone: true }" placeholder="Nom du client" />
+        </div>
+        <div class="champ">
+          <label for="nouveauClientTelephone">Telephone</label>
+          <input id="nouveauClientTelephone" type="tel" [(ngModel)]="nouveauClientTelephone"
+                 [ngModelOptions]="{ standalone: true }" />
+        </div>
+        <div class="champ">
+          <label for="nouveauClientType">Type</label>
+          <select id="nouveauClientType" [(ngModel)]="nouveauClientType"
+                  [ngModelOptions]="{ standalone: true }">
+            @for (t of typesClient; track t.valeur) {
+              <option [value]="t.valeur">{{ t.libelle }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton petit" type="button"
+                [disabled]="creationEnCours() || !nouveauClientNom.trim()"
+                (click)="creerClient()">
+          {{ creationEnCours() ? 'Creation...' : 'Creer et selectionner' }}
+        </button>
+      </div>
+      <p class="aide">
+        Seule la raison sociale est exigee. La fiche complete se renseigne plus tard
+        depuis l'ecran Clients.
+      </p>
+    </fieldset>
+  }
+
+  <!-- Conditions de la location : elles n'apparaissent que pour ce type. -->
+  @if (estLocation()) {
+    <fieldset class="bloc-location">
+      <legend>Conditions de la location</legend>
+
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="typeLocation">Mode de facturation</label>
+          <select id="typeLocation" formControlName="typeLocation">
+            @for (t of typesLocation; track t.valeur) {
+              <option [value]="t.valeur">{{ t.libelle }}</option>
+            }
+          </select>
+        </div>
+
+        @if (demandePeriode()) {
+          <div class="champ">
+            <label for="dateDebut">Debut du contrat <span class="requis">*</span></label>
+            <input id="dateDebut" type="date" formControlName="dateDebut" />
+          </div>
+          <div class="champ">
+            <label for="dateFin">Fin du contrat <span class="requis">*</span></label>
+            <input id="dateFin" type="date" formControlName="dateFin" />
+          </div>
+        }
+
+        @if (demandeKilometrage()) {
+          <div class="champ">
+            <label for="kilometrage">Kilometres parcourus <span class="requis">*</span></label>
+            <input id="kilometrage" type="number" min="0" step="1" formControlName="kilometrage" />
+          </div>
+          <div class="champ">
+            <label for="dateDebut">Date de la location</label>
+            <input id="dateDebut" type="date" formControlName="dateDebut" />
+          </div>
+        }
+
+        <div class="champ">
+          <label for="tarif">Tarif <span class="requis">*</span></label>
+          <input id="tarif" type="number" min="0" step="1" formControlName="tarif" />
+          <small>{{ uniteTarif() }}</small>
+        </div>
+
+        <div class="champ">
+          <label for="lieuDepart">Lieu de depart</label>
+          <input id="lieuDepart" type="text" formControlName="lieuDepart" />
+        </div>
+
+        <div class="champ">
+          <label for="destination">Destination</label>
+          <input id="destination" type="text" formControlName="destination" />
+        </div>
+      </div>
+
+      <!-- Le montant se deduit du tarif et de la duree : il n'est pas saisi. -->
+      <p class="montant-calcule">
+        <span>Montant de la location</span>
+        <strong>{{ montantCalcule() | number }} FCFA</strong>
+        <small>{{ libelleQuantite() }} × {{ formulaire.controls.tarif.value | number }}</small>
+      </p>
+      <p class="aide">Le contrat correspondant sera cree et rattache a cette recette.</p>
+    </fieldset>
+  }
+
+  <!-- Details demandes par le type : periode, trajet, marchandise ou kilometres. -->
+  @if (profil(); as p) {
+    @if (p.titreDetails) {
+      <fieldset class="bloc-location">
+        <legend>{{ p.titreDetails }}</legend>
+        <div class="grille-formulaire">
+          @if (p.periode) {
+            <div class="champ">
+              <label for="dateDebut">{{ p.periode.debut }} <span class="requis">*</span></label>
+              <input id="dateDebut" type="date" formControlName="dateDebut" />
+            </div>
+            <div class="champ">
+              <label for="dateFin">{{ p.periode.fin }} <span class="requis">*</span></label>
+              <input id="dateFin" type="date" formControlName="dateFin"
+                     [min]="formulaire.controls.dateDebut.value" />
+              @if (dureeJours() > 0) {
+                <small>{{ dureeJours() }} jour(s)</small>
+              }
+            </div>
+          }
+
+          @if (p.trajet) {
+            <div class="champ">
+              <label for="lieuDepart">
+                Lieu de depart @if (p.trajet === 'complet') { <span class="requis">*</span> }
+              </label>
+              <input id="lieuDepart" type="text" formControlName="lieuDepart" placeholder="Lome" />
+            </div>
+            <div class="champ">
+              <label for="destination">Destination <span class="requis">*</span></label>
+              <input id="destination" type="text" formControlName="destination" placeholder="Cotonou" />
+            </div>
+          }
+
+          @if (p.marchandise) {
+            <div class="champ">
+              <label for="marchandise">Marchandise</label>
+              <input id="marchandise" type="text" formControlName="marchandise"
+                     placeholder="Ciment, conteneur 40 pieds..." />
+            </div>
+          }
+
+          @if (p.kilometres) {
+            <div class="champ">
+              <label for="kilometrage">Kilometres supplementaires <span class="requis">*</span></label>
+              <input id="kilometrage" type="number" min="0" step="1" formControlName="kilometrage" />
+            </div>
+            <div class="champ">
+              <label for="tarif">Tarif du kilometre <span class="requis">*</span></label>
+              <input id="tarif" type="number" min="0" step="1" formControlName="tarif" />
+              <small>FCFA par km</small>
+            </div>
+          }
+        </div>
+
+        @if (p.kilometres) {
+          <p class="montant-calcule">
+            <span>Montant facture</span>
+            <strong>{{ montantCalcule() | number }} FCFA</strong>
+            <small>{{ formulaire.controls.kilometrage.value || 0 }} km × {{ formulaire.controls.tarif.value | number }}</small>
+          </p>
+        }
+      </fieldset>
+    }
+  }
+
+  <div class="grille-formulaire">
+    @if (!estLocation()) {
+      <div class="champ champ-large">
+        <label for="libelle">
+          Libelle @if (!libelleSuggere()) { <span class="requis">*</span> }
+        </label>
+        <input id="libelle" type="text" formControlName="libelle"
+               [placeholder]="libelleSuggere() || 'Objet de la recette'" />
+        @if (libelleSuggere()) {
+          <small>Laissez vide pour reprendre le libelle propose.</small>
+        }
+      </div>
+
+      @if (!montantAutomatique()) {
+        <div class="champ">
+          <label for="montant">Montant (FCFA) <span class="requis">*</span></label>
+          <input id="montant" type="number" min="0" step="1" formControlName="montant" />
+        </div>
+      }
+    }
+
+    <div class="champ">
+      <label for="dateRecette">Date d'encaissement</label>
+      <input id="dateRecette" type="date" formControlName="dateRecette" />
+    </div>
+
+    <div class="champ">
+      <label for="modePaiement">Mode de paiement</label>
+      <select id="modePaiement" formControlName="modePaiement">
+        <option [ngValue]="null">Non precise</option>
+        @for (mode of modes; track mode.valeur) {
+          <option [ngValue]="mode.valeur">{{ mode.libelle }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="champ">
+      <label for="reference">Reference</label>
+      <input id="reference" type="text" formControlName="reference"
+             placeholder="Numero de recu, transaction..." />
+    </div>
+
+    <div class="champ champ-large">
+      <label for="observations">Observations</label>
+      <textarea id="observations" rows="2" formControlName="observations"></textarea>
+    </div>
+  </div>
+
+  <div class="actions-formulaire">
+    <button class="bouton" type="submit" [disabled]="enregistrement() || !saisieComplete()">
+      {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer la recette' }}
+    </button>
+    <button class="bouton secondaire" type="button" (click)="annuler()">Annuler</button>
+    @if (champsManquants().length) {
+      <small class="manquants">Pour enregistrer, il manque {{ champsManquants().join(', ') }}.</small>
+    }
+  </div>
+</form>

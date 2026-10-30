@@ -1,0 +1,132 @@
+<div class="entete-page">
+  <div>
+    <h1>Parametrage</h1>
+    <p class="sous-titre">
+      Identite de l'entreprise — entete des factures et des rapports, page de connexion
+    </p>
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+@if (chargement()) {
+  <div class="message vide">Chargement du parametrage...</div>
+} @else {
+  <div class="carte bloc-logo">
+    <div class="apercu-logo">
+      @if (logo()) {
+        <img [src]="logo()" alt="Logo de l'entreprise" />
+      } @else {
+        <span class="sans-logo">Aucun logo</span>
+      }
+    </div>
+    <div class="actions-logo">
+      <h2>Logo</h2>
+      <p class="aide">
+        Il s'affiche sur la page de connexion, dans la barre laterale et en tete des factures.
+        PNG, JPEG, GIF ou WEBP, 512 Ko au maximum.
+      </p>
+      <div class="actions-formulaire">
+        <label class="bouton" [class.desactive]="televersement()">
+          {{ televersement() ? 'Envoi...' : 'Choisir un fichier' }}
+          <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden
+                 [disabled]="televersement()" (change)="choisirLogo($event)" />
+        </label>
+        @if (logo()) {
+          <button class="bouton secondaire" type="button" (click)="retirerLogo()">Retirer</button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <form class="carte" [formGroup]="formulaire" (ngSubmit)="enregistrer()">
+    <h2>Identite</h2>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="nom">Nom de l'entreprise <span class="requis">*</span></label>
+        <input id="nom" type="text" formControlName="nom" />
+      </div>
+      <div class="champ">
+        <label for="sigle">Sigle</label>
+        <input id="sigle" type="text" formControlName="sigle" />
+      </div>
+      <div class="champ">
+        <label for="formeJuridique">Forme juridique</label>
+        <input id="formeJuridique" type="text" formControlName="formeJuridique"
+               placeholder="SARL, SA, EI..." />
+      </div>
+    </div>
+
+    <h2>Coordonnees</h2>
+    <div class="grille-formulaire">
+      <div class="champ champ-large">
+        <label for="adresse">Adresse</label>
+        <input id="adresse" type="text" formControlName="adresse" />
+      </div>
+      <div class="champ">
+        <label for="ville">Ville</label>
+        <input id="ville" type="text" formControlName="ville" />
+      </div>
+      <div class="champ">
+        <label for="pays">Pays</label>
+        <input id="pays" type="text" formControlName="pays" />
+      </div>
+      <div class="champ">
+        <label for="telephone">Telephone</label>
+        <input id="telephone" type="tel" formControlName="telephone" />
+      </div>
+      <div class="champ">
+        <label for="email">Adresse e-mail</label>
+        <input id="email" type="email" formControlName="email" />
+      </div>
+      <div class="champ">
+        <label for="siteWeb">Site web</label>
+        <input id="siteWeb" type="text" formControlName="siteWeb" />
+      </div>
+    </div>
+
+    <h2>Mentions legales et bancaires</h2>
+    <p class="aide">Ces informations figurent sur les factures remises aux clients.</p>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="nif">Identifiant fiscal (NIF)</label>
+        <input id="nif" type="text" formControlName="nif" />
+      </div>
+      <div class="champ">
+        <label for="rccm">RCCM</label>
+        <input id="rccm" type="text" formControlName="rccm" />
+      </div>
+      <div class="champ">
+        <label for="banque">Banque</label>
+        <input id="banque" type="text" formControlName="banque" />
+      </div>
+      <div class="champ">
+        <label for="compteBancaire">Numero de compte</label>
+        <input id="compteBancaire" type="text" formControlName="compteBancaire" />
+      </div>
+      <div class="champ">
+        <label for="tauxTva">Taux de TVA (%)</label>
+        <input id="tauxTva" type="number" min="0" max="100" step="0.01" formControlName="tauxTva" />
+        <small>
+          Applique aux factures etablies desormais ; celles deja emises gardent leur taux.
+        </small>
+      </div>
+      <div class="champ champ-large">
+        <label for="mentionsFacture">Mentions de bas de facture</label>
+        <textarea id="mentionsFacture" rows="2" formControlName="mentionsFacture"
+                  placeholder="Conditions de reglement, penalites de retard..."></textarea>
+      </div>
+    </div>
+
+    <div class="actions-formulaire">
+      <button class="bouton" type="submit" [disabled]="enregistrement()">
+        {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
+      </button>
+    </div>
+  </form>
+}

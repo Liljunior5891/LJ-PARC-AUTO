@@ -4,20 +4,27 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { Chauffeur, Page, STATUTS_CHAUFFEUR, StatutChauffeur } from '../../core/models/models';
 import { ChauffeurService } from '../../core/services/chauffeur.service';
+import { Modale } from '../../shared/modale';
+import { ChauffeurFiche } from '../chauffeurs/chauffeur-fiche';
+import { OperationService } from '../../core/operation/operation.service';
 
 @Component({
   selector: 'app-chauffeurs-liste',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, Modale, ChauffeurFiche],
   templateUrl: './chauffeurs-liste.html'
 })
 export class ChauffeursListe implements OnInit {
   private readonly service = inject(ChauffeurService);
+  private readonly operation = inject(OperationService);
   private readonly auth = inject(AuthService);
 
   readonly statuts = STATUTS_CHAUFFEUR;
   readonly page = signal<Page<Chauffeur> | null>(null);
   readonly chargement = signal(false);
   readonly erreur = signal<string | null>(null);
+  readonly succes = signal<string | null>(null);
+  /** Fenetre de creation, ouverte par-dessus la liste. */
+  readonly creation = signal(false);
 
   recherche = '';
   statut: StatutChauffeur | '' = '';
@@ -27,6 +34,18 @@ export class ChauffeursListe implements OnInit {
   readonly peutGerer = this.auth.peutGererParc();
 
   ngOnInit(): void {
+    this.charger();
+  }
+
+  ouvrirCreation(): void {
+    this.succes.set(null);
+    this.creation.set(true);
+  }
+
+  /** Le nouvel enregistrement rejoint la liste, rechargee. */
+  creationTerminee(): void {
+    this.creation.set(false);
+    this.succes.set('Chauffeur enregistre.');
     this.charger();
   }
 
@@ -70,8 +89,14 @@ export class ChauffeursListe implements OnInit {
     this.charger();
   }
 
-  archiver(chauffeur: Chauffeur): void {
-    if (!confirm(`Archiver le chauffeur ${chauffeur.nomComplet} ?`)) {
+  async archiver(chauffeur: Chauffeur): Promise<void> {
+    const accepte = await this.operation.confirmer({
+      titre: `Archiver le chauffeur ${chauffeur.nomComplet} ?`,
+      message: 'Il sort des listes ; son historique reste consultable.',
+      libelleAction: 'Archiver',
+      danger: true
+    });
+    if (!accepte) {
       return;
     }
     this.service.archiver(chauffeur.id).subscribe({

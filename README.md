@@ -66,13 +66,17 @@ L'application est servie sur `http://localhost:4200`.
 | `JWT_EXPIRATION_MINUTES` | `480` | Durée de validité d'une session |
 | `CORS_ORIGINS` | `http://localhost:4200` | Origines autorisées |
 | `DOCUMENTS_DIR` | `./data/documents` | Stockage des justificatifs |
-| `ENTREPRISE_NOM`, `ENTREPRISE_ADRESSE`, `ENTREPRISE_TELEPHONE`, `ENTREPRISE_NIF` | — | Mentions portées sur les factures PDF |
+| `ENTREPRISE_NOM` | `PARC AUTO` | Nom affiché tant que le **Paramétrage** n'a pas été rempli dans l'application |
 | `ADMIN_PASSWORD` | `Admin@2026` | Mot de passe du compte initial |
 
 ## Périmètre livré
 
 ### Priorité 1 — Parc
 
+- Écran **Paramétrage** (chapitre 39, administrateur) : nom, sigle, forme juridique,
+  coordonnées, NIF, RCCM, banque, mentions de bas de facture et logo. Ces
+  informations alimentent l'en-tête des factures et des rapports PDF, le nom de
+  la barre latérale et le logo de la page de connexion
 - Authentification JWT et gestion des comptes (chapitre 40) : écran **Utilisateurs**
   réservé à l'administrateur — création, profils, activation, réinitialisation du
   mot de passe — et écran **Mon compte** où chacun change le sien.

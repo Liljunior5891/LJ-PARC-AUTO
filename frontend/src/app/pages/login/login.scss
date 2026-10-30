@@ -1,44 +1,209 @@
+/* ===================================================================
+   Page de connexion : photo du parc en fond, carte de saisie en verre.
+   Les camions occupent le centre et la droite de l'image ; le
+   formulaire reste donc a gauche pour ne pas les masquer.
+   =================================================================== */
+
 .page-connexion {
+  position: relative;
   min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(340px, 42%) 1fr;
+  background-image: url('/backlogin.jpg');
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  overflow: hidden;
+}
+
+/* Assombrit le fond a gauche pour garantir la lisibilite du formulaire,
+   et laisse l'image nette a droite. */
+.voile {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      105deg,
+      rgba(6, 24, 42, 0.94) 0%,
+      rgba(7, 30, 52, 0.86) 30%,
+      rgba(8, 40, 70, 0.45) 55%,
+      rgba(10, 50, 88, 0.12) 78%,
+      rgba(12, 60, 100, 0) 100%
+    );
+  pointer-events: none;
+}
+
+.colonne-formulaire {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
-  background: linear-gradient(140deg, #0e2233 0%, #0f4c81 100%);
+  padding: 2rem 1.75rem;
 }
 
-.formulaire {
+.carte-connexion {
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 2rem;
+  padding: 2.25rem 2rem 1.75rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: 0 24px 60px rgba(2, 12, 24, 0.55);
+  color: #fff;
+  animation: apparition 0.5s ease both;
+}
 
-  .marque {
-    text-align: center;
-    margin-bottom: 0.5rem;
+@keyframes apparition {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 
-    .logo {
-      font-size: 2rem;
+@media (prefers-reduced-motion: reduce) {
+  .carte-connexion {
+    animation: none;
+  }
+}
+
+.marque {
+  text-align: center;
+  margin-bottom: 0.35rem;
+
+  .logo {
+    font-size: 2.1rem;
+  }
+
+  h1 {
+    margin: 0.4rem 0 0.2rem;
+    font-size: 1.45rem;
+    letter-spacing: 0.09em;
+    color: #fff;
+  }
+
+  .sous-titre {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.82rem;
+  }
+
+  /* Logo parametre, affiche a la place de l'emoji. */
+  .logo-image {
+    display: block;
+    max-width: 180px;
+    max-height: 80px;
+    margin: 0 auto 0.35rem;
+    object-fit: contain;
+  }
+}
+
+/* Le formulaire global est concu pour un fond clair : on le reprend ici
+   en variante sombre pour rester lisible sur la photo. */
+.carte-connexion .champ {
+  label {
+    color: rgba(255, 255, 255, 0.68);
+  }
+
+  input {
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transition: border-color 0.2s ease, background 0.2s ease;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.42);
     }
 
-    h1 {
-      margin: 0.25rem 0 0.15rem;
-      letter-spacing: 0.08em;
+    &:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.6);
+      background: rgba(255, 255, 255, 0.16);
     }
 
-    .sous-titre {
-      margin: 0;
-      color: var(--couleur-texte-doux);
-      font-size: 0.82rem;
+    &.invalide {
+      border-color: #ff8a80;
     }
   }
 
-  .bouton.large {
-    justify-content: center;
-    width: 100%;
-    padding: 0.7rem;
-    margin-top: 0.5rem;
+  .erreur-champ {
+    color: #ffb4ab;
+  }
+}
+
+.carte-connexion .message {
+  margin-bottom: 0;
+  font-size: 0.85rem;
+
+  &.vide {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.28);
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  &.erreur {
+    background: rgba(198, 40, 40, 0.28);
+    border-color: rgba(255, 138, 128, 0.55);
+    color: #ffd9d5;
+  }
+}
+
+.carte-connexion .bouton.large {
+  justify-content: center;
+  width: 100%;
+  padding: 0.75rem;
+  margin-top: 0.35rem;
+  border-radius: 10px;
+  letter-spacing: 0.03em;
+  background: linear-gradient(120deg, var(--couleur-primaire-clair), var(--couleur-primaire));
+  box-shadow: 0 10px 24px rgba(15, 76, 129, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(120deg, #2a82c4, var(--couleur-primaire-clair));
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(15, 76, 129, 0.55);
+  }
+}
+
+.pied {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.35rem 0 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.5);
+
+  a {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.78rem;
+    font-weight: 600;
+
+    &:hover {
+      color: #fff;
+    }
+  }
+}
+
+/* Sous cette largeur l'image ne peut plus etre partagee en deux colonnes :
+   le formulaire se centre et le voile couvre toute la surface. */
+@media (max-width: 900px) {
+  .page-connexion {
+    grid-template-columns: 1fr;
+  }
+
+  .voile {
+    background: linear-gradient(160deg, rgba(6, 24, 42, 0.9) 0%, rgba(8, 40, 70, 0.78) 100%);
   }
 }

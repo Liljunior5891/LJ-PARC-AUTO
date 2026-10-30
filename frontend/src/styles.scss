@@ -24,6 +24,24 @@
   box-sizing: border-box;
 }
 
+/* Les ancres du site vitrine defilent en douceur, sauf reglage contraire. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/*
+ * Plus Jakarta Sans dessine l'espace fine insecable (separateur de milliers en
+ * francais) presque sans chasse : « 4620000 ». Cette police n'en reprend que
+ * les espaces, chez une police systeme, pour garder « 4 620 000 » lisible.
+ */
+@font-face {
+  font-family: 'Espaces lisibles';
+  src: local('Segoe UI'), local('Roboto'), local('Arial');
+  unicode-range: U+00A0, U+202F;
+}
+
 html,
 body {
   margin: 0;
@@ -31,15 +49,35 @@ body {
   height: 100%;
   background: var(--couleur-fond);
   color: var(--couleur-texte);
-  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Police variable embarquee (paquet @fontsource), Segoe UI en secours. */
+  font-family: 'Espaces lisibles', 'Plus Jakarta Sans Variable', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 14px;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Les champs, boutons et la carte Leaflet ne suivent pas la police du body d'eux-memes. */
+button,
+input,
+select,
+textarea,
+.leaflet-container {
+  font-family: inherit;
+}
+
+/* Chiffres a chasse fixe : les montants restent alignes dans les tableaux. */
+table,
+.numerique {
+  font-variant-numeric: tabular-nums;
 }
 
 h1,
 h2,
 h3 {
   margin: 0 0 0.5rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.015em;
 }
 
 h1 {
@@ -129,6 +167,45 @@ a {
   }
 }
 
+/*
+ * Champs obligatoires et champs en erreur (voir shared/validation-formulaire).
+ * Un champ n'est signale qu'une fois touche ou apres une tentative d'enregistrement.
+ */
+.requis {
+  color: var(--couleur-danger);
+  font-weight: 700;
+}
+
+.champ {
+  input.ng-invalid.ng-touched,
+  select.ng-invalid.ng-touched,
+  textarea.ng-invalid.ng-touched {
+    border-color: var(--couleur-danger);
+    background: #fff7f7;
+  }
+
+  &:has(.ng-invalid.ng-touched) > label {
+    color: var(--couleur-danger);
+  }
+}
+
+/* Listes Select2 : l'etat invalide est porte par le select ou par le composant de recherche. */
+select.ng-invalid.ng-touched + .select2-container .select2-selection,
+app-select-recherche.ng-invalid.ng-touched .select2-container .select2-selection {
+  border-color: var(--couleur-danger);
+  background: #fff7f7;
+}
+
+/* Message de champs manquants, pose juste au-dessus des boutons d'enregistrement. */
+.message.alerte-champs {
+  margin: 1rem 0 0;
+}
+
+/* Une fenetre modale est ouverte : la page ne defile plus dessous. */
+body.modale-ouverte {
+  overflow: hidden;
+}
+
 .actions-formulaire {
   display: flex;
   gap: 0.75rem;
@@ -184,8 +261,32 @@ a {
 }
 
 /* --------------------------- Tableaux ---------------------------- */
+/* Les donnees defilent a l'interieur du tableau : la page garde ses filtres et
+   ses boutons en vue, et l'entete des colonnes reste fige en haut. */
 .tableau-conteneur {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 62vh;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 10px;
+  overscroll-behavior: contain;
+
+  table.tableau thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    /* border-collapse retire la bordure des cellules figees : une ombre la remplace. */
+    box-shadow: inset 0 -1px 0 var(--couleur-bordure);
+  }
+
+  table.tableau tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .tableau-conteneur {
+    max-height: 70vh;
+  }
 }
 
 table.tableau {
@@ -387,19 +488,6 @@ table.tableau {
   color: var(--couleur-danger);
 }
 
-.barre-recette {
-  height: 4px;
-  margin-top: 0.3rem;
-  background: #eceff3;
-  border-radius: 999px;
-  overflow: hidden;
-
-  .remplissage-recette {
-    height: 100%;
-    background: var(--couleur-primaire);
-  }
-}
-
 /* ------------------------ Marqueurs de la carte ------------------------- */
 .marqueur-camion span {
   display: inline-block;
@@ -482,6 +570,421 @@ table.tableau {
   }
 }
 
+/*
+ * Cartes d'apercu (vue du parc, tableau de bord) : une icone et une couleur par
+ * information, un grand chiffre, un detail, et une jauge facultative.
+ */
+.cartes-apercu {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+
+  @media (max-width: 1000px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.carte-apercu {
+  --accent: #1f6fd1;
+  --fond: #eaf2fe;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+  padding: 1rem 1.1rem 0.9rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff 55%, var(--fond) 100%);
+  color: var(--couleur-texte);
+  font: inherit;
+  text-align: left;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+
+  &.bleu {
+    --accent: #1f6fd1;
+    --fond: #eaf2fe;
+  }
+
+  &.orange {
+    --accent: #e8870e;
+    --fond: #fff2df;
+  }
+
+  &.vert {
+    --accent: #1f9d6b;
+    --fond: #e3f6ed;
+  }
+
+  &.rouge {
+    --accent: #d9452b;
+    --fond: #fde8e4;
+  }
+
+  &.violet {
+    --accent: #7a4fd1;
+    --fond: #efe8fc;
+  }
+
+  /* Alerte sans objet (valeur nulle) : grise, pour ne pas alarmer pour rien. */
+  &.calme {
+    --accent: #8a94a0;
+    --fond: #f3f5f7;
+  }
+
+  /* Les cartes qui filtrent ou menent a un ecran se comportent comme des boutons. */
+  &:is(button, a) {
+    cursor: pointer;
+    text-decoration: none;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+  }
+
+  &.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 18px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  .icone {
+    display: grid;
+    grid-row: span 2;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: var(--accent);
+    box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 35%, transparent);
+
+    svg {
+      width: 26px;
+      height: 26px;
+      fill: none;
+      stroke: #fff;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
+
+  .textes {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .libelle {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--couleur-texte-doux);
+  }
+
+  strong {
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+
+    em {
+      font-size: 1rem;
+      font-style: normal;
+      font-weight: 600;
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+    color: var(--couleur-texte-doux);
+
+    .attention {
+      font-weight: 600;
+      color: #b8650a;
+    }
+  }
+
+  /* Part de l'information dans le parc. */
+  .jauge {
+    grid-column: 1 / -1;
+    height: 5px;
+    margin-top: 0.55rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 14%, #fff);
+    overflow: hidden;
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent);
+      transition: width 0.4s ease;
+    }
+  }
+}
+
+/* Variante pour un panneau en demi-largeur : deux colonnes, cartes plus serrees. */
+.cartes-apercu.compactes {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+
+  .carte-apercu {
+    gap: 0.2rem 0.75rem;
+    padding: 0.8rem 0.9rem 0.75rem;
+  }
+
+  .icone {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+
+    svg {
+      width: 22px;
+      height: 22px;
+    }
+  }
+
+  strong {
+    font-size: 1.5rem;
+  }
+}
+
+/* Choix de la periode : raccourcis (mois, trimestre, annee) et dates libres. */
+.filtres-periode {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.raccourcis {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 10px;
+  background: #fff;
+
+  button {
+    padding: 0.4rem 0.8rem;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--couleur-texte-doux);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--couleur-texte);
+    }
+
+    &.actif {
+      background: var(--couleur-primaire);
+      color: #fff;
+    }
+  }
+}
+
+.dates {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--couleur-texte-doux);
+
+  input {
+    padding: 0.42rem 0.2rem;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 0.82rem;
+  }
+}
+
+/*
+ * Zones de depot des pieces justificatives, sous les champs d'une section.
+ * auto-fill garde les colonnes meme vides : une piece seule n'occupe qu'une
+ * colonne au lieu de s'etirer sur toute la largeur.
+ */
+.grille-pieces {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+/*
+ * Indicateurs chiffres en tete d'ecran (maintenance, direction, rentabilite) :
+ * libelle, valeur, detail, et un liseret colore selon l'etat.
+ */
+.grille-indicateurs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.carte.indicateur {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 1rem 1.15rem;
+  border-left: 4px solid var(--couleur-primaire);
+
+  .libelle {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--couleur-texte-doux);
+  }
+
+  .valeur {
+    font-size: 1.65rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .detail {
+    font-size: 0.75rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  &.succes {
+    border-left-color: #1f9d6b;
+  }
+
+  &.alerte {
+    border-left-color: #ec5434;
+
+    .valeur {
+      color: #c63d22;
+    }
+  }
+}
+
+/*
+ * Onglets inclines, sur le modele du menu principal : bleu clair au repos,
+ * l'onglet actif passe devant, plus haut, en bleu plein.
+ */
+.onglets-inclines {
+  display: flex;
+  align-items: flex-end;
+  height: 46px;
+  margin: 0 0 1rem;
+  padding: 0 1.5rem 0 0;
+  /* Le bleu du menu principal : clair au repos, plein sur l'onglet ouvert. */
+  --teinte: #1f6fd1;
+  border-bottom: 3px solid var(--teinte);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+
+  button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    flex: 0 0 auto;
+    min-width: 170px;
+    height: 38px;
+    margin-right: -14px;
+    padding: 0 1.6rem;
+    border: none;
+    background: none;
+    color: #1f5fae;
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: height 0.15s ease;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 9px 11px 0 0;
+      background: linear-gradient(180deg, #eef5fe 0%, #d6e6fb 100%);
+      box-shadow: 4px 0 8px rgba(31, 95, 174, 0.12);
+      transform: skewX(24deg);
+      transform-origin: bottom left;
+      transition: background 0.15s ease;
+    }
+
+    &:first-child::before {
+      left: -24px;
+    }
+
+    > span {
+      position: relative;
+    }
+
+    .compteur {
+      min-width: 1.4rem;
+      padding: 0 0.35rem;
+      border-radius: 999px;
+      background: rgba(31, 111, 209, 0.14);
+      font-size: 0.68rem;
+      line-height: 1.25rem;
+      letter-spacing: 0;
+    }
+
+    &:hover:not(.actif) {
+      color: #174c8c;
+
+      &::before {
+        background: linear-gradient(180deg, #e2eefd 0%, #c3daf8 100%);
+      }
+    }
+
+    &.actif {
+      height: 46px;
+      color: #fff;
+      font-weight: 700;
+
+      &::before {
+        background: linear-gradient(180deg, color-mix(in srgb, var(--teinte) 78%, #fff) 0%, var(--teinte) 60%);
+        box-shadow: 5px 0 12px rgba(0, 0, 0, 0.25), 0 -3px 10px color-mix(in srgb, var(--teinte) 45%, transparent);
+      }
+
+      .compteur {
+        background: #fff;
+        color: color-mix(in srgb, var(--teinte) 85%, #000);
+      }
+    }
+
+    &:focus-visible {
+      outline: none;
+
+      > span:last-of-type {
+        outline: 2px solid #fff;
+        outline-offset: 3px;
+        border-radius: 3px;
+      }
+    }
+  }
+}
+
 /* ------------- Proposition de facture apres saisie d une recette --------- */
 .proposition-facture {
   display: flex;
@@ -503,17 +1006,37 @@ table.tableau {
 }
 
 /* ------------- Creation rapide au sein d un autre formulaire ------------- */
-.lien-creation {
-  align-self: flex-start;
-  margin-top: 0.3rem;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  font-size: 0.78rem;
-  color: var(--couleur-primaire);
-  cursor: pointer;
-  text-decoration: underline;
+/* Une liste de choix et, a cote, le bouton qui cree l'element s'il manque. */
+.liste-et-creation {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+
+  > app-select-recherche,
+  > select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Bouton bleu comme les autres boutons d'ajout ; une fois ouvert, il devient « Annuler ». */
+  > .bouton {
+    flex: none;
+    white-space: nowrap;
+
+    &.actif {
+      border-color: var(--couleur-primaire);
+      color: var(--couleur-primaire);
+    }
+  }
+}
+
+/* Champ elargi sur deux colonnes de la grille (une seule sur petit ecran). */
+.grille-formulaire > .champ-double {
+  grid-column: span 2;
+
+  @media (max-width: 560px) {
+    grid-column: 1 / -1;
+  }
 }
 
 .bloc-creation {
@@ -522,4 +1045,127 @@ table.tableau {
   border: 1px dashed var(--couleur-primaire);
   border-radius: var(--rayon);
   background: #f7fafd;
+}
+
+/* ===================================================================
+   Select2 : habillage des listes deroulantes, aligne sur les champs
+   =================================================================== */
+.select2-container--default {
+  font: inherit;
+
+  .select2-selection--single {
+    display: flex;
+    align-items: center;
+    height: auto;
+    min-height: 38px;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    background: #fff;
+
+    .select2-selection__rendered {
+      padding: 0.45rem 2rem 0.45rem 0.7rem;
+      line-height: 1.4;
+      color: var(--couleur-texte);
+    }
+
+    .select2-selection__placeholder {
+      color: var(--couleur-texte-doux);
+    }
+
+    .select2-selection__arrow {
+      top: 50%;
+      right: 6px;
+      height: 20px;
+      transform: translateY(-50%);
+    }
+  }
+
+  &.select2-container--focus .select2-selection--single,
+  &.select2-container--open .select2-selection--single {
+    border-color: var(--couleur-primaire-clair);
+    box-shadow: 0 0 0 1px var(--couleur-primaire-clair);
+  }
+
+  &.select2-container--disabled .select2-selection--single {
+    background: #f1f3f6;
+    cursor: not-allowed;
+  }
+
+  .select2-dropdown {
+    border-color: var(--couleur-bordure);
+    border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(16, 24, 40, 0.12);
+    overflow: hidden;
+  }
+
+  .select2-search--dropdown .select2-search__field {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 6px;
+    outline: none;
+
+    &:focus {
+      border-color: var(--couleur-primaire-clair);
+    }
+  }
+
+  .select2-results__option {
+    padding: 0.45rem 0.7rem;
+  }
+
+  .select2-results__option--highlighted.select2-results__option--selectable {
+    background: var(--couleur-primaire);
+  }
+
+  .select2-results__option--selected {
+    background: #e8f0f8;
+  }
+}
+
+/* Champ en erreur : la bordure rouge passe du select masque a son habillage. */
+select.invalide + .select2-container .select2-selection--single {
+  border-color: var(--couleur-danger);
+}
+
+/* Option enrichie (marques, couleurs, camions) : pastille, libelle et detail. */
+.s2-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  vertical-align: middle;
+}
+
+.s2-pastille {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  /* Contour discret : une pastille blanche reste visible sur fond blanc. */
+  box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.15);
+  overflow: hidden;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #fff;
+  }
+}
+
+.s2-textes {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+
+  small {
+    font-size: 0.72rem;
+    opacity: 0.75;
+  }
 }

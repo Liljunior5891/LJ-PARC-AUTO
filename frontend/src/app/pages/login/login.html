@@ -1,49 +1,62 @@
 <div class="page-connexion">
-  <form class="carte formulaire" [formGroup]="formulaire" (ngSubmit)="soumettre()">
-    <div class="marque">
-      <span class="logo">🚛</span>
-      <h1>PARC AUTO</h1>
-      <p class="sous-titre">Gestion, suivi et rentabilite du parc de camions</p>
-    </div>
+  <div class="voile"></div>
 
-    @if (information()) {
-      <div class="message vide">{{ information() }}</div>
-    }
-    @if (erreur()) {
-      <div class="message erreur">{{ erreur() }}</div>
-    }
+  <div class="colonne-formulaire">
+    <form class="carte-connexion" [formGroup]="formulaire" (ngSubmit)="soumettre()">
+      <div class="marque">
+        @if (societe()?.logo; as logo) {
+          <img class="logo-image" [src]="logo" [alt]="societe()?.nom || 'Logo'" />
+        } @else {
+          <span class="logo">🚛</span>
+        }
+        <h1>{{ societe()?.nom || 'PARC AUTO' }}</h1>
+        <p class="sous-titre">Gestion, suivi et rentabilite du parc de vehicules</p>
+      </div>
 
-    <div class="champ">
-      <label for="email">Adresse email</label>
-      <input
-        id="email"
-        type="email"
-        formControlName="email"
-        autocomplete="username"
-        placeholder="admin&#64;parcauto.tg"
-        [class.invalide]="formulaire.controls.email.touched && formulaire.controls.email.invalid"
-      />
-      @if (formulaire.controls.email.touched && formulaire.controls.email.invalid) {
-        <span class="erreur-champ">Adresse email valide requise</span>
+      @if (information()) {
+        <div class="message vide">{{ information() }}</div>
       }
-    </div>
-
-    <div class="champ">
-      <label for="motDePasse">Mot de passe</label>
-      <input
-        id="motDePasse"
-        type="password"
-        formControlName="motDePasse"
-        autocomplete="current-password"
-        [class.invalide]="formulaire.controls.motDePasse.touched && formulaire.controls.motDePasse.invalid"
-      />
-      @if (formulaire.controls.motDePasse.touched && formulaire.controls.motDePasse.invalid) {
-        <span class="erreur-champ">Mot de passe requis</span>
+      @if (erreur()) {
+        <div class="message erreur">{{ erreur() }}</div>
       }
-    </div>
 
-    <button class="bouton large" type="submit" [disabled]="enCours()">
-      {{ enCours() ? 'Connexion...' : 'Se connecter' }}
-    </button>
-  </form>
+      <div class="champ">
+        <label for="email">Adresse email</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          autocomplete="username"
+          placeholder="admin&#64;parcauto.tg"
+          [class.invalide]="formulaire.controls.email.touched && formulaire.controls.email.invalid"
+        />
+        @if (formulaire.controls.email.touched && formulaire.controls.email.invalid) {
+          <span class="erreur-champ">Adresse email valide requise</span>
+        }
+      </div>
+
+      <div class="champ">
+        <label for="motDePasse">Mot de passe</label>
+        <input
+          id="motDePasse"
+          type="password"
+          formControlName="motDePasse"
+          autocomplete="current-password"
+          [class.invalide]="formulaire.controls.motDePasse.touched && formulaire.controls.motDePasse.invalid"
+        />
+        @if (formulaire.controls.motDePasse.touched && formulaire.controls.motDePasse.invalid) {
+          <span class="erreur-champ">Mot de passe requis</span>
+        }
+      </div>
+
+      <button class="bouton large" type="submit" [disabled]="enCours()">
+        {{ enCours() ? 'Connexion...' : 'Se connecter' }}
+      </button>
+
+      <p class="pied">
+        <a routerLink="/">Retour au site</a>
+        <span>{{ societe()?.sigle || societe()?.nom || 'PARC AUTO' }} — acces reserve au personnel autorise</span>
+      </p>
+    </form>
+  </div>
 </div>

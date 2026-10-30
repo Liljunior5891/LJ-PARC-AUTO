@@ -2,12 +2,12 @@
   <div>
     <h1>Recettes</h1>
     <p class="sous-titre">
-      Chapitre 15 — toute recette est rattachee a un camion, condition du calcul de rentabilite
+      Chapitre 15 — toute recette est rattachee a un vehicule, condition du calcul de rentabilite
     </p>
   </div>
   @if (peutGerer) {
     <button class="bouton" type="button" (click)="basculerFormulaire()">
-      {{ formulaireVisible() ? 'Fermer' : '+ Nouvelle recette' }}
+      + Nouvelle recette
     </button>
   }
 </div>
@@ -22,107 +22,28 @@
 @if (recetteAFacturer(); as r) {
   <div class="carte proposition-facture">
     <div>
-      <h2>Facture a remettre au client</h2>
-      @if (factureGeneree(); as f) {
-        <p class="sous-titre">
-          {{ f.numero }} — {{ f.clientNom }} · {{ f.montantTtc | number }} FCFA TTC
-          (HT {{ f.montantHt | number }}, TVA {{ f.montantTva | number }})
-        </p>
-      } @else {
-        <p class="sous-titre">
-          Recette {{ r.numero }} de {{ r.montant | number }} FCFA pour {{ r.clientNom }}.
-          Souhaitez-vous editer la facture correspondante ?
-        </p>
-      }
+      <h2>Facture emise</h2>
+      <p class="sous-titre">
+        Recette {{ r.numero }} de {{ r.montant | number }} FCFA pour {{ r.clientNom }}.
+        La facture {{ r.factureNumero }} a ete emise automatiquement a son nom.
+      </p>
     </div>
     <div class="actions-proposition">
-      @if (factureGeneree(); as f) {
-        <button class="bouton" type="button" (click)="telechargerFacture(f)">
-          Telecharger le PDF
-        </button>
-      } @else {
-        <button class="bouton" type="button" (click)="genererFacture(r)">
-          Generer la facture
-        </button>
-      }
+      <button class="bouton" type="button" (click)="telechargerFacture(r)">
+        Telecharger le PDF
+      </button>
       <button class="bouton secondaire" type="button" (click)="fermerProposition()">Fermer</button>
     </div>
   </div>
 }
 
 @if (formulaireVisible()) {
-  <form class="carte" [formGroup]="formulaire" (ngSubmit)="enregistrer()" style="margin-bottom: 1rem">
-    <h2>Enregistrer une recette</h2>
-    <div class="grille-formulaire">
-      <div class="champ">
-        <label for="camionId">Camion *</label>
-        <select id="camionId" formControlName="camionId">
-          <option [ngValue]="null">Selectionner un camion</option>
-          @for (camion of camions(); track camion.id) {
-            <option [ngValue]="camion.id">
-              {{ camion.immatriculation }} — {{ camion.marque }} {{ camion.modele }}
-            </option>
-          }
-        </select>
-        @if (formulaire.controls.camionId.touched && formulaire.controls.camionId.invalid) {
-          <span class="erreur-champ">Camion requis</span>
-        }
-      </div>
-      <div class="champ">
-        <label for="clientId">Client</label>
-        <select id="clientId" formControlName="clientId">
-          <option [ngValue]="null">Aucun</option>
-          @for (client of clients(); track client.id) {
-            <option [ngValue]="client.id">{{ client.raisonSociale }}</option>
-          }
-        </select>
-      </div>
-      <div class="champ">
-        <label for="type">Type de recette *</label>
-        <select id="type" formControlName="type">
-          @for (t of types; track t.valeur) {
-            <option [value]="t.valeur">{{ t.libelle }}</option>
-          }
-        </select>
-      </div>
-      <div class="champ">
-        <label for="libelle">Libelle *</label>
-        <input id="libelle" formControlName="libelle" placeholder="Transport Lome - Atakpame" />
-        @if (formulaire.controls.libelle.touched && formulaire.controls.libelle.invalid) {
-          <span class="erreur-champ">Libelle requis</span>
-        }
-      </div>
-      <div class="champ">
-        <label for="montant">Montant (FCFA) *</label>
-        <input id="montant" type="number" formControlName="montant" />
-      </div>
-      <div class="champ">
-        <label for="dateRecette">Date *</label>
-        <input id="dateRecette" type="date" formControlName="dateRecette" />
-      </div>
-      <div class="champ">
-        <label for="modePaiement">Mode de paiement</label>
-        <select id="modePaiement" formControlName="modePaiement">
-          <option [ngValue]="null">Non precise</option>
-          @for (mode of modes; track mode.valeur) {
-            <option [value]="mode.valeur">{{ mode.libelle }}</option>
-          }
-        </select>
-      </div>
-      <div class="champ">
-        <label for="reference">Reference</label>
-        <input id="reference" formControlName="reference" placeholder="Numero de recu, virement..." />
-      </div>
-    </div>
-    <div class="champ" style="margin-top: 1rem">
-      <label for="observations">Observations</label>
-      <textarea id="observations" formControlName="observations"></textarea>
-    </div>
-    <div class="actions-formulaire">
-      <button class="bouton" type="submit">Enregistrer</button>
-      <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
-    </div>
-  </form>
+  <app-modale titre="Enregistrer une recette" [erreur]="erreur()" (ferme)="basculerFormulaire()">
+    <app-formulaire-recette
+      (enregistree)="recetteEnregistree($event)"
+      (annulee)="basculerFormulaire()"
+    />
+  </app-modale>
 }
 
 <div class="carte" style="margin-bottom: 1rem">
@@ -136,7 +57,7 @@
       <input id="fin" type="date" [(ngModel)]="fin" (change)="filtrer()" />
     </div>
     <div class="champ">
-      <label for="camionFiltre">Camion</label>
+      <label for="camionFiltre">Vehicule</label>
       <select id="camionFiltre" [(ngModel)]="camionId" (change)="filtrer()">
         <option [ngValue]="undefined">Tout le parc</option>
         @for (camion of camions(); track camion.id) {
@@ -188,7 +109,7 @@
         <tr>
           <th>Numero</th>
           <th>Date</th>
-          <th>Camion</th>
+          <th>Vehicule</th>
           <th>Type</th>
           <th>Libelle</th>
           <th>Client</th>

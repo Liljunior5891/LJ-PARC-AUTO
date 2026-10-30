@@ -2,6 +2,14 @@ import { Routes } from '@angular/router';
 import { authGuard, roleGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
+  // Site vitrine : seule page ouverte aux visiteurs, servie a la racine.
+  {
+    path: '',
+    pathMatch: 'full',
+    // Pas de titre de route ici : le titre de l'onglet porte le nom parametre
+    // de l'entreprise, pose par le service des que l'identite est chargee.
+    loadComponent: () => import('./pages/accueil/accueil').then((m) => m.Accueil)
+  },
   {
     path: 'connexion',
     loadComponent: () => import('./pages/login/login').then((m) => m.Login),
@@ -12,7 +20,6 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/shell').then((m) => m.Shell),
     canActivate: [authGuard],
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'tableau-bord' },
       {
         path: 'tableau-bord',
         loadComponent: () => import('./pages/tableau-bord/tableau-bord').then((m) => m.TableauBord),
@@ -26,19 +33,20 @@ export const routes: Routes = [
 
       // --- Parc automobile -------------------------------------------------
       {
+        // La liste des camions est fondue dans la vue du parc : l'ancienne adresse y mene.
         path: 'camions',
-        loadComponent: () => import('./pages/camions/camions-liste').then((m) => m.CamionsListe),
-        title: 'Camions — PARC AUTO'
+        pathMatch: 'full',
+        redirectTo: 'vue-parc'
       },
       {
         path: 'camions/nouveau',
         loadComponent: () => import('./pages/camions/camion-fiche').then((m) => m.CamionFiche),
-        title: 'Nouveau camion — PARC AUTO'
+        title: 'Nouveau vehicule — PARC AUTO'
       },
       {
         path: 'camions/:id',
         loadComponent: () => import('./pages/camions/camion-fiche').then((m) => m.CamionFiche),
-        title: 'Fiche camion — PARC AUTO'
+        title: 'Fiche vehicule — PARC AUTO'
       },
       {
         path: 'chauffeurs',
@@ -157,6 +165,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/utilisateurs/utilisateurs').then((m) => m.Utilisateurs),
         canActivate: [roleGuard('ADMIN')],
         title: 'Utilisateurs — PARC AUTO'
+      },
+      {
+        path: 'parametrage',
+        loadComponent: () => import('./pages/parametrage/parametrage').then((m) => m.Parametrage),
+        canActivate: [roleGuard('ADMIN')],
+        title: 'Parametrage — PARC AUTO'
       },
       {
         path: 'mon-compte',

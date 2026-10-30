@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, input, output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
@@ -16,10 +16,11 @@ import { ChauffeurService } from '../../core/services/chauffeur.service';
 import { ClientService } from '../../core/services/client.service';
 import { LocationService } from '../../core/services/location.service';
 import { MissionService } from '../../core/services/mission.service';
+import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 
 @Component({
   selector: 'app-mission-fiche',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe, DatePipe],
+  imports: [ReactiveFormsModule, RouterLink, DecimalPipe, DatePipe, VALIDATION_FORMULAIRE],
   templateUrl: './mission-fiche.html'
 })
 export class MissionFiche implements OnInit {
@@ -34,6 +35,11 @@ export class MissionFiche implements OnInit {
 
   readonly types = TYPES_MISSION;
   readonly id = signal<number | null>(null);
+  /** Ouverte dans une fenetre depuis la liste : creation seule, sans en-tete de page. */
+  readonly enModale = input(false);
+  /** Creation terminee en mode fenetre : identifiant du nouvel enregistrement. */
+  readonly cree = output<number>();
+  readonly annule = output<void>();
   readonly mission = signal<Mission | null>(null);
   readonly clients = signal<ClientParc[]>([]);
   readonly camions = signal<Camion[]>([]);
@@ -132,7 +138,9 @@ export class MissionFiche implements OnInit {
     appel.subscribe({
       next: (mission) => {
         this.enregistrement.set(false);
-        if (id === null) {
+        if (id === null && this.enModale()) {
+          this.cree.emit(mission.id);
+        } else if (id === null) {
           void this.router.navigate(['/missions', mission.id]);
         } else {
           this.mission.set(mission);

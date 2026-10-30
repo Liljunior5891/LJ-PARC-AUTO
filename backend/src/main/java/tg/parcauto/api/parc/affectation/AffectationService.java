@@ -59,7 +59,7 @@ public class AffectationService {
         Chauffeur chauffeur = chauffeurService.charger(requete.chauffeurId());
 
         if (!camion.getStatut().exploitable()) {
-            throw new BusinessException("Le camion " + camion.getImmatriculation()
+            throw new BusinessException("Le vehicule " + camion.getImmatriculation()
                     + " n'est pas exploitable (statut " + camion.getStatut().getLibelle() + ")");
         }
         if (!chauffeur.isActif()) {
@@ -73,12 +73,12 @@ public class AffectationService {
                 continue;
             }
             if (conflit.getCamion().getId().equals(camion.getId())) {
-                throw new BusinessException("Le camion " + camion.getImmatriculation()
+                throw new BusinessException("Le vehicule " + camion.getImmatriculation()
                         + " est deja affecte a " + conflit.getChauffeur().nomComplet()
                         + " depuis le " + conflit.getDateDebut());
             }
             throw new BusinessException("Le chauffeur " + chauffeur.nomComplet()
-                    + " est deja affecte au camion " + conflit.getCamion().getImmatriculation()
+                    + " est deja affecte au vehicule " + conflit.getCamion().getImmatriculation()
                     + " depuis le " + conflit.getDateDebut());
         }
 

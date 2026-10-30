@@ -1,0 +1,311 @@
+/* Carte d'un camion, dans l'onglet « Carte » de la fiche. */
+.ecran-carte-camion {
+  position: relative;
+  height: 560px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #e9ecee;
+  box-shadow: 0 6px 24px rgba(16, 24, 40, 0.1);
+}
+
+.conteneur-carte {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Outils flottants, en haut au centre. */
+.outils {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.15);
+  transform: translateX(-50%);
+
+  button {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 9px;
+    background: #f1f4f8;
+    color: #1d2b26;
+    font-size: 1rem;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: var(--couleur-primaire);
+      color: #fff;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+  }
+
+  input {
+    height: 34px;
+    padding: 0 0.5rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 9px;
+    font: inherit;
+    font-size: 0.82rem;
+  }
+}
+
+/* Fiche de position, a gauche de la carte. */
+.panneau-position {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  bottom: 14px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  width: 290px;
+  padding: 1rem 1.1rem;
+  overflow-y: auto;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.16);
+
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+
+    strong {
+      font-size: 1.35rem;
+      letter-spacing: -0.01em;
+    }
+
+    small {
+      font-size: 0.78rem;
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  .statut {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--statut) 14%, #fff);
+    color: color-mix(in srgb, var(--statut) 80%, #000);
+    font-size: 0.72rem;
+    font-weight: 600;
+
+    i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--statut);
+    }
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem 0.8rem;
+    margin: 0;
+
+    div:nth-child(n + 3) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  dt {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--couleur-texte-doux);
+  }
+
+  dd {
+    margin: 0.1rem 0 0;
+    font-size: 0.88rem;
+
+    b {
+      font-size: 1.2rem;
+    }
+
+    small {
+      margin-left: 0.3rem;
+      font-size: 0.72rem;
+      color: var(--couleur-texte-doux);
+    }
+
+    &.coordonnees {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.8rem;
+    }
+  }
+
+  .signal {
+    height: 5px;
+    border-radius: 999px;
+    background: #e6eaee;
+    overflow: hidden;
+
+    span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #1f9d6b, #6fd3a5);
+    }
+  }
+
+  .trajet {
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--couleur-bordure);
+
+    h4 {
+      margin: 0 0 0.55rem;
+      font-size: 0.8rem;
+    }
+  }
+
+  .chiffres {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.3rem;
+
+    div {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0.4rem 0.2rem;
+      border-radius: 9px;
+      background: #fff6e3;
+    }
+
+    b {
+      font-size: 1rem;
+      color: #b8650a;
+    }
+
+    small {
+      font-size: 0.64rem;
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  .horaires {
+    display: block;
+    margin-top: 0.45rem;
+    font-size: 0.72rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  .vide {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  > .bouton {
+    align-self: flex-start;
+    margin-top: auto;
+  }
+}
+
+/* Elements inseres par Leaflet, hors de la portee des styles du composant. */
+:host ::ng-deep {
+  .fond-clair {
+    filter: grayscale(0.85) brightness(1.06) contrast(0.92);
+  }
+
+  .marqueur-camion {
+    background: none;
+    border: 0;
+  }
+
+  /* Halo qui pulse autour du camion : il se repere d'un coup d'oeil. */
+  .halo {
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--statut) 35%, transparent);
+    animation: pulsation 2s ease-out infinite;
+  }
+
+  .pion-camion {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--statut);
+    border-radius: 50%;
+    background: #1d2b26;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(16, 24, 40, 0.35);
+
+    svg {
+      width: 19px;
+      height: 19px;
+    }
+
+    &.en-mouvement {
+      border-radius: 12px;
+      background: #f0a202;
+    }
+
+    &.hors-connexion {
+      filter: grayscale(1);
+      opacity: 0.75;
+    }
+  }
+}
+
+@keyframes pulsation {
+  from {
+    opacity: 0.9;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host ::ng-deep .halo {
+    animation: none;
+  }
+}
+
+/* Sur petit ecran, la fiche passe sous la carte. */
+@media (max-width: 760px) {
+  .ecran-carte-camion {
+    height: auto;
+    overflow: visible;
+    background: none;
+    box-shadow: none;
+  }
+
+  .conteneur-carte {
+    position: relative;
+    height: 380px;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .panneau-position {
+    position: static;
+    width: auto;
+    margin-top: 0.75rem;
+  }
+}

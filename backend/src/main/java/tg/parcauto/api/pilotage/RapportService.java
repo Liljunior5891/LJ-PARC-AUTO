@@ -45,7 +45,7 @@ public class RapportService {
 
     public enum TypeRapport {
         FINANCIER("Rapport financier"),
-        RENTABILITE_CAMIONS("Rentabilite par camion"),
+        RENTABILITE_CAMIONS("Rentabilite par vehicule"),
         DEPENSES("Depenses par categorie"),
         CARBURANT("Consommation de carburant"),
         MAINTENANCE("Interventions de maintenance"),
@@ -88,9 +88,9 @@ public class RapportService {
         ligne(csv, "Total des depenses", nombre(global.totalDepenses()));
         ligne(csv, "Resultat", nombre(global.resultat()));
         ligne(csv, "Marge (%)", nombre(global.margePourcent()));
-        ligne(csv, "Nombre de camions", String.valueOf(global.nombreCamions()));
-        ligne(csv, "Recette moyenne par camion", nombre(global.recetteMoyenneParCamion()));
-        ligne(csv, "Depense moyenne par camion", nombre(global.depenseMoyenneParCamion()));
+        ligne(csv, "Nombre de vehicules", String.valueOf(global.nombreCamions()));
+        ligne(csv, "Recette moyenne par vehicule", nombre(global.recetteMoyenneParCamion()));
+        ligne(csv, "Depense moyenne par vehicule", nombre(global.depenseMoyenneParCamion()));
         return csv.toString();
     }
 
@@ -120,7 +120,7 @@ public class RapportService {
 
     private String carburant(LocalDate debut, LocalDate fin) {
         StringBuilder csv = new StringBuilder(BOM);
-        ligne(csv, "Camion", "Pleins", "Litres", "Montant (FCFA)", "Distance (km)",
+        ligne(csv, "Vehicule", "Pleins", "Litres", "Montant (FCFA)", "Distance (km)",
                 "Consommation (l/100km)", "Cout carburant/km", "Prix moyen/litre");
         rentabiliteService.global(debut, fin).camions().forEach(camion -> {
             var synthese = carburantService.synthese(camion.camionId(), debut, fin);
@@ -135,7 +135,7 @@ public class RapportService {
 
     private String maintenance() {
         StringBuilder csv = new StringBuilder(BOM);
-        ligne(csv, "Numero", "Camion", "Type", "Libelle", "Statut", "Echeance km",
+        ligne(csv, "Numero", "Vehicule", "Type", "Libelle", "Statut", "Echeance km",
                 "Echeance date", "Km restants", "Cout", "Fournisseur");
         for (EntretienDto.Reponse e : entretienService.ouverts()) {
             ligne(csv, e.numero(), e.camionImmatriculation(), e.typeLibelle(), e.libelle(),

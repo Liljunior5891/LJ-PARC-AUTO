@@ -113,7 +113,7 @@ public class FactureController {
 
     @PatchMapping("/{id}/emission")
     @PreAuthorize(Autorisations.GESTION)
-    @Operation(summary = "Emet la facture et enregistre les recettes par camion")
+    @Operation(summary = "Emet la facture et enregistre les recettes par vehicule")
     public FactureDto.Reponse emettre(@PathVariable Long id) {
         return service.emettre(id);
     }

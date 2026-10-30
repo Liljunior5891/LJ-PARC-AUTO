@@ -1,0 +1,288 @@
+<header class="entete" [class.compacte]="enteteCompacte()">
+  <a class="marque" href="#haut" (click)="fermerMenu()">
+    @if (societe()?.logo; as logo) {
+      <img [src]="logo" [alt]="nom" />
+    } @else {
+      <span class="embleme">🚛</span>
+    }
+    <span class="identite">
+      <span class="nom">{{ nom }}</span>
+      @if (societe()?.sigle; as sigle) {
+        <span class="sigle">{{ sigle }}</span>
+      }
+    </span>
+  </a>
+
+  <button class="bascule-menu" type="button" (click)="basculerMenu()" aria-label="Menu">☰</button>
+
+  <nav class="navigation" [class.ouverte]="menuOuvert()">
+    <a href="#services" (click)="fermerMenu()">Services</a>
+    <a href="#flotte" (click)="fermerMenu()">La flotte</a>
+    <a href="#methode" (click)="fermerMenu()">Notre methode</a>
+    <a href="#societe" (click)="fermerMenu()">L'entreprise</a>
+    <a href="#contact" (click)="fermerMenu()">Contact</a>
+    @if (connecte()) {
+      <a class="bouton-nav" routerLink="/tableau-bord" (click)="fermerMenu()">Mon espace</a>
+    } @else {
+      <a class="bouton-nav" routerLink="/connexion" (click)="fermerMenu()">Espace de gestion</a>
+    }
+  </nav>
+</header>
+
+<main id="haut">
+  <!-- Carrousel d'ouverture ------------------------------------------->
+  <section
+    class="carrousel"
+    aria-roledescription="carrousel"
+    aria-label="Notre activite en images"
+    (mouseenter)="suspendre()"
+    (mouseleave)="reprendre()"
+    (focusin)="suspendre()"
+    (focusout)="reprendre()"
+  >
+    @for (diapo of diapositivesAffichees(); track diapo.image; let i = $index) {
+      <article
+        class="diapositive"
+        [class.active]="diapositiveActive() === i"
+        [attr.aria-hidden]="diapositiveActive() === i ? null : 'true'"
+        [attr.inert]="diapositiveActive() === i ? null : ''"
+      >
+        <div
+          class="fond"
+          [class.adouci]="diapo.adoucir"
+          [style.background-image]="'url(' + diapo.image + ')'"
+        ></div>
+        <div class="voile"></div>
+
+        <div class="contenu-diapositive">
+          <p class="surtitre">{{ diapo.surtitre }}</p>
+          <h1 [innerHTML]="diapo.titre"></h1>
+          <p class="accroche">{{ diapo.accroche }}</p>
+          <div class="actions-diapositive">
+            <a class="bouton-principal" [href]="diapo.ancre">{{ diapo.action }}</a>
+            <a class="bouton-secondaire" href="#services">Nos prestations</a>
+          </div>
+        </div>
+      </article>
+    }
+
+    <button class="fleche precedente" type="button" (click)="precedente()" aria-label="Image precedente">‹</button>
+    <button class="fleche suivante" type="button" (click)="suivante()" aria-label="Image suivante">›</button>
+
+    <div class="pastilles" role="tablist" aria-label="Choisir une image">
+      @for (diapo of diapositivesAffichees(); track diapo.image; let i = $index) {
+        <button
+          type="button"
+          role="tab"
+          class="pastille"
+          [class.active]="diapositiveActive() === i"
+          [attr.aria-selected]="diapositiveActive() === i"
+          [attr.aria-label]="diapo.surtitre"
+          (click)="allerA(i)"
+        ></button>
+      }
+    </div>
+
+    <a class="indicateur-defilement" href="#services" aria-label="Faire defiler"><span></span></a>
+  </section>
+
+  <!-- Engagements ---------------------------------------------------->
+  <section class="bande-engagements">
+    @for (engagement of engagements; track engagement.titre; let i = $index) {
+      <article appApparition [retardApparition]="i * 90" [style.--teinte]="engagement.couleur">
+        <span class="pictogramme">{{ engagement.icone }}</span>
+        <h3>{{ engagement.titre }}</h3>
+        <p>{{ engagement.texte }}</p>
+      </article>
+    }
+  </section>
+
+  <!-- Services ------------------------------------------------------->
+  <section class="section" id="services">
+    <div class="entete-section" appApparition>
+      <span class="etiquette-section">Nos services</span>
+      <h2>Quatre metiers, une seule chaine de responsabilite</h2>
+      <p>
+        Du transport ponctuel au contrat de longue duree, nous prenons en charge le vehicule,
+        le conducteur et les documents qui accompagnent votre marchandise.
+      </p>
+    </div>
+
+    <div class="grille-services">
+      @for (prestation of prestations; track prestation.titre; let i = $index) {
+        <article class="carte-service" appApparition [retardApparition]="i * 110">
+          <span class="icone">{{ prestation.icone }}</span>
+          <h3>{{ prestation.titre }}</h3>
+          <p>{{ prestation.texte }}</p>
+          <ul>
+            @for (point of prestation.points; track point) {
+              <li>{{ point }}</li>
+            }
+          </ul>
+        </article>
+      }
+    </div>
+  </section>
+
+
+  <!-- La flotte ------------------------------------------------------>
+  <section class="section flotte" id="flotte">
+    <div class="entete-section" appApparition>
+      <span class="etiquette-section">Notre flotte</span>
+      <h2>Le bon vehicule pour le bon chargement</h2>
+      <p>
+        Tracteurs, bennes, plateaux et vehicules frigorifiques : le parc de {{ nom }} couvre
+        la longue distance comme la distribution urbaine.
+      </p>
+    </div>
+
+    <div class="grille-flotte">
+      @for (vehicule of flotte; track vehicule.nom; let i = $index) {
+        <article class="carte-vehicule" appApparition [retardApparition]="i * 90">
+          <div
+            class="visuel"
+            [style.background-image]="'url(' + vehicule.image + ')'"
+            [style.background-position]="vehicule.cadrage"
+            [style.background-size]="vehicule.agrandissement"
+          ></div>
+          <div class="legende">
+            <h3>{{ vehicule.nom }}</h3>
+            <p>{{ vehicule.usage }}</p>
+          </div>
+        </article>
+      }
+    </div>
+
+    <p class="note-flotte" appApparition>
+      Un besoin particulier ? Decrivez-nous votre chargement : nous vous indiquons le vehicule adapte.
+    </p>
+  </section>
+
+  <!-- Methode -------------------------------------------------------->
+  <section class="section sombre" id="methode">
+    <div class="entete-section" appApparition>
+      <span class="etiquette-section">Notre methode</span>
+      <h2>Trois etapes, aucune zone d'ombre</h2>
+    </div>
+
+    <div class="grille-etapes">
+      @for (etape of etapes; track etape.numero; let i = $index) {
+        <article class="carte-etape" appApparition [retardApparition]="i * 130">
+          <span class="numero">{{ etape.numero }}</span>
+          <h3>{{ etape.titre }}</h3>
+          <p>{{ etape.texte }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <!-- L'entreprise --------------------------------------------------->
+  <section class="section deux-colonnes" id="societe">
+    <div appApparition>
+      <span class="etiquette-section">L'entreprise</span>
+      <h2>{{ nom }}</h2>
+      @if (societe()?.formeJuridique; as forme) {
+        <p class="mention-legale">{{ forme }}</p>
+      }
+      <p>
+        Nous exploitons un parc de vehicules dedie au transport de marchandises et a la location
+        de vehicules industriels. Notre organisation repose sur un principe simple : un vehicule
+        entretenu, un chauffeur identifie et une mission tracee pour chaque chargement confie.
+      </p>
+      <p>
+        Chaque vehicule fait l'objet d'un plan d'entretien suivi, d'un controle documentaire des
+        pieces obligatoires et d'un equipement de geolocalisation. Cette rigueur interne est ce
+        qui nous permet de nous engager sur des delais et de justifier, piece a l'appui, le
+        deroulement de vos operations.
+      </p>
+    </div>
+
+    <div class="colonne-atouts">
+      @if (societe()?.logo; as logo) {
+        <div class="cartouche-logo" appApparition>
+          <img [src]="logo" [alt]="nom" />
+        </div>
+      }
+
+      <ul class="liste-atouts">
+      <li appApparition [retardApparition]="60"><strong>Flotte suivie</strong><span>Entretien preventif, pneumatiques et documents controles.</span></li>
+      <li appApparition [retardApparition]="140"><strong>Chauffeurs affectes</strong><span>Un conducteur identifie par vehicule et par mission.</span></li>
+      <li appApparition [retardApparition]="220"><strong>Geolocalisation</strong><span>Position, itineraires et arrets consultables a la demande.</span></li>
+        <li appApparition [retardApparition]="300"><strong>Facturation claire</strong><span>Des factures adossees aux missions realisees.</span></li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- Bandeau d'appel ------------------------------------------------->
+  <section class="bandeau-appel">
+    <div class="fond-bandeau"></div>
+    <div class="contenu-bandeau" appApparition>
+      <h2>Un chargement a faire partir cette semaine ?</h2>
+      <p>{{ nom }} vous repond avec un vehicule, un chauffeur et une date.</p>
+      <a class="bouton-principal" href="#contact">Demander un devis</a>
+    </div>
+  </section>
+
+  <!-- Contact -------------------------------------------------------->
+  <section class="section contact" id="contact">
+    <div class="entete-section" appApparition>
+      <span class="etiquette-section">Contact</span>
+      <h2>Parlons de votre besoin de transport</h2>
+      <p>Decrivez-nous le trajet, la nature du fret et vos dates : nous revenons vers vous avec une offre.</p>
+    </div>
+
+    @if (sansCoordonnees) {
+      <p class="repli-coordonnees">
+        Nos coordonnees completes sont communiquees sur simple demande.
+      </p>
+    }
+
+    <div class="coordonnees">
+      @if (adresseComplete; as adresse) {
+        <article appApparition>
+          <h3>Adresse</h3>
+          <p>{{ adresse }}</p>
+        </article>
+      }
+      @if (societe()?.telephone; as telephone) {
+        <article appApparition [retardApparition]="90">
+          <h3>Telephone</h3>
+          <p><a [href]="'tel:' + telephone">{{ telephone }}</a></p>
+        </article>
+      }
+      @if (societe()?.email; as email) {
+        <article appApparition [retardApparition]="180">
+          <h3>Email</h3>
+          <p><a [href]="'mailto:' + email">{{ email }}</a></p>
+        </article>
+      }
+      @if (societe()?.siteWeb; as site) {
+        <article appApparition [retardApparition]="270">
+          <h3>Site web</h3>
+          <p><a [href]="site" target="_blank" rel="noopener">{{ site }}</a></p>
+        </article>
+      }
+    </div>
+
+    @if (societe()?.email; as email) {
+      <a class="bouton-principal" [href]="'mailto:' + email + '?subject=Demande%20de%20devis%20transport'">
+        Envoyer une demande de devis
+      </a>
+    }
+  </section>
+</main>
+
+<footer class="pied-page">
+  <p>© {{ annee }} {{ nom }}@if (societe()?.formeJuridique; as forme) { — {{ forme }}}. Tous droits reserves.</p>
+  <nav>
+    <a href="#services">Services</a>
+    <a href="#flotte">La flotte</a>
+    <a href="#contact">Contact</a>
+    @if (connecte()) {
+      <a routerLink="/tableau-bord">Mon espace</a>
+    } @else {
+      <a routerLink="/connexion">Espace de gestion</a>
+    }
+  </nav>
+</footer>

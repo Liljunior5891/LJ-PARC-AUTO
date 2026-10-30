@@ -42,7 +42,7 @@ public class EntretienController {
     }
 
     @GetMapping("/camions/{camionId}")
-    @Operation(summary = "Historique d'entretien d'un camion")
+    @Operation(summary = "Historique d'entretien d'un vehicule")
     public List<EntretienDto.Reponse> historique(@PathVariable Long camionId) {
         return service.historiqueDuCamion(camionId);
     }
@@ -71,7 +71,7 @@ public class EntretienController {
 
     @PatchMapping("/{id}/demarrage")
     @PreAuthorize(Autorisations.GESTION)
-    @Operation(summary = "Passe le camion a l'atelier")
+    @Operation(summary = "Passe le vehicule a l'atelier")
     public EntretienDto.Reponse demarrer(@PathVariable Long id) {
         return service.demarrer(id);
     }

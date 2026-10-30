@@ -4,9 +4,20 @@
     <p class="sous-titre">{{ page()?.totalElements ?? 0 }} chauffeur(s) enregistre(s)</p>
   </div>
   @if (peutGerer) {
-    <a class="bouton" routerLink="/chauffeurs/nouveau">+ Nouveau chauffeur</a>
+    <button class="bouton" type="button" (click)="ouvrirCreation()">+ Nouveau chauffeur</button>
   }
 </div>
+
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<!-- Creation dans une fenetre : la fiche complete reste accessible ensuite depuis la liste. -->
+@if (creation()) {
+  <app-modale titre="Nouveau chauffeur" largeur="1000px" (ferme)="creation.set(false)">
+    <app-chauffeur-fiche [enModale]="true" (cree)="creationTerminee()" (annule)="creation.set(false)" />
+  </app-modale>
+}
 
 <div class="carte">
   <div class="grille-formulaire">

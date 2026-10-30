@@ -28,14 +28,14 @@ import tg.parcauto.api.security.Autorisations;
 @RestController
 @RequestMapping("/api/affectations")
 @RequiredArgsConstructor
-@Tag(name = "Affectations chauffeur / camion")
+@Tag(name = "Affectations chauffeur / vehicule")
 public class AffectationController {
 
 
     private final AffectationService service;
 
     @GetMapping
-    @Operation(summary = "Historique des affectations, filtrable par camion, chauffeur ou statut")
+    @Operation(summary = "Historique des affectations, filtrable par vehicule, chauffeur ou statut")
     public Page<AffectationDto.Reponse> lister(@RequestParam(required = false) Long camionId,
                                                @RequestParam(required = false) Long chauffeurId,
                                                @RequestParam(required = false) Boolean enCours,
@@ -51,7 +51,7 @@ public class AffectationController {
     }
 
     @GetMapping("/camion/{camionId}/courante")
-    @Operation(summary = "Affectation en cours d'un camion")
+    @Operation(summary = "Affectation en cours d'un vehicule")
     public ResponseEntity<AffectationDto.Reponse> couranteDuCamion(@PathVariable Long camionId) {
         return ResponseEntity.of(service.couranteDuCamion(camionId));
     }
@@ -65,7 +65,7 @@ public class AffectationController {
     @PostMapping
     @PreAuthorize(Autorisations.GESTION)
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Affecte un chauffeur a un camion")
+    @Operation(summary = "Affecte un chauffeur a un vehicule")
     public AffectationDto.Reponse affecter(@Valid @RequestBody AffectationDto.Requete requete) {
         return service.affecter(requete);
     }

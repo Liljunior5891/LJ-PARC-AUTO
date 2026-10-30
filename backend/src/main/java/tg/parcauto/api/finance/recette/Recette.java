@@ -82,4 +82,27 @@ public class Recette extends BaseEntity {
 
     @Column(columnDefinition = "text")
     private String observations;
+
+    // --- Details selon le type de recette (tous facultatifs) ---------------
+
+    /** Debut de la prestation : transport, voyage, mission speciale, contrat. */
+    @Column(name = "date_debut")
+    private LocalDate dateDebut;
+
+    @Column(name = "date_fin")
+    private LocalDate dateFin;
+
+    @Column(name = "lieu_depart", length = 180)
+    private String lieuDepart;
+
+    @Column(length = 180)
+    private String destination;
+
+    /** Marchandise transportee ou livree. */
+    @Column(length = 255)
+    private String marchandise;
+
+    /** Kilometres factures, pour un kilometrage supplementaire. */
+    @Column
+    private Long kilometres;
 }

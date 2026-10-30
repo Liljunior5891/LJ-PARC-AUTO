@@ -57,7 +57,7 @@ public class PositionGpsService {
             }
             Camion camion = camionRepository.findByGpsDeviceId(brute.deviceId())
                     .orElseThrow(() -> new BusinessException(
-                            "Aucun camion n'est associe au traceur " + brute.deviceId()));
+                            "Aucun vehicule n'est associe au traceur " + brute.deviceId()));
 
             PositionGps precedente = repository
                     .findFirstByCamionIdOrderByHorodatageDesc(camion.getId())

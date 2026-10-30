@@ -6,10 +6,12 @@ import { OptionSelect, SelectRecherche } from '../../shared/select-recherche';
 import { AffectationService } from '../../core/services/affectation.service';
 import { CamionService } from '../../core/services/camion.service';
 import { ChauffeurService } from '../../core/services/chauffeur.service';
+import { Modale } from '../../shared/modale';
+import { VALIDATION_FORMULAIRE, messageChampsManquants } from '../../shared/validation-formulaire';
 
 @Component({
   selector: 'app-affectations',
-  imports: [FormsModule, ReactiveFormsModule, SelectRecherche],
+  imports: [FormsModule, ReactiveFormsModule, SelectRecherche, Modale, VALIDATION_FORMULAIRE],
   templateUrl: './affectations.html'
 })
 export class Affectations implements OnInit {
@@ -178,12 +180,13 @@ export class Affectations implements OnInit {
   }
 
   /** Identifiant de l'affectation dont la cloture est en cours de saisie. */
-  readonly clotureEnCours = signal<number | null>(null);
+  /** Affectation dont la fenetre de cloture est ouverte. */
+  readonly clotureEnCours = signal<Affectation | null>(null);
   dateCloture = new Date().toISOString().slice(0, 10);
 
   ouvrirCloture(affectation: Affectation): void {
     this.dateCloture = new Date().toISOString().slice(0, 10);
-    this.clotureEnCours.set(affectation.id);
+    this.clotureEnCours.set(affectation);
   }
 
   annulerCloture(): void {
@@ -192,7 +195,9 @@ export class Affectations implements OnInit {
 
   cloturer(affectation: Affectation): void {
     const date = this.dateCloture;
-    if (!date) {
+    const manquants = messageChampsManquants({ 'Date de fin': date });
+    if (manquants) {
+      this.erreur.set(manquants);
       return;
     }
     this.clotureEnCours.set(null);
