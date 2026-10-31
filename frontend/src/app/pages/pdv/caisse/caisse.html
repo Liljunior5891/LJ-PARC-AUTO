@@ -1,0 +1,253 @@
+<div class="pos" [class.vue-commande]="vueMobile() === 'commande'">
+  <!-- ========================================================= produits -->
+  <section class="pos-carte">
+    <div class="barre-recherche">
+      <label class="recherche">
+        <span aria-hidden="true">⌕</span>
+        <input #saisie type="search" placeholder="Scanner un code-barres ou rechercher un produit..." autocomplete="off"
+               [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" (keydown.enter)="valider()"
+               aria-label="Code-barres ou nom du produit" />
+      </label>
+      <app-bouton-especes />
+    </div>
+
+    <div class="categories" role="tablist" aria-label="Categories">
+      <button type="button" role="tab" class="categorie" [class.active]="categorieChoisie() === null"
+              [attr.aria-selected]="categorieChoisie() === null" (click)="categorieChoisie.set(null)">
+        <span class="icone" aria-hidden="true">▦</span>
+        <strong>Tout</strong>
+        <small>{{ articles().length }} produits</small>
+      </button>
+      @for (cat of categories(); track cat.id) {
+        <button type="button" role="tab" class="categorie" [class.active]="categorieChoisie() === cat.id"
+                [attr.aria-selected]="categorieChoisie() === cat.id" (click)="categorieChoisie.set(cat.id)">
+          <span class="icone" aria-hidden="true">{{ cat.icone || '🛍️' }}</span>
+          <strong>{{ cat.nom }}</strong>
+          <small>{{ parCategorie().get(cat.id) ?? 0 }} produits</small>
+        </button>
+      }
+    </div>
+
+    <div class="plats">
+      @for (a of articlesAffiches(); track a.id) {
+        @let pris = dansLePanier().get(a.id);
+        @let epuise = a.suiviStock && a.stockActuel <= 0;
+        <article class="plat" [class.choisi]="!!pris" [class.epuise]="epuise">
+          <button type="button" class="visuel" [disabled]="epuise" (click)="ajouter(a)" [attr.aria-label]="'Ajouter ' + a.nom">
+            @if (a.image) {
+              <img [src]="a.image" [alt]="a.nom" loading="lazy" />
+            } @else {
+              <span class="sans-photo" [style.--teinte]="a.categorieCouleur || '#1e9e4a'" aria-hidden="true">
+                {{ a.categorieIcone || '🛍️' }}
+              </span>
+            }
+            @if (epuise) {
+              <span class="badge rupture">Epuise</span>
+            } @else if (a.suiviStock && a.stockBas) {
+              <span class="badge">Plus que {{ a.stockActuel | number: '1.0-0' }}</span>
+            }
+          </button>
+          <h3>{{ a.nom }}</h3>
+          <div class="prix-ligne">
+            <strong>{{ a.prixVente | number: '1.0-0' }} F</strong>
+            @if (a.suiviStock && !epuise && !a.stockBas) {
+              <small class="stock-produit">{{ a.stockActuel | number: '1.0-3' }} en stock</small>
+            } @else if (a.categorieNom) {
+              <small class="pastille-cat" [style.--teinte]="a.categorieCouleur || '#1e9e4a'">{{ a.categorieNom }}</small>
+            }
+          </div>
+          @if (pris) {
+            <div class="compteur">
+              <button type="button" aria-label="Retirer un" (click)="changerQuantite(pris, pris.quantite - 1)">−</button>
+              <span>{{ pris.quantite | number: '1.0-3' }}</span>
+              <button type="button" aria-label="Ajouter un" (click)="ajouter(a)">+</button>
+            </div>
+          } @else {
+            <button type="button" class="ajouter" [disabled]="epuise" (click)="ajouter(a)">Ajouter</button>
+          }
+        </article>
+      } @empty {
+        <p class="vide">
+          @if (articles().length === 0) {
+            Aucun produit au catalogue.
+            @if (estGestionnaire) { Ajoutez-en depuis Stock › Produits. }
+          } @else {
+            Aucun produit ne correspond.
+          }
+        </p>
+      }
+    </div>
+  </section>
+
+  <!-- ========================================================= commande -->
+  <aside class="pos-table">
+    <button type="button" class="retour-carte" (click)="vueMobile.set('carte')">‹ Produits</button>
+    <header>
+      <div>
+        <h2>Commande en cours</h2>
+        <small>{{ vendeur }} · {{ nombreArticles() | number: '1.0-3' }} article(s)</small>
+      </div>
+      @if (panier().length > 0) {
+        <button type="button" class="carre" (click)="viderPanier()" aria-label="Vider la commande" title="Vider la commande">🗑</button>
+      }
+    </header>
+
+    <app-bandeau-session />
+
+    <label class="client-comptoir">
+      <span>Nom du client (facultatif)</span>
+      <input name="client" maxlength="80" [(ngModel)]="clientNom" placeholder="Ex. Mme Adjoa" />
+    </label>
+
+    @if (erreur() && !paiement()) {
+      <div class="message erreur">{{ erreur() }}</div>
+    }
+    @if (information()) {
+      <div class="message avertissement">{{ information() }}</div>
+    }
+
+    <div class="lignes">
+      @for (l of panier(); track l.article.id) {
+        <div class="ligne">
+          <span class="vignette" [style.--teinte]="l.article.categorieCouleur || '#1e9e4a'">
+            @if (l.article.image) {
+              <img [src]="l.article.image" alt="" />
+            } @else {
+              {{ l.article.categorieIcone || '🛍️' }}
+            }
+          </span>
+          <div class="texte">
+            <strong>{{ l.article.nom }}</strong>
+            <small>{{ l.article.prixVente | number: '1.0-0' }} F l'unite</small>
+            <div class="compteur petit">
+              <button type="button" [attr.aria-label]="'Retirer un ' + l.article.nom" (click)="changerQuantite(l, l.quantite - 1)">−</button>
+              <input type="number" min="0" step="any" [ngModel]="l.quantite" (ngModelChange)="changerQuantite(l, $event)"
+                     [attr.aria-label]="'Quantite ' + l.article.nom" />
+              <button type="button" [attr.aria-label]="'Ajouter un ' + l.article.nom" (click)="ajouter(l.article)">+</button>
+            </div>
+          </div>
+          <div class="droite">
+            <strong>{{ l.article.prixVente * l.quantite | number: '1.0-0' }} F</strong>
+            <button type="button" class="retirer" [attr.aria-label]="'Retirer ' + l.article.nom" (click)="retirer(l)">Retirer</button>
+          </div>
+        </div>
+      } @empty {
+        <div class="vide-commande">
+          <span aria-hidden="true">🛒</span>
+          <p>Scannez ou touchez un produit pour commencer la vente.</p>
+        </div>
+      }
+    </div>
+
+    <div class="resume">
+      <div><span>Sous-total</span><span>{{ totalBrut() | number: '1.0-0' }} F</span></div>
+      @if (remise() > 0) {
+        <div><span>Remise</span><span>−{{ remise() | number: '1.0-0' }} F</span></div>
+      }
+      <div class="montant-total">
+        <span>Total a payer</span>
+        <strong>{{ total() | number: '1.0-0' }} F</strong>
+      </div>
+    </div>
+
+    <div class="moyens">
+      @for (m of modes.slice(0, 4); track m.valeur) {
+        <button type="button" class="moyen" [disabled]="panier().length === 0 || !session()" (click)="ouvrirPaiement(m.valeur)">
+          <span class="icone" aria-hidden="true">{{ m.icone }}</span>
+          <small>{{ m.libelle }}</small>
+        </button>
+      }
+    </div>
+
+    @if (!session()) {
+      <button type="button" class="bouton-vert principal" disabled>
+        {{ session() === null ? 'Caisse fermee' : 'Choisissez votre caisse' }}
+      </button>
+    } @else {
+      <button type="button" class="bouton-vert principal" [disabled]="panier().length === 0" (click)="ouvrirPaiement()">
+        {{ panier().length === 0 ? 'Choisissez des produits' : 'Encaisser ' + (total() | number: '1.0-0') + ' F' }}
+      </button>
+    }
+  </aside>
+</div>
+
+<!-- Sur telephone, depuis les produits : la commande en un geste. -->
+@if (vueMobile() === 'carte') {
+  <button type="button" class="barre-mobile" (click)="vueMobile.set('commande')">
+    <span class="pastille">{{ nombreArticles() | number: '1.0-0' }}</span>
+    <span>Voir la commande</span>
+    <strong>{{ total() | number: '1.0-0' }} F</strong>
+  </button>
+}
+
+<!-- Encaissement -->
+@if (paiement()) {
+  <app-modale titre="Encaissement" [sousTitre]="'Total a payer : ' + (total() | number: '1.0-0') + ' F'"
+              largeur="600px" [erreur]="erreur()" (ferme)="paiement.set(false)">
+    <form class="paiement" (ngSubmit)="encaisser()">
+      <div class="moyens">
+        @for (m of modes; track m.valeur) {
+          <button type="button" class="moyen" [class.actif]="mode() === m.valeur" (click)="mode.set(m.valeur)">
+            <span class="icone" aria-hidden="true">{{ m.icone }}</span>
+            <small>{{ m.libelle }}</small>
+          </button>
+        }
+      </div>
+
+      @if (mode() === 'ESPECES') {
+        <div class="champ">
+          <label for="recu">Montant recu</label>
+          <input id="recu" name="recu" type="number" min="0" step="any" class="grand"
+                 [ngModel]="montantRecu()" (ngModelChange)="montantRecu.set($event)" />
+        </div>
+        <div class="puces">
+          @for (b of billets(); track b) {
+            <button type="button" class="puce" (click)="montantRecu.set(b)">{{ b | number: '1.0-0' }}</button>
+          }
+        </div>
+        <div class="monnaie" [class.insuffisant]="(montantRecu() ?? 0) < total()">
+          @if ((montantRecu() ?? 0) >= total()) {
+            Monnaie a rendre : <strong>{{ monnaie() | number: '1.0-0' }} F</strong>
+          } @else {
+            Il manque <strong>{{ total() - (montantRecu() ?? 0) | number: '1.0-0' }} F</strong>
+          }
+        </div>
+      } @else {
+        <div class="champ">
+          <label for="reference">Reference de la transaction (facultatif)</label>
+          <input id="reference" name="reference" [(ngModel)]="reference" placeholder="Ex. ID mobile money" />
+        </div>
+      }
+
+      <div class="champ">
+        <label for="remise">Remise (F CFA)</label>
+        <input id="remise" name="remise" type="number" min="0" step="any" [ngModel]="remise()"
+               (ngModelChange)="remise.set($event); montantRecu.set(total())" />
+      </div>
+
+      <div class="actions-formulaire">
+        <button class="bouton secondaire" type="button" (click)="paiement.set(false)">Retour</button>
+        <button class="bouton-vert" type="submit" [disabled]="enCours() || !paiementPossible()">
+          {{ enCours() ? 'Enregistrement...' : 'Valider ' + (total() | number: '1.0-0') + ' F' }}
+        </button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+<!-- Paiement enregistre -->
+@if (dernierTicket(); as t) {
+  <app-modale titre="Paiement enregistre" [sousTitre]="'Commande ' + t.numero" largeur="460px" (ferme)="nouvelleVente()">
+    <div class="ticket-emis">
+      <div class="coche" aria-hidden="true">✓</div>
+      <p class="total-emis">{{ t.total | number: '1.0-0' }} F</p>
+      <p>{{ t.modePaiementLibelle }}
+        @if (t.monnaieRendue) { · monnaie rendue <strong>{{ t.monnaieRendue | number: '1.0-0' }} F</strong> }
+      </p>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire" type="button" (click)="imprimer(t)">Imprimer le recu</button>
+        <button class="bouton-vert" type="button" (click)="nouvelleVente()">Client suivant</button>
+      </div>
+    </div>
+  </app-modale>
+}

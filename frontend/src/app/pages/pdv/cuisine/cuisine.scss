@@ -1,0 +1,242 @@
+/* Ecran de preparation : trois colonnes lisibles de loin, des boutons larges pour des mains occupees. */
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: calc(100vh - var(--hauteur-chrome, 210px));
+}
+
+:host-context(:fullscreen) {
+  min-height: 100vh;
+  padding: 1rem;
+  background: var(--couleur-fond);
+}
+
+.barre-cuisine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.postes {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.poste {
+  padding: 0.6rem 1.3rem;
+  border: 2px solid var(--couleur-bordure);
+  border-radius: 999px;
+  background: var(--couleur-surface);
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+
+  &.actif {
+    border-color: var(--couleur-primaire);
+    background: var(--couleur-primaire);
+    color: #fff;
+  }
+}
+
+.compteurs {
+  display: flex;
+  gap: 1.2rem;
+  color: var(--couleur-texte-doux);
+
+  strong {
+    color: var(--couleur-texte);
+    font-size: 1.3rem;
+  }
+}
+
+.outils {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.colonnes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.colonne {
+  --teinte: #1565c0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 5px solid var(--teinte);
+  border-radius: var(--rayon);
+  background: color-mix(in srgb, var(--teinte) 5%, var(--couleur-fond));
+
+  &.cours {
+    --teinte: #e8870e;
+  }
+
+  &.prets {
+    --teinte: #1e874b;
+  }
+
+  h2 {
+    display: flex;
+    justify-content: space-between;
+    margin: 0;
+    padding: 0.7rem 0.9rem;
+    font-size: 1.05rem;
+
+    span {
+      min-width: 1.8rem;
+      padding: 0 0.5rem;
+      border-radius: 999px;
+      background: var(--teinte);
+      color: #fff;
+      text-align: center;
+    }
+  }
+}
+
+.bons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0 0.6rem 0.8rem;
+  overflow-y: auto;
+}
+
+.bon {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border-left: 6px solid var(--teinte);
+  border-radius: 10px;
+  background: var(--couleur-surface);
+  box-shadow: var(--ombre);
+
+  &.retard {
+    border-left-color: #e8870e;
+
+    .attente {
+      background: #e8870e;
+    }
+  }
+
+  &.urgent {
+    border-left-color: var(--couleur-danger);
+
+    .attente {
+      background: var(--couleur-danger);
+    }
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .repere {
+    font-size: 1.5rem;
+  }
+
+  .attente {
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: var(--couleur-texte-doux);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .meta {
+    margin: 0;
+    color: var(--couleur-texte-doux);
+    font-size: 0.85rem;
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .action {
+    margin-top: 0.25rem;
+    padding: 0.8rem;
+    font-size: 1.1rem;
+    background: var(--teinte);
+  }
+}
+
+.ligne {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.45rem 0.2rem;
+  border: none;
+  border-bottom: 1px dashed var(--couleur-bordure);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 1.1rem;
+  text-align: left;
+  cursor: pointer;
+
+  .quantite {
+    min-width: 2rem;
+    font-weight: 800;
+  }
+
+  .libelle {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .note {
+    color: var(--couleur-danger);
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .coche {
+    color: #1e874b;
+    font-weight: 800;
+  }
+
+  &.en_preparation .quantite {
+    color: #e8870e;
+  }
+
+  &.prete {
+    opacity: 0.55;
+
+    .libelle {
+      text-decoration: line-through;
+    }
+  }
+}
+
+.vide {
+  padding: 1.5rem 0.5rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .colonnes {
+    grid-template-columns: 1fr;
+  }
+}
+
+.categories-ecran {
+  margin: 0;
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}

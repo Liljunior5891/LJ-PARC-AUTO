@@ -1,0 +1,297 @@
+<div class="entete-page">
+  <div>
+    <h1>Produits</h1>
+    <p class="sous-titre">{{ page()?.totalElements ?? 0 }} article(s) au catalogue</p>
+  </div>
+  <div class="actions-entete">
+    <app-export-pdv type="PRODUITS" />
+    <button class="bouton secondaire" type="button" (click)="importOuvert.set(true)">⇪ Importer</button>
+    <button class="bouton secondaire" type="button" (click)="gestionCategories.set(true)">Categories</button>
+    <button class="bouton" type="button" (click)="ouvrir()">+ Nouvel article</button>
+  </div>
+</div>
+
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="recherche">Recherche</label>
+      <input id="recherche" type="search" placeholder="Nom, code, code-barres..."
+             [(ngModel)]="recherche" (keyup.enter)="filtrer()" />
+    </div>
+    <div class="champ">
+      <label for="categorie">Categorie</label>
+      <select id="categorie" [(ngModel)]="categorieId" (change)="filtrer()">
+        <option [ngValue]="null">Toutes</option>
+        @for (c of categories(); track c.id) {
+          <option [ngValue]="c.id">{{ c.nom }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="stock">Stock</label>
+      <select id="stock" [(ngModel)]="filtreStock" (change)="filtrer()">
+        <option [ngValue]="false">Tous les niveaux</option>
+        <option [ngValue]="true">Sous le seuil d'alerte</option>
+      </select>
+    </div>
+    <div class="champ">
+      <label for="archives">Archives</label>
+      <select id="archives" [(ngModel)]="masquerArchives" (change)="filtrer()">
+        <option [ngValue]="true">Articles en vente</option>
+        <option [ngValue]="false">Tous, archives comprises</option>
+      </select>
+    </div>
+  </div>
+
+  @if (erreur()) {
+    <div class="message erreur" style="margin-top: 1rem">{{ erreur() }}</div>
+  }
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Article</th>
+          <th>Categorie</th>
+          <th class="numerique">Prix de vente</th>
+          <th class="numerique">Cout d'achat</th>
+          <th class="numerique">Stock</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (a of page()?.content ?? []; track a.id) {
+          <tr [style.opacity]="a.actif ? 1 : 0.55">
+            <td>
+              {{ a.code }}
+              @if (a.codeBarres) { <br /><small>{{ a.codeBarres }}</small> }
+            </td>
+            <td><strong>{{ a.nom }}</strong>@if (a.unite) { <small> / {{ a.unite }}</small> }</td>
+            <td>
+              @if (a.categorieNom) {
+                <span class="etiquette" [style.background]="a.categorieCouleur" style="color: #fff">{{ a.categorieNom }}</span>
+              } @else { — }
+            </td>
+            <td class="numerique">{{ a.prixVente | number: '1.0-0' }} F</td>
+            <td class="numerique">{{ a.prixAchat != null ? (a.prixAchat | number: '1.0-0') + ' F' : '—' }}</td>
+            <td class="numerique">
+              @if (a.suiviStock) {
+                <span [class.resultat-negatif]="a.stockBas"><strong>{{ a.stockActuel | number: '1.0-3' }}</strong></span>
+                @if (a.stockBas) { <br /><small class="resultat-negatif">sous le seuil ({{ a.seuilAlerte }})</small> }
+              } @else {
+                <small>non suivi</small>
+              }
+            </td>
+            <td style="white-space: nowrap; text-align: right">
+              @if (a.suiviStock) {
+                <a class="bouton secondaire petit" routerLink="/pdv/rapports"
+                   [queryParams]="{ type: 'FICHE_STOCK', article: a.id }" title="Entrees, sorties et solde">Fiche de stock</a>
+              }
+              <button class="bouton secondaire petit" type="button" (click)="ouvrir(a)">Modifier</button>
+              @if (a.actif) {
+                <button class="bouton secondaire petit" type="button" (click)="archiver(a)">Archiver</button>
+              } @else {
+                <button class="bouton secondaire petit" type="button" (click)="reactiver(a)">Reactiver</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" style="text-align: center; color: var(--couleur-texte-doux)">
+            Aucun article. Commencez par creer vos categories, puis vos articles.
+          </td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">Precedent</button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">Suivant</button>
+      </div>
+    }
+  }
+</div>
+
+<!-- Fiche article -->
+@if (edition(); as e) {
+  <app-modale [titre]="e === 'nouveau' ? 'Nouvel article' : 'Modifier ' + e.nom" largeur="760px"
+              [erreur]="erreurFormulaire()" (ferme)="edition.set(null)">
+    <form (ngSubmit)="enregistrer()">
+      <div class="photo-article">
+        <div class="apercu-photo" [style.--teinte]="couleurCategorie(formulaire.categorieId)">
+          @if (formulaire.image) {
+            <img [src]="formulaire.image" alt="Photo de l'article" />
+          } @else {
+            <span aria-hidden="true">{{ iconeCategorie(formulaire.categorieId) }}</span>
+          }
+        </div>
+        <div class="actions-photo">
+          <strong>Photo</strong>
+          <small>Affichee sur la carte de la caisse. Elle est recadree au carre et allegee automatiquement.</small>
+          <div>
+            <label class="bouton secondaire petit" for="photo">{{ formulaire.image ? 'Changer la photo' : 'Ajouter une photo' }}</label>
+            <input id="photo" type="file" accept="image/*" hidden (change)="choisirPhoto($event)" />
+            @if (formulaire.image) {
+              <button class="bouton secondaire petit" type="button" (click)="retirerPhoto()">Retirer</button>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="nom">Nom *</label>
+          <input id="nom" name="nom" [(ngModel)]="formulaire.nom" required />
+        </div>
+        <div class="champ">
+          <label for="cat">Categorie</label>
+          <select id="cat" name="cat" [(ngModel)]="formulaire.categorieId">
+            <option [ngValue]="null">Sans categorie</option>
+            @for (c of categories(); track c.id) {
+              <option [ngValue]="c.id">{{ c.nom }}</option>
+            }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="code">Code interne</label>
+          <input id="code" name="code" [(ngModel)]="formulaire.code" [disabled]="e !== 'nouveau'"
+                 placeholder="Genere automatiquement" />
+        </div>
+        <div class="champ">
+          <label for="ean">Code-barres</label>
+          <input id="ean" name="ean" [(ngModel)]="formulaire.codeBarres" placeholder="Scannez le produit" />
+        </div>
+        <div class="champ">
+          <label for="pv">Prix de vente (F) *</label>
+          <input id="pv" name="pv" type="number" min="0" step="any" [(ngModel)]="formulaire.prixVente" required />
+        </div>
+        <div class="champ">
+          <label for="pa">Cout d'achat (F)</label>
+          <input id="pa" name="pa" type="number" min="0" step="any" [(ngModel)]="formulaire.prixAchat" />
+        </div>
+        <div class="champ">
+          <label for="unite">Unite</label>
+          <input id="unite" name="unite" [(ngModel)]="formulaire.unite" placeholder="piece, kg, litre..." />
+        </div>
+        <div class="champ">
+          <label for="suivi">Stock</label>
+          <select id="suivi" name="suivi" [(ngModel)]="formulaire.suiviStock">
+            <option [ngValue]="true">Suivre le stock</option>
+            <option [ngValue]="false">Ne pas suivre (service, prestation)</option>
+          </select>
+        </div>
+        @if (formulaire.suiviStock) {
+          @if (e === 'nouveau') {
+            <div class="champ">
+              <label for="initial">Stock initial</label>
+              <input id="initial" name="initial" type="number" min="0" step="any" [(ngModel)]="formulaire.stockInitial" />
+            </div>
+          }
+          <div class="champ">
+            <label for="seuil">Seuil d'alerte</label>
+            <input id="seuil" name="seuil" type="number" min="0" step="any" [(ngModel)]="formulaire.seuilAlerte" />
+          </div>
+        }
+      </div>
+      @if (e !== 'nouveau' && formulaire.suiviStock) {
+        <p style="color: var(--couleur-texte-doux); margin: 0.75rem 0 0">
+          Le stock ({{ e.stockActuel }}) se modifie depuis l'ecran Stock, pour garder la trace de chaque mouvement.
+        </p>
+      }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire" type="button" (click)="edition.set(null)">Annuler</button>
+        <button class="bouton" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+<!-- Categories -->
+@if (gestionCategories()) {
+  <app-modale titre="Categories" [sousTitre]="restauration ? 'Elles organisent la carte et envoient chaque article en cuisine ou au bar' : 'Elles organisent les boutons de l\'ecran de caisse'" largeur="560px"
+              [erreur]="erreurFormulaire()" (ferme)="gestionCategories.set(false)">
+    <form class="grille-formulaire" (ngSubmit)="ajouterCategorie()" style="align-items: end">
+      <div class="champ champ-icone">
+        <label>Icone</label>
+        <button type="button" class="bouton-icone" (click)="choixIcone.set('nouvelle')"
+                aria-label="Choisir l'icone de la categorie">{{ nouvelleCategorie.icone }}</button>
+      </div>
+      <div class="champ">
+        <label for="ncat">Nouvelle categorie</label>
+        <input id="ncat" name="ncat" [(ngModel)]="nouvelleCategorie.nom" placeholder="Ex. Boissons" />
+      </div>
+      <div class="champ">
+        <label for="ccat">Couleur</label>
+        <input id="ccat" name="ccat" type="color" [(ngModel)]="nouvelleCategorie.couleur" />
+      </div>
+      @if (restauration) {
+        <div class="champ">
+          <label for="pcat">Preparee</label>
+          <select id="pcat" name="pcat" [(ngModel)]="nouvelleCategorie.poste">
+            @for (p of postes; track p.valeur) {
+              <option [ngValue]="p.valeur">{{ p.icone }} {{ p.libelle }}</option>
+            }
+          </select>
+        </div>
+      }
+      <div class="champ">
+        <button class="bouton" type="submit">Ajouter</button>
+      </div>
+    </form>
+    <div class="tableau-conteneur" style="margin-top: 1rem">
+      <table class="tableau">
+        <tbody>
+          @for (c of categories(); track c.id) {
+            <tr [style.opacity]="c.actif ? 1 : 0.55">
+              <td>
+                <button type="button" class="bouton-icone petit" (click)="choixIcone.set(c)"
+                        [attr.aria-label]="'Changer l\u2019icone de ' + c.nom">{{ c.icone || '＋' }}</button>
+                <span class="etiquette" [style.background]="c.couleur" style="color: #fff">{{ c.nom }}</span>
+              </td>
+              @if (restauration) {
+                <td>
+                  <select [ngModel]="c.poste" (ngModelChange)="changerPoste(c, $event)"
+                          [attr.aria-label]="'Ecran de preparation de ' + c.nom">
+                    @for (p of postes; track p.valeur) {
+                      <option [ngValue]="p.valeur">{{ p.icone }} {{ p.libelle }}</option>
+                    }
+                  </select>
+                </td>
+              }
+              <td style="text-align: right">
+                <button class="bouton secondaire petit" type="button" (click)="basculerCategorie(c)">
+                  {{ c.actif ? 'Masquer' : 'Afficher' }}
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td>Aucune categorie pour l'instant.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </app-modale>
+}
+
+<!-- Pictogramme d'une categorie -->
+@if (choixIcone()) {
+  <app-modale titre="Choisir une icone" largeur="460px" (ferme)="choixIcone.set(null)">
+    <div class="grille-icones">
+      @for (i of icones; track i) {
+        <button type="button" class="bouton-icone" (click)="choisirIcone(i)">{{ i }}</button>
+      }
+    </div>
+  </app-modale>
+}
+
+<!-- Import de la liste des produits -->
+@if (importOuvert()) {
+  <app-import-pdv type="PRODUITS" [typeFixe]="true" (ferme)="importOuvert.set(false)" (importe)="importTermine($event)" />
+}

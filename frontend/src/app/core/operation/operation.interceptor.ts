@@ -18,12 +18,12 @@ export const MESSAGE_ANNULATION = "Action annulee : rien n'a ete enregistre.";
 
 /**
  * Toute requete qui modifie des donnees passe par une confirmation, puis par
- * l'anneau de progression jusqu'a 100 %. La connexion en est exclue, de meme
+ * l'anneau de progression jusqu'a 100 %. La connexion et l'inscription en sont exclues, de meme
  * que les requetes qui suivent une operation deja confirmee (envois en chaine,
  * comme les pieces jointes d'un chauffeur).
  */
 export const operationInterceptor: HttpInterceptorFn = (req, next) => {
-  if (!ECRITURES.has(req.method) || req.url.includes('/auth/') || req.context.get(SANS_SUIVI)) {
+  if (!ECRITURES.has(req.method) || req.url.includes('/auth/') || req.url.includes('/public/') || req.context.get(SANS_SUIVI)) {
     return next(req);
   }
   const operation = inject(OperationService);
@@ -83,7 +83,20 @@ const RESSOURCES: Record<string, Ressource> = {
   utilisateurs: { nom: 'compte', le: 'le ', un: 'un ' },
   zones: { nom: 'zone', le: 'la ', un: 'une ' },
   alertes: { nom: 'alerte', le: "l'", un: 'une ' },
-  societe: { nom: 'parametrage de la societe', le: 'le ', un: 'un ' }
+  societe: { nom: 'parametrage de la societe', le: 'le ', un: 'un ' },
+  modules: { nom: 'module', le: 'le ', un: 'un ' },
+  entreprises: { nom: 'entreprise', le: "l'", un: 'une ' },
+  categories: { nom: 'categorie', le: 'la ', un: 'une ' },
+  articles: { nom: 'article', le: "l'", un: 'un ' },
+  ventes: { nom: 'commande', le: 'la ', un: 'une ' },
+  mouvements: { nom: 'mouvement de stock', le: 'le ', un: 'un ' },
+  sessions: { nom: 'caisse', le: 'la ', un: 'une ' },
+  salles: { nom: 'salle', le: 'la ', un: 'une ' },
+  tables: { nom: 'table', le: 'la ', un: 'une ' },
+  commandes: { nom: 'commande', le: 'la ', un: 'une ' },
+  lignes: { nom: 'article de la commande', le: "l'", un: 'un ' },
+  caisses: { nom: 'caisse', le: 'la ', un: 'une ' },
+  ecrans: { nom: 'ecran de preparation', le: "l'", un: 'un ' }
 };
 
 /** Actions designees par le dernier segment de l'adresse. */
@@ -108,7 +121,25 @@ const ACTIONS: Record<string, (r: Ressource) => DemandeConfirmation> = {
   retards: () => ({ titre: 'Actualiser les retards de paiement ?', libelleAction: 'Actualiser' }),
   'depuis-contrat': () => ({ titre: 'Generer la facture du contrat ?', libelleAction: 'Generer' }),
   'depuis-mission': () => ({ titre: 'Generer la facture de la mission ?', libelleAction: 'Generer' }),
-  location: () => ({ titre: 'Enregistrer la recette et son contrat de location ?', libelleAction: 'Enregistrer' })
+  location: () => ({ titre: 'Enregistrer la recette et son contrat de location ?', libelleAction: 'Enregistrer' }),
+  positions: () => ({ titre: 'Enregistrer le plan de salle ?', libelleAction: 'Enregistrer' }),
+  PRODUITS: () => ({ titre: 'Importer les produits ?',
+    message: 'Les produits du fichier sont crees ou mis a jour dans le catalogue.', libelleAction: 'Importer' }),
+  STOCK: () => ({ titre: 'Importer le stock compte ?',
+    message: 'Le stock des produits du fichier sera remplace par la quantite indiquee.', libelleAction: 'Importer' }),
+  pin: () => ({ titre: 'Enregistrer le code PIN de caisse ?', libelleAction: 'Enregistrer' }),
+  reception: () => ({ titre: 'Receptionner la commande ?',
+    message: 'Les quantites recues entrent en stock ; la commande ne sera plus modifiable.', libelleAction: 'Receptionner' }),
+  inventaire: () => ({ titre: "Valider l'inventaire ?",
+    message: 'Le stock des articles comptes sera remplace par la quantite saisie.', libelleAction: 'Valider' }),
+  jeton: () => ({ titre: 'Renouveler le code QR de cette table ?',
+    message: "L'ancien code imprime ne fonctionnera plus : il faudra imprimer le nouveau.", libelleAction: 'Renouveler',
+    danger: true }),
+  reglages: () => ({ titre: 'Enregistrer les reglages de la commande par code QR ?', libelleAction: 'Enregistrer' }),
+  refus: () => ({ titre: 'Refuser la commande du client ?', message: 'Les articles demandes depuis la table seront retires.',
+    libelleAction: 'Refuser', danger: true }),
+  variante: () => ({ titre: "Changer le type d'activite ?",
+    message: "Les ecrans du module s'adaptent a votre metier ; vos donnees sont conservees.", libelleAction: 'Changer' })
 };
 
 /** Titre et bouton de la confirmation, deduits de la methode et de l'adresse. */
@@ -124,6 +155,25 @@ function decrire(req: HttpRequest<unknown>): DemandeConfirmation {
     return req.method === 'DELETE'
       ? { titre: 'Retirer le logo de la societe ?', libelleAction: 'Retirer', danger: true }
       : { titre: 'Remplacer le logo de la societe ?', libelleAction: 'Remplacer' };
+  }
+  if (dernier === 'activation' && segments.includes('modules') && req.method === 'DELETE') {
+    return { titre: 'Desactiver ce module ?', message: 'Il disparait du menu ; ses donnees sont conservees.',
+      libelleAction: 'Desactiver', danger: true };
+  }
+  if (dernier === 'sessions' && req.method === 'POST') {
+    return { titre: 'Ouvrir la session de caisse ?',
+      message: 'Le fond compte servira au controle des especes a la fermeture ; le personnel de la caisse pourra encaisser.',
+      libelleAction: 'Ouvrir' };
+  }
+  if (segments.includes('sessions') && dernier === 'mouvements') {
+    return { titre: "Enregistrer ce mouvement d'especes ?",
+      message: 'Il figurera dans le rapport de caisse et modifie les especes attendues a la fermeture.',
+      libelleAction: 'Enregistrer' };
+  }
+  if (segments.includes('sessions') && dernier === 'cloture') {
+    return { titre: 'Fermer la session de caisse ?',
+      message: 'Plus aucune vente ne sera possible sur cette caisse avant une nouvelle ouverture.',
+      libelleAction: 'Fermer la caisse' };
   }
   const action = ACTIONS[dernier];
   if (action) {

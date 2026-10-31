@@ -1,0 +1,95 @@
+/* Detail d'une session de caisse : chiffres cles, puis onglets. */
+
+.retour {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+  color: var(--couleur-primaire);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+h1 .etiquette {
+  margin-left: 0.4rem;
+  font-size: 0.8rem;
+  vertical-align: middle;
+}
+
+.chiffres-session {
+  margin-bottom: 1rem;
+
+  .carte-apercu strong {
+    font-size: 1.6rem;
+  }
+}
+
+.onglets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 999px;
+    background: var(--couleur-surface);
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+
+    span {
+      min-width: 22px;
+      padding: 0 0.4rem;
+      border-radius: 999px;
+      background: var(--couleur-fond);
+      font-size: 0.75rem;
+      text-align: center;
+    }
+
+    &.actif {
+      border-color: var(--couleur-primaire);
+      background: var(--couleur-primaire);
+      color: #fff;
+      font-weight: 600;
+
+      span {
+        background: rgba(255, 255, 255, 0.25);
+      }
+    }
+  }
+}
+
+.cliquable {
+  cursor: pointer;
+}
+
+tr.annulee {
+  opacity: 0.55;
+}
+
+.vide {
+  padding: 1.2rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}
+
+.aide {
+  margin: 0.6rem 0 0;
+  color: var(--couleur-texte-doux);
+  font-size: 0.8rem;
+}
+
+.sens {
+  font-weight: 600;
+
+  &.entree {
+    color: #1f9d6b;
+  }
+
+  &.sortie {
+    color: #b8650a;
+  }
+}

@@ -33,28 +33,6 @@ public final class SocieteDto {
             String logo) {
     }
 
-    /** Ce que la page de connexion a besoin de connaitre, sans authentification. */
-    public record Identite(String nom, String sigle, String logo) {
-    }
-
-    /**
-     * Ce que le site vitrine publie a des visiteurs non authentifies : l'identite
-     * et les coordonnees qui figurent deja sur les documents commerciaux. Les
-     * references fiscales et bancaires en sont volontairement absentes.
-     */
-    public record Vitrine(
-            String nom,
-            String sigle,
-            String formeJuridique,
-            String adresse,
-            String ville,
-            String pays,
-            String telephone,
-            String email,
-            String siteWeb,
-            String logo) {
-    }
-
     public record Requete(
             @NotBlank @Size(max = 150) String nom,
             @Size(max = 60) String sigle,

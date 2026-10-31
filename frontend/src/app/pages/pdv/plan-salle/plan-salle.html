@@ -1,0 +1,124 @@
+<div class="entete-page">
+  <div>
+    <h1>Salles et tables</h1>
+    <p class="sous-titre">Dessinez le plan de votre etablissement : faites glisser les tables, touchez-en une pour la modifier.</p>
+  </div>
+  <div class="actions-entete">
+    <a class="bouton secondaire" routerLink="/pdv/salle">Voir le service</a>
+    <button class="bouton secondaire" type="button" (click)="nouvelleSalle()">+ Salle</button>
+    @if (salle()) {
+      <button class="bouton" type="button" (click)="nouvelleTable()">+ Table</button>
+    }
+  </div>
+</div>
+
+@if (erreur() && !editionSalle() && !editionTable()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (information()) {
+  <div class="message succes">{{ information() }}</div>
+}
+
+@if (salles().length === 0) {
+  <div class="carte vide-plan">
+    <span aria-hidden="true">🏠</span>
+    <h2>Commencez par une salle</h2>
+    <p>Salle principale, terrasse, comptoir... chaque espace a son plan de tables.</p>
+    <button class="bouton" type="button" (click)="nouvelleSalle()">Creer une salle</button>
+  </div>
+} @else {
+  <div class="onglets-salles" role="tablist">
+    @for (s of salles(); track s.id) {
+      <button type="button" role="tab" class="filtre" [class.actif]="salle()?.id === s.id"
+              [attr.aria-selected]="salle()?.id === s.id" (click)="salleChoisie.set(s.id)"
+              (dblclick)="renommerSalle(s)">{{ s.nom }}</button>
+    }
+    @if (salle(); as s) {
+      <button type="button" class="lien-renommer" (click)="renommerSalle(s)">Renommer « {{ s.nom }} »</button>
+    }
+  </div>
+
+  <div class="plan edition" #plan [style.aspect-ratio]="largeurPlan + ' / ' + hauteurPlan"
+       (pointermove)="deplacer($event)" (pointerup)="lacher()" (pointercancel)="lacher()">
+    @for (t of tablesSalle(); track t.id) {
+      <div class="table libre {{ t.forme.toLowerCase() }}" [class.modifiee]="modifiees().has(t.id)"
+           role="button" tabindex="0" [attr.aria-label]="'Table ' + t.nom + ', ' + t.places + ' places'"
+           [style.left.%]="t.posX / largeurPlan * 100" [style.top.%]="t.posY / hauteurPlan * 100"
+           [style.width.%]="t.largeur / largeurPlan * 100" [style.height.%]="t.hauteur / hauteurPlan * 100"
+           (pointerdown)="saisir(t, $event)">
+        <strong class="nom">{{ t.nom }}</strong>
+        <span class="detail">{{ t.places }} places</span>
+      </div>
+    } @empty {
+      <p class="plan-vide">Aucune table dans cette salle. Ajoutez-en avec « + Table ».</p>
+    }
+  </div>
+
+  <div class="barre-enregistrement">
+    <span>{{ tablesSalle().length }} table(s) ·
+      {{ modifiees().size > 0 ? modifiees().size + ' deplacement(s) non enregistre(s)' : 'Plan a jour' }}</span>
+    <button class="bouton" type="button" [disabled]="modifiees().size === 0" (click)="enregistrerPositions()">
+      Enregistrer le plan
+    </button>
+  </div>
+}
+
+@if (editionSalle(); as edition) {
+  <app-modale [titre]="edition === 'nouvelle' ? 'Nouvelle salle' : 'Renommer la salle'" largeur="420px"
+              [erreur]="erreur()" (ferme)="editionSalle.set(null)">
+    <form (ngSubmit)="enregistrerSalle()">
+      <div class="champ">
+        <label for="nom-salle">Nom *</label>
+        <input id="nom-salle" name="nom" required maxlength="80" [(ngModel)]="nomSalle" placeholder="Ex. Terrasse" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire" type="button" (click)="editionSalle.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!nomSalle.trim()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (editionTable(); as edition) {
+  <app-modale [titre]="edition === 'nouvelle' ? 'Nouvelle table' : 'Table ' + edition.nom"
+              [sousTitre]="salle()?.nom" largeur="480px" [erreur]="erreur()" (ferme)="editionTable.set(null)">
+    <form (ngSubmit)="enregistrerTable()">
+      <div class="champ">
+        <label>Forme</label>
+        <div class="formes">
+          @for (f of formes; track f) {
+            <button type="button" class="forme {{ f.toLowerCase() }}" [class.actif]="formulaire.forme === f"
+                    (click)="choisirForme(f)">
+              <span class="apercu" aria-hidden="true"></span>{{ gabarits[f].libelle }}
+            </button>
+          }
+        </div>
+      </div>
+      <div class="grille-champs">
+        <div class="champ">
+          <label for="nom-table">Nom *</label>
+          <input id="nom-table" name="nom" required maxlength="40" [(ngModel)]="formulaire.nom" />
+        </div>
+        <div class="champ">
+          <label for="places">Places</label>
+          <input id="places" name="places" type="number" min="1" max="100" [(ngModel)]="formulaire.places" />
+        </div>
+        <div class="champ">
+          <label for="largeur">Largeur</label>
+          <input id="largeur" name="largeur" type="number" min="4" max="40" [(ngModel)]="formulaire.largeur" />
+        </div>
+        <div class="champ">
+          <label for="hauteur">Profondeur</label>
+          <input id="hauteur" name="hauteur" type="number" min="4" max="40" [(ngModel)]="formulaire.hauteur" />
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        @if (edition !== 'nouvelle') {
+          <button class="bouton danger" type="button" (click)="retirerTable()">Retirer du plan</button>
+        }
+        <button class="bouton secondaire" type="button" (click)="editionTable.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!formulaire.nom.trim()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}

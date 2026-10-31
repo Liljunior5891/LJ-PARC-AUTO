@@ -10,7 +10,18 @@ export interface Page<T> {
   last: boolean;
 }
 
-export type Role = 'ADMIN' | 'GESTIONNAIRE_PARC' | 'CHAUFFEUR';
+export type Role =
+  | 'SUPER_ADMIN'
+  | 'ADMIN'
+  | 'GESTIONNAIRE_PARC'
+  | 'CHAUFFEUR'
+  | 'GERANT'
+  | 'CAISSIER'
+  | 'SERVEUR'
+  | 'PREPARATEUR';
+
+/** Modules de la plateforme ; une entreprise n'accede qu'a ceux qu'elle a actives. */
+export type CodeModule = 'GESTION_PARC' | 'POINT_DE_VENTE' | 'MARKETPLACE';
 
 export interface UtilisateurCourant {
   id: number;
@@ -18,6 +29,12 @@ export interface UtilisateurCourant {
   nomComplet: string;
   chauffeurId?: number;
   roles: Role[];
+  /** Absente pour l'administrateur de la plateforme. */
+  entrepriseId?: number;
+  entrepriseNom?: string;
+  modules: CodeModule[];
+  /** Type d'activite des modules qui se declinent (POINT_DE_VENTE : BOUTIQUE ou RESTAURATION). */
+  variantes?: Partial<Record<CodeModule, string>>;
 }
 
 export interface LoginResponse {

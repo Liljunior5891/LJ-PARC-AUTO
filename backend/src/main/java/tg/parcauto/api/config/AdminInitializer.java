@@ -14,37 +14,45 @@ import tg.parcauto.api.security.UtilisateurRepository;
 import java.util.EnumSet;
 
 /**
- * Cree le compte administrateur initial au premier demarrage.
- * Le mot de passe doit etre fourni par la variable d'environnement ADMIN_PASSWORD
- * et change des la premiere connexion.
+ * Cree le compte de l'administrateur de la plateforme au premier demarrage.
+ * <p>
+ * Ce compte n'appartient a aucune entreprise : il gere les abonnes, pas leurs
+ * donnees. Les entreprises creent ensuite leur propre administrateur en
+ * s'inscrivant. Le mot de passe doit etre fourni par la variable
+ * d'environnement PLATEFORME_ADMIN_PASSWORD et change des la premiere connexion.
  */
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class AdminInitializer {
 
-    @Value("${parcauto.admin.email:admin@parcauto.tg}")
+    @Value("${parcauto.plateforme.admin.email}")
     private String email;
 
-    @Value("${parcauto.admin.password:Admin@2026}")
+    @Value("${parcauto.plateforme.admin.password}")
     private String motDePasse;
 
     @Bean
-    public ApplicationRunner creerAdministrateurInitial(UtilisateurRepository repository,
-                                                        PasswordEncoder encoder) {
+    public ApplicationRunner creerAdministrateurPlateforme(UtilisateurRepository repository,
+                                                           PasswordEncoder encoder) {
         return args -> {
-            if (repository.count() > 0) {
+            if (repository.existeAvecRole(Role.SUPER_ADMIN)) {
+                return;
+            }
+            if (repository.existsByEmailIgnoreCase(email)) {
+                log.error("Impossible de creer l'administrateur plateforme : l'adresse {} est deja utilisee "
+                        + "par un compte d'entreprise. Definissez PLATEFORME_ADMIN_EMAIL.", email);
                 return;
             }
             Utilisateur admin = new Utilisateur();
             admin.setEmail(email);
             admin.setMotDePasse(encoder.encode(motDePasse));
-            admin.setNom("Administrateur");
-            admin.setPrenom("Systeme");
+            admin.setNom("Plateforme");
+            admin.setPrenom("Administrateur");
             admin.setActif(true);
-            admin.setRoles(EnumSet.of(Role.ADMIN));
+            admin.setRoles(EnumSet.of(Role.SUPER_ADMIN));
             repository.save(admin);
-            log.warn("Compte administrateur initial cree : {} - changez le mot de passe des la premiere connexion",
+            log.warn("Administrateur plateforme cree : {} - changez le mot de passe des la premiere connexion",
                     email);
         };
     }

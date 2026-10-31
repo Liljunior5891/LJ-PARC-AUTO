@@ -1,0 +1,215 @@
+<div class="entete-page">
+  <div>
+    <h1>Rapports</h1>
+    <p class="sous-titre">Statistiques, liste des produits et fiches de stock, a exporter en Excel, PDF ou CSV</p>
+  </div>
+  <div class="actions-entete">
+    <button class="bouton secondaire" type="button" (click)="importOuvert.set(true)">⇪ Importer</button>
+  </div>
+</div>
+
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="rapports">
+  <!-- Liste des rapports, par famille -->
+  <nav class="carte liste-rapports" aria-label="Rapports">
+    @for (f of familles(); track f.famille) {
+      <h2>{{ f.famille }}</h2>
+      @for (r of f.rapports; track r.type) {
+        <button type="button" [class.actif]="choisi() === r.type" (click)="choisir(r.type)">{{ r.libelle }}</button>
+      }
+    }
+  </nav>
+
+  <section class="contenu-rapport">
+    <!-- Sur telephone, la liste devient une liste deroulante -->
+    <div class="choix-mobile">
+    <select class="champ-ligne" [ngModel]="choisi()" (ngModelChange)="choisir($event)" aria-label="Rapport">
+      @for (f of familles(); track f.famille) {
+        <optgroup [label]="f.famille">
+          @for (r of f.rapports; track r.type) {
+            <option [value]="r.type">{{ r.libelle }}</option>
+          }
+        </optgroup>
+      }
+    </select>
+    </div>
+    <div class="carte barre-rapport">
+      @if (courant()?.parArticle) {
+        <div class="choix-produit">
+        <select class="champ-ligne" data-recherche="toujours" [ngModel]="article()" (ngModelChange)="choisirProduit($event)"
+                aria-label="Produit de la fiche de stock">
+          <option [ngValue]="null">Choisir un produit...</option>
+          @for (p of produits(); track p.id) {
+            <option [ngValue]="p.id">{{ p.nom }} ({{ p.code }})</option>
+          }
+        </select>
+        </div>
+      }
+      @if (courant()?.parEcran) {
+        <div class="choix-produit">
+        <select class="champ-ligne" [ngModel]="ecran()" (ngModelChange)="choisirEcran($event)" aria-label="Ecran de preparation">
+          <option [ngValue]="null">Choisir un ecran...</option>
+          @for (e of ecrans(); track e.id) {
+            <option [ngValue]="e.id">{{ e.nom }}{{ e.actif ? '' : ' (desactive)' }}</option>
+          }
+        </select>
+        </div>
+      }
+      @if (courant()?.periode !== false) {
+        <div class="choix-periode">
+          <select class="champ-ligne" [ngModel]="portee()" (ngModelChange)="changerPortee($event)" aria-label="Periode">
+            @for (p of portees; track p.valeur) {
+              <option [ngValue]="p.valeur">{{ p.libelle }}</option>
+            }
+          </select>
+        </div>
+        @if (portee() === 'PERSONNALISEE') {
+          <div class="dates" [class.invalides]="!datesValides()">
+            <span>Du</span>
+            <input type="date" class="champ-ligne" [max]="dateFin()" [ngModel]="dateDebut()"
+                   (ngModelChange)="changerDate('debut', $event)" aria-label="Date de debut" />
+            <span>au</span>
+            <input type="date" class="champ-ligne" [min]="dateDebut()" [ngModel]="dateFin()"
+                   (ngModelChange)="changerDate('fin', $event)" aria-label="Date de fin" />
+          </div>
+        }
+      } @else {
+        <span class="etat-instant">Etat a l'instant, sans periode</span>
+      }
+      <app-export-pdv class="exports" [type]="choisi()" [options]="options()" [desactive]="!rapport()" />
+    </div>
+
+    @if (erreur()) {
+      <div class="message erreur">{{ erreur() }}</div>
+    }
+
+    @if (rapport(); as r) {
+      <div class="titre-rapport">
+        <h2>{{ r.titre }}</h2>
+        <span>{{ r.sousTitre }} · {{ r.lignes.length }} ligne(s)</span>
+        @if (chargement()) { <span class="chargement">Actualisation...</span> }
+      </div>
+
+      @if (cartes().length > 0) {
+        <!-- Cartes d'indicateurs au style du tableau de bord : une icone et une couleur par information. -->
+        <div class="cartes-apercu indicateurs-rapport">
+          @for (c of cartes(); track c.libelle) {
+            <div class="carte-apercu {{ c.couleur }}">
+              <span class="icone" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  @switch (c.icone) {
+                    @case ('stock') { <path d="M4 8l8-4 8 4-8 4zM4 8v8l8 4 8-4V8M12 12v8" /> }
+                    @case ('stock-fin') { <path d="M4 8l8-4 8 4-8 4zM4 8v8l8 4 8-4V8" /><path d="M9 14.5l2 2 4-4" /> }
+                    @case ('entree') { <path d="M4 14v5h16v-5" /><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5" /> }
+                    @case ('sortie') { <path d="M4 14v5h16v-5" /><path d="M12 14V3M7.5 7.5L12 3l4.5 4.5" /> }
+                    @case ('valeur') { <ellipse cx="12" cy="6" rx="7" ry="2.5" /><path d="M5 6v6c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6M5 12v6c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-6" /> }
+                    @case ('argent') { <rect x="3" y="6" width="18" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.5" /><path d="M6.5 9.5v.01M17.5 14.5v.01" /> }
+                    @case ('commande') { <path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z" /><path d="M9 8h6M9 12h6M9 16h3" /> }
+                    @case ('marge') { <path d="M4 19h16" /><path d="M5 15l4-4 3 3 6-6" /><path d="M14 8h4v4" /> }
+                    @case ('achat') { <path d="M3 4h2.5l2 11h10l2-7.5H7" /><circle cx="9.5" cy="19" r="1.4" /><circle cx="16.5" cy="19" r="1.4" /> }
+                    @case ('panier') { <path d="M5 9h14l-1.5 10h-11z" /><path d="M9 9V7a3 3 0 0 1 6 0v2" /> }
+                    @case ('alerte') { <circle cx="12" cy="12" r="8.5" /><path d="M12 7.5v5.5M12 16.5h.01" /> }
+                    @case ('seuil') { <path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" /> }
+                    @case ('produit') { <path d="M3.5 12.5V4.5h8l9 9-8 8z" /><circle cx="8" cy="9" r="1.5" /> }
+                    @case ('convives') { <circle cx="9" cy="8" r="3" /><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" /><circle cx="17" cy="9" r="2.3" /><path d="M16 14.2c2.4-.3 4.1 1.3 4.5 4.3" /> }
+                    @case ('calendrier') { <rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /> }
+                    @default { <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> }
+                  }
+                </svg>
+              </span>
+              <span class="textes">
+                <span class="libelle">{{ c.libelle }}</span>
+                <strong>
+                  @switch (c.format) {
+                    @case ('MONTANT') { {{ c.valeur | number: '1.0-0' }}<em> F</em> }
+                    @case ('POURCENT') { {{ c.valeur | number: '1.0-1' }}<em> %</em> }
+                    @default { {{ c.valeur | number: '1.0-3' }} }
+                  }
+                </strong>
+                @if (c.detail) { <small>{{ c.detail }}</small> }
+              </span>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="carte">
+        <div class="recherche-rapport">
+          <input type="search" class="champ-ligne" placeholder="Filtrer les lignes..." [ngModel]="filtre()"
+                 (ngModelChange)="filtre.set($event)" aria-label="Filtrer les lignes" />
+          @if (filtre()) { <small>{{ lignes().length }} ligne(s) sur {{ r.lignes.length }}</small> }
+        </div>
+        <div class="tableau-conteneur">
+          <table class="tableau">
+            <thead>
+              <tr>
+                @for (c of r.colonnes; track c.cle) {
+                  <th [class.numerique]="estNombre(c.format)">{{ c.libelle }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of lignes(); track $index) {
+                <tr>
+                  @for (c of r.colonnes; track c.cle) {
+                    @let v = valeur(l, c.cle);
+                    <td [class.numerique]="estNombre(c.format)" [class.resultat-negatif]="estNombre(c.format) && $any(v) < 0">
+                      @if (v === null || v === undefined || v === '') {
+                        <span class="vide-cellule">—</span>
+                      } @else {
+                        @switch (c.format) {
+                          @case ('MONTANT') { {{ $any(v) | number: '1.0-0' }} }
+                          @case ('NOMBRE') { {{ $any(v) | number: '1.0-3' }} }
+                          @case ('POURCENT') { {{ $any(v) | number: '1.0-1' }} % }
+                          @case ('DATE') { {{ $any(v) | date: 'dd/MM/yyyy' }} }
+                          @case ('DATE_HEURE') { {{ $any(v) | date: 'dd/MM/yyyy HH:mm' }} }
+                          @default { {{ v }} }
+                        }
+                      }
+                    </td>
+                  }
+                </tr>
+              } @empty {
+                <tr><td [attr.colspan]="r.colonnes.length" class="vide">Aucune donnee sur cette periode.</td></tr>
+              }
+            </tbody>
+            @if (aDesTotaux() && !filtre()) {
+              <tfoot>
+                <tr>
+                  @for (c of r.colonnes; track c.cle; let premier = $first) {
+                    @let t = r.totaux[c.cle];
+                    <td [class.numerique]="estNombre(c.format)">
+                      @if (t !== undefined && t !== null) {
+                        @switch (c.format) {
+                          @case ('MONTANT') { {{ $any(t) | number: '1.0-0' }} }
+                          @case ('POURCENT') { {{ $any(t) | number: '1.0-1' }} % }
+                          @default { {{ $any(t) | number: '1.0-3' }} }
+                        }
+                      } @else if (premier) {
+                        TOTAL
+                      }
+                    </td>
+                  }
+                </tr>
+              </tfoot>
+            }
+          </table>
+        </div>
+      </div>
+    } @else if (attendEcran()) {
+      <p class="carte vide">Choisissez un ecran de preparation : ses bons (commandes) ou les produits qu'il a prepares.</p>
+    } @else if (attendProduit()) {
+      <p class="carte vide">Choisissez un produit pour afficher sa fiche de stock : stock au debut, entrees, sorties et solde.</p>
+    } @else if (chargement()) {
+      <p class="vide">Calcul du rapport...</p>
+    }
+  </section>
+</div>
+
+<!-- Import CSV / Excel -->
+@if (importOuvert()) {
+  <app-import-pdv (ferme)="importOuvert.set(false)" (importe)="importTermine($event)" />
+}

@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tg.parcauto.api.common.BusinessException;
 import tg.parcauto.api.common.ResourceNotFoundException;
+import tg.parcauto.api.plateforme.module.ModuleApplicatif;
+import tg.parcauto.api.plateforme.module.ModuleService;
+import tg.parcauto.api.plateforme.tenant.ContexteEntreprise;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -17,8 +20,13 @@ import java.util.Set;
  * Gestion des comptes utilisateurs (chapitre 40).
  * <p>
  * Deux garde-fous structurent ce service : on ne se retire jamais soi-meme des
- * moyens de se reconnecter, et le parc ne peut pas se retrouver sans
+ * moyens de se reconnecter, et l'entreprise ne peut pas se retrouver sans
  * administrateur actif.
+ * <p>
+ * La table des comptes n'etant pas cloisonnee par Hibernate (voir
+ * {@link Utilisateur#getEntrepriseId()}), chaque lecture passe ici par
+ * l'entreprise courante : un administrateur ne voit et ne modifie que les
+ * comptes de son entreprise.
  */
 @Service
 @RequiredArgsConstructor
@@ -27,10 +35,12 @@ public class UtilisateurService {
 
     private final UtilisateurRepository repository;
     private final PasswordEncoder encodeur;
+    private final ModuleService moduleService;
 
     @Transactional(readOnly = true)
     public Page<UtilisateurDto.Reponse> rechercher(String q, Role role, Boolean actif, Pageable pageable) {
-        return repository.findAll(UtilisateurSpecifications.rechercher(q, role, actif), pageable)
+        return repository.findAll(
+                        UtilisateurSpecifications.rechercher(ContexteEntreprise.exiger(), q, role, actif), pageable)
                 .map(this::versDto);
     }
 
@@ -44,6 +54,7 @@ public class UtilisateurService {
             throw new BusinessException("Un compte existe deja avec l'adresse " + demande.email());
         }
         Utilisateur utilisateur = new Utilisateur();
+        utilisateur.setEntrepriseId(ContexteEntreprise.exiger());
         utilisateur.setEmail(demande.email().trim());
         utilisateur.setNom(demande.nom().trim());
         utilisateur.setPrenom(vide(demande.prenom()) ? null : demande.prenom().trim());
@@ -97,13 +108,22 @@ public class UtilisateurService {
     }
 
     /** Reinitialisation par un administrateur : l'ancien mot de passe n'est pas demande. */
+    /** Le gerant definit le code PIN d'un compte, ou l'efface pour que le caissier en cree un. */
+    public void definirPin(Long id, String pin) {
+        charger(id).setPinHash(pin == null || pin.isBlank() ? null : encodeur.encode(pin));
+    }
+
     public void reinitialiserMotDePasse(Long id, String motDePasse) {
         charger(id).setMotDePasse(encodeur.encode(motDePasse));
     }
 
-    /** Changement par l'utilisateur lui-meme, qui doit prouver l'ancien mot de passe. */
+    /**
+     * Changement par l'utilisateur lui-meme, qui doit prouver l'ancien mot de passe.
+     * Ouvert aussi a l'administrateur de la plateforme, qui n'a pas d'entreprise.
+     */
     public void changerSonMotDePasse(Long id, UtilisateurDto.ChangementMotDePasse demande) {
-        Utilisateur utilisateur = charger(id);
+        Utilisateur utilisateur = repository.findById(id)
+                .orElseThrow(() -> ResourceNotFoundException.of("Utilisateur", id));
         if (!encodeur.matches(demande.motDePasseActuel(), utilisateur.getMotDePasse())) {
             throw new BusinessException("Le mot de passe actuel est incorrect");
         }
@@ -113,26 +133,42 @@ public class UtilisateurService {
         utilisateur.setMotDePasse(encodeur.encode(demande.nouveauMotDePasse()));
     }
 
+    /**
+     * Profils attribuables dans l'entreprise : ceux des modules qu'elle a
+     * actives. Serveur et cuisinier n'ont de sens que pour un point de vente en
+     * mode restaurant. Le profil de la plateforme n'en fait jamais partie.
+     */
     @Transactional(readOnly = true)
     public List<UtilisateurDto.ProfilRole> profils() {
+        Long entreprise = ContexteEntreprise.exiger();
+        Set<ModuleApplicatif> actifs = moduleService.actifs(entreprise);
+        boolean restauration = "RESTAURATION".equals(moduleService.variante(entreprise, ModuleApplicatif.POINT_DE_VENTE));
+        Set<Role> restaurant = EnumSet.of(Role.SERVEUR, Role.PREPARATEUR);
         return java.util.Arrays.stream(Role.values())
+                .filter(role -> role != Role.SUPER_ADMIN)
+                .filter(role -> role == Role.ADMIN || actifs.stream().anyMatch(m -> m.getProfils().contains(role)))
+                .filter(role -> restauration || !restaurant.contains(role))
                 .map(role -> new UtilisateurDto.ProfilRole(role.name(), role.getLibelle()))
                 .toList();
     }
 
     private void verifierDernierAdministrateur(Long id) {
-        if (repository.compterAdministrateursActifsHors(id) == 0) {
+        if (repository.compterAdministrateursActifsHors(id, ContexteEntreprise.exiger()) == 0) {
             throw new BusinessException(
-                    "Ce compte est le dernier administrateur actif : le parc ne peut pas rester sans administrateur");
+                    "Ce compte est le dernier administrateur actif : l'entreprise ne peut pas rester sans administrateur");
         }
     }
 
     private Utilisateur charger(Long id) {
-        return repository.findById(id)
+        return repository.findByIdAndEntrepriseId(id, ContexteEntreprise.exiger())
                 .orElseThrow(() -> ResourceNotFoundException.of("Utilisateur", id));
     }
 
+    /** Un administrateur d'entreprise ne peut pas s'octroyer, ni octroyer, le profil de la plateforme. */
     private Set<Role> copie(Set<Role> roles) {
+        if (roles.contains(Role.SUPER_ADMIN)) {
+            throw new BusinessException("Le profil administrateur plateforme ne peut pas etre attribue ici");
+        }
         return roles.isEmpty() ? EnumSet.noneOf(Role.class) : EnumSet.copyOf(roles);
     }
 
@@ -145,6 +181,6 @@ public class UtilisateurService {
                 u.getId(), u.getEmail(), u.getNom(), u.getPrenom(), u.nomComplet(),
                 u.getTelephone(), u.isActif(), u.getRoles(),
                 u.getRoles().stream().map(Role::getLibelle).sorted().toList(),
-                u.getCreeLe(), u.getModifieLe());
+                u.getCreeLe(), u.getModifieLe(), u.getPinHash() != null);
     }
 }

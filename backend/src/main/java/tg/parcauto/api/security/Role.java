@@ -9,12 +9,22 @@ package tg.parcauto.api.security;
  */
 public enum Role {
 
-    /** Acces complet, y compris la gestion des utilisateurs. */
+    /** Exploitant de la plateforme : gere les entreprises abonnees, sans acces a leurs donnees. */
+    SUPER_ADMIN("Administrateur plateforme"),
+    /** Acces complet a son entreprise : comptes, modules et parametrage. */
     ADMIN("Administrateur"),
     /** Camions, chauffeurs, exploitation, finances, GPS et maintenance. */
     GESTIONNAIRE_PARC("Gestionnaire de parc"),
     /** Compte de terrain : missions personnelles, livraisons, incidents. */
-    CHAUFFEUR("Chauffeur");
+    CHAUFFEUR("Chauffeur"),
+    /** Point de vente : articles, stock, caisse, annulations et rapports. */
+    GERANT("Gerant de boutique"),
+    /** Point de vente : encaissement des ventes sur sa propre session de caisse. */
+    CAISSIER("Caissier"),
+    /** Bar / restaurant : tables, prise de commande et encaissement des additions. */
+    SERVEUR("Serveur"),
+    /** Bar / restaurant : ecrans de la cuisine et du bar. */
+    PREPARATEUR("Cuisinier / Barman");
 
     private final String libelle;
 

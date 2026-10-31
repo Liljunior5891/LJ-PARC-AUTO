@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { IdentiteSociete, Societe, SocieteRequete, VitrineSociete } from '../models/parametrage';
+import { IdentiteSociete, Societe, SocieteRequete } from '../models/parametrage';
 
 @Injectable({ providedIn: 'root' })
 export class SocieteService {
@@ -10,24 +10,15 @@ export class SocieteService {
   private readonly base = `${environment.apiUrl}/parametrage/societe`;
 
   /**
-   * Identite courante, partagee par la barre laterale et la page de connexion.
+   * Identite de l'entreprise connectee, affichee en tete de l'application.
    * Elle est mise a jour des qu'un administrateur enregistre le parametrage,
    * pour que l'ecran reflete le changement sans rechargement.
    */
   readonly identite = signal<IdentiteSociete | null>(null);
 
-  /** Lecture publique : la page de connexion n'a pas encore de jeton. */
-  chargerIdentite(): Observable<IdentiteSociete> {
-    return this.http
-      .get<IdentiteSociete>(`${environment.apiUrl}/public/societe`)
-      .pipe(tap((identite) => this.appliquer(identite)));
-  }
-
-  /** Coordonnees publiees par le site vitrine ; ouvert aux visiteurs. */
-  chargerVitrine(): Observable<VitrineSociete> {
-    return this.http
-      .get<VitrineSociete>(`${environment.apiUrl}/public/vitrine`)
-      .pipe(tap((vitrine) => this.appliquer(vitrine)));
+  /** Identite de l'entreprise connectee, pour l'entete de l'application. */
+  chargerIdentite(): Observable<Societe> {
+    return this.lire().pipe(tap((societe) => this.rafraichir(societe)));
   }
 
   lire(): Observable<Societe> {
@@ -55,7 +46,7 @@ export class SocieteService {
   /** Point unique de mise a jour : le titre et la favicon suivent l'identite. */
   private appliquer(identite: IdentiteSociete): void {
     this.identite.set(identite);
-    document.title = identite.nom || 'PARC AUTO';
+    document.title = identite.nom || environment.nomPlateforme;
     this.definirFavicon(identite.logo);
   }
 

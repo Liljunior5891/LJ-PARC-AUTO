@@ -1,8 +1,122 @@
 .coquille {
+  /* Hauteur occupee au-dessus du contenu (barre et menu) : les ecrans plein cadre s'en servent. */
+  --hauteur-chrome: 210px;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   background: #eef6f2;
+
+  /* La seconde rangee du menu (sous-menus de Stock ou Caisse) prend sa place. */
+  &.avec-sous-menu {
+    --hauteur-chrome: 266px;
+  }
+
+  &.poste {
+    --hauteur-chrome: 84px;
+
+    .contenu {
+      padding: 0.75rem;
+    }
+  }
+}
+
+/* --------------------------------------------- poste de travail */
+
+.barre-poste {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  height: 52px;
+  padding: 0 0.75rem;
+  background: #10241d;
+  color: #fff;
+
+  .marque-poste {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+
+    strong {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+  }
+
+  .logo-image {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: #fff;
+    object-fit: contain;
+  }
+
+  .actions-poste {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+
+  .qui {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-right: 0.3rem;
+    font-size: 0.85rem;
+  }
+
+  .avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #1e9e4a;
+    font-size: 0.75rem;
+    font-weight: 800;
+  }
+
+  .outil {
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 1.05rem;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    &.quitter:hover {
+      border-color: #f06a6a;
+      background: rgba(240, 106, 106, 0.25);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .nom-poste,
+    .marque-poste small {
+      display: none;
+    }
+  }
 }
 
 .barre-haute {
@@ -32,6 +146,20 @@
       height: 32px;
       object-fit: contain;
       border-radius: 6px;
+    }
+
+    .nom {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+    }
+
+    /* Rappel discret de la plateforme sous le nom de l'entreprise. */
+    .plateforme {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--couleur-texte-doux);
     }
   }
 
@@ -313,6 +441,87 @@
   /* Pas de filet a cote de la pastille blanche. */
   &.actif + &::before {
     display: none;
+  }
+}
+
+/* Groupe (Stock, Caisse) : il deplie ses sous-menus au lieu d'ouvrir une page. */
+button.entree {
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  .fleche {
+    display: inline-block;
+    margin-left: 0.2rem;
+    font-size: 0.7rem;
+    transition: transform 0.15s ease;
+  }
+
+  &.deplie .fleche {
+    transform: rotate(180deg);
+  }
+
+  &.deplie:not(.actif) {
+    background: rgba(255, 255, 255, 0.16);
+  }
+}
+
+/* Seconde rangee : les sous-menus du groupe deplie, sur fond clair. */
+.sous-panneau {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: -4px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0 0 10px 10px;
+  background: color-mix(in srgb, var(--teinte) 10%, #fff);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--teinte) 25%, #fff);
+}
+
+.titre-groupe {
+  margin-right: 0.4rem;
+  color: color-mix(in srgb, var(--teinte) 80%, #000);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sous-entree {
+  display: flex;
+  flex-direction: column;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--couleur-texte);
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+
+  strong {
+    font-size: 0.85rem;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+    font-size: 0.72rem;
+  }
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--teinte) 35%, #fff);
+    background: #fff;
+  }
+
+  &.actif {
+    border-color: var(--teinte);
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+    strong {
+      color: color-mix(in srgb, var(--teinte) 85%, #000);
+    }
   }
 }
 

@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import tg.parcauto.api.common.BaseEntity;
+import tg.parcauto.api.common.EntiteAuditee;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -22,13 +22,17 @@ import java.util.Set;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Utilisateur extends BaseEntity {
+public class Utilisateur extends EntiteAuditee {
 
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
     @Column(name = "mot_de_passe", nullable = false, length = 100)
     private String motDePasse;
+
+    /** Code PIN chiffre, qui deverrouille l'ecran de caisse ; nul tant qu'il n'est pas defini. */
+    @Column(name = "pin_hash", length = 100)
+    private String pinHash;
 
     @Column(nullable = false, length = 100)
     private String nom;
@@ -41,6 +45,16 @@ public class Utilisateur extends BaseEntity {
 
     @Column(nullable = false)
     private boolean actif = true;
+
+    /**
+     * Entreprise du compte ; nulle pour l'administrateur de la plateforme.
+     * <p>
+     * La connexion se fait par email avant que l'entreprise soit connue : la
+     * table n'est donc pas cloisonnee par Hibernate, et le service des comptes
+     * restreint lui-meme chaque requete a l'entreprise courante.
+     */
+    @Column(name = "entreprise_id", updatable = false)
+    private Long entrepriseId;
 
     /** Lien optionnel vers la fiche chauffeur, pour les comptes de profil CHAUFFEUR. */
     @Column(name = "chauffeur_id")

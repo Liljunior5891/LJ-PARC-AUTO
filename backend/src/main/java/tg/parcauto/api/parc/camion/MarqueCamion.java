@@ -6,7 +6,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import tg.parcauto.api.common.BaseEntity;
+import tg.parcauto.api.common.EntiteAuditee;
 
 /**
  * Marque de camion du referentiel.
@@ -20,7 +20,7 @@ import tg.parcauto.api.common.BaseEntity;
 @Getter
 @Setter
 @NoArgsConstructor
-public class MarqueCamion extends BaseEntity {
+public class MarqueCamion extends EntiteAuditee {
 
     @Column(nullable = false, unique = true, length = 80)
     private String nom;

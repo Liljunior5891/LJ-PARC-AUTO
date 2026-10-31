@@ -1,0 +1,79 @@
+<div class="entete-page">
+  <div>
+    <a class="retour" routerLink="/pdv/caisses">‹ Toutes les caisses</a>
+    <h1>{{ caisse()?.nom ?? 'Caisse' }}</h1>
+    <p class="sous-titre">
+      Ouvertures et clotures, encaissements et ecarts a la cloture
+      @if (caisse(); as c) {
+        @if (c.session) {
+          · <strong class="ouverte">ouverte par {{ c.session.caissierNom }} depuis {{ c.session.ouverteLe | date: 'HH:mm' }}</strong>
+        } @else {
+          · fermee
+        }
+      }
+    </p>
+  </div>
+  <div class="actions-entete">
+    @if (restauration) {
+      <a class="bouton secondaire" routerLink="/pdv/salle">Plan de service</a>
+    }
+    <a class="bouton" [routerLink]="restauration ? '/pdv/comptoir' : '/pdv/caisse'">Vente au comptoir</a>
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+<div class="carte">
+  <div class="tableau-conteneur">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Session</th>
+          <th>Ouverte par</th>
+          <th>Ouverture</th>
+          <th>Cloture</th>
+          <th class="numerique">Commandes</th>
+          <th class="numerique">Chiffre d'affaires</th>
+          <th class="numerique">Ecart</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of page()?.content ?? []; track s.id) {
+          <tr style="cursor: pointer" [routerLink]="['/pdv/caisses', s.caisseId, 'sessions', s.id]"
+              title="Ventes par commande et par produit, entrees et sorties d'especes">
+            <td><strong>{{ s.numero }}</strong></td>
+            <td>{{ s.caissierNom }}</td>
+            <td>{{ s.ouverteLe | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td>{{ s.fermeeLe ? (s.fermeeLe | date: 'dd/MM/yyyy HH:mm') : '—' }}</td>
+            <td class="numerique">{{ s.nombreVentes }}</td>
+            <td class="numerique">{{ s.chiffreAffaires | number: '1.0-0' }} F</td>
+            <td class="numerique" [class.resultat-negatif]="(s.ecart ?? 0) < 0" [class.resultat-positif]="(s.ecart ?? 0) > 0">
+              {{ s.ecart != null ? (s.ecart | number: '1.0-0') + ' F' : '—' }}
+              @if (s.justificationEcart) { <span title="{{ s.justificationEcart }}">ⓘ</span> }
+            </td>
+            <td>
+              <span class="etiquette" [class.disponible]="s.statut === 'OUVERTE'" [class.vendu]="s.statut === 'FERMEE'">
+                {{ s.statut === 'OUVERTE' ? 'Ouverte' : 'Fermee' }}
+              </span>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="8" style="text-align: center; color: var(--couleur-texte-doux)">Cette caisse n'a pas encore ete ouverte.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">Precedent</button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">Suivant</button>
+      </div>
+    }
+  }
+</div>

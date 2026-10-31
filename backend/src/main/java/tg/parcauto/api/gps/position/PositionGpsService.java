@@ -12,6 +12,8 @@ import tg.parcauto.api.gps.alerte.SurveillanceGpsService;
 import tg.parcauto.api.gps.integration.PositionBrute;
 import tg.parcauto.api.parc.camion.Camion;
 import tg.parcauto.api.parc.camion.CamionRepository;
+import tg.parcauto.api.plateforme.tenant.ContexteEntreprise;
+import tg.parcauto.api.plateforme.tenant.DiffusionEntreprise;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -119,9 +121,10 @@ public class PositionGpsService {
 
     private void diffuser(PositionGps position, List<AlerteGps> alertes) {
         try {
-            diffusion.convertAndSend("/topic/gps/positions", PositionGpsDto.Reponse.de(position));
+            String canal = DiffusionEntreprise.canal(ContexteEntreprise.exiger());
+            diffusion.convertAndSend(canal + "/gps/positions", PositionGpsDto.Reponse.de(position));
             alertes.forEach(alerte ->
-                    diffusion.convertAndSend("/topic/gps/alertes", alerte.getMessage()));
+                    diffusion.convertAndSend(canal + "/gps/alertes", alerte.getMessage()));
         } catch (RuntimeException e) {
             // Une diffusion temps reel en echec ne doit jamais perdre la position enregistree.
             log.warn("Diffusion temps reel impossible : {}", e.getMessage());

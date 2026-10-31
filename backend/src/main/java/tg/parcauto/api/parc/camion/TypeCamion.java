@@ -6,7 +6,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import tg.parcauto.api.common.BaseEntity;
+import tg.parcauto.api.common.EntiteAuditee;
 
 /** Type de carrosserie du camion : plateau, benne, citerne... */
 @Entity
@@ -14,7 +14,7 @@ import tg.parcauto.api.common.BaseEntity;
 @Getter
 @Setter
 @NoArgsConstructor
-public class TypeCamion extends BaseEntity {
+public class TypeCamion extends EntiteAuditee {
 
     @Column(nullable = false, unique = true, length = 80)
     private String nom;

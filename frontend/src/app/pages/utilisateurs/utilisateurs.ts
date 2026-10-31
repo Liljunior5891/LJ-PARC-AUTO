@@ -42,6 +42,9 @@ export class Utilisateurs implements OnInit {
   readonly formulaireOuvert = signal(false);
   /** Compte dont on reinitialise le mot de passe. */
   readonly reinitialise = signal<Utilisateur | null>(null);
+  /** Compte dont on definit le code PIN de caisse. */
+  readonly pinCible = signal<Utilisateur | null>(null);
+  nouveauPin = '';
 
   recherche = '';
   filtreRole: Role | '' = '';
@@ -211,6 +214,44 @@ export class Utilisateurs implements OnInit {
       },
       error: (reponse) =>
         this.erreur.set(this.messageErreur(reponse, "Changement d'activation impossible."))
+    });
+  }
+
+  ouvrirPin(utilisateur: Utilisateur): void {
+    this.messages();
+    this.nouveauPin = '';
+    this.pinCible.set(utilisateur);
+  }
+
+  enregistrerPin(): void {
+    if (!/^\d{4,6}$/.test(this.nouveauPin)) {
+      this.erreur.set('Le code PIN compte 4 a 6 chiffres.');
+      return;
+    }
+    this.appliquerPin(this.nouveauPin, 'defini');
+  }
+
+  effacerPin(): void {
+    this.appliquerPin(null, 'efface');
+  }
+
+  private appliquerPin(pin: string | null, action: string): void {
+    const cible = this.pinCible();
+    if (!cible || this.enregistrement()) {
+      return;
+    }
+    this.enregistrement.set(true);
+    this.service.definirPin(cible.id, pin).subscribe({
+      next: () => {
+        this.enregistrement.set(false);
+        this.pinCible.set(null);
+        this.succes.set(`Code PIN de ${cible.nomComplet} ${action}.`);
+        this.charger();
+      },
+      error: (reponse) => {
+        this.enregistrement.set(false);
+        this.erreur.set(this.messageErreur(reponse, 'Enregistrement du code impossible.'));
+      }
     });
   }
 

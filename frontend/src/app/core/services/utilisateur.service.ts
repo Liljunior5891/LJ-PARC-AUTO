@@ -50,6 +50,11 @@ export class UtilisateurService {
     });
   }
 
+  /** Code PIN de caisse, defini par l'administrateur ; nul pour l'effacer. */
+  definirPin(id: number, pin: string | null): Observable<void> {
+    return this.http.put<void>(`${this.base}/${id}/pin`, { pin });
+  }
+
   /** Reinitialisation par un administrateur. */
   reinitialiserMotDePasse(id: number, motDePasse: string): Observable<void> {
     return this.http.put<void>(`${this.base}/${id}/mot-de-passe`, { motDePasse });

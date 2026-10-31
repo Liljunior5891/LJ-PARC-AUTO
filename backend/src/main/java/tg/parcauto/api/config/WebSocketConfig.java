@@ -2,18 +2,30 @@ package tg.parcauto.api.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageDeliveryException;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import tg.parcauto.api.plateforme.tenant.DiffusionEntreprise;
+import tg.parcauto.api.security.UtilisateurPrincipal;
 
+import java.security.Principal;
 import java.util.Arrays;
 
 /**
- * Diffusion temps reel des positions et des alertes GPS (chapitres 23 et 26).
+ * Diffusion temps reel des positions, des alertes GPS et des incidents
+ * (chapitres 23, 26 et 33).
  * <p>
- * Le courtier en memoire suffit pour un parc de cette taille ; il pourra etre
- * remplace par un courtier externe si le nombre de traceurs l'exige.
+ * Chaque entreprise publie sous son propre canal ; un abonnement a un canal qui
+ * n'est pas celui de l'entreprise de l'utilisateur est refuse.
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -34,5 +46,28 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setAllowedOrigins(Arrays.stream(allowedOrigins.split(",")).map(String::trim)
                         .toArray(String[]::new))
                 .withSockJS();
+    }
+
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.interceptors(new ChannelInterceptor() {
+            @Override
+            public Message<?> preSend(Message<?> message, MessageChannel channel) {
+                StompHeaderAccessor entetes = StompHeaderAccessor.wrap(message);
+                if (StompCommand.SUBSCRIBE.equals(entetes.getCommand())
+                        && !DiffusionEntreprise.appartientA(entetes.getDestination(), entreprise(entetes.getUser()))) {
+                    throw new MessageDeliveryException("Abonnement refuse : canal d'une autre entreprise");
+                }
+                return message;
+            }
+        });
+    }
+
+    private static Long entreprise(Principal utilisateur) {
+        if (utilisateur instanceof UsernamePasswordAuthenticationToken jeton
+                && jeton.getPrincipal() instanceof UtilisateurPrincipal principal) {
+            return principal.getEntrepriseId();
+        }
+        return null;
     }
 }

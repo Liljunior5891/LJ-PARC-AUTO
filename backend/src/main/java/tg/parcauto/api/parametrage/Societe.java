@@ -12,8 +12,7 @@ import tg.parcauto.api.common.BaseEntity;
  * Identite de l'entreprise, saisie une fois et reprise partout : entete des
  * factures, entete des rapports et page de connexion.
  * <p>
- * La table ne contient qu'une seule ligne : il n'y a qu'une entreprise a
- * parametrer, et la contrainte le garantit.
+ * Une ligne par entreprise cliente, garantie par une contrainte d'unicite.
  */
 @Entity
 @Table(name = "parametre_societe")

@@ -1,49 +1,51 @@
-import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth/auth.service';
-import { VitrineSociete } from '../../core/models/parametrage';
-import { SocieteService } from '../../core/services/societe.service';
+import { ModuleCatalogue, PRESENTATION_MODULES } from '../../core/models/plateforme';
+import { PlateformeService } from '../../core/services/plateforme.service';
 import { Apparition } from '../../shared/apparition';
 
-/** Une prestation presentee aux visiteurs. */
-interface Prestation {
-  icone: string;
+interface Offre {
+  nom: string;
+  prix: string;
+  mention: string;
+  points: string[];
+  action: string;
+  vedette?: boolean;
+}
+
+/** Une diapositive du carrousel d'ouverture. */
+interface Diapositive {
+  etiquette: string;
+  /** Peut contenir une balise <span class="accent"> pour le mot mis en valeur. */
   titre: string;
   texte: string;
-  points: string[];
-}
-
-/** Un vehicule type de la flotte, illustre par un detail d'une photo du parc. */
-interface VehiculeFlotte {
-  nom: string;
-  usage: string;
-  /** Photo d'origine et cadrage horizontal isolant le vehicule concerne. */
-  image: string;
-  cadrage: string;
-  agrandissement: string;
-}
-
-/** Un ecran du carrousel d'ouverture. */
-interface Diapositive {
-  image: string;
-  /** Vrai pour les visuels de faible definition, adoucis a l'agrandissement. */
-  adoucir?: boolean;
-  surtitre: string;
-  titre: string;
-  accroche: string;
   action: string;
-  ancre: string;
+  lien: string;
+  image: string;
+  /** Cadrage de la photo dans sa carte (object-position). */
+  cadrage: string;
+  carteHaut: { titre: string; texte: string };
+  carteBas: { icone: string; titre: string; texte: string };
 }
 
 /** Duree d'affichage d'une diapositive, en millisecondes. */
 const DUREE_DIAPOSITIVE_MS = 6500;
 
+interface Fonction {
+  icone: string;
+  titre: string;
+  texte: string;
+}
+
 /**
- * Site vitrine, page unique et publique (aucune authentification).
+ * Page publique de la plateforme : promesse, modules, offres et appel a creer
+ * un compte entreprise. Le catalogue vient de l'API, pour qu'un module qui
+ * devient disponible apparaisse sans toucher a cette page.
  * <p>
- * Le contenu editorial est fige ici ; seules l'identite et les coordonnees
- * viennent du parametrage, pour qu'un changement de raison sociale ou de
- * telephone se repercute sans toucher au code.
+ * Les chiffres affiches decrivent le produit, jamais une clientele : rien
+ * n'est annonce qui ne soit verifiable.
  */
 @Component({
   selector: 'app-accueil',
@@ -52,280 +54,188 @@ const DUREE_DIAPOSITIVE_MS = 6500;
   styleUrl: './accueil.scss'
 })
 export class Accueil implements OnInit, OnDestroy {
-  private readonly societeService = inject(SocieteService);
+  private readonly service = inject(PlateformeService);
   private readonly auth = inject(AuthService);
 
-  readonly societe = signal<VitrineSociete | null>(null);
-  readonly menuOuvert = signal(false);
+  readonly nomPlateforme = environment.nomPlateforme;
+  readonly presentation = PRESENTATION_MODULES;
+  readonly annee = new Date().getFullYear();
 
   /** Un visiteur deja connecte rejoint directement son espace. */
   readonly connecte = this.auth.connecte;
+  readonly accueilConnecte = () => this.auth.pageAccueil();
 
-  readonly annee = new Date().getFullYear();
+  readonly menuOuvert = signal(false);
 
-  /** Le nom parametre remplace le jeton {nom} des textes du carrousel. */
-  readonly diapositivesAffichees = computed(() =>
-    this.diapositives.map((diapo) => ({
-      ...diapo,
-      surtitre: diapo.surtitre.replace('{nom}', this.societe()?.nom ?? 'PARC AUTO'),
-      accroche: diapo.accroche.replace('{nom}', this.societe()?.nom ?? 'notre societe')
-    }))
-  );
+  readonly duree = DUREE_DIAPOSITIVE_MS;
+  readonly active = signal(0);
+  /** Vrai pendant un survol ou une navigation au clavier : le defilement attend. */
+  readonly enPause = signal(false);
+  /** Incremente a chaque relance du minuteur : la barre de progression repart avec lui. */
+  readonly cycle = signal(0);
 
   readonly diapositives: Diapositive[] = [
     {
-      image: '/backlogin.jpg',
-      surtitre: '{nom}',
-      titre: "Votre marchandise part a l'heure,<br />et vous savez ou elle est.",
-      accroche:
-        '{nom} met a votre disposition une flotte entretenue, des chauffeurs professionnels et un suivi de chaque mission, du chargement jusqu’a la livraison.',
-      action: 'Demander un devis',
-      ancre: '#contact'
-    },
-    {
+      etiquette: 'Plateforme',
+      titre: 'Simplifiez votre gestion.<br />Pilotez <span class="accent">votre entreprise</span><br />en ligne.',
+      texte: "Une seule plateforme pour vos vehicules, vos equipes, vos finances et bientot votre point de vente — creee pour les entreprises d'Afrique de l'Ouest.",
+      action: 'Creer mon compte gratuit',
+      lien: '/inscription',
       image: '/howo.webp',
-      surtitre: 'Une flotte pour chaque chantier',
-      titre: 'Du tracteur routier<br />a la benne de chantier.',
-      accroche:
-        'Tracteurs, porteurs, bennes et fourgons frigorifiques : nous engageons le vehicule qui correspond a votre chargement, pas celui qui reste disponible.',
-      action: 'Voir nos services',
-      ancre: '#services'
+      cadrage: '45% 70%',
+      carteHaut: { titre: 'Un seul compte', texte: 'pour toute votre equipe' },
+      carteBas: { icone: '🧩', titre: 'Modules a la carte', texte: 'activez ce dont vous avez besoin' }
     },
     {
+      etiquette: 'Gestion de parc',
+      titre: 'Sachez <span class="accent">ou sont</span><br />vos vehicules,<br />a chaque instant.',
+      texte: 'Carte du parc en temps reel, historique des trajets, zones et alertes de vitesse : votre flotte sous les yeux, ou que vous soyez.',
+      action: 'Suivre ma flotte',
+      lien: '/inscription',
+      image: '/backlogin.jpg',
+      cadrage: '60% 80%',
+      carteHaut: { titre: 'Suivi GPS', texte: 'positions en temps reel' },
+      carteBas: { icone: '🛰️', titre: 'Alertes et geofencing', texte: 'vitesse, zones, arrets' }
+    },
+    {
+      etiquette: 'Rentabilite',
+      titre: 'Combien rapporte<br /><span class="accent">chaque vehicule</span> ?<br />Enfin la reponse.',
+      texte: 'Recettes, carburant, entretien et factures rattaches a chaque vehicule : marge, cout au kilometre et rapports PDF calcules pour vous.',
+      action: 'Mesurer ma rentabilite',
+      lien: '/inscription',
       image: '/siontruk.jpg',
-      adoucir: true,
-      surtitre: 'Disponibles jour et nuit',
-      titre: 'Les delais ne tiennent pas<br />aux horaires de bureau.',
-      accroche:
-        'Departs matinaux, trajets de nuit, tournees continues : nos affectations sont organisees pour tenir la date que vous nous avez donnee.',
-      action: 'Nous contacter',
-      ancre: '#contact'
+      cadrage: '50% 60%',
+      carteHaut: { titre: 'Facturation', texte: 'creances et reglements suivis' },
+      carteBas: { icone: '📈', titre: 'Marge par vehicule', texte: 'calculee automatiquement' }
     }
   ];
-
-  readonly prestations: Prestation[] = [
-    {
-      icone: '🚛',
-      titre: 'Transport de marchandises',
-      texte:
-        "Acheminement national et sous-regional, du chargement isole au trafic regulier, avec des vehicules adaptes a la nature de votre fret.",
-      points: ['Porteurs, remorques et semi-remorques', 'Chauffeurs professionnels', 'Lettre de voiture et bon de livraison']
-    },
-    {
-      icone: '🔑',
-      titre: 'Location de vehicules',
-      texte:
-        "Mise a disposition de vehicules a la journee, au mois ou sur contrat de longue duree, avec ou sans chauffeur, selon vos pics d'activite.",
-      points: ['Avec ou sans chauffeur', 'Contrats courts ou longue duree', 'Entretien et assurance a notre charge']
-    },
-    {
-      icone: '📦',
-      titre: 'Livraison et distribution',
-      texte:
-        "Organisation des tournees, distribution multi-points et remise des justificatifs signes a chaque etape de la chaine.",
-      points: ['Tournees planifiees', 'Preuve de livraison', 'Traitement des ecarts et retours']
-    },
-    {
-      icone: '📍',
-      titre: 'Suivi et tracabilite',
-      texte:
-        "Chaque vehicule est equipe d'un traceur : position, itineraire, arrets et respect des zones sont enregistres et restituables.",
-      points: ['Position en temps reel', 'Historique des trajets', 'Alertes vitesse et zones']
-    }
-  ];
-
-  /**
-   * Presentation de la flotte. Faute de photo individuelle par vehicule, chaque
-   * carte cadre un camion precis des visuels panoramiques du parc.
-   */
-  readonly flotte: VehiculeFlotte[] = [
-    {
-      nom: 'Tracteur routier',
-      usage: 'Semi-remorques sur longue distance, national et sous-regional.',
-      image: '/howo.webp',
-      cadrage: '13% 72%',
-      agrandissement: '500%'
-    },
-    {
-      nom: 'Tracteur grand routier',
-      usage: 'Cabine couchette pour les liaisons de plusieurs jours.',
-      image: '/howo.webp',
-      cadrage: '31% 72%',
-      agrandissement: '500%'
-    },
-    {
-      nom: 'Porteur plateau',
-      usage: 'Charges palettisees, materiaux longs et colis hors gabarit.',
-      image: '/howo.webp',
-      cadrage: '49% 90%',
-      agrandissement: '330%'
-    },
-    {
-      nom: 'Benne de chantier',
-      usage: 'Sable, gravier, laterite et deblais de chantier.',
-      image: '/howo.webp',
-      cadrage: '73% 81%',
-      agrandissement: '400%'
-    },
-    {
-      nom: 'Fourgon frigorifique',
-      usage: 'Denrees perissables et produits sous temperature dirigee.',
-      image: '/howo.webp',
-      cadrage: '91% 72%',
-      agrandissement: '500%'
-    },
-    {
-      nom: 'Camionnette de distribution',
-      usage: 'Tournees urbaines et livraisons du dernier kilometre.',
-      image: '/backlogin.jpg',
-      cadrage: '100% 85%',
-      agrandissement: '500%'
-    }
-  ];
-
-  /** Chaque engagement porte sa couleur, pour animer la bande sous le carrousel. */
-  readonly engagements = [
-    {
-      icone: '⏱️',
-      couleur: '#1565c0',
-      titre: 'Ponctualite',
-      texte: "Des delais annonces a la commande et tenus, avec information immediate en cas d'alea."
-    },
-    {
-      icone: '📍',
-      couleur: '#6b3fa0',
-      titre: 'Tracabilite',
-      texte: 'Chaque mouvement est horodate et documente, du depart au dechargement.'
-    },
-    {
-      icone: '🛡️',
-      couleur: '#1e874b',
-      titre: 'Securite',
-      texte: 'Flotte entretenue selon un plan de maintenance suivi et conducteurs formes.'
-    },
-    {
-      icone: '🧾',
-      couleur: '#f0a202',
-      titre: 'Transparence',
-      texte: 'Une facturation detaillee, adossee aux missions realisees et aux justificatifs.'
-    }
-  ];
-
-  readonly etapes = [
-    { numero: '01', titre: 'Votre demande', texte: 'Vous nous decrivez le fret, le trajet et les dates ; nous repondons par une offre chiffree.' },
-    { numero: '02', titre: 'Affectation', texte: 'Nous engageons le vehicule adapte et le chauffeur, et vous confirmons la mission.' },
-    { numero: '03', titre: 'Execution suivie', texte: "Le vehicule est suivi jusqu'a la livraison, et vous recevez les documents de fin de mission." }
-  ];
-
-  readonly diapositiveActive = signal(0);
-
-  /** Vrai des que la page a quitte le haut : l'entete se densifie alors. */
-  readonly enteteCompacte = signal(false);
-
-  @HostListener('window:scroll')
-  surDefilement(): void {
-    this.enteteCompacte.set(window.scrollY > 40);
-  }
 
   private minuterie?: ReturnType<typeof setInterval>;
-  private defilementAutomatique = true;
+  /** Un carrousel qui defile seul est une animation non sollicitee : on s'en abstient sur demande. */
+  private readonly defilementAutorise =
+    typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  readonly modules = signal<ModuleCatalogue[]>([]);
+
+  /** Bandeau sous l'ecran d'ouverture : les metiers pour lesquels la plateforme est pensee. */
+  readonly secteurs = [
+    { icone: '🚛', nom: 'Transport' },
+    { icone: '🔑', nom: 'Location' },
+    { icone: '📦', nom: 'Logistique' },
+    { icone: '🏗️', nom: 'BTP' },
+    { icone: '🏪', nom: 'Commerce' },
+    { icone: '🛒', nom: 'Distribution' }
+  ];
+
+  readonly chiffres = [
+    { valeur: '1 min', libelle: 'pour creer votre espace' },
+    { valeur: '100 %', libelle: 'donnees isolees par entreprise' },
+    { valeur: '24/7', libelle: 'accessible en ligne' },
+    { valeur: '0', libelle: 'installation a prevoir' }
+  ];
+
+  readonly offres: Offre[] = [
+    {
+      nom: 'Decouverte',
+      prix: 'Gratuit',
+      mention: 'pour demarrer',
+      points: ['1 module au choix', "Jusqu'a 3 utilisateurs", 'Donnees isolees et sauvegardees', 'Assistance par email'],
+      action: 'Commencer'
+    },
+    {
+      nom: 'Pro',
+      prix: 'Gestion de parc',
+      mention: 'le module complet',
+      points: ['Utilisateurs illimites', 'GPS temps reel et geofencing', 'Facturation et rentabilite', 'Rapports PDF', 'Assistance prioritaire'],
+      action: 'Essayer maintenant',
+      vedette: true
+    },
+    {
+      nom: 'Entreprise',
+      prix: 'Sur devis',
+      mention: 'plusieurs modules',
+      points: ['Tous les modules disponibles', 'Accompagnement a la prise en main', 'Reprise de vos donnees', 'Interlocuteur dedie'],
+      action: 'Nous contacter'
+    }
+  ];
+
+  readonly fonctions: Fonction[] = [
+    { icone: '📊', titre: 'Tableaux de bord et rentabilite', texte: 'Chiffre d\'affaires, depenses et marge suivis en temps reel, vehicule par vehicule.' },
+    { icone: '👥', titre: 'Equipe et droits d\'acces', texte: 'Administrateurs, gestionnaires et chauffeurs, chacun avec les droits de son role.' },
+    { icone: '🧩', titre: 'Modules a la carte', texte: 'Activez ou retirez un module en un clic ; vos donnees sont conservees.' }
+  ];
 
   ngOnInit(): void {
-    // La page reste presentable si l'API ne repond pas : les libelles de repli
-    // du gabarit prennent alors le relais.
-    this.societeService.chargerVitrine().subscribe({
-      next: (vitrine) => this.societe.set(vitrine),
+    // La page reste presentable sans l'API : seule la grille des modules attend la reponse.
+    this.service.cataloguePublic().subscribe({
+      next: (modules) => this.modules.set(modules),
       error: () => undefined
     });
-
-    // Un carrousel qui defile seul est une animation non sollicitee : on s'en
-    // abstient si l'utilisateur a demande a les reduire.
-    this.defilementAutomatique = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    this.relancerDefilement();
+    this.relancer();
     document.addEventListener('visibilitychange', this.surVisibilite);
   }
 
   ngOnDestroy(): void {
-    this.arreterDefilement();
+    this.arreter();
     document.removeEventListener('visibilitychange', this.surVisibilite);
+  }
+
+  allerA(index: number): void {
+    const total = this.diapositives.length;
+    this.active.set((index + total) % total);
+    // Toute action manuelle repart d'une duree complete.
+    this.relancer();
+  }
+
+  suivante(): void {
+    this.allerA(this.active() + 1);
+  }
+
+  precedente(): void {
+    this.allerA(this.active() - 1);
+  }
+
+  suspendre(): void {
+    this.enPause.set(true);
+    this.arreter();
+  }
+
+  reprendre(): void {
+    this.enPause.set(false);
+    this.relancer();
   }
 
   /** Un onglet en arriere-plan n'a personne pour regarder le carrousel. */
   private readonly surVisibilite = (): void => {
     if (document.hidden) {
-      this.arreterDefilement();
-    } else {
-      this.relancerDefilement();
+      this.arreter();
+    } else if (!this.enPause()) {
+      this.relancer();
     }
   };
 
-  allerA(index: number): void {
-    const total = this.diapositives.length;
-    this.diapositiveActive.set((index + total) % total);
-    // Toute action manuelle reporte le changement automatique suivant.
-    this.relancerDefilement();
-  }
-
-  suivante(): void {
-    this.allerA(this.diapositiveActive() + 1);
-  }
-
-  precedente(): void {
-    this.allerA(this.diapositiveActive() - 1);
-  }
-
-  /** Le survol suspend le defilement, pour laisser le temps de lire. */
-  suspendre(): void {
-    this.arreterDefilement();
-  }
-
-  reprendre(): void {
-    this.relancerDefilement();
-  }
-
-  private relancerDefilement(): void {
-    this.arreterDefilement();
-    if (!this.defilementAutomatique || document.hidden) {
+  private relancer(): void {
+    this.arreter();
+    this.cycle.update((c) => c + 1);
+    if (!this.defilementAutorise || this.enPause() || document.hidden) {
       return;
     }
     this.minuterie = setInterval(
-      () => this.diapositiveActive.update((index) => (index + 1) % this.diapositives.length),
+      () => {
+        this.active.update((i) => (i + 1) % this.diapositives.length);
+        this.cycle.update((c) => c + 1);
+      },
       DUREE_DIAPOSITIVE_MS
     );
   }
 
-  private arreterDefilement(): void {
+  private arreter(): void {
     if (this.minuterie) {
       clearInterval(this.minuterie);
       this.minuterie = undefined;
     }
   }
 
-  get nom(): string {
-    return this.societe()?.nom || 'PARC AUTO';
-  }
-
-  /** Adresse postale complete, assemblee a partir des champs renseignes. */
-  get adresseComplete(): string | null {
-    const s = this.societe();
-    if (!s) {
-      return null;
-    }
-    const morceaux = [s.adresse, s.ville, s.pays].filter((m) => !!m && m.trim().length > 0);
-    return morceaux.length > 0 ? morceaux.join(', ') : null;
-  }
-
-  /** Vrai tant qu'aucune coordonnee n'est renseignee dans le parametrage. */
-  get sansCoordonnees(): boolean {
-    const s = this.societe();
-    return !this.adresseComplete && !s?.telephone && !s?.email && !s?.siteWeb;
-  }
-
   basculerMenu(): void {
     this.menuOuvert.update((ouvert) => !ouvert);
-  }
-
-  fermerMenu(): void {
-    this.menuOuvert.set(false);
   }
 }

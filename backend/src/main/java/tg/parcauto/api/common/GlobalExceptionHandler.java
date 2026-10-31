@@ -53,6 +53,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "Acces refuse", req, null);
     }
 
+    @ExceptionHandler(tg.parcauto.api.plateforme.module.ModuleNonActiveException.class)
+    public ResponseEntity<Map<String, Object>> handleModuleNonActive(
+            tg.parcauto.api.plateforme.module.ModuleNonActiveException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), req, null);
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Map<String, Object>> handleAuth(AuthenticationException ex, HttpServletRequest req) {
         return build(HttpStatus.UNAUTHORIZED, "Identifiants invalides", req, null);

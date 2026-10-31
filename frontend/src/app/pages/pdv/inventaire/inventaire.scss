@@ -1,0 +1,103 @@
+/* Feuille d'inventaire : une ligne par produit, la barre de validation reste en bas de l'ecran. */
+
+.filtres {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  .champ {
+    min-width: 220px;
+    margin: 0;
+  }
+}
+
+.case {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-bottom: 0.6rem;
+  cursor: pointer;
+}
+
+tr.compte td {
+  background: color-mix(in srgb, var(--couleur-succes) 5%, transparent);
+}
+
+tr.ecart td {
+  background: color-mix(in srgb, var(--couleur-accent) 9%, transparent);
+}
+
+small {
+  color: var(--couleur-texte-doux);
+}
+
+.saisie {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.juste {
+  height: 32px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--couleur-succes);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--couleur-succes);
+    background: color-mix(in srgb, var(--couleur-succes) 8%, #fff);
+  }
+}
+
+td {
+  vertical-align: middle;
+}
+
+.attente {
+  color: var(--couleur-texte-doux);
+}
+
+.plus {
+  color: var(--couleur-succes);
+}
+
+.moins {
+  color: var(--couleur-danger);
+}
+
+.vide {
+  padding: 1.5rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}
+
+.barre-validation {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--rayon);
+  background: var(--couleur-surface);
+  box-shadow: 0 -4px 16px rgba(16, 24, 40, 0.08);
+
+  .resume {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .motif {
+    width: 240px;
+  }
+}

@@ -1,0 +1,92 @@
+/* Edition du plan : reprend le dessin du plan de service (salle.scss). */
+
+.onglets-salles {
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.lien-renommer {
+  border: none;
+  background: none;
+  color: var(--couleur-primaire-clair);
+  cursor: pointer;
+}
+
+.plan.edition {
+  touch-action: none;
+  user-select: none;
+
+  .table {
+    cursor: grab;
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &.modifiee {
+      border-style: dashed;
+    }
+  }
+}
+
+.plan-vide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: var(--couleur-texte-doux);
+}
+
+.barre-enregistrement {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  color: var(--couleur-texte-doux);
+}
+
+.formes {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.forme {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.9rem;
+  border: 2px solid var(--couleur-bordure);
+  border-radius: 10px;
+  background: var(--couleur-surface);
+  cursor: pointer;
+
+  .apercu {
+    width: 28px;
+    height: 28px;
+    border: 3px solid currentColor;
+    border-radius: 6px;
+  }
+
+  &.ronde .apercu {
+    border-radius: 50%;
+  }
+
+  &.rectangle .apercu {
+    width: 46px;
+  }
+
+  &.actif {
+    border-color: var(--couleur-primaire);
+    color: var(--couleur-primaire);
+  }
+}
+
+.grille-champs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1rem;
+}

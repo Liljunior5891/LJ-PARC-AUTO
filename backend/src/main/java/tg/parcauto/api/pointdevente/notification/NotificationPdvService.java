@@ -1,0 +1,157 @@
+package tg.parcauto.api.pointdevente.notification;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import tg.parcauto.api.pointdevente.caisse.SessionTravailService;
+import tg.parcauto.api.pointdevente.catalogue.PostePreparation;
+import tg.parcauto.api.pointdevente.personnel.PersonnelService;
+import tg.parcauto.api.pointdevente.restauration.Commande;
+import tg.parcauto.api.pointdevente.restauration.CommandeRepository;
+import tg.parcauto.api.pointdevente.restauration.EcranPreparationRepository;
+import tg.parcauto.api.pointdevente.restauration.EcranPreparationService;
+import tg.parcauto.api.pointdevente.restauration.LigneCommande;
+import tg.parcauto.api.pointdevente.restauration.PreparationService;
+import tg.parcauto.api.pointdevente.restauration.RestaurationDto;
+import tg.parcauto.api.security.Role;
+import tg.parcauto.api.security.UtilisateurPrincipal;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+/**
+ * Ce qui attend chaque poste, a l'instant : le navigateur interroge
+ * regulierement et signale, par un son et un message, chaque evenement qu'il
+ * n'a pas encore vu. Un evenement porte une cle stable : elle change quand il
+ * se renouvelle (nouvel article propose, nouvel appel, nouveau plat pret).
+ * <ul>
+ *   <li>caisse (gerant, caissier) : commandes passees depuis le code QR a valider, additions demandees ;</li>
+ *   <li>serveur : appels et plats prets de ses tables (ceux sans serveur vont a tous) ;</li>
+ *   <li>preparateur : nouveaux bons sur ses ecrans de preparation ;</li>
+ *   <li>personnel de caisse : ouverture d'une session sur sa caisse.</li>
+ * </ul>
+ */
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class NotificationPdvService {
+
+    public enum Type { VALIDATION, APPEL, ADDITION, PRET, BON, CAISSE }
+
+    public record Evenement(String cle, Type type, String titre, String message, String lien, Instant date) {
+    }
+
+    private final CommandeRepository commandeRepository;
+    private final PreparationService preparationService;
+    private final EcranPreparationService ecranService;
+    private final EcranPreparationRepository ecranRepository;
+    private final SessionTravailService sessionsTravail;
+
+    public List<Evenement> pour(UtilisateurPrincipal u) {
+        List<Evenement> evenements = new ArrayList<>();
+        boolean caisse = aRole(u, Role.ADMIN, Role.GERANT, Role.CAISSIER);
+        boolean serveur = aRole(u, Role.SERVEUR);
+        if (caisse || serveur) {
+            for (Commande c : commandeRepository.ouvertes()) {
+                salle(c, u, caisse, serveur, evenements);
+            }
+            if (!PersonnelService.gestionnaire(u)) {
+                sessionsTravail.ouvertesPour(u).forEach(s -> evenements.add(new Evenement("caisse-" + s.getId(),
+                        Type.CAISSE, "Caisse ouverte", s.getCaisse().getNom() + " : vous pouvez encaisser",
+                        null, s.getOuverteLe())));
+            }
+        }
+        if (aRole(u, Role.PREPARATEUR)) {
+            preparation(u, evenements);
+        }
+        evenements.sort(Comparator.comparing(Evenement::date, Comparator.nullsLast(Comparator.reverseOrder())));
+        return evenements;
+    }
+
+    /** Evenements d'une commande de table pour l'utilisateur. */
+    private static void salle(Commande c, UtilisateurPrincipal u, boolean caisse, boolean serveur, List<Evenement> sortie) {
+        // Le serveur de la table ; une commande sans serveur (passee par le client) concerne tous les serveurs.
+        boolean saTable = Objects.equals(c.getServeurId(), u.getId()) || (serveur && c.getServeurId() == null);
+        String lien = "/pdv/commandes/" + c.getId();
+
+        List<LigneCommande> proposees = lignes(c, LigneCommande.Statut.PROPOSEE);
+        if (!proposees.isEmpty() && (caisse || saTable)) {
+            long derniere = proposees.stream().mapToLong(LigneCommande::getId).max().orElse(0);
+            sortie.add(new Evenement("validation-" + c.getId() + "-" + derniere, Type.VALIDATION,
+                    "Commande client a valider",
+                    c.repere() + " : " + proposees.size() + " article(s) commande(s) depuis le code QR",
+                    lien, c.getAppelLe() != null ? c.getAppelLe() : c.getOuverteLe()));
+        }
+
+        if (c.getAppelMotif() != null && c.getAppelLe() != null) {
+            boolean addition = c.getAppelMotif() == Commande.Appel.ADDITION;
+            if (saTable || (addition && caisse)) {
+                sortie.add(new Evenement("appel-" + c.getId() + "-" + c.getAppelLe().toEpochMilli(),
+                        addition ? Type.ADDITION : Type.APPEL,
+                        addition ? "Addition demandee" : "Un client appelle",
+                        c.repere() + (addition ? " demande l'addition" : " demande un serveur"), lien, c.getAppelLe()));
+            }
+        }
+
+        List<LigneCommande> pretes = lignes(c, LigneCommande.Statut.PRETE);
+        if (!pretes.isEmpty() && (saTable || (c.getServeurId() == null && caisse))) {
+            Instant derniere = pretes.stream().map(LigneCommande::getPreteLe).filter(Objects::nonNull)
+                    .max(Comparator.naturalOrder()).orElse(c.getOuverteLe());
+            sortie.add(new Evenement("pret-" + c.getId() + "-" + derniere.toEpochMilli(), Type.PRET,
+                    "Pret a servir", c.repere() + " : " + resume(pretes), lien, derniere));
+        }
+    }
+
+    /** Nouveaux bons (rien encore commence) des ecrans du preparateur, ou des postes sans ecran. */
+    private void preparation(UtilisateurPrincipal u, List<Evenement> sortie) {
+        if (ecranRepository.count() == 0) {
+            for (PostePreparation poste : PostePreparation.values()) {
+                nouveaux(preparationService.bons(poste), poste.getLibelle(), "/pdv/cuisine", sortie);
+            }
+            return;
+        }
+        for (EcranPreparationService.Reponse ecran : ecranService.accessibles(u)) {
+            nouveaux(preparationService.bonsEcran(ecran.id(), u), ecran.nom(), "/pdv/cuisine?ecran=" + ecran.id(), sortie);
+        }
+    }
+
+    private static void nouveaux(List<RestaurationDto.Bon> bons, String ecran, String lien, List<Evenement> sortie) {
+        for (RestaurationDto.Bon bon : bons) {
+            if (bon.statut() == LigneCommande.Statut.A_PREPARER) {
+                sortie.add(new Evenement("bon-" + bon.commandeId() + "-" + bon.envoi() + "-" + ecran, Type.BON,
+                        "Nouveau bon · " + ecran,
+                        bon.repere() + " : " + bon.lignes().stream()
+                                .map(l -> quantite(l.quantite()) + " " + l.libelle()).collect(Collectors.joining(", ")),
+                        lien, bon.envoyeLe()));
+            }
+        }
+    }
+
+    private static List<LigneCommande> lignes(Commande c, LigneCommande.Statut statut) {
+        return c.getLignes().stream().filter(l -> l.getStatut() == statut).toList();
+    }
+
+    private static String resume(List<LigneCommande> lignes) {
+        String texte = lignes.stream().limit(4).map(l -> quantite(l.getQuantite()) + " " + l.getLibelle())
+                .collect(Collectors.joining(", "));
+        return lignes.size() > 4 ? texte + "..." : texte;
+    }
+
+    private static String quantite(BigDecimal quantite) {
+        return quantite.stripTrailingZeros().toPlainString() + " ×";
+    }
+
+    private static boolean aRole(UtilisateurPrincipal u, Role... roles) {
+        for (Role role : roles) {
+            if (u.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals(role.authority()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+}

@@ -1,0 +1,105 @@
+<div class="entete-page">
+  <div>
+    <h1>Console plateforme</h1>
+    <p class="sous-titre">Entreprises abonnees et modules souscrits</p>
+  </div>
+  <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
+</div>
+
+@if (statistiques(); as s) {
+  <div class="indicateurs">
+    <div class="carte indicateur">
+      <span class="libelle">Entreprises</span>
+      <strong>{{ s.entreprises }}</strong>
+      <small>{{ s.entreprisesActives }} actives</small>
+    </div>
+    <div class="carte indicateur">
+      <span class="libelle">Utilisateurs</span>
+      <strong>{{ s.utilisateurs }}</strong>
+      <small>tous comptes confondus</small>
+    </div>
+    @for (code of codesModules; track code) {
+      <div class="carte indicateur">
+        <span class="libelle">{{ presentation[code].icone }} {{ libellesModules[code] }}</span>
+        <strong>{{ s.activationsParModule[code] }}</strong>
+        <small>entreprises abonnees</small>
+      </div>
+    }
+  </div>
+}
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+<div class="carte">
+  <div class="barre-recherche">
+    <input type="search" placeholder="Rechercher une entreprise, un email, un pays..."
+           [(ngModel)]="recherche" (ngModelChange)="filtre.set($event)" />
+  </div>
+
+  <div class="tableau-conteneur">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Entreprise</th>
+          <th>Contact</th>
+          <th>Inscrite le</th>
+          <th class="numerique">Comptes</th>
+          <th>Modules</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of entreprisesAffichees(); track e.id) {
+          <tr [class.suspendue]="e.statut === 'SUSPENDUE'">
+            <td>
+              <strong>{{ e.nom }}</strong>
+              @if (e.pays) {
+                <br /><small>{{ e.pays }}</small>
+              }
+            </td>
+            <td>
+              {{ e.email || '—' }}
+              @if (e.telephone) {
+                <br /><small>{{ e.telephone }}</small>
+              }
+            </td>
+            <td>{{ e.creeLe ? (e.creeLe | date: 'dd/MM/yyyy') : '—' }}</td>
+            <td class="numerique">{{ e.nombreUtilisateurs }}</td>
+            <td>
+              @for (m of e.modules; track m) {
+                <span class="pastille-module" [title]="libellesModules[m]">
+                  {{ presentation[m].icone }} {{ libellesModules[m] }}
+                </span>
+              } @empty {
+                <small class="aucun">Aucun module</small>
+              }
+            </td>
+            <td>
+              <span class="etiquette" [class.actif]="e.statut === 'ACTIVE'" [class.suspendu]="e.statut === 'SUSPENDUE'">
+                {{ e.statutLibelle }}
+              </span>
+            </td>
+            <td>
+              <button class="bouton petit" type="button"
+                      [class.secondaire]="e.statut === 'SUSPENDUE'"
+                      [class.danger]="e.statut === 'ACTIVE'"
+                      [disabled]="enCours() !== null"
+                      (click)="basculerStatut(e)">
+                {{ enCours() === e.id ? '...' : e.statut === 'ACTIVE' ? 'Suspendre' : 'Reactiver' }}
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" class="vide">
+              {{ chargement() ? 'Chargement...' : 'Aucune entreprise ne correspond.' }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

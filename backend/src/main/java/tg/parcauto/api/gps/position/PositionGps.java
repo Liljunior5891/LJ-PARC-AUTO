@@ -38,6 +38,11 @@ public class PositionGps {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Sans audit, l'entite n'herite pas de BaseEntity : le cloisonnement est pose ici. */
+    @org.hibernate.annotations.TenantId
+    @Column(name = "entreprise_id", nullable = false, updatable = false)
+    private Long entrepriseId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "camion_id", nullable = false)
     private Camion camion;

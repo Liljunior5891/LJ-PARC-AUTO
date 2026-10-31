@@ -1,122 +1,159 @@
-<header class="entete" [class.compacte]="enteteCompacte()">
-  <a class="marque" href="#haut" (click)="fermerMenu()">
-    @if (societe()?.logo; as logo) {
-      <img [src]="logo" [alt]="nom" />
-    } @else {
-      <span class="embleme">🚛</span>
-    }
-    <span class="identite">
-      <span class="nom">{{ nom }}</span>
-      @if (societe()?.sigle; as sigle) {
-        <span class="sigle">{{ sigle }}</span>
+<div class="page">
+  <!-- Entete : la marque a gauche, le menu loge dans une encoche du bloc d'ouverture. -->
+  <header class="entete">
+    <a class="marque" routerLink="/">
+      <span class="pictogramme" aria-hidden="true">◆</span>
+      <span>{{ nomPlateforme }}</span>
+    </a>
+
+    <nav class="encoche" [class.ouvert]="menuOuvert()" aria-label="Navigation principale">
+      <a href="#modules" (click)="menuOuvert.set(false)">Modules</a>
+      <a href="#offres" (click)="menuOuvert.set(false)">Offres</a>
+      <a href="#fonctions" (click)="menuOuvert.set(false)">Fonctionnalites</a>
+      <a href="#a-propos" (click)="menuOuvert.set(false)">A propos</a>
+    </nav>
+
+    <div class="actions-entete">
+      @if (connecte()) {
+        <a class="pilule" [routerLink]="accueilConnecte()">Mon espace <span class="fleche">→</span></a>
+      } @else {
+        <a class="lien-connexion" routerLink="/connexion">Connexion</a>
+        <a class="pilule" routerLink="/inscription">Essai gratuit <span class="fleche">→</span></a>
       }
-    </span>
-  </a>
+      <button class="burger" type="button" aria-label="Ouvrir le menu" [attr.aria-expanded]="menuOuvert()"
+              (click)="basculerMenu()">☰</button>
+    </div>
+  </header>
 
-  <button class="bascule-menu" type="button" (click)="basculerMenu()" aria-label="Menu">☰</button>
-
-  <nav class="navigation" [class.ouverte]="menuOuvert()">
-    <a href="#services" (click)="fermerMenu()">Services</a>
-    <a href="#flotte" (click)="fermerMenu()">La flotte</a>
-    <a href="#methode" (click)="fermerMenu()">Notre methode</a>
-    <a href="#societe" (click)="fermerMenu()">L'entreprise</a>
-    <a href="#contact" (click)="fermerMenu()">Contact</a>
-    @if (connecte()) {
-      <a class="bouton-nav" routerLink="/tableau-bord" (click)="fermerMenu()">Mon espace</a>
-    } @else {
-      <a class="bouton-nav" routerLink="/connexion" (click)="fermerMenu()">Espace de gestion</a>
-    }
-  </nav>
-</header>
-
-<main id="haut">
-  <!-- Carrousel d'ouverture ------------------------------------------->
-  <section
-    class="carrousel"
-    aria-roledescription="carrousel"
-    aria-label="Notre activite en images"
-    (mouseenter)="suspendre()"
-    (mouseleave)="reprendre()"
-    (focusin)="suspendre()"
-    (focusout)="reprendre()"
-  >
-    @for (diapo of diapositivesAffichees(); track diapo.image; let i = $index) {
-      <article
-        class="diapositive"
-        [class.active]="diapositiveActive() === i"
-        [attr.aria-hidden]="diapositiveActive() === i ? null : 'true'"
-        [attr.inert]="diapositiveActive() === i ? null : ''"
-      >
-        <div
-          class="fond"
-          [class.adouci]="diapo.adoucir"
-          [style.background-image]="'url(' + diapo.image + ')'"
-        ></div>
-        <div class="voile"></div>
-
-        <div class="contenu-diapositive">
-          <p class="surtitre">{{ diapo.surtitre }}</p>
-          <h1 [innerHTML]="diapo.titre"></h1>
-          <p class="accroche">{{ diapo.accroche }}</p>
-          <div class="actions-diapositive">
-            <a class="bouton-principal" [href]="diapo.ancre">{{ diapo.action }}</a>
-            <a class="bouton-secondaire" href="#services">Nos prestations</a>
+  <!-- Bloc d'ouverture : carrousel de diapositives (texte, photo et cartes flottantes). -->
+  <section class="heros" aria-roledescription="carrousel" aria-label="Presentation de la plateforme"
+           (mouseenter)="suspendre()" (mouseleave)="reprendre()">
+    <div class="texte-heros">
+      <!-- Toutes les diapositives sont superposees : la hauteur du bloc ne saute pas d'une a l'autre. -->
+      <div class="pile-textes">
+        @for (d of diapositives; track d.titre; let i = $index) {
+          <div class="diapo-texte" [class.active]="i === active()" [attr.aria-hidden]="i !== active()"
+               role="group" aria-roledescription="diapositive" [attr.aria-label]="(i + 1) + ' sur ' + diapositives.length">
+            <span class="etiquette-diapo">{{ d.etiquette }}</span>
+            <h1 [innerHTML]="d.titre"></h1>
+            <p>{{ d.texte }}</p>
+            <a class="pilule grande" [routerLink]="d.lien" [attr.tabindex]="i === active() ? null : -1">
+              {{ d.action }} <span class="fleche">→</span>
+            </a>
           </div>
+        }
+      </div>
+
+      <div class="commandes-carrousel">
+        <button type="button" class="fleche-carrousel" aria-label="Diapositive precedente" (click)="precedente()">‹</button>
+        <div class="points" role="tablist" aria-label="Choisir une diapositive">
+          @for (d of diapositives; track d.titre; let i = $index) {
+            <button type="button" role="tab" class="point-carrousel" [class.actif]="i === active()"
+                    [attr.aria-selected]="i === active()" [attr.aria-label]="d.etiquette"
+                    (click)="allerA(i)">
+              @if (i === active()) {
+                @for (c of [cycle()]; track c) {
+                  <span class="progression" [class.en-pause]="enPause()" [style.animation-duration.ms]="duree"></span>
+                }
+              }
+            </button>
+          }
         </div>
-      </article>
+        <button type="button" class="fleche-carrousel" aria-label="Diapositive suivante" (click)="suivante()">›</button>
+
+        <div class="pastilles-modules">
+          <div class="avatars">
+            @for (m of modules(); track m.code) {
+              <span class="avatar" [title]="m.libelle">{{ presentation[m.code].icone }}</span>
+            }
+          </div>
+          <small>{{ modules().length || 3 }} modules, un seul compte</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="visuel-heros" aria-hidden="true">
+      <span class="halo"></span>
+      <span class="anneau"></span>
+      <span class="anneau grand"></span>
+      <div class="pile-images">
+        @for (d of diapositives; track d.titre; let i = $index) {
+          <div class="diapo-visuel" [class.active]="i === active()">
+            <img [src]="d.image" alt="" [style.object-position]="d.cadrage" />
+            <div class="carte-flottante haut">
+              <span class="point vert"></span>
+              <div><strong>{{ d.carteHaut.titre }}</strong><small>{{ d.carteHaut.texte }}</small></div>
+            </div>
+            <div class="carte-flottante bas">
+              <span class="icone">{{ d.carteBas.icone }}</span>
+              <div><strong>{{ d.carteBas.titre }}</strong><small>{{ d.carteBas.texte }}</small></div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Bandeau des metiers -->
+  <section class="secteurs" aria-label="Metiers concernes">
+    @for (s of secteurs; track s.nom) {
+      <span class="secteur"><span aria-hidden="true">{{ s.icone }}</span> {{ s.nom }}</span>
     }
+  </section>
 
-    <button class="fleche precedente" type="button" (click)="precedente()" aria-label="Image precedente">‹</button>
-    <button class="fleche suivante" type="button" (click)="suivante()" aria-label="Image suivante">›</button>
-
-    <div class="pastilles" role="tablist" aria-label="Choisir une image">
-      @for (diapo of diapositivesAffichees(); track diapo.image; let i = $index) {
-        <button
-          type="button"
-          role="tab"
-          class="pastille"
-          [class.active]="diapositiveActive() === i"
-          [attr.aria-selected]="diapositiveActive() === i"
-          [attr.aria-label]="diapo.surtitre"
-          (click)="allerA(i)"
-        ></button>
+  <!-- Promesse et chiffres -->
+  <section class="bande-confiance" id="a-propos">
+    <span class="cercle-decor" aria-hidden="true"></span>
+    <div class="texte-confiance" appApparition>
+      <h2>Votre entreprise,<br />enfin sous controle <span class="trait" aria-hidden="true"></span></h2>
+      <p>
+        De la petite flotte a la grande entreprise, {{ nomPlateforme }} centralise ce
+        que vous suiviez sur papier ou sur tableur, et vous donne les chiffres pour decider.
+      </p>
+      <a class="pilule" href="#fonctions">Voir comment ca marche <span class="fleche">→</span></a>
+    </div>
+    <div class="grille-chiffres">
+      @for (c of chiffres; track c.libelle; let i = $index) {
+        <div class="chiffre" [class]="'position-' + i" appApparition [retardApparition]="i * 90">
+          <strong>{{ c.valeur }}</strong>
+          <small>{{ c.libelle }}</small>
+        </div>
       }
     </div>
-
-    <a class="indicateur-defilement" href="#services" aria-label="Faire defiler"><span></span></a>
   </section>
 
-  <!-- Engagements ---------------------------------------------------->
-  <section class="bande-engagements">
-    @for (engagement of engagements; track engagement.titre; let i = $index) {
-      <article appApparition [retardApparition]="i * 90" [style.--teinte]="engagement.couleur">
-        <span class="pictogramme">{{ engagement.icone }}</span>
-        <h3>{{ engagement.titre }}</h3>
-        <p>{{ engagement.texte }}</p>
-      </article>
-    }
-  </section>
-
-  <!-- Services ------------------------------------------------------->
-  <section class="section" id="services">
-    <div class="entete-section" appApparition>
-      <span class="etiquette-section">Nos services</span>
-      <h2>Quatre metiers, une seule chaine de responsabilite</h2>
-      <p>
-        Du transport ponctuel au contrat de longue duree, nous prenons en charge le vehicule,
-        le conducteur et les documents qui accompagnent votre marchandise.
-      </p>
+  <!-- Modules -->
+  <section class="section" id="modules">
+    <h2 class="titre-section" appApparition>Des modules pour chaque activite</h2>
+    <div class="grille-modules">
+      @for (m of modules(); track m.code; let i = $index) {
+        <article class="carte-module" [class.bientot]="!m.disponible" appApparition [retardApparition]="i * 90">
+          <span class="icone-module" aria-hidden="true">{{ presentation[m.code].icone }}</span>
+          <h3>{{ m.libelle }}</h3>
+          <p>{{ m.description }}</p>
+          <span class="etat">{{ m.disponible ? 'Disponible' : 'Bientot disponible' }}</span>
+        </article>
+      }
     </div>
+  </section>
 
-    <div class="grille-services">
-      @for (prestation of prestations; track prestation.titre; let i = $index) {
-        <article class="carte-service" appApparition [retardApparition]="i * 110">
-          <span class="icone">{{ prestation.icone }}</span>
-          <h3>{{ prestation.titre }}</h3>
-          <p>{{ prestation.texte }}</p>
+  <!-- Offres -->
+  <section class="section" id="offres">
+    <h2 class="titre-section" appApparition>Des offres simples et transparentes</h2>
+    <div class="grille-offres">
+      @for (o of offres; track o.nom; let i = $index) {
+        <article class="offre" [class.vedette]="o.vedette" appApparition [retardApparition]="i * 90">
+          <div class="tete-offre">
+            <span class="nom-offre">{{ o.nom }}</span>
+            @if (o.vedette) {
+              <span class="badge">Le plus choisi</span>
+            }
+          </div>
+          <div class="prix">{{ o.prix }} <small>{{ o.mention }}</small></div>
+          <a class="bouton-offre" routerLink="/inscription">{{ o.action }}</a>
           <ul>
-            @for (point of prestation.points; track point) {
-              <li>{{ point }}</li>
+            @for (p of o.points; track p) {
+              <li>{{ p }}</li>
             }
           </ul>
         </article>
@@ -124,165 +161,43 @@
     </div>
   </section>
 
-
-  <!-- La flotte ------------------------------------------------------>
-  <section class="section flotte" id="flotte">
-    <div class="entete-section" appApparition>
-      <span class="etiquette-section">Notre flotte</span>
-      <h2>Le bon vehicule pour le bon chargement</h2>
+  <!-- Fonctionnalites -->
+  <section class="section fonctions" id="fonctions">
+    <div class="texte-fonctions" appApparition>
+      <span class="surtitre"><span class="puce" aria-hidden="true">◆</span> Solutions {{ nomPlateforme }}</span>
+      <h2>Tout ce qu'il faut<br />pour faire grandir<br />votre entreprise</h2>
       <p>
-        Tracteurs, bennes, plateaux et vehicules frigorifiques : le parc de {{ nom }} couvre
-        la longue distance comme la distribution urbaine.
+        Des outils qui automatisent le suivi, fiabilisent vos chiffres et
+        laissent a votre equipe le temps de servir vos clients.
       </p>
+      <a class="pilule" routerLink="/inscription">Decouvrir la plateforme <span class="fleche">→</span></a>
     </div>
-
-    <div class="grille-flotte">
-      @for (vehicule of flotte; track vehicule.nom; let i = $index) {
-        <article class="carte-vehicule" appApparition [retardApparition]="i * 90">
-          <div
-            class="visuel"
-            [style.background-image]="'url(' + vehicule.image + ')'"
-            [style.background-position]="vehicule.cadrage"
-            [style.background-size]="vehicule.agrandissement"
-          ></div>
-          <div class="legende">
-            <h3>{{ vehicule.nom }}</h3>
-            <p>{{ vehicule.usage }}</p>
-          </div>
-        </article>
-      }
-    </div>
-
-    <p class="note-flotte" appApparition>
-      Un besoin particulier ? Decrivez-nous votre chargement : nous vous indiquons le vehicule adapte.
-    </p>
-  </section>
-
-  <!-- Methode -------------------------------------------------------->
-  <section class="section sombre" id="methode">
-    <div class="entete-section" appApparition>
-      <span class="etiquette-section">Notre methode</span>
-      <h2>Trois etapes, aucune zone d'ombre</h2>
-    </div>
-
-    <div class="grille-etapes">
-      @for (etape of etapes; track etape.numero; let i = $index) {
-        <article class="carte-etape" appApparition [retardApparition]="i * 130">
-          <span class="numero">{{ etape.numero }}</span>
-          <h3>{{ etape.titre }}</h3>
-          <p>{{ etape.texte }}</p>
-        </article>
+    <div class="liste-fonctions">
+      @for (f of fonctions; track f.titre; let i = $index) {
+        <a class="fonction" routerLink="/inscription" appApparition [retardApparition]="i * 90">
+          <span class="icone-fonction" [class.pleine]="i === 0" aria-hidden="true">{{ f.icone }}</span>
+          <span class="texte-fonction">
+            <strong>{{ f.titre }}</strong>
+            <small>{{ f.texte }}</small>
+          </span>
+          <span class="chevron" aria-hidden="true">›</span>
+        </a>
       }
     </div>
   </section>
 
-  <!-- L'entreprise --------------------------------------------------->
-  <section class="section deux-colonnes" id="societe">
-    <div appApparition>
-      <span class="etiquette-section">L'entreprise</span>
-      <h2>{{ nom }}</h2>
-      @if (societe()?.formeJuridique; as forme) {
-        <p class="mention-legale">{{ forme }}</p>
-      }
-      <p>
-        Nous exploitons un parc de vehicules dedie au transport de marchandises et a la location
-        de vehicules industriels. Notre organisation repose sur un principe simple : un vehicule
-        entretenu, un chauffeur identifie et une mission tracee pour chaque chargement confie.
-      </p>
-      <p>
-        Chaque vehicule fait l'objet d'un plan d'entretien suivi, d'un controle documentaire des
-        pieces obligatoires et d'un equipement de geolocalisation. Cette rigueur interne est ce
-        qui nous permet de nous engager sur des delais et de justifier, piece a l'appui, le
-        deroulement de vos operations.
-      </p>
-    </div>
-
-    <div class="colonne-atouts">
-      @if (societe()?.logo; as logo) {
-        <div class="cartouche-logo" appApparition>
-          <img [src]="logo" [alt]="nom" />
-        </div>
-      }
-
-      <ul class="liste-atouts">
-      <li appApparition [retardApparition]="60"><strong>Flotte suivie</strong><span>Entretien preventif, pneumatiques et documents controles.</span></li>
-      <li appApparition [retardApparition]="140"><strong>Chauffeurs affectes</strong><span>Un conducteur identifie par vehicule et par mission.</span></li>
-      <li appApparition [retardApparition]="220"><strong>Geolocalisation</strong><span>Position, itineraires et arrets consultables a la demande.</span></li>
-        <li appApparition [retardApparition]="300"><strong>Facturation claire</strong><span>Des factures adossees aux missions realisees.</span></li>
-      </ul>
-    </div>
-  </section>
-
-
-  <!-- Bandeau d'appel ------------------------------------------------->
-  <section class="bandeau-appel">
-    <div class="fond-bandeau"></div>
-    <div class="contenu-bandeau" appApparition>
-      <h2>Un chargement a faire partir cette semaine ?</h2>
-      <p>{{ nom }} vous repond avec un vehicule, un chauffeur et une date.</p>
-      <a class="bouton-principal" href="#contact">Demander un devis</a>
-    </div>
-  </section>
-
-  <!-- Contact -------------------------------------------------------->
-  <section class="section contact" id="contact">
-    <div class="entete-section" appApparition>
-      <span class="etiquette-section">Contact</span>
-      <h2>Parlons de votre besoin de transport</h2>
-      <p>Decrivez-nous le trajet, la nature du fret et vos dates : nous revenons vers vous avec une offre.</p>
-    </div>
-
-    @if (sansCoordonnees) {
-      <p class="repli-coordonnees">
-        Nos coordonnees completes sont communiquees sur simple demande.
-      </p>
-    }
-
-    <div class="coordonnees">
-      @if (adresseComplete; as adresse) {
-        <article appApparition>
-          <h3>Adresse</h3>
-          <p>{{ adresse }}</p>
-        </article>
-      }
-      @if (societe()?.telephone; as telephone) {
-        <article appApparition [retardApparition]="90">
-          <h3>Telephone</h3>
-          <p><a [href]="'tel:' + telephone">{{ telephone }}</a></p>
-        </article>
-      }
-      @if (societe()?.email; as email) {
-        <article appApparition [retardApparition]="180">
-          <h3>Email</h3>
-          <p><a [href]="'mailto:' + email">{{ email }}</a></p>
-        </article>
-      }
-      @if (societe()?.siteWeb; as site) {
-        <article appApparition [retardApparition]="270">
-          <h3>Site web</h3>
-          <p><a [href]="site" target="_blank" rel="noopener">{{ site }}</a></p>
-        </article>
-      }
-    </div>
-
-    @if (societe()?.email; as email) {
-      <a class="bouton-principal" [href]="'mailto:' + email + '?subject=Demande%20de%20devis%20transport'">
-        Envoyer une demande de devis
-      </a>
-    }
-  </section>
-</main>
-
-<footer class="pied-page">
-  <p>© {{ annee }} {{ nom }}@if (societe()?.formeJuridique; as forme) { — {{ forme }}}. Tous droits reserves.</p>
-  <nav>
-    <a href="#services">Services</a>
-    <a href="#flotte">La flotte</a>
-    <a href="#contact">Contact</a>
-    @if (connecte()) {
-      <a routerLink="/tableau-bord">Mon espace</a>
-    } @else {
-      <a routerLink="/connexion">Espace de gestion</a>
-    }
-  </nav>
-</footer>
+  <!-- Pied de page -->
+  <footer class="pied">
+    <a class="marque claire" routerLink="/">
+      <span class="pictogramme" aria-hidden="true">◆</span>
+      <span>{{ nomPlateforme }}</span>
+    </a>
+    <nav>
+      <a href="#modules">Modules</a>
+      <a href="#offres">Offres</a>
+      <a routerLink="/connexion">Connexion</a>
+      <a routerLink="/inscription">Creer un compte</a>
+    </nav>
+    <small>© {{ annee }} {{ nomPlateforme }}</small>
+  </footer>
+</div>

@@ -1,0 +1,107 @@
+<app-modale [titre]="commande() ? 'Modifier la commande ' + commande()!.resume.numero : 'Nouvelle commande'"
+            sousTitre="Commande de reapprovisionnement aupres d'un fournisseur" largeur="900px"
+            [erreur]="erreur()" (ferme)="ferme.emit()">
+  <form (ngSubmit)="enregistrer()">
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="fournisseur">Fournisseur *</label>
+        <input id="fournisseur" name="fournisseur" required maxlength="150" list="fournisseurs-connus"
+               [(ngModel)]="fournisseur" placeholder="Ex. Brasserie BB Lome" autocomplete="off" />
+        <datalist id="fournisseurs-connus">
+          @for (f of fournisseursConnus(); track f) {
+            <option [value]="f"></option>
+          }
+        </datalist>
+      </div>
+      <div class="champ">
+        <label for="date-commande">Date de commande</label>
+        <input id="date-commande" name="dateCommande" type="date" [(ngModel)]="dateCommande" />
+      </div>
+      <div class="champ">
+        <label for="livraison">Livraison prevue</label>
+        <input id="livraison" name="livraison" type="date" [(ngModel)]="livraisonPrevue" />
+      </div>
+    </div>
+
+    <h3 class="titre-produits">Produits commandes</h3>
+    <div class="ajout-produit">
+      <span aria-hidden="true">⌕</span>
+      <input type="search" name="recherche" placeholder="Ajouter un produit : nom, code ou code-barres..." autocomplete="off"
+             [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" (keydown.enter)="$event.preventDefault(); valider()"
+             aria-label="Rechercher un produit a ajouter" />
+      @if (suggestions().length > 0) {
+        <ul class="suggestions" role="listbox">
+          @for (a of suggestions(); track a.id) {
+            <li>
+              <button type="button" (click)="ajouter(a)">
+                <strong>{{ a.nom }}</strong>
+                <small>{{ a.code }}{{ a.suiviStock ? ' · stock ' + (a.stockActuel | number: '1.0-3') : '' }}
+                  {{ a.prixAchat ? ' · ' + (a.prixAchat | number: '1.0-0') + ' F' : '' }}</small>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <div class="tableau-conteneur liste-modale">
+      <table class="tableau lignes-commande">
+        <thead>
+          <tr>
+            <th>Produit</th>
+            <th class="numerique">Stock actuel</th>
+            <th class="numerique">Quantite *</th>
+            <th class="numerique">Cout unitaire (F)</th>
+            <th class="numerique">Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of lignes(); track l.article.id) {
+            <tr>
+              <td><strong>{{ l.article.nom }}</strong><br /><small>{{ l.article.code }}</small></td>
+              <td class="numerique">{{ l.article.suiviStock ? (l.article.stockActuel | number: '1.0-3') : '—' }}</td>
+              <td class="numerique">
+                <app-champ-quantite [valeur]="l.quantite" (valeurChange)="modifier(l, 'quantite', $event)"
+                                    [libelle]="'Quantite de ' + l.article.nom" />
+              </td>
+              <td class="numerique">
+                <span class="champ-montant">
+                  <input type="number" min="0" step="any" [name]="'c' + l.article.id" [ngModel]="l.coutUnitaire"
+                         (ngModelChange)="modifier(l, 'coutUnitaire', $event)" [attr.aria-label]="'Cout de ' + l.article.nom" />
+                  <span>F</span>
+                </span>
+              </td>
+              <td class="numerique"><strong>{{ (l.quantite ?? 0) * (l.coutUnitaire ?? 0) | number: '1.0-0' }}</strong></td>
+              <td><button type="button" class="retirer" [attr.aria-label]="'Retirer ' + l.article.nom" (click)="retirer(l)">×</button></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="vide">Recherchez un produit ci-dessus pour l'ajouter a la commande.</td></tr>
+          }
+        </tbody>
+        @if (lignes().length > 0) {
+          <tfoot>
+            <tr>
+              <td colspan="4">{{ lignes().length }} produit(s)</td>
+              <td class="numerique"><strong>{{ total() | number: '1.0-0' }} F</strong></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        }
+      </table>
+    </div>
+
+    <div class="champ">
+      <label for="note">Note</label>
+      <input id="note" name="note" maxlength="500" [(ngModel)]="note" placeholder="Ex. livraison le matin, paiement a 30 jours" />
+    </div>
+    <p class="aide">La commande n'entre pas en stock : c'est a la reception, depuis la commande, que les quantites livrees sont ajoutees.</p>
+
+    <div class="actions-formulaire">
+      <button class="bouton secondaire" type="button" (click)="ferme.emit()">Annuler</button>
+      <button class="bouton" type="submit" [disabled]="envoi()">
+        {{ envoi() ? 'Enregistrement...' : (commande() ? 'Enregistrer' : 'Passer la commande') }}
+      </button>
+    </div>
+  </form>
+</app-modale>

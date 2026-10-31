@@ -114,6 +114,14 @@ a {
     color: var(--couleur-texte-doux);
     margin: 0;
   }
+
+  /* Boutons de l'entete (export, import, creation) : alignes, et a la ligne sur petit ecran. */
+  .actions-entete {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
 }
 
 /* -------------------------- Formulaires -------------------------- */
@@ -260,6 +268,78 @@ body.modale-ouverte {
   }
 }
 
+/*
+ * Champs poses hors d'un bloc .champ (dans une ligne de tableau, une barre
+ * d'actions) : meme apparence que les champs de formulaire, en plus compact.
+ */
+.champ-ligne,
+table.tableau input:not([type='checkbox']):not([type='radio']),
+table.tableau select {
+  height: 34px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 9px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus {
+    border-color: var(--couleur-primaire-clair);
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--couleur-primaire-clair) 18%, transparent);
+  }
+}
+
+/* Montant saisi dans une liste : chiffres a droite, unite accolee. */
+.champ-montant {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  overflow: hidden;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 9px;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus-within {
+    border-color: var(--couleur-primaire-clair);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--couleur-primaire-clair) 18%, transparent);
+  }
+
+  input,
+  table.tableau & input:not([type='checkbox']) {
+    width: 90px;
+    height: 100%;
+    padding: 0 0.5rem;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    outline: none;
+    font-weight: 600;
+    text-align: right;
+    -moz-appearance: textfield;
+
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+
+  > span {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    padding: 0 0.55rem;
+    border-left: 1px solid var(--couleur-bordure);
+    background: var(--couleur-fond);
+    color: var(--couleur-texte-doux);
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+}
+
 /* --------------------------- Tableaux ---------------------------- */
 /* Les donnees defilent a l'interieur du tableau : la page garde ses filtres et
    ses boutons en vue, et l'entete des colonnes reste fige en haut. */
@@ -281,6 +361,29 @@ body.modale-ouverte {
   table.tableau tbody tr:last-child td {
     border-bottom: none;
   }
+
+  /* Le total reste visible sous les lignes qui defilent. */
+  table.tableau tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: #fafbfc;
+    box-shadow: inset 0 1px 0 var(--couleur-bordure);
+    font-weight: 600;
+  }
+}
+
+/* Liste saisie dans une fenetre : elle defile seule, la fenetre garde ses champs et ses boutons en vue. */
+.modale .tableau-conteneur.liste-modale {
+  max-height: min(46vh, 420px);
+}
+
+/* Listes en cartes (caisses, ecrans, codes QR) : elles defilent dans la hauteur restante, comme les tableaux. */
+.liste-defilante {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem 0.25rem 0.5rem;
+  margin: -0.25rem -0.25rem 0;
 }
 
 @media (max-width: 640px) {

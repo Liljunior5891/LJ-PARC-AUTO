@@ -22,20 +22,9 @@ export interface Societe {
 
 export type SocieteRequete = Omit<Societe, 'logo'>;
 
-/** Ce que la page de connexion affiche avant toute authentification. */
+/** Nom et logo affiches en tete de l'application. */
 export interface IdentiteSociete {
   nom: string;
   sigle?: string;
   logo?: string | null;
-}
-
-/** Ce que le site vitrine publie aux visiteurs : identite et coordonnees. */
-export interface VitrineSociete extends IdentiteSociete {
-  formeJuridique?: string;
-  adresse?: string;
-  ville?: string;
-  pays?: string;
-  telephone?: string;
-  email?: string;
-  siteWeb?: string;
 }

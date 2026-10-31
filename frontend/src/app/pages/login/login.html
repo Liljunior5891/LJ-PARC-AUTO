@@ -4,13 +4,9 @@
   <div class="colonne-formulaire">
     <form class="carte-connexion" [formGroup]="formulaire" (ngSubmit)="soumettre()">
       <div class="marque">
-        @if (societe()?.logo; as logo) {
-          <img class="logo-image" [src]="logo" [alt]="societe()?.nom || 'Logo'" />
-        } @else {
-          <span class="logo">🚛</span>
-        }
-        <h1>{{ societe()?.nom || 'PARC AUTO' }}</h1>
-        <p class="sous-titre">Gestion, suivi et rentabilite du parc de vehicules</p>
+        <span class="logo">◆</span>
+        <h1>{{ nomPlateforme }}</h1>
+        <p class="sous-titre">Connectez-vous a l'espace de votre entreprise</p>
       </div>
 
       @if (information()) {
@@ -27,7 +23,7 @@
           type="email"
           formControlName="email"
           autocomplete="username"
-          placeholder="admin&#64;parcauto.tg"
+          placeholder="vous&#64;entreprise.com"
           [class.invalide]="formulaire.controls.email.touched && formulaire.controls.email.invalid"
         />
         @if (formulaire.controls.email.touched && formulaire.controls.email.invalid) {
@@ -53,9 +49,13 @@
         {{ enCours() ? 'Connexion...' : 'Se connecter' }}
       </button>
 
+      <p class="inscription">
+        Pas encore de compte ? <a routerLink="/inscription">Creer le compte de votre entreprise</a>
+      </p>
+
       <p class="pied">
-        <a routerLink="/">Retour au site</a>
-        <span>{{ societe()?.sigle || societe()?.nom || 'PARC AUTO' }} — acces reserve au personnel autorise</span>
+        <a routerLink="/">Retour a l'accueil</a>
+        <span>{{ nomPlateforme }} — chaque entreprise ne voit que ses donnees</span>
       </p>
     </form>
   </div>

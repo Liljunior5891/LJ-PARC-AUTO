@@ -1,0 +1,211 @@
+<div class="entete-page">
+  <div>
+    <h1>Reapprovisionnement</h1>
+    <p class="sous-titre">Commandes aux fournisseurs, receptionnees a la livraison pour entrer en stock</p>
+  </div>
+  <div class="actions-entete">
+    @if (onglet() === 'mouvements') {
+      <a class="bouton secondaire" routerLink="/pdv/inventaire">Faire un inventaire</a>
+      <button class="bouton secondaire" type="button" (click)="ouvrirSaisie(undefined, 'SORTIE')">Sortie / perte</button>
+    }
+    <button class="bouton" type="button" (click)="nouvelleCommande.set([])">+ Nouvelle commande</button>
+  </div>
+</div>
+
+<nav class="onglets-page" aria-label="Sections">
+  <button type="button" [class.actif]="onglet() === 'commandes'" (click)="onglet.set('commandes')">Commandes</button>
+  <button type="button" [class.actif]="onglet() === 'mouvements'" (click)="onglet.set('mouvements')">Mouvements de stock</button>
+</nav>
+
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+@if (alertes().length > 0) {
+  <div class="carte" style="margin-bottom: 1rem; border-left: 4px solid #d97706">
+    <div class="titre-alerte">
+      <h2>⚠ {{ alertes().length }} produit(s) a reapprovisionner</h2>
+      <button class="bouton petit" type="button" (click)="nouvelleCommande.set(alertes())">Commander ces produits</button>
+    </div>
+    <div class="tableau-conteneur hauteur-fixe alertes">
+      <table class="tableau">
+        <thead>
+          <tr><th>Article</th><th class="numerique">Stock</th><th class="numerique">Seuil</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (a of alertes(); track a.id) {
+            <tr>
+              <td><strong>{{ a.nom }}</strong> <small>{{ a.code }}</small></td>
+              <td class="numerique resultat-negatif"><strong>{{ a.stockActuel | number: '1.0-3' }}</strong></td>
+              <td class="numerique">{{ a.seuilAlerte | number: '1.0-3' }}</td>
+              <td style="text-align: right">
+                <button class="bouton secondaire petit" type="button" (click)="nouvelleCommande.set([a])">Commander</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+@if (onglet() === 'commandes') {
+  <div class="carte">
+    <div class="filtres-statut" role="tablist" aria-label="Statut des commandes">
+      <button type="button" class="puce" [class.actif]="filtreStatut() === null" (click)="filtrerCommandes(null)">Toutes</button>
+      <button type="button" class="puce" [class.actif]="filtreStatut() === 'EN_COURS'" (click)="filtrerCommandes('EN_COURS')">A receptionner</button>
+      <button type="button" class="puce" [class.actif]="filtreStatut() === 'RECUE'" (click)="filtrerCommandes('RECUE')">Receptionnees</button>
+      <button type="button" class="puce" [class.actif]="filtreStatut() === 'ANNULEE'" (click)="filtrerCommandes('ANNULEE')">Annulees</button>
+    </div>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th>Commande</th>
+            <th>Date</th>
+            <th>Fournisseur</th>
+            <th class="numerique">Produits</th>
+            <th class="numerique">Montant</th>
+            <th>Livraison prevue</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of commandes()?.content ?? []; track c.id) {
+            <tr class="cliquable" tabindex="0" (click)="ouvrirCommande(c)" (keydown.enter)="ouvrirCommande(c)">
+              <td><strong>{{ c.numero }}</strong></td>
+              <td>{{ c.dateCommande | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ c.fournisseur }}</td>
+              <td class="numerique">{{ c.produits }}</td>
+              <td class="numerique">{{ c.total | number: '1.0-0' }} F</td>
+              <td>{{ c.livraisonPrevue ? (c.livraisonPrevue | date: 'dd/MM/yyyy') : '—' }}</td>
+              <td><span class="statut {{ c.statut.toLowerCase() }}">{{ libellesStatut[c.statut] }}</span></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="vide">Aucune commande. Cliquez sur « Nouvelle commande » pour reapprovisionner.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (commandes(); as p) {
+      @if (p.totalPages > 1) {
+        <div class="pagination">
+          <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPageCommandes(-1)">Precedent</button>
+          <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+          <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPageCommandes(1)">Suivant</button>
+        </div>
+      }
+    }
+  </div>
+} @else {
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="filtre">Article</label>
+      <select id="filtre" [(ngModel)]="articleFiltre" (change)="filtrer()">
+        <option [ngValue]="null">Tous les articles</option>
+        @for (a of articles(); track a.id) {
+          <option [ngValue]="a.id">{{ a.nom }} ({{ a.code }})</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Article</th>
+          <th>Mouvement</th>
+          <th class="numerique">Quantite</th>
+          <th class="numerique">Stock apres</th>
+          <th>Motif</th>
+          <th>Par</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (m of mouvements()?.content ?? []; track m.id) {
+          <tr>
+            <td>{{ m.dateMouvement | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td><strong>{{ m.articleNom }}</strong> <small>{{ m.articleCode }}</small></td>
+            <td>{{ m.typeLibelle }}</td>
+            <td class="numerique" [class.resultat-positif]="m.quantite > 0" [class.resultat-negatif]="m.quantite < 0">
+              {{ m.quantite > 0 ? '+' : '' }}{{ m.quantite | number: '1.0-3' }}
+            </td>
+            <td class="numerique">{{ m.stockApres | number: '1.0-3' }}</td>
+            <td>{{ m.motif || '—' }}</td>
+            <td><small>{{ m.auteur }}</small></td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" style="text-align: center; color: var(--couleur-texte-doux)">Aucun mouvement.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (mouvements(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">Precedent</button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">Suivant</button>
+      </div>
+    }
+  }
+</div>
+
+}
+
+@if (nouvelleCommande(); as produits) {
+  <app-formulaire-commande [preremplissage]="produits" (enregistree)="commandeEnregistree($event)"
+                           (ferme)="nouvelleCommande.set(null)" />
+}
+
+@if (saisie()) {
+  <app-modale titre="Mouvement de stock" largeur="620px" [erreur]="erreur()" (ferme)="saisie.set(false)">
+    <form (ngSubmit)="enregistrer()">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="article">Article *</label>
+          <select id="article" name="article" [(ngModel)]="articleId" data-recherche="toujours">
+            <option [ngValue]="null">Choisir un article</option>
+            @for (a of articles(); track a.id) {
+              <option [ngValue]="a.id">{{ a.nom }} — stock {{ a.stockActuel }}</option>
+            }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="type">Type *</label>
+          <select id="type" name="type" [ngModel]="type" (ngModelChange)="changerType($event)">
+            @for (t of types; track t.valeur) {
+              <option [ngValue]="t.valeur">{{ t.libelle }}</option>
+            }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="qte">{{ type === 'INVENTAIRE' ? 'Quantite comptee *' : 'Quantite *' }}</label>
+          <input id="qte" name="qte" type="number" min="0" step="any" [(ngModel)]="quantite" />
+          <small>{{ aideType() }}
+            @if (articleId && stockDe(articleId) !== undefined) { · stock actuel {{ stockDe(articleId) }} }
+          </small>
+        </div>
+        @if (type === 'ENTREE') {
+          <div class="champ">
+            <label for="cout">Cout unitaire d'achat (F)</label>
+            <input id="cout" name="cout" type="number" min="0" step="any" [(ngModel)]="coutUnitaire" />
+            <small>Devient le cout de reference pour la marge</small>
+          </div>
+        }
+        <div class="champ" style="grid-column: 1 / -1">
+          <label for="motif">Motif</label>
+          <input id="motif" name="motif" [(ngModel)]="motif" placeholder="Ex. Livraison fournisseur, casse..." />
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire" type="button" (click)="saisie.set(false)">Annuler</button>
+        <button class="bouton" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}

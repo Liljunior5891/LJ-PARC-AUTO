@@ -1,0 +1,94 @@
+/* Complements au tableau de bord du parc (tableau-bord.scss), dont l'ecran reprend la mise en page. */
+
+.legende-graphique.modes {
+  margin: 0.5rem 0 0.75rem;
+
+  strong {
+    margin-left: 0.2rem;
+  }
+}
+
+.liste-stock-bas {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px dashed var(--couleur-bordure);
+    font-size: 0.85rem;
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      color: var(--couleur-texte-doux);
+    }
+  }
+}
+
+.billet.annule {
+  opacity: 0.55;
+
+  .montant {
+    text-decoration: line-through;
+  }
+}
+
+/* L'affluence a souvent une quinzaine d'heures : des colonnes plus serrees. */
+.colonnes-camions.affluence {
+  gap: 0.2rem;
+
+  .camion {
+    min-width: 0;
+    cursor: default;
+  }
+
+  .etiquette-camion {
+    font-size: 0.68rem;
+  }
+}
+
+/* Les colonnes de la grille se partagent la largeur sans que leur contenu ne la depasse. */
+.rangee > * {
+  min-width: 0;
+}
+
+.graphe-empile .mois-court {
+  font-size: 0.6rem;
+  white-space: nowrap;
+}
+
+/* Periode : liste habillee par Select2 (largeur 100 %), l'enveloppe fixe la largeur. */
+.choix-periode {
+  width: 210px;
+  font-weight: 600;
+}
+
+.dates-periode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+
+  input {
+    height: 38px;
+    padding: 0 0.6rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font: inherit;
+  }
+
+  &.invalides input {
+    border-color: var(--couleur-danger);
+  }
+}

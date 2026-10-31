@@ -14,6 +14,8 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import tg.parcauto.api.plateforme.tenant.ContexteEntreprise;
+
 import java.io.IOException;
 
 @Slf4j
@@ -41,12 +43,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     var auth = new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);
+                    // L'entreprise vient du compte relu en base, jamais du jeton seul.
+                    ContexteEntreprise.definir(((UtilisateurPrincipal) details).getEntrepriseId());
                 }
             } catch (Exception ex) {
                 log.debug("Jeton JWT rejete : {}", ex.getMessage());
                 SecurityContextHolder.clearContext();
             }
         }
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            // Les fils du serveur sont recycles : le contexte ne doit pas survivre a la requete.
+            ContexteEntreprise.effacer();
+        }
     }
 }

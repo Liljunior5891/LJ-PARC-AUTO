@@ -6,7 +6,7 @@ import java.util.Optional;
 
 public interface SocieteRepository extends JpaRepository<Societe, Long> {
 
-    /** La table ne porte qu'une ligne : la premiere est la bonne. */
+    /** Une ligne par entreprise ; le cloisonnement ne laisse voir que celle de l'entreprise courante. */
     default Optional<Societe> lire() {
         return findAll().stream().findFirst();
     }

@@ -3,9 +3,12 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LoginResponse, Role, UtilisateurCourant } from '../models/models';
+import { CodeModule, LoginResponse, Role, UtilisateurCourant } from '../models/models';
+import { PROFILS_MODULES } from '../models/plateforme';
 
 const CLE_TOKEN = 'parcauto.token';
+/** Profils de terrain : ils travaillent en poste, sur leur seul ecran. */
+const POSTES: Role[] = ['CAISSIER', 'SERVEUR', 'PREPARATEUR'];
 const CLE_UTILISATEUR = 'parcauto.utilisateur';
 
 @Injectable({ providedIn: 'root' })
@@ -25,14 +28,109 @@ export class AuthService {
   login(email: string, motDePasse: string): Observable<LoginResponse> {
     return this.http
       .post<LoginResponse>(`${environment.apiUrl}/auth/login`, { email, motDePasse })
-      .pipe(
-        tap((reponse) => {
-          this.sessionExpireeSignal.set(false);
-          localStorage.setItem(CLE_TOKEN, reponse.token);
-          localStorage.setItem(CLE_UTILISATEUR, JSON.stringify(reponse.utilisateur));
-          this.utilisateurSignal.set(reponse.utilisateur);
-        })
-      );
+      .pipe(tap((reponse) => this.ouvrirSession(reponse)));
+  }
+
+  /** Enregistre une session ouverte par la connexion ou par l'inscription d'une entreprise. */
+  ouvrirSession(reponse: LoginResponse): void {
+    this.sessionExpireeSignal.set(false);
+    localStorage.setItem(CLE_TOKEN, reponse.token);
+    this.memoriser(reponse.utilisateur);
+  }
+
+  /** Reporte dans la session une activation, une desactivation ou un changement de type d'activite. */
+  mettreAJourModules(modules: CodeModule[], variantes?: Partial<Record<CodeModule, string>>): void {
+    const courant = this.utilisateurSignal();
+    if (courant) {
+      this.memoriser({ ...courant, modules, variantes: variantes ?? courant.variantes });
+    }
+  }
+
+  /** Type d'activite d'un module qui se decline ; boutique par defaut pour le point de vente. */
+  variante(module: CodeModule): string | null {
+    const variante = this.utilisateurSignal()?.variantes?.[module];
+    return variante ?? (module === 'POINT_DE_VENTE' ? 'BOUTIQUE' : null);
+  }
+
+  /** Point de vente d'un bar, d'un restaurant ou d'un cafe : tables, commandes, cuisine. */
+  estRestauration(): boolean {
+    return this.aModule('POINT_DE_VENTE') && this.variante('POINT_DE_VENTE') === 'RESTAURATION';
+  }
+
+  aModule(module: CodeModule): boolean {
+    return this.utilisateurSignal()?.modules.includes(module) ?? false;
+  }
+
+  /** Module active par l'entreprise et ouvert au profil de l'utilisateur. */
+  peutUtiliser(module: CodeModule): boolean {
+    return this.aModule(module) && this.aRole(...PROFILS_MODULES[module]);
+  }
+
+  /**
+   * Page d'entree d'un module : un caissier arrive a sa caisse, un serveur au
+   * plan de salle, un cuisinier a son ecran de preparation.
+   */
+  accueilModule(module: CodeModule): string {
+    if (module === 'POINT_DE_VENTE') {
+      if (this.aRole('ADMIN', 'GERANT')) {
+        return '/pdv/tableau-bord';
+      }
+      if (this.estRestauration()) {
+        if (this.aRole('CAISSIER')) {
+          return '/pdv/comptoir';
+        }
+        return this.aRole('SERVEUR') ? '/pdv/salle' : '/pdv/cuisine';
+      }
+      return this.aRole('CAISSIER', 'SERVEUR') ? '/pdv/caisse' : '/mon-compte';
+    }
+    return module === 'GESTION_PARC' ? '/tableau-bord' : '/modules';
+  }
+
+  /**
+   * Poste de travail : un compte qui n'a que des profils de terrain (caissier,
+   * serveur, cuisinier) travaille sur son seul ecran, en plein ecran, sans le
+   * menu de l'application.
+   */
+  estPoste(): boolean {
+    const roles = this.utilisateurSignal()?.roles ?? [];
+    return roles.length > 0 && roles.every((r) => POSTES.includes(r));
+  }
+
+  /** Adresses ouvertes a un poste de travail, selon ses profils et le type d'activite. */
+  routesPoste(): string[] {
+    const routes = new Set<string>();
+    const restauration = this.estRestauration();
+    if (this.aRole('CAISSIER')) {
+      (restauration ? ['/pdv/comptoir', '/pdv/commandes', '/pdv/salle'] : ['/pdv/caisse']).forEach((r) => routes.add(r));
+    }
+    if (this.aRole('SERVEUR')) {
+      (restauration ? ['/pdv/salle', '/pdv/commandes', '/pdv/comptoir'] : ['/pdv/caisse']).forEach((r) => routes.add(r));
+    }
+    if (this.aRole('PREPARATEUR') && restauration) {
+      routes.add('/pdv/cuisine');
+    }
+    return [...routes];
+  }
+
+  estSuperAdmin(): boolean {
+    return this.aRole('SUPER_ADMIN');
+  }
+
+  /**
+   * Premiere page apres connexion : la console pour l'exploitant, sinon le
+   * premier module utilisable par le profil, a defaut le catalogue des modules.
+   */
+  pageAccueil(): string {
+    if (this.estSuperAdmin()) {
+      return '/plateforme';
+    }
+    const module = (['GESTION_PARC', 'POINT_DE_VENTE'] as CodeModule[]).find((m) => this.peutUtiliser(m));
+    return module ? this.accueilModule(module) : '/modules';
+  }
+
+  private memoriser(utilisateur: UtilisateurCourant): void {
+    localStorage.setItem(CLE_UTILISATEUR, JSON.stringify(utilisateur));
+    this.utilisateurSignal.set(utilisateur);
   }
 
   /**
@@ -92,7 +190,9 @@ export class AuthService {
       return null;
     }
     try {
-      return JSON.parse(brut) as UtilisateurCourant;
+      const utilisateur = JSON.parse(brut) as UtilisateurCourant;
+      // Session ouverte avant le passage multi-entreprises : elle ne connait pas les modules.
+      return Array.isArray(utilisateur.modules) ? utilisateur : null;
     } catch {
       return null;
     }

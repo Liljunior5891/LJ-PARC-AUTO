@@ -5,6 +5,7 @@ import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tg.parcauto.api.plateforme.tenant.ContexteEntreprise;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -41,12 +42,13 @@ public class EvolutionService {
 
         Map<String, BigDecimal> recettes = totauxParMois(
                 "select to_char(date_recette, 'YYYY-MM') as mois, coalesce(sum(montant), 0) as total "
-                        + "from recette where date_recette between :debut and :fin group by 1",
+                        + "from recette where entreprise_id = :entreprise "
+                        + "and date_recette between :debut and :fin group by 1",
                 premierJour, dernierJour);
         // Les depenses refacturees au client n'entament pas le resultat.
         Map<String, BigDecimal> depenses = totauxParMois(
                 "select to_char(date_depense, 'YYYY-MM') as mois, coalesce(sum(montant), 0) as total "
-                        + "from depense where a_charge_client = false "
+                        + "from depense where entreprise_id = :entreprise and a_charge_client = false "
                         + "and date_depense between :debut and :fin group by 1",
                 premierJour, dernierJour);
 
@@ -68,6 +70,8 @@ public class EvolutionService {
         Map<String, BigDecimal> totaux = new LinkedHashMap<>();
         @SuppressWarnings("unchecked")
         List<Object[]> lignes = em.createNativeQuery(sql)
+                // Requete native : le cloisonnement Hibernate ne s'y applique pas.
+                .setParameter("entreprise", ContexteEntreprise.exiger())
                 .setParameter("debut", debut)
                 .setParameter("fin", fin)
                 .getResultList();

@@ -1,5 +1,7 @@
 package tg.parcauto.api.pilotage;
 
+import tg.parcauto.api.plateforme.module.ModuleApplicatif;
+import tg.parcauto.api.plateforme.module.ModuleRequis;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/pilotage")
 @RequiredArgsConstructor
 @Tag(name = "Pilotage")

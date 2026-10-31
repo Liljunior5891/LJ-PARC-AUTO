@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import tg.parcauto.api.plateforme.tenant.ContexteEntreprise;
+import tg.parcauto.api.plateforme.tenant.DiffusionEntreprise;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tg.parcauto.api.common.BusinessException;
@@ -156,7 +158,8 @@ public class IncidentService {
 
     private void notifier(Incident incident) {
         try {
-            diffusion.convertAndSend("/topic/incidents", IncidentDto.Reponse.de(incident));
+            diffusion.convertAndSend(DiffusionEntreprise.canal(ContexteEntreprise.exiger()) + "/incidents",
+                    IncidentDto.Reponse.de(incident));
         } catch (RuntimeException e) {
             // La notification ne doit jamais faire echouer la declaration de l'incident.
             log.warn("Notification d'incident impossible : {}", e.getMessage());

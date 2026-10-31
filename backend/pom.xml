@@ -89,6 +89,25 @@
             <version>2.0.3</version>
         </dependency>
 
+        <!-- Rapports du point de vente : export Excel et import des produits et du stock (licence Apache 2.0). -->
+        <dependency>
+            <groupId>org.dhatim</groupId>
+            <artifactId>fastexcel</artifactId>
+            <version>0.20.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.dhatim</groupId>
+            <artifactId>fastexcel-reader</artifactId>
+            <version>0.20.2</version>
+        </dependency>
+
+        <!-- Codes QR des tables du restaurant (commande par le client). ZXing est sous licence Apache 2.0. -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.4</version>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

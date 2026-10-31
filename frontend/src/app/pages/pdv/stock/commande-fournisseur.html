@@ -1,0 +1,144 @@
+@if (commande(); as c) {
+  <div class="entete-page">
+    <div>
+      <a class="retour" routerLink="/pdv/stock">‹ Toutes les commandes</a>
+      <h1>Commande {{ c.resume.numero }}
+        <span class="statut {{ c.resume.statut.toLowerCase() }}">{{ libelles[c.resume.statut] }}</span>
+      </h1>
+      <p class="sous-titre">
+        <strong>{{ c.resume.fournisseur }}</strong> · commandee le {{ c.resume.dateCommande | date: 'dd/MM/yyyy' }}
+        @if (c.resume.livraisonPrevue) { · livraison prevue le {{ c.resume.livraisonPrevue | date: 'dd/MM/yyyy' }} }
+        @if (c.creePar) { · par {{ c.creePar }} }
+      </p>
+    </div>
+    @if (enCours()) {
+      <div class="actions-entete">
+        <button class="bouton danger" type="button" (click)="annuler()">Annuler la commande</button>
+        <button class="bouton secondaire" type="button" (click)="edition.set(true)">Modifier</button>
+        <button class="bouton" type="button" (click)="ouvrirReception()">Receptionner</button>
+      </div>
+    }
+  </div>
+
+  @if (erreur() && !reception()) {
+    <div class="message erreur">{{ erreur() }}</div>
+  }
+  @if (succes()) {
+    <div class="message succes">{{ succes() }}</div>
+  }
+  @if (c.resume.statut === 'RECUE') {
+    <div class="message info">Receptionnee le {{ c.resume.recueLe | date: 'dd/MM/yyyy' }} a {{ c.resume.recueLe | date: 'HH:mm' }} par {{ c.recuePar }} :
+      les quantites livrees sont entrees en stock.</div>
+  }
+  @if (c.note) {
+    <p class="note">📝 {{ c.note }}</p>
+  }
+
+  <div class="carte tableau-conteneur">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Produit</th>
+          <th class="numerique">Quantite commandee</th>
+          <th class="numerique">Cout unitaire</th>
+          <th class="numerique">Montant</th>
+          @if (c.resume.statut === 'RECUE') {
+            <th class="numerique">Quantite recue</th>
+            <th class="numerique">Ecart</th>
+          } @else {
+            <th class="numerique">Stock actuel</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (l of c.lignes; track l.id) {
+          <tr>
+            <td><strong>{{ l.articleNom }}</strong><br /><small>{{ l.articleCode }}</small></td>
+            <td class="numerique">{{ l.quantite | number: '1.0-3' }} {{ l.unite || '' }}</td>
+            <td class="numerique">{{ l.coutUnitaire != null ? (l.coutUnitaire | number: '1.0-0') + ' F' : '—' }}</td>
+            <td class="numerique"><strong>{{ l.total | number: '1.0-0' }} F</strong></td>
+            @if (c.resume.statut === 'RECUE') {
+              <td class="numerique">{{ l.quantiteRecue | number: '1.0-3' }}</td>
+              <td class="numerique">
+                @let e = ecart(l);
+                <span [class.resultat-negatif]="(e ?? 0) < 0" [class.resultat-positif]="(e ?? 0) > 0">
+                  {{ e === 0 ? '—' : ((e ?? 0) > 0 ? '+' : '') + (e | number: '1.0-3') }}
+                </span>
+              </td>
+            } @else {
+              <td class="numerique">{{ l.stockActuel | number: '1.0-3' }}</td>
+            }
+          </tr>
+        }
+      </tbody>
+      <tfoot>
+        <tr>
+          <td>{{ c.lignes.length }} produit(s)</td>
+          <td></td>
+          <td></td>
+          <td class="numerique"><strong>{{ c.resume.total | number: '1.0-0' }} F</strong></td>
+          @if (c.resume.statut === 'RECUE') {
+            <td class="numerique" colspan="2">recu : <strong>{{ totalRecu() | number: '1.0-0' }} F</strong></td>
+          } @else {
+            <td></td>
+          }
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  @if (edition()) {
+    <app-formulaire-commande [commande]="c" (enregistree)="apresModification($event)" (ferme)="edition.set(false)" />
+  }
+
+  @if (reception()) {
+    <app-modale [titre]="'Receptionner ' + c.resume.numero" [sousTitre]="c.resume.fournisseur" largeur="820px"
+                [erreur]="erreur()" (ferme)="reception.set(false)">
+      <form (ngSubmit)="receptionner()">
+        <p class="aide">Saisissez ce qui a ete reellement livre. Ces quantites entrent en stock, au cout indique,
+          qui devient le cout d'achat des produits.</p>
+        <div class="tableau-conteneur liste-modale">
+          <table class="tableau saisie-reception">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th class="numerique">Commande</th>
+                <th class="numerique">Quantite recue</th>
+                <th class="numerique">Cout unitaire (F)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of c.lignes; track l.id) {
+                <tr [class.ecart]="recues()[l.id]?.quantite !== l.quantite">
+                  <td><strong>{{ l.articleNom }}</strong></td>
+                  <td class="numerique">{{ l.quantite | number: '1.0-3' }}</td>
+                  <td class="numerique">
+                    <app-champ-quantite [valeur]="recues()[l.id]?.quantite ?? null" (valeurChange)="modifierRecue(l, 'quantite', $event)"
+                                        [libelle]="'Quantite recue de ' + l.articleNom" />
+                  </td>
+                  <td class="numerique">
+                    <span class="champ-montant">
+                      <input type="number" min="0" step="any" [name]="'k' + l.id" [ngModel]="recues()[l.id]?.cout"
+                             (ngModelChange)="modifierRecue(l, 'cout', $event)" [attr.aria-label]="'Cout de ' + l.articleNom" />
+                      <span>F</span>
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="total-reception">Valeur recue : <strong>{{ totalReception() | number: '1.0-0' }} F</strong></p>
+        <div class="actions-formulaire">
+          <button class="bouton secondaire" type="button" (click)="reception.set(false)">Annuler</button>
+          <button class="bouton" type="submit">Valider la reception</button>
+        </div>
+      </form>
+    </app-modale>
+  }
+} @else if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+  <a class="bouton" routerLink="/pdv/stock">Retour aux commandes</a>
+} @else {
+  <p>Chargement de la commande...</p>
+}

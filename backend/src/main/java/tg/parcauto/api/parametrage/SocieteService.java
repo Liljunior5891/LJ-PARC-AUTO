@@ -1,11 +1,13 @@
 package tg.parcauto.api.parametrage;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import tg.parcauto.api.common.BusinessException;
+import tg.parcauto.api.plateforme.entreprise.Entreprise;
+import tg.parcauto.api.plateforme.entreprise.EntrepriseRepository;
+import tg.parcauto.api.plateforme.tenant.ContexteEntreprise;
 
 import java.io.IOException;
 import java.util.Base64;
@@ -13,11 +15,12 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Parametrage de l'entreprise (chapitre 39).
+ * Parametrage de l'entreprise courante (chapitre 39).
  * <p>
- * Une seule ligne existe. Tant qu'elle n'a pas ete enregistree, la lecture
- * renvoie une identite par defaut portant le nom fourni par la configuration :
- * l'application a toujours un nom a afficher, sans rien ecrire en base.
+ * Chaque entreprise a sa ligne, cloisonnee comme ses autres donnees. Tant
+ * qu'elle n'a pas ete enregistree, la lecture renvoie une identite construite a
+ * partir du compte entreprise saisi a l'inscription : l'application a toujours
+ * un nom a afficher, sans rien ecrire en base.
  */
 @Service
 @RequiredArgsConstructor
@@ -30,32 +33,17 @@ public class SocieteService {
             List.of("image/png", "image/jpeg", "image/gif", "image/webp");
 
     private final SocieteRepository repository;
-
-    @Value("${parcauto.entreprise.nom:PARC AUTO}")
-    private String nomParDefaut;
+    private final EntrepriseRepository entrepriseRepository;
 
     @Transactional(readOnly = true)
     public SocieteDto.Reponse lire() {
         return versDto(charger());
     }
 
-    /** Ce que la page de connexion affiche : nom et logo, sans authentification. */
-    @Transactional(readOnly = true)
-    public SocieteDto.Identite identite() {
-        Societe societe = charger();
-        return new SocieteDto.Identite(societe.getNom(), societe.getSigle(), logo(societe));
-    }
-
-    /** Identite et coordonnees publiees par le site vitrine, sans authentification. */
-    @Transactional(readOnly = true)
-    public SocieteDto.Vitrine vitrine() {
-        Societe s = charger();
-        return new SocieteDto.Vitrine(
-                s.getNom(), s.getSigle(), s.getFormeJuridique(),
-                s.getAdresse(), s.getVille(), s.getPays(),
-                s.getTelephone(), s.getEmail(), s.getSiteWeb(), logo(s));
-    }
-
+    /**
+     * Enregistre l'identite et reporte nom et coordonnees sur le compte
+     * entreprise, pour que la console de la plateforme reste a jour.
+     */
     public SocieteDto.Reponse enregistrer(SocieteDto.Requete requete) {
         Societe societe = chargerPourEcriture();
         societe.setNom(requete.nom().trim());
@@ -73,6 +61,13 @@ public class SocieteService {
         societe.setCompteBancaire(vide(requete.compteBancaire()));
         societe.setMentionsFacture(vide(requete.mentionsFacture()));
         societe.setTauxTva(requete.tauxTva());
+
+        entreprise().ifPresent(e -> {
+            e.setNom(societe.getNom());
+            e.setPays(societe.getPays());
+            e.setTelephone(societe.getTelephone());
+            e.setEmail(societe.getEmail());
+        });
         return versDto(repository.save(societe));
     }
 
@@ -141,10 +136,21 @@ public class SocieteService {
         return repository.lire().orElseGet(() -> repository.save(parDefaut()));
     }
 
+    /** Identite reprise du compte entreprise saisi a l'inscription. */
     private Societe parDefaut() {
         Societe societe = new Societe();
-        societe.setNom(nomParDefaut);
+        Optional<Entreprise> entreprise = entreprise();
+        societe.setNom(entreprise.map(Entreprise::getNom).orElse("Mon entreprise"));
+        entreprise.ifPresent(e -> {
+            societe.setPays(e.getPays());
+            societe.setTelephone(e.getTelephone());
+            societe.setEmail(e.getEmail());
+        });
         return societe;
+    }
+
+    private Optional<Entreprise> entreprise() {
+        return ContexteEntreprise.courante().flatMap(entrepriseRepository::findById);
     }
 
     private String logo(Societe societe) {

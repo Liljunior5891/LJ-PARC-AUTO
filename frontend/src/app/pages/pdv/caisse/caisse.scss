@@ -1,0 +1,44 @@
+/*
+ * Caisse de la boutique : reprend la mise en page et les styles de la caisse
+ * du restaurant (commande.scss), sans table ni cuisine. Seuls les ajouts
+ * propres a la boutique sont ici.
+ */
+
+.stock-produit {
+  color: var(--couleur-texte-doux);
+  font-size: 0.72rem;
+}
+
+/* Quantite modifiable dans la commande : la douchette peut lire 12 d'un coup. */
+.compteur.petit {
+  justify-content: flex-start;
+  gap: 0.35rem;
+  height: 30px;
+  margin-top: 0.2rem;
+
+  button {
+    width: 26px;
+    height: 26px;
+    font-size: 0.95rem;
+  }
+
+  input {
+    width: 3.2rem;
+    height: 26px;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+
+    &:focus {
+      border-color: var(--vert);
+      outline: none;
+    }
+  }
+}
+
+.message.avertissement {
+  margin: 0;
+}

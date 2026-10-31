@@ -1,8 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
-import { SocieteService } from '../../core/services/societe.service';
+import { environment } from '../../../environments/environment';
 import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 
 @Component({
@@ -11,15 +11,13 @@ import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
   templateUrl: './login.html',
   styleUrl: './login.scss'
 })
-export class Login implements OnInit {
+export class Login {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly societeService = inject(SocieteService);
-
-  /** Nom et logo parametres ; la page reste utilisable si l'API ne repond pas. */
-  readonly societe = this.societeService.identite;
+  /** Page commune a toutes les entreprises : elle porte la marque de la plateforme. */
+  readonly nomPlateforme = environment.nomPlateforme;
 
   readonly enCours = signal(false);
   readonly erreur = signal<string | null>(null);
@@ -35,10 +33,6 @@ export class Login implements OnInit {
     motDePasse: ['', [Validators.required]]
   });
 
-  ngOnInit(): void {
-    this.societeService.chargerIdentite().subscribe({ error: () => undefined });
-  }
-
   soumettre(): void {
     if (this.formulaire.invalid || this.enCours()) {
       this.formulaire.markAllAsTouched();
@@ -50,14 +44,14 @@ export class Login implements OnInit {
     const { email, motDePasse } = this.formulaire.getRawValue();
     this.auth.login(email, motDePasse).subscribe({
       next: () => {
-        const retour = this.route.snapshot.queryParamMap.get('retour') ?? '/tableau-bord';
+        const retour = this.route.snapshot.queryParamMap.get('retour') ?? this.auth.pageAccueil();
         void this.router.navigateByUrl(retour);
       },
       error: (erreur) => {
         this.enCours.set(false);
         this.erreur.set(
           erreur.status === 401
-            ? 'Email ou mot de passe incorrect.'
+            ? 'Email ou mot de passe incorrect, ou compte suspendu.'
             : "Connexion au serveur impossible. Verifiez que l'API est demarree."
         );
       }

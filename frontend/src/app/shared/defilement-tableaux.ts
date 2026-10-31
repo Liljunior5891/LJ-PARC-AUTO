@@ -8,7 +8,7 @@ const MARGE_BASSE = 24;
 /**
  * Defilement interne des tableaux, sur tous les ecrans.
  * <p>
- * Chaque `.tableau-conteneur` recoit la hauteur qui reste dans la fenetre sous
+ * Chaque `.tableau-conteneur` (et chaque liste en cartes `.liste-defilante`) recoit la hauteur qui reste dans la fenetre sous
  * ce qui le precede (filtres, totaux), moins ce qui le suit dans sa carte
  * (pagination) : la page tient a l'ecran et seules les lignes defilent, sous un
  * entete de colonnes fige. La hauteur est recalculee quand le contenu change
@@ -42,8 +42,9 @@ export function activerDefilementTableaux(racine: HTMLElement, destroyRef: Destr
 }
 
 function ajuster(racine: HTMLElement): void {
-  racine.querySelectorAll<HTMLElement>('.tableau-conteneur').forEach((conteneur) => {
-    if (conteneur.closest('.modale')) {
+  racine.querySelectorAll<HTMLElement>('.tableau-conteneur, .liste-defilante').forEach((conteneur) => {
+    // Dans une fenetre, ou pour une liste d'appoint a hauteur fixe, la regle CSS s'applique.
+    if (conteneur.closest('.modale') || conteneur.classList.contains('hauteur-fixe')) {
       return;
     }
     const haut = conteneur.getBoundingClientRect().top + window.scrollY;

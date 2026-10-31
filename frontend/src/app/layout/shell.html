@@ -1,16 +1,50 @@
-<div class="coquille">
+<div class="coquille" [class.poste]="estPoste" [class.avec-sous-menu]="!!groupeOuvert()">
+  @if (notificationsPdv) {
+    <app-notifications-pdv />
+  }
+  @if (estPoste) {
+    <!-- Poste de travail : une barre fine, l'ecran prend toute la place. -->
+    <header class="barre-poste">
+      <span class="marque-poste">
+        @if (societe()?.logo; as logo) {
+          <img class="logo-image" [src]="logo" [alt]="societe()?.nom || 'Logo'" />
+        }
+        <strong>{{ societe()?.nom || utilisateur()?.entrepriseNom }}</strong>
+        <small>{{ ecranPoste() }}</small>
+      </span>
+      <span class="actions-poste">
+        <span class="qui"><span class="avatar">{{ initiales() }}</span><span class="nom-poste">{{ utilisateur()?.nomComplet }}</span></span>
+        <button type="button" class="outil" (click)="basculerPleinEcran()"
+                [attr.aria-label]="pleinEcran() ? 'Quitter le plein ecran' : 'Plein ecran'"
+                [title]="pleinEcran() ? 'Quitter le plein ecran' : 'Plein ecran'">{{ pleinEcran() ? '🗗' : '⛶' }}</button>
+        @if (avecVerrou) {
+          <button type="button" class="outil" (click)="verrou.verrouiller()" aria-label="Verrouiller la caisse"
+                  title="Verrouiller la caisse">🔒</button>
+        }
+        <button type="button" class="outil quitter" (click)="deconnexion()" aria-label="Se deconnecter" title="Se deconnecter">⏻</button>
+      </span>
+    </header>
+    @if (avecVerrou && verrou.verrouille()) {
+      <app-verrou-caisse (deconnexion)="deconnexion()" />
+    }
+  } @else {
   <header class="barre-haute">
-    <a class="marque" routerLink="/tableau-bord">
+    <a class="marque" [routerLink]="accueil()">
       @if (societe()?.logo; as logo) {
         <img class="logo-image" [src]="logo" [alt]="societe()?.nom || 'Logo'" />
       } @else {
-        <span class="logo">🚛</span>
+        <span class="logo">{{ estSuperAdmin ? '◆' : '🏢' }}</span>
       }
-      <span class="nom">{{ societe()?.nom || 'PARC AUTO' }}</span>
+      <span class="nom">
+        {{ estSuperAdmin ? nomPlateforme : (societe()?.nom || utilisateur()?.entrepriseNom) }}
+        <small class="plateforme">{{ estSuperAdmin ? 'Console plateforme' : nomPlateforme }}</small>
+      </span>
     </a>
 
     <div class="utilisateur">
-      <app-cloche-notifications />
+      @if (clocheVisible()) {
+        <app-cloche-notifications />
+      }
       <a class="profil" routerLink="/mon-compte" title="Mon compte">
         <span class="avatar">{{ initiales() }}</span>
         <span class="identite">
@@ -25,14 +59,14 @@
   <!-- Menu horizontal : des onglets inclines, puis le panneau des pages de l'onglet ouvert. -->
   <nav class="navigation" aria-label="Menu principal">
     <div class="rangee-onglets" role="tablist">
-      @for (onglet of onglets; track onglet.id; let i = $index) {
+      @for (onglet of onglets(); track onglet.id; let i = $index) {
         <button
           type="button"
           role="tab"
           class="onglet"
           [class.actif]="onglet.id === ongletOuvert().id"
           [class.courant]="estOngletDeLaPage(onglet)"
-          [style.z-index]="onglet.id === ongletOuvert().id ? onglets.length + 1 : onglets.length - i"
+          [style.z-index]="onglet.id === ongletOuvert().id ? onglets().length + 1 : onglets().length - i"
           [attr.aria-selected]="onglet.id === ongletOuvert().id"
           [attr.aria-controls]="'panneau-' + onglet.id"
           (click)="ouvrirOnglet(onglet)"
@@ -49,18 +83,45 @@
 
     @if (panneauOuvert()) {
       <div class="panneau" role="tabpanel" [id]="'panneau-' + ongletOuvert().id">
-        @for (entree of ongletOuvert().entrees; track entree.route) {
-          <a class="entree" [routerLink]="entree.route" routerLinkActive="actif">
-            <span class="chevrons" aria-hidden="true">»</span>
-            <span class="textes">
-              <strong>{{ entree.libelle }}</strong>
-              <small>{{ entree.description }}</small>
-            </span>
-          </a>
+        @for (entree of ongletOuvert().entrees; track entree.libelle + (entree.route ?? '')) {
+          @if (entree.enfants) {
+            <button type="button" class="entree groupe" [class.actif]="groupeActif(entree)"
+                    [class.deplie]="groupeOuvert()?.libelle === entree.libelle"
+                    [attr.aria-expanded]="groupeOuvert()?.libelle === entree.libelle"
+                    [attr.aria-controls]="'sous-menu-' + ongletOuvert().id"
+                    (click)="basculerGroupe(entree)">
+              <span class="chevrons" aria-hidden="true">»</span>
+              <span class="textes">
+                <strong>{{ entree.libelle }} <span class="fleche" aria-hidden="true">▾</span></strong>
+                <small>{{ entree.description }}</small>
+              </span>
+            </button>
+          } @else {
+            <a class="entree" [routerLink]="entree.route" routerLinkActive="actif">
+              <span class="chevrons" aria-hidden="true">»</span>
+              <span class="textes">
+                <strong>{{ entree.libelle }}</strong>
+                <small>{{ entree.description }}</small>
+              </span>
+            </a>
+          }
         }
       </div>
+      @if (groupeOuvert(); as groupe) {
+        <div class="sous-panneau" [id]="'sous-menu-' + ongletOuvert().id" [attr.aria-label]="groupe.libelle">
+          <span class="titre-groupe">{{ groupe.libelle }}</span>
+          @for (enfant of groupe.enfants; track enfant.route) {
+            <a class="sous-entree" [routerLink]="enfant.route" routerLinkActive="actif">
+              <strong>{{ enfant.libelle }}</strong>
+              <small>{{ enfant.description }}</small>
+            </a>
+          }
+        </div>
+      }
     }
   </nav>
+
+  }
 
   <main class="contenu" #contenu>
     <router-outlet />

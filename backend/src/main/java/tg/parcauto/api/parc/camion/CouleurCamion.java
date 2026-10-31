@@ -6,7 +6,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import tg.parcauto.api.common.BaseEntity;
+import tg.parcauto.api.common.EntiteAuditee;
 
 /** Couleur du vehicule, avec son code hexadecimal pour l'affichage. */
 @Entity
@@ -14,7 +14,7 @@ import tg.parcauto.api.common.BaseEntity;
 @Getter
 @Setter
 @NoArgsConstructor
-public class CouleurCamion extends BaseEntity {
+public class CouleurCamion extends EntiteAuditee {
 
     @Column(nullable = false, unique = true, length = 60)
     private String nom;

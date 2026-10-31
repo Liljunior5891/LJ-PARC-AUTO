@@ -1,0 +1,27 @@
+/* Ecrans de preparation : reprend les cartes des caisses (caisses.scss). */
+
+.ecran {
+  cursor: default;
+
+  &:hover {
+    transform: none;
+  }
+
+  /* Le lien « Ouvrir » prend l'allure des boutons d'action. */
+  a.action {
+    text-decoration: none;
+  }
+}
+
+.categorie {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--teinte) 14%, #fff);
+  color: color-mix(in srgb, var(--teinte) 80%, #000);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.message.alerte {
+  margin-bottom: 1rem;
+}

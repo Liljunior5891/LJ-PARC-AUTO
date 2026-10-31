@@ -1,0 +1,102 @@
+/* Reapprovisionnement : onglets, commandes fournisseurs et alertes de stock. */
+
+.onglets-page {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--couleur-bordure);
+
+  button {
+    margin-bottom: -2px;
+    padding: 0.65rem 1.1rem;
+    border: none;
+    border-bottom: 3px solid transparent;
+    background: none;
+    color: var(--couleur-texte-doux);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+
+    &.actif {
+      border-bottom-color: var(--couleur-primaire);
+      color: var(--couleur-primaire);
+    }
+  }
+}
+
+.titre-alerte {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+}
+
+.filtres-statut {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.puce {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 999px;
+  background: var(--couleur-surface);
+  font-weight: 600;
+  cursor: pointer;
+
+  &.actif {
+    border-color: var(--couleur-primaire);
+    background: var(--couleur-primaire);
+    color: #fff;
+  }
+}
+
+tr.cliquable {
+  cursor: pointer;
+
+  &:hover td {
+    background: color-mix(in srgb, var(--couleur-primaire) 5%, transparent);
+  }
+}
+
+.statut {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &.en_cours {
+    background: #fff1dc;
+    color: #b35f00;
+  }
+
+  &.recue {
+    background: color-mix(in srgb, var(--couleur-succes) 14%, #fff);
+    color: var(--couleur-succes);
+  }
+
+  &.annulee {
+    background: #fde8e4;
+    color: var(--couleur-danger);
+  }
+}
+
+.vide {
+  padding: 1.25rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}
+
+/* Les alertes restent une liste d'appoint : la liste des commandes garde la place. */
+.tableau-conteneur.alertes {
+  max-height: 210px;
+}

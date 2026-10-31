@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import tg.parcauto.api.plateforme.tenant.ContexteEntreprise;
 
 import java.time.LocalDate;
 
@@ -27,12 +28,13 @@ public class NumerotationService {
     public String prochainNumero(String prefixe) {
         int annee = LocalDate.now().getYear();
         Number valeur = (Number) em.createNativeQuery("""
-                        insert into compteur_numero (prefixe, annee, valeur)
-                        values (:prefixe, :annee, 1)
-                        on conflict (prefixe, annee)
+                        insert into compteur_numero (entreprise_id, prefixe, annee, valeur)
+                        values (:entreprise, :prefixe, :annee, 1)
+                        on conflict (entreprise_id, prefixe, annee)
                         do update set valeur = compteur_numero.valeur + 1
                         returning valeur
                         """)
+                .setParameter("entreprise", ContexteEntreprise.exiger())
                 .setParameter("prefixe", prefixe)
                 .setParameter("annee", annee)
                 .getSingleResult();

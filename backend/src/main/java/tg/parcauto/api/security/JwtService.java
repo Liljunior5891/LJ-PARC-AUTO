@@ -31,12 +31,16 @@ public class JwtService {
         List<String> roles = principal.getAuthorities().stream()
                 .map(a -> a.getAuthority().replaceFirst("^ROLE_", ""))
                 .toList();
+        Map<String, Object> claims = new java.util.HashMap<>(Map.of(
+                "uid", principal.getId(),
+                "nom", principal.getNomComplet(),
+                "roles", roles));
+        if (principal.getEntrepriseId() != null) {
+            claims.put("eid", principal.getEntrepriseId());
+        }
         return Jwts.builder()
                 .subject(principal.getUsername())
-                .claims(Map.of(
-                        "uid", principal.getId(),
-                        "nom", principal.getNomComplet(),
-                        "roles", roles))
+                .claims(claims)
                 .issuedAt(Date.from(maintenant))
                 .expiration(Date.from(maintenant.plus(expiration)))
                 .signWith(key)

@@ -1,0 +1,190 @@
+/* Rapports : la liste a gauche, le rapport choisi a droite. */
+
+.rapports {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.liste-rapports {
+  position: sticky;
+  top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem;
+
+  h2 {
+    margin: 0.75rem 0 0.3rem 0.5rem;
+    color: var(--couleur-texte-doux);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+
+    &:first-child {
+      margin-top: 0.2rem;
+    }
+  }
+
+  button {
+    padding: 0.55rem 0.7rem;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--couleur-texte);
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--couleur-fond);
+    }
+
+    &.actif {
+      background: color-mix(in srgb, var(--couleur-primaire) 10%, #fff);
+      color: var(--couleur-primaire);
+      font-weight: 700;
+    }
+  }
+}
+
+/* Enveloppe de la liste et de son habillage Select2 : masquee sur ordinateur. */
+.contenu-rapport > .choix-mobile {
+  display: none;
+  font-weight: 600;
+}
+
+.contenu-rapport {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.barre-rapport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+}
+
+/* Listes habillees par Select2 (largeur 100 %) : l'enveloppe fixe la largeur. */
+.choix-periode {
+  width: 220px;
+  font-weight: 600;
+}
+
+.dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+
+  &.invalides input {
+    border-color: var(--couleur-danger);
+  }
+}
+
+.etat-instant {
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+}
+
+.exports {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.titre-rapport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.2rem;
+  }
+
+  span {
+    color: var(--couleur-texte-doux);
+    font-size: 0.85rem;
+  }
+
+  .chargement {
+    color: var(--couleur-primaire);
+  }
+}
+
+/* Cartes d'indicateurs : celles du tableau de bord (.carte-apercu), autant que la largeur le permet. */
+.indicateurs-rapport {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+
+  .carte-apercu.turquoise {
+    --accent: #0f9aa8;
+    --fond: #e0f5f6;
+  }
+
+  .carte-apercu strong {
+    font-size: 1.6rem;
+  }
+}
+
+.recherche-rapport {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+
+  input {
+    width: min(320px, 100%);
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.vide-cellule {
+  color: var(--couleur-bordure);
+}
+
+.vide {
+  padding: 1.5rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}
+
+.choix-produit {
+  width: min(380px, 100%);
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .rapports {
+    grid-template-columns: 1fr;
+  }
+
+  .liste-rapports {
+    display: none;
+  }
+
+  .contenu-rapport > .choix-mobile {
+    display: block;
+  }
+
+  .choix-periode,
+  .choix-produit {
+    width: 100%;
+  }
+
+  .exports {
+    margin-left: 0;
+  }
+}

@@ -1,0 +1,165 @@
+<div class="entete-page">
+  <div>
+    <h1>Plan de salle</h1>
+    <p class="sous-titre">
+      {{ compteurs().libres }} table(s) libre(s) · {{ compteurs().occupees }} occupee(s)
+      @if (compteurs().pretes > 0) {
+        · <strong class="alerte-pret">{{ compteurs().pretes }} commande(s) a servir</strong>
+      }
+      @if (compteurs().demandes > 0) {
+        · <strong class="alerte-demande">{{ compteurs().demandes }} demande(s) de client</strong>
+      }
+    </p>
+  </div>
+  <div class="actions-entete">
+    <button class="bouton secondaire" type="button" [disabled]="salleFermee()" (click)="ouvrirComptoir()">+ Comptoir / a emporter</button>
+  </div>
+</div>
+
+<div class="bandeau-salle">
+  <app-bandeau-session />
+</div>
+
+@if (erreur() && !ouverture()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+@if (plan(); as p) {
+  @if (p.salles.length === 0) {
+    <div class="carte vide-plan">
+      <span aria-hidden="true">🪑</span>
+      <h2>Aucune table au plan</h2>
+      @if (estGestionnaire) {
+        <p>Dessinez d'abord vos salles et vos tables.</p>
+        <a class="bouton" routerLink="/pdv/plan-salle">Dessiner le plan</a>
+      } @else {
+        <p>Demandez a votre gerant de dessiner le plan du restaurant. En attendant, prenez les commandes au comptoir.</p>
+      }
+    </div>
+  } @else {
+    <div class="service">
+      <section class="zone-plan">
+        @if (p.salles.length > 1) {
+          <div class="onglets-salles" role="tablist">
+            @for (s of p.salles; track s.salle.id) {
+              <button type="button" role="tab" class="filtre" [class.actif]="salle()?.salle?.id === s.salle.id"
+                      [attr.aria-selected]="salle()?.salle?.id === s.salle.id" (click)="salleChoisie.set(s.salle.id)">
+                {{ s.salle.nom }}
+                <small>{{ libres(s.tables) }}/{{ s.tables.length }} libres</small>
+              </button>
+            }
+          </div>
+        }
+
+        @if (salle(); as s) {
+          <div class="plan" [style.aspect-ratio]="largeurPlan + ' / ' + hauteurPlan">
+            @for (t of s.tables; track t.table.id) {
+              <button type="button" class="table {{ etat(t.commande) }} {{ t.table.forme.toLowerCase() }}"
+                      [style.left.%]="t.table.posX / largeurPlan * 100"
+                      [style.top.%]="t.table.posY / hauteurPlan * 100"
+                      [style.width.%]="t.table.largeur / largeurPlan * 100"
+                      [style.height.%]="t.table.hauteur / hauteurPlan * 100"
+                      [attr.aria-label]="'Table ' + t.table.nom + (t.commande ? ', occupee' : ', libre')"
+                      (click)="toucher(t)">
+                <strong class="nom">{{ t.table.nom }}</strong>
+                @if (t.commande; as c) {
+                  <span class="detail">{{ c.couverts ? c.couverts + ' pers. · ' : '' }}{{ duree(c) }}</span>
+                  @if (etat(c) === 'demande') {
+                    <span class="montant">{{ demande(c) }}</span>
+                  } @else {
+                    <span class="montant">{{ c.total | number: '1.0-0' }} F</span>
+                  }
+                  @if (c.pretes > 0) {
+                    <span class="pastille" aria-hidden="true">{{ c.pretes }}</span>
+                  }
+                } @else {
+                  <span class="detail">{{ t.table.places }} places</span>
+                }
+              </button>
+            }
+          </div>
+
+          <!-- Sur telephone, le plan devient une grille de tables, plus facile a toucher. -->
+          <div class="liste-tables" role="list">
+            @for (t of s.tables; track t.table.id) {
+              <button type="button" role="listitem" class="tuile-table {{ etat(t.commande) }}" (click)="toucher(t)">
+                <span class="nom">{{ t.table.nom }}</span>
+                @if (t.commande; as c) {
+                  <span class="ligne">{{ c.couverts ? c.couverts + ' pers. · ' : '' }}{{ duree(c) }}</span>
+                  <strong class="ligne">{{ etat(c) === 'demande' ? demande(c) : (c.total | number: '1.0-0') + ' F' }}</strong>
+                  @if (c.pretes > 0) {
+                    <span class="pastille-liste">{{ c.pretes }} pret(s)</span>
+                  }
+                } @else {
+                  <span class="ligne">Libre · {{ t.table.places }} pl.</span>
+                }
+              </button>
+            }
+          </div>
+        }
+
+        <ul class="legende" aria-label="Legende">
+          <li><span class="temoin libre"></span>Libre</li>
+          <li><span class="temoin occupee"></span>Occupee</li>
+          <li><span class="temoin a-envoyer"></span>Articles a envoyer</li>
+          <li><span class="temoin prete"></span>Pret a servir</li>
+          <li><span class="temoin addition"></span>Addition imprimee</li>
+          <li><span class="temoin demande"></span>Demande du client (code QR)</li>
+        </ul>
+      </section>
+
+      <aside class="carte comptoir">
+        <h2>Comptoir et a emporter</h2>
+        @for (c of p.sansTable; track c.id) {
+          <a class="commande-comptoir {{ etat(c) }}" [routerLink]="['/pdv/commandes', c.id]">
+            <span>
+              <strong>{{ c.repere }}</strong>
+              <small>{{ c.serveurNom }} · {{ duree(c) }}</small>
+            </span>
+            <span class="droite">
+              <strong>{{ c.total | number: '1.0-0' }} F</strong>
+              @if (c.pretes > 0) { <small class="alerte-pret">{{ c.pretes }} pret(s)</small> }
+            </span>
+          </a>
+        } @empty {
+          <p class="vide">Aucune commande en cours.</p>
+        }
+      </aside>
+    </div>
+  }
+} @else if (!erreur()) {
+  <p class="vide">Chargement du plan...</p>
+}
+
+@if (ouverture(); as o) {
+  <app-modale [titre]="o.table ? 'Ouvrir la table ' + o.table.table.nom : 'Commande au comptoir'"
+              [sousTitre]="o.table ? o.table.table.places + ' places' : 'Sur place au comptoir ou a emporter'"
+              largeur="440px" [erreur]="erreur()" (ferme)="ouverture.set(null)">
+    <form (ngSubmit)="confirmerOuverture()">
+      @if (o.table) {
+        <div class="champ">
+          <label for="couverts">Nombre de personnes</label>
+          <div class="choix-couverts">
+            @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+              <button type="button" class="filtre" [class.actif]="couverts === n" (click)="couverts = n">{{ n }}</button>
+            }
+            <input id="couverts" name="couverts" type="number" min="1" max="200" [(ngModel)]="couverts"
+                   placeholder="Autre" />
+          </div>
+        </div>
+      } @else {
+        <div class="champ">
+          <label for="libelle">Nom de la commande *</label>
+          <input id="libelle" name="libelle" required maxlength="80" [(ngModel)]="libelle"
+                 placeholder="Ex. Kossi a emporter" />
+        </div>
+      }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire" type="button" (click)="ouverture.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="enCours() || (!o.table && !libelle.trim())">
+          {{ enCours() ? 'Ouverture...' : 'Prendre la commande' }}
+        </button>
+      </div>
+    </form>
+  </app-modale>
+}

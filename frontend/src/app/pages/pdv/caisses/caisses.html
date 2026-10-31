@@ -1,0 +1,140 @@
+<div class="entete-page">
+  <div>
+    <h1>Caisses</h1>
+    <p class="sous-titre">Ouvrez et fermez les sessions de caisse, affectez votre personnel, consultez l'historique et le detail de chaque session.</p>
+  </div>
+  <div class="actions-entete">
+    <button class="bouton" type="button" (click)="nouvelle()">+ Nouvelle caisse</button>
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+@if (chargement()) {
+  <p class="vide">Chargement des caisses...</p>
+} @else {
+  <div class="grille-caisses liste-defilante">
+    @for (c of caisses(); track c.id) {
+      <article class="carte caisse" [class.inactive]="!c.actif" [class.ouverte]="!!c.session">
+        <header>
+          <span class="icone" aria-hidden="true">🧾</span>
+          <div>
+            <h2>{{ c.nom }}</h2>
+            @if (c.description) { <small>{{ c.description }}</small> }
+          </div>
+          <span class="nombre-sessions">{{ c.sessions }} session(s)</span>
+        </header>
+
+        @if (!c.actif) {
+          <span class="etat inactive">Desactivee</span>
+        } @else if (c.session; as s) {
+          <span class="etat ouverte">● Ouverte par {{ s.caissierNom }} depuis {{ s.ouverteLe | date: 'dd/MM HH:mm' }}</span>
+        } @else {
+          <span class="etat fermee">Fermee : aucune vente possible</span>
+        }
+
+        <div class="affectes">
+          <small>Affectee a</small>
+          @for (u of c.utilisateurs; track u.id) {
+            <span class="puce">{{ u.nomComplet }}</span>
+          } @empty {
+            <span class="aucun">Personne : seuls le gerant et l'administrateur peuvent y encaisser</span>
+          }
+        </div>
+
+        <!-- Les actions de la caisse, selon son etat : une icone et une couleur douce par action. -->
+        <footer class="actions-caisse">
+          <button type="button" class="action bleu" (click)="modifier(c, $event)" title="Modifier la caisse et son personnel"
+                  aria-label="Modifier la caisse">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>
+            <span>Modifier</span>
+          </button>
+          @if (c.actif) {
+            @if (c.session) {
+              <button type="button" class="action rouge" (click)="agirSurSession(c, $event)" title="Fermer la session (comptage du tiroir)"
+                      aria-label="Fermer la session">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" /></svg>
+                <span>Fermer</span>
+              </button>
+            } @else {
+              <button type="button" class="action vert" (click)="ouvrirSession(c, $event)" title="Ouvrir la session (fond de caisse)"
+                      aria-label="Ouvrir la session">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2" /><path d="M8 10.5V7.5a4 4 0 0 1 7.6-1.7" /></svg>
+                <span>Ouvrir</span>
+              </button>
+            }
+          }
+          <button type="button" class="action violet" (click)="ouvrirHistorique(c)" title="Historique des sessions" aria-label="Historique des sessions">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7" /><path d="M4 4v3.5h3.5" /><path d="M12 8v4.5l3 1.8" /></svg>
+            <span>Historique</span>
+          </button>
+          <button type="button" class="action" [class.orange]="c.actif" [class.vert]="!c.actif" [disabled]="!!c.session"
+                  [title]="c.session ? 'Fermez la session avant de desactiver la caisse' : (c.actif ? 'Retirer la caisse sans perdre son historique' : 'Remettre la caisse en service')"
+                  [attr.aria-label]="c.actif ? 'Desactiver la caisse' : 'Reactiver la caisse'" (click)="basculerActivation(c)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v8" /><path d="M7 6.3a7.5 7.5 0 1 0 10 0" /></svg>
+            <span>{{ c.actif ? 'Desactiver' : 'Reactiver' }}</span>
+          </button>
+        </footer>
+      </article>
+    } @empty {
+      <div class="carte vide">Aucune caisse : creez la premiere pour commencer a encaisser.</div>
+    }
+  </div>
+}
+
+@if (edition(); as e) {
+  <app-modale [titre]="e === 'nouvelle' ? 'Nouvelle caisse' : 'Modifier ' + e.nom" largeur="620px"
+              [erreur]="erreurFormulaire()" (ferme)="edition.set(null)">
+    <form (ngSubmit)="enregistrer()">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="nom">Nom *</label>
+          <input id="nom" name="nom" required maxlength="80" [(ngModel)]="formulaire.nom" placeholder="Ex. Caisse bar" />
+        </div>
+        <div class="champ">
+          <label for="description">Description</label>
+          <input id="description" name="description" maxlength="255" [(ngModel)]="formulaire.description"
+                 placeholder="Ex. Comptoir de l'entree" />
+        </div>
+      </div>
+
+      <fieldset class="personnel">
+        <legend>Personnel qui encaisse sur cette caisse</legend>
+        @for (m of personnel(); track m.id) {
+          <label class="membre" [class.choisi]="choisis().has(m.id)">
+            <input type="checkbox" [checked]="choisis().has(m.id)" (change)="basculer(m)" />
+            <span><strong>{{ m.nomComplet }}</strong><small>{{ m.roles.join(', ') }}</small></span>
+          </label>
+        } @empty {
+          <p class="aucun">Aucun compte au point de vente : creez-en depuis l'ecran Utilisateurs.</p>
+        }
+      </fieldset>
+      <p class="aide">Seuls le gerant et l'administrateur ouvrent et ferment les sessions ; le personnel coche ci-dessus encaisse
+        sur la session ouverte et peut y enregistrer des entrees et sorties d'especes.</p>
+
+      @if (e !== 'nouvelle') {
+        <label class="case">
+          <input type="checkbox" name="actif" [(ngModel)]="formulaire.actif" />
+          Caisse active (decochez pour la retirer sans perdre son historique)
+        </label>
+      }
+
+      <div class="actions-formulaire">
+        <button class="bouton secondaire" type="button" (click)="edition.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!formulaire.nom.trim()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (aOuvrir(); as c) {
+  <app-ouverture-session [caisseId]="c.id" [caisseNom]="c.nom" (ferme)="aOuvrir.set(null)" (ouverte)="sessionOuverte($event)" />
+}
+@if (aFermer(); as s) {
+  <app-fermeture-session [session]="s" (ferme)="aFermer.set(null); charger()" (fermee)="charger()" />
+}

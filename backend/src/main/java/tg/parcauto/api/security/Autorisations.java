@@ -17,6 +17,24 @@ public final class Autorisations {
     /** Reserve a l'administrateur : comptes utilisateurs et parametrage sensible. */
     public static final String ADMINISTRATION = "hasRole('ADMIN')";
 
+    /** Point de vente : catalogue, stock, annulations et rapports. */
+    public static final String PDV_GESTION = "hasAnyRole('ADMIN','GERANT')";
+
+    /** Point de vente : encaissement, ouvert en plus au caissier et au serveur. */
+    public static final String PDV_CAISSE = "hasAnyRole('ADMIN','GERANT','CAISSIER','SERVEUR')";
+
+    /** Bar / restaurant : plan de salle et commandes des tables. */
+    public static final String PDV_SALLE = "hasAnyRole('ADMIN','GERANT','CAISSIER','SERVEUR')";
+
+    /** Bar / restaurant : ecrans de preparation de la cuisine et du bar. */
+    public static final String PDV_PREPARATION = "hasAnyRole('ADMIN','GERANT','PREPARATEUR')";
+
+    /** Point de vente : tout le personnel, pour les notifications de son poste. */
+    public static final String PDV_PERSONNEL = "hasAnyRole('ADMIN','GERANT','CAISSIER','SERVEUR','PREPARATEUR')";
+
+    /** Reserve a l'exploitant de la plateforme : entreprises abonnees. */
+    public static final String PLATEFORME = "hasRole('SUPER_ADMIN')";
+
     private Autorisations() {
     }
 }

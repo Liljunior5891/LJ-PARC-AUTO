@@ -1,0 +1,123 @@
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import {
+  CommandeFournisseurDetail,
+  LIBELLES_STATUT_COMMANDE_FOURNISSEUR,
+  LigneCommandeFournisseur
+} from '../../../core/models/pdv';
+import { PdvService } from '../../../core/services/pdv.service';
+import { ChampQuantite } from '../../../shared/champ-quantite';
+import { Modale } from '../../../shared/modale';
+import { FormulaireCommande } from './formulaire-commande';
+
+/**
+ * Une commande fournisseur et ses produits. Tant qu'elle est en cours, elle
+ * se modifie, s'annule ou se receptionne : les quantites effectivement
+ * livrees entrent alors en stock.
+ */
+@Component({
+  selector: 'app-commande-fournisseur-pdv',
+  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink, Modale, FormulaireCommande, ChampQuantite],
+  templateUrl: './commande-fournisseur.html',
+  styleUrl: './commande-fournisseur.scss'
+})
+export class CommandeFournisseurPdv implements OnInit {
+  private readonly service = inject(PdvService);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly libelles = LIBELLES_STATUT_COMMANDE_FOURNISSEUR;
+  readonly commande = signal<CommandeFournisseurDetail | null>(null);
+  readonly erreur = signal<string | null>(null);
+  readonly succes = signal<string | null>(null);
+  readonly edition = signal(false);
+
+  // Reception : quantite livree et cout par ligne
+  readonly reception = signal(false);
+  readonly recues = signal<Record<number, { quantite: number | null; cout: number | null }>>({});
+
+  readonly enCours = computed(() => this.commande()?.resume.statut === 'EN_COURS');
+  readonly totalRecu = computed(() =>
+    (this.commande()?.lignes ?? []).reduce((s, l) => s + (l.quantiteRecue ?? 0) * (l.coutUnitaire ?? 0), 0)
+  );
+  readonly totalReception = computed(() =>
+    (this.commande()?.lignes ?? []).reduce((s, l) => {
+      const r = this.recues()[l.id];
+      return s + (r?.quantite ?? 0) * (r?.cout ?? 0);
+    }, 0)
+  );
+
+  ngOnInit(): void {
+    this.charger();
+  }
+
+  ecart(l: LigneCommandeFournisseur): number | null {
+    return l.quantiteRecue == null ? null : l.quantiteRecue - l.quantite;
+  }
+
+  ouvrirReception(): void {
+    const recues: Record<number, { quantite: number | null; cout: number | null }> = {};
+    for (const l of this.commande()?.lignes ?? []) {
+      recues[l.id] = { quantite: l.quantite, cout: l.coutUnitaire ?? null };
+    }
+    this.recues.set(recues);
+    this.erreur.set(null);
+    this.reception.set(true);
+  }
+
+  modifierRecue(ligne: LigneCommandeFournisseur, champ: 'quantite' | 'cout', valeur: number | null): void {
+    this.recues.update((r) => ({ ...r, [ligne.id]: { ...r[ligne.id], [champ]: valeur } }));
+  }
+
+  receptionner(): void {
+    const c = this.commande();
+    if (!c) {
+      return;
+    }
+    const lignes = c.lignes.map((l) => ({
+      ligneId: l.id,
+      quantiteRecue: Math.max(0, this.recues()[l.id]?.quantite ?? 0),
+      coutUnitaire: this.recues()[l.id]?.cout ?? null
+    }));
+    this.service.receptionnerCommandeFournisseur(c.resume.id, lignes).subscribe({
+      next: (detail) => {
+        this.commande.set(detail);
+        this.reception.set(false);
+        this.succes.set('Commande receptionnee : les quantites livrees sont entrees en stock.');
+      },
+      error: (e) => this.erreur.set(this.message(e, 'Reception impossible.'))
+    });
+  }
+
+  annuler(): void {
+    const c = this.commande();
+    if (!c) {
+      return;
+    }
+    this.service.annulerCommandeFournisseur(c.resume.id).subscribe({
+      next: (detail) => {
+        this.commande.set(detail);
+        this.succes.set('Commande annulee.');
+      },
+      error: (e) => this.erreur.set(this.message(e, 'Annulation impossible.'))
+    });
+  }
+
+  apresModification(detail: CommandeFournisseurDetail): void {
+    this.commande.set(detail);
+    this.edition.set(false);
+    this.succes.set('Commande modifiee.');
+  }
+
+  private charger(): void {
+    this.service.commandeFournisseur(Number(this.route.snapshot.paramMap.get('id'))).subscribe({
+      next: (c) => this.commande.set(c),
+      error: (e) => this.erreur.set(this.message(e, 'Commande introuvable.'))
+    });
+  }
+
+  private message(reponse: unknown, defaut: string): string {
+    return (reponse as { error?: { message?: string } })?.error?.message ?? defaut;
+  }
+}

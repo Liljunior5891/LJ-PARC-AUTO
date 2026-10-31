@@ -1,50 +1,25 @@
 package tg.parcauto.api.common;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
-import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.hibernate.annotations.TenantId;
 
-import java.time.Instant;
-
-/** Socle commun a toutes les entites : identifiant, audit et verrouillage optimiste. */
+/**
+ * Socle des donnees metier : chaque ligne appartient a une entreprise cliente.
+ * <p>
+ * {@link TenantId} confie le cloisonnement a Hibernate : l'entreprise courante
+ * est posee a l'insertion et ajoutee a chaque requete, y compris les chargements
+ * par identifiant. Une entite qui herite de cette classe est donc isolee par
+ * defaut ; aucun service n'a a filtrer lui-meme.
+ */
 @Getter
 @Setter
 @MappedSuperclass
-@EntityListeners(AuditingEntityListener.class)
-public abstract class BaseEntity {
+public abstract class BaseEntity extends EntiteAuditee {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @CreatedDate
-    @Column(name = "cree_le", updatable = false)
-    private Instant creeLe;
-
-    @CreatedBy
-    @Column(name = "cree_par", updatable = false, length = 100)
-    private String creePar;
-
-    @LastModifiedDate
-    @Column(name = "modifie_le")
-    private Instant modifieLe;
-
-    @LastModifiedBy
-    @Column(name = "modifie_par", length = 100)
-    private String modifiePar;
-
-    @Version
-    @Column(name = "version")
-    private Integer version;
+    @TenantId
+    @Column(name = "entreprise_id", nullable = false, updatable = false)
+    private Long entrepriseId;
 }

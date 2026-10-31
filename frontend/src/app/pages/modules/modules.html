@@ -1,0 +1,92 @@
+<div class="entete-page">
+  <div>
+    <h1>Modules</h1>
+    <p class="sous-titre">
+      Les applications activees pour {{ entreprise || 'votre entreprise' }}.
+      Chaque module se travaille independamment ; vos donnees restent propres a votre entreprise.
+    </p>
+  </div>
+</div>
+
+@if (aucunActif()) {
+  <div class="message vide">
+    @if (estAdmin) {
+      Bienvenue ! Activez un premier module pour commencer a travailler.
+    } @else {
+      Aucun module n'est encore active. Demandez a l'administrateur de votre entreprise d'en activer un.
+    }
+  </div>
+}
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+<div class="grille-modules">
+  @for (module of modules(); track module.code) {
+    <article class="carte module" [class.actif]="module.actif" [class.indisponible]="!module.disponible">
+      <div class="tete">
+        <span class="icone" aria-hidden="true">{{ presentation[module.code].icone }}</span>
+        @if (module.actif) {
+          <span class="etat actif">Active</span>
+        } @else if (!module.disponible) {
+          <span class="etat bientot">Bientot disponible</span>
+        }
+      </div>
+      <h2>{{ module.libelle }}</h2>
+      <p>{{ module.description }}</p>
+      @if (module.actif && libelleVariante(module); as type) {
+        <p class="variante">
+          <span aria-hidden="true">{{ icones[module.variante!] }}</span>
+          Type d'activite : <strong>{{ type }}</strong>
+          @if (estAdmin) {
+            <button class="lien" type="button" (click)="demanderVariante(module, false)">Changer</button>
+          }
+        </p>
+      }
+
+      <div class="actions">
+        @if (module.actif) {
+          <button class="bouton" type="button" (click)="ouvrir(module)">Ouvrir</button>
+          @if (estAdmin) {
+            <button class="bouton secondaire" type="button" [disabled]="enCours() !== null"
+                    (click)="desactiver(module)"
+                    title="Le module disparait du menu ; ses donnees sont conservees">
+              {{ enCours() === module.code ? 'Desactivation...' : 'Desactiver' }}
+            </button>
+          }
+        } @else if (module.disponible && estAdmin) {
+          <button class="bouton" type="button" [disabled]="enCours() !== null" (click)="activer(module)">
+            {{ enCours() === module.code ? 'Activation...' : 'Activer' }}
+          </button>
+        }
+      </div>
+    </article>
+  }
+</div>
+
+<!-- Type d'activite d'un module qui se decline -->
+@if (choix(); as c) {
+  <app-modale [titre]="c.activation ? 'Activer ' + c.module.libelle : 'Changer le type d’activite'"
+              sousTitre="Les ecrans du module s'adaptent a votre metier." largeur="620px"
+              [erreur]="erreur()" (ferme)="choix.set(null)">
+    <form (ngSubmit)="confirmerVariante()">
+      <div class="choix-variantes" role="radiogroup" aria-label="Type d'activite">
+      @for (v of c.module.variantes; track v.code) {
+        <button type="button" class="variante-option" role="radio"
+                [class.choisie]="varianteChoisie() === v.code" [attr.aria-checked]="varianteChoisie() === v.code"
+                (click)="varianteChoisie.set(v.code)">
+          <span class="icone" aria-hidden="true">{{ icones[v.code] }}</span>
+          <strong>{{ v.libelle }}</strong>
+          <small>{{ v.description }}</small>
+        </button>
+      }
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire" type="button" (click)="choix.set(null)">Annuler</button>
+      <button class="bouton" type="submit" [disabled]="!varianteChoisie() || enCours() !== null">
+        {{ enCours() ? 'Enregistrement...' : (c.activation ? 'Activer' : 'Enregistrer') }}
+      </button>
+    </div>
+    </form>
+  </app-modale>
+}

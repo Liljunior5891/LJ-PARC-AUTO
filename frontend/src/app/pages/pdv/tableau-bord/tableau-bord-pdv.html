@@ -1,0 +1,437 @@
+<div class="entete-page">
+  <div>
+    <h1>Tableau de bord</h1>
+    <p class="sous-titre">Vision globale du point de vente — {{ libellePeriode() }}</p>
+  </div>
+  <div class="commandes-bord">
+    <div class="choix-periode">
+      <select [ngModel]="portee()" (ngModelChange)="changerPortee($event)" aria-label="Periode observee">
+        @for (p of portees; track p.valeur) {
+          <option [ngValue]="p.valeur">{{ p.libelle }}</option>
+        }
+      </select>
+    </div>
+    @if (portee() === 'PERSONNALISEE') {
+      <div class="dates-periode" [class.invalides]="!datesValides()">
+        <span>Du</span>
+        <input type="date" [max]="dateFin()" [ngModel]="dateDebut()" (ngModelChange)="changerDate('debut', $event)"
+               aria-label="Date de debut" />
+        <span>au</span>
+        <input type="date" [min]="dateDebut()" [ngModel]="dateFin()" (ngModelChange)="changerDate('fin', $event)"
+               aria-label="Date de fin" />
+      </div>
+    }
+    <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
+  </div>
+</div>
+
+<!-- Illustrations des cartes de tete : ticket de caisse, cabas, pieces. -->
+<ng-template #illustrationTicket>
+  <svg class="illustration" viewBox="0 0 160 110" aria-hidden="true">
+    <ellipse cx="82" cy="102" rx="64" ry="5" fill="rgba(0,0,0,0.18)" />
+    <g transform="rotate(-8 80 55)">
+      <path d="M40 8 h76 v84 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-8 6 l-8 -6 l-4 3 z" fill="#ffffff" />
+      <rect x="50" y="20" width="44" height="6" rx="3" fill="#bfe6d3" />
+      <rect x="50" y="34" width="56" height="4" rx="2" fill="#dff3e9" />
+      <rect x="50" y="44" width="48" height="4" rx="2" fill="#dff3e9" />
+      <rect x="50" y="54" width="52" height="4" rx="2" fill="#dff3e9" />
+      <rect x="50" y="66" width="56" height="8" rx="3" fill="#2fb383" />
+    </g>
+    <ellipse cx="128" cy="92" rx="16" ry="6" fill="#d39b16" />
+    <rect x="112" y="80" width="32" height="12" fill="#e8b423" />
+    <ellipse cx="128" cy="80" rx="16" ry="6" fill="#ffd45c" />
+    <text x="128" y="83.5" text-anchor="middle" font-size="9" font-weight="800" fill="#b07a06">F</text>
+  </svg>
+</ng-template>
+
+<ng-template #illustrationCabas>
+  <svg class="illustration" viewBox="0 0 160 110" aria-hidden="true">
+    <ellipse cx="80" cy="102" rx="64" ry="5" fill="rgba(0,0,0,0.18)" />
+    <rect x="52" y="14" width="22" height="40" rx="4" fill="#eaf5d0" transform="rotate(-12 63 34)" />
+    <rect x="80" y="10" width="20" height="44" rx="4" fill="#ffffff" transform="rotate(10 90 32)" />
+    <circle cx="70" cy="22" r="9" fill="#ff8c1a" />
+    <path d="M30 42 h100 l-10 56 h-80 z" fill="#3f4a12" />
+    <path d="M30 42 h100 l-2 10 h-96 z" fill="#56631c" />
+    <path d="M58 42 v-8 a22 22 0 0 1 44 0 v8" fill="none" stroke="#2c340b" stroke-width="6" stroke-linecap="round" />
+  </svg>
+</ng-template>
+
+<ng-template #illustrationPieces>
+  <svg class="illustration" viewBox="0 0 160 110" aria-hidden="true">
+    <ellipse cx="80" cy="102" rx="64" ry="5" fill="rgba(0,0,0,0.18)" />
+    @for (pile of [{ x: 52, pieces: [0, 1, 2] }, { x: 88, pieces: [0, 1, 2, 3, 4] },
+                   { x: 124, pieces: [0, 1, 2, 3, 4, 5, 6] }]; track pile.x) {
+      @for (i of pile.pieces; track i) {
+        <ellipse [attr.cx]="pile.x" [attr.cy]="98 - i * 9" rx="16" ry="6" fill="#d39b16" />
+        <rect [attr.x]="pile.x - 16" [attr.y]="90 - i * 9" width="32" height="8" fill="#e8b423" />
+        <ellipse [attr.cx]="pile.x" [attr.cy]="90 - i * 9" rx="16" ry="6" fill="#ffd45c" />
+      }
+    }
+    <path d="M24 60 L60 44 L84 52 L130 14" fill="none" stroke="#ffffff" stroke-width="5"
+          stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M116 12 L132 12 L132 28" fill="none" stroke="#ffffff" stroke-width="5"
+          stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+</ng-template>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+@if (chargement()) {
+  <div class="message vide">Chargement des indicateurs...</div>
+} @else if (donnees(); as d) {
+  <!-- Trois cartes de tete : ce que la vente rapporte, ce qu'elle coute et ce qu'elle degage. -->
+  <section class="cartes-tete">
+    <a class="carte-tete vert" routerLink="/pdv/ventes">
+      <span class="titre">Chiffre d'affaires</span>
+      <strong>{{ grosMontant(d.chiffreAffaires) }}<small>FCFA</small></strong>
+      <span class="detail">{{ d.tickets }} commande(s) · panier moyen {{ d.panierMoyen | number: '1.0-0' }}</span>
+      <ng-container [ngTemplateOutlet]="illustrationTicket" />
+    </a>
+    <a class="carte-tete olive" routerLink="/pdv/stock">
+      <span class="titre">Cout des ventes</span>
+      <strong>{{ grosMontant(d.coutVentes) }}<small>FCFA</small></strong>
+      <span class="detail">au cout d'achat · {{ d.achatsRecus | number: '1.0-0' }} receptionnes</span>
+      <ng-container [ngTemplateOutlet]="illustrationCabas" />
+    </a>
+    <a class="carte-tete violet" routerLink="/pdv/ventes">
+      <span class="titre">Marge brute</span>
+      <strong>{{ grosMontant(d.margeBrute) }}<small>FCFA</small></strong>
+      <span class="detail">marge {{ d.margePourcent | number: '1.0-1' }} % · {{ d.ticketsAnnules }} commande(s) annulee(s)</span>
+      <ng-container [ngTemplateOutlet]="illustrationPieces" />
+    </a>
+  </section>
+
+  <!-- Activite, alertes de stock et repartition des ventes. -->
+  <section class="rangee trois">
+    <div class="carte panneau">
+      <div class="entete-panneau">
+        <h2>Activite du point de vente</h2>
+        <a class="lien-tout" routerLink="/pdv/caisses">{{ d.caisses }} caisse(s)</a>
+      </div>
+      <!-- Moyens de paiement en barre continue, comme l'etat du parc. -->
+      <div class="barre-etats">
+        @for (m of modes(); track m.mode) {
+          @if (m.total > 0) {
+            <span [style.flex]="m.total" [style.background]="m.couleur"
+                  [attr.title]="m.libelle + ' : ' + (m.total | number: '1.0-0') + ' F'"></span>
+          }
+        }
+      </div>
+      <ul class="legende-graphique modes">
+        @for (m of modes(); track m.mode) {
+          <li><span class="puce" [style.background]="m.couleur"></span> {{ m.libelle }}
+            <strong>{{ part(m.total, d.chiffreAffaires) }} %</strong></li>
+        }
+      </ul>
+
+      <div class="cartes-apercu compactes">
+        <a class="carte-apercu vert" routerLink="/pdv/caisses">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="3.5" y="9" width="17" height="11" rx="2.5" /><path d="M7 9V5.5h10V9M8 14h3M14 14h2" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Caisses ouvertes</span>
+            <strong>{{ d.caissesOuvertes }}<em>/{{ d.caisses }}</em></strong>
+            <small>{{ d.caissesOuvertes ? 'en service en ce moment' : 'aucune caisse ouverte' }}</small>
+          </span>
+          <span class="jauge"><i [style.width.%]="part(d.caissesOuvertes, d.caisses)"></i></span>
+        </a>
+
+        <a class="carte-apercu bleu" routerLink="/pdv/ventes">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z" /><path d="M9 8h6M9 12h6M9 16h3" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Commandes</span>
+            <strong>{{ d.tickets }}</strong>
+            <small>panier moyen {{ d.panierMoyen | number: '1.0-0' }} F</small>
+          </span>
+        </a>
+
+        @if (d.salle; as s) {
+          <a class="carte-apercu violet" routerLink="/pdv/salle">
+            <span class="icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="3" rx="1.5" /><path d="M6 12v7M18 12v7M9 9V5M15 9V5" /></svg>
+            </span>
+            <span class="textes">
+              <span class="libelle">Tables occupees</span>
+              <strong>{{ s.tablesOccupees }}<em>/{{ s.tables }}</em></strong>
+              <small>{{ s.commandesOuvertes }} commande(s) en cours</small>
+            </span>
+            <span class="jauge"><i [style.width.%]="part(s.tablesOccupees, s.tables)"></i></span>
+          </a>
+
+          <a class="carte-apercu orange" routerLink="/pdv/ecrans">
+            <span class="icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 11h14v2a7 7 0 0 1-14 0zM12 4v4M8 5l1 3M16 5l-1 3" /></svg>
+            </span>
+            <span class="textes">
+              <span class="libelle">En preparation</span>
+              <strong>{{ s.enPreparation }}</strong>
+              <small>{{ s.pretesAServir }} article(s) pret(s) a servir</small>
+            </span>
+          </a>
+
+          <a class="carte-apercu rouge" routerLink="/pdv/salle" [class.calme]="s.demandesClients === 0">
+            <span class="icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg>
+            </span>
+            <span class="textes">
+              <span class="libelle">Demandes de clients</span>
+              <strong>{{ s.demandesClients }}</strong>
+              <small>commandes QR et appels en attente</small>
+            </span>
+          </a>
+        } @else {
+          <a class="carte-apercu violet" routerLink="/pdv/articles">
+            <span class="icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4-8 4zM4 8v8l8 4 8-4V8M12 12v8" /></svg>
+            </span>
+            <span class="textes">
+              <span class="libelle">Produits en vente</span>
+              <strong>{{ d.articlesActifs }}</strong>
+              <small>au catalogue de la caisse</small>
+            </span>
+          </a>
+        }
+      </div>
+    </div>
+
+    <div class="carte panneau">
+      <h2>Alertes de stock</h2>
+      <div class="cartes-apercu compactes alertes-documents">
+        <a class="carte-apercu rouge" routerLink="/pdv/inventaire" [class.calme]="d.ruptures === 0">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4-8 4zM4 8v8l8 4 8-4V8" /><path d="M9 13l6 6M15 13l-6 6" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Produits en rupture</span>
+            <strong>{{ d.ruptures }}</strong>
+            <small>{{ d.ruptures ? 'plus rien en rayon' : 'aucune rupture' }}</small>
+          </span>
+        </a>
+
+        <a class="carte-apercu orange" routerLink="/pdv/stock" [class.calme]="d.sousSeuil === 0">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Sous le seuil d'alerte</span>
+            <strong>{{ d.sousSeuil }}</strong>
+            <small>a reapprovisionner</small>
+          </span>
+        </a>
+
+        <a class="carte-apercu orange" routerLink="/pdv/stock" [class.calme]="d.commandesFournisseursEnRetard === 0">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7" /><circle cx="7" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Livraisons attendues</span>
+            <strong>{{ d.commandesFournisseursEnCours }}</strong>
+            <small>{{ d.commandesFournisseursEnRetard ? d.commandesFournisseursEnRetard + ' en retard' : 'aucune en retard' }}</small>
+          </span>
+        </a>
+      </div>
+      @if (d.stockBas.length > 0) {
+        <ul class="liste-stock-bas">
+          @for (a of d.stockBas.slice(0, 4); track a.id) {
+            <li>
+              <span>{{ a.nom }}</span>
+              <strong [class.resultat-negatif]="a.stockActuel <= 0">{{ a.stockActuel | number: '1.0-3' }}</strong>
+              <small>seuil {{ a.seuilAlerte | number: '1.0-3' }}</small>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>Ventes par categorie</h2>
+        <p class="sous-titre">{{ libellePeriode() }}</p>
+      </figcaption>
+      <div class="donut">
+        <svg viewBox="0 0 160 160" role="img" aria-label="Repartition des ventes par categorie">
+          <circle cx="80" cy="80" r="60" fill="none" stroke="#eef2f0" stroke-width="22" />
+          @for (arc of arcsDonut(); track arc.libelle) {
+            <circle cx="80" cy="80" r="60" fill="none" [attr.stroke]="arc.couleur" stroke-width="22"
+                    [attr.stroke-dasharray]="arc.longueur + ' ' + circonference"
+                    [attr.stroke-dashoffset]="arc.decalage" transform="rotate(-90 80 80)">
+              <title>{{ arc.libelle }} : {{ arc.total | number: '1.0-0' }} FCFA ({{ arc.pourcent }} %)</title>
+            </circle>
+          }
+        </svg>
+        <div class="centre-donut">
+          <strong>{{ abrege(totalCategories()) }}</strong>
+          <small>FCFA</small>
+        </div>
+      </div>
+      <ul class="legende-donut">
+        @for (arc of arcsDonut(); track arc.libelle) {
+          <li>
+            <span class="puce" [style.background]="arc.couleur"></span>
+            <span class="nom">{{ arc.icone }} {{ arc.libelle }}</span>
+            <strong>{{ arc.pourcent }} %</strong>
+          </li>
+        } @empty {
+          <li class="message vide">Aucune vente sur cette periode.</li>
+        }
+      </ul>
+    </figure>
+  </section>
+
+  <!-- Dernieres commandes a gauche, evolution a droite, plus large. -->
+  <section class="rangee etroit-large">
+    <div class="carte panneau">
+      <div class="entete-panneau">
+        <div>
+          <h2>Dernieres commandes</h2>
+          <p class="sous-titre">Les encaissements les plus recents</p>
+        </div>
+        <a class="lien-tout" routerLink="/pdv/ventes">Tout voir</a>
+      </div>
+      <div class="table-billets">
+        <div class="ligne-entete">
+          <span>Caissier</span><span>{{ restauration ? 'Table / client' : 'Client' }}</span><span>Heure</span><span>Montant</span>
+        </div>
+        @for (t of d.derniersTickets; track t.id) {
+          <a class="billet" routerLink="/pdv/ventes" [class.annule]="t.statut === 'ANNULEE'">
+            <span class="personne">
+              <span class="avatar">{{ initiales(t.caissierNom) }}</span>
+              <span>
+                <strong>{{ t.caissierNom }}</strong>
+                <small>{{ t.numero }} · {{ t.modePaiementLibelle }}</small>
+              </span>
+            </span>
+            <span class="client">
+              {{ t.tableNom ? 'Table ' + t.tableNom : (t.clientNom || 'Comptoir') }}
+              <small>{{ t.statut === 'ANNULEE' ? 'annule' : t.sessionNumero }}</small>
+            </span>
+            <span><span class="pastille-km">{{ t.dateVente | date: 'HH:mm' }}</span></span>
+            <span class="montant">{{ t.total | number: '1.0-0' }}</span>
+          </a>
+        } @empty {
+          <p class="message vide">Aucune commande sur cette periode.</p>
+        }
+      </div>
+    </div>
+
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>Evolution</h2>
+        <p class="sous-titre">{{ d.granularite === 'JOUR' ? 'Par jour' : 'Par mois' }} — {{ libellePeriode() }}, en FCFA</p>
+      </figcaption>
+      @if (courbes(); as c) {
+        <svg class="courbes" [attr.viewBox]="'0 0 ' + largeurCourbes + ' ' + hauteurCourbes"
+             role="img" aria-label="Evolution du chiffre d'affaires, du cout d'achat et de la marge">
+          @for (g of c.graduations; track $index) {
+            <line [attr.x1]="44" [attr.x2]="largeurCourbes - 16" [attr.y1]="g.y" [attr.y2]="g.y" class="grille" />
+            <text [attr.x]="38" [attr.y]="g.y + 4" class="graduation">{{ abrege(g.valeur) }}</text>
+          }
+          <line [attr.x1]="44" [attr.x2]="largeurCourbes - 16" [attr.y1]="c.zero" [attr.y2]="c.zero" class="ligne-zero" />
+          @for (s of c.series; track s.libelle) {
+            <polyline [attr.points]="points(s)" fill="none" [attr.stroke]="s.couleur"
+                      stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+            @for (p of s.points; track $index) {
+              <circle [attr.cx]="p.x" [attr.cy]="p.y" r="3.5" fill="#fff" [attr.stroke]="s.couleur" stroke-width="2">
+                <title>{{ s.libelle }} {{ p.periode }} : {{ p.valeur | number: '1.0-0' }} FCFA</title>
+              </circle>
+            }
+          }
+          @for (e of c.etiquettes; track $index) {
+            <text [attr.x]="e.x" [attr.y]="hauteurCourbes - 4" class="etiquette-mois">{{ e.libelle }}</text>
+          }
+        </svg>
+        <ul class="legende-graphique">
+          @for (s of c.series; track s.libelle) {
+            <li><span class="puce" [style.background]="s.couleur"></span> {{ s.libelle }}</li>
+          }
+        </ul>
+      }
+    </figure>
+  </section>
+
+  <!-- Meilleures ventes, marge par periode, affluence par heure. -->
+  <section class="rangee trois">
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>Meilleures ventes</h2>
+        <p class="sous-titre">{{ libellePeriode() }}, en FCFA</p>
+      </figcaption>
+      <ul class="legende-graphique">
+        <li><span class="puce" [style.background]="couleurVentes"></span> Chiffre d'affaires</li>
+        <li><span class="puce" [style.background]="couleurMarge"></span> Marge</li>
+      </ul>
+      <div class="colonnes-camions">
+        @for (a of d.meilleursArticles; track a.articleId) {
+          <a class="camion" routerLink="/pdv/articles"
+             [attr.title]="a.libelle + ' — ' + a.quantite + ' vendu(s), CA ' + a.chiffreAffaires + ', marge ' + a.marge">
+            <span class="paire-barres">
+              <span class="barre" [style.height.%]="part(a.chiffreAffaires, maximumArticles())" [style.background]="couleurVentes"></span>
+              <span class="barre" [style.height.%]="part(a.marge, maximumArticles())" [style.background]="couleurMarge"></span>
+            </span>
+            <span class="etiquette-camion">{{ a.libelle }}</span>
+            <span class="valeur-colonne">{{ a.quantite | number: '1.0-3' }} vendu(s)</span>
+          </a>
+        } @empty {
+          <p class="message vide">Aucune vente sur cette periode.</p>
+        }
+      </div>
+    </figure>
+
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>Statistiques</h2>
+        <p class="sous-titre">Cout d'achat et marge {{ d.granularite === 'JOUR' ? 'par jour' : 'par mois' }}, en FCFA</p>
+      </figcaption>
+      <div class="graphe-empile">
+        <div class="axe-y">
+          @for (g of graduationsBarres(); track $index) {
+            <span>{{ abrege(g) }}</span>
+          }
+        </div>
+        <div class="zone-barres">
+          @for (b of barresEmpilees(); track b.point.cle) {
+            <div class="colonne" [attr.title]="b.point.libelle + ' — CA ' + b.point.chiffreAffaires
+                + ', cout ' + b.point.cout + ', marge ' + b.point.marge">
+              <span class="pile">
+                <span class="marge" [style.height.%]="b.marge"></span>
+                <span class="socle" [style.height.%]="b.socle"></span>
+              </span>
+              <span class="mois-court">{{ b.point.libelle }}</span>
+            </div>
+          }
+        </div>
+      </div>
+      <ul class="legende-graphique">
+        <li><span class="puce" style="background: #1d2b26"></span> Cout d'achat</li>
+        <li><span class="puce" style="background: #22c3a6"></span> Marge</li>
+      </ul>
+    </figure>
+
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>Affluence par heure</h2>
+        <p class="sous-titre">
+          {{ libellePeriode() }}
+          @if (heurePointe() !== null) { — pointe a {{ heurePointe() }} h }
+        </p>
+      </figcaption>
+      <div class="colonnes-camions affluence">
+        @for (h of heures(); track h.heure) {
+          <span class="camion" [attr.title]="h.heure + ' h — ' + h.tickets + ' commande(s), ' + h.chiffreAffaires + ' F'">
+            <span class="paire-barres">
+              <span class="barre" [style.height.%]="part(h.chiffreAffaires, maximumHeures())"
+                    [style.background]="h.heure === heurePointe() ? '#ff8c1a' : couleurAffluence"></span>
+            </span>
+            <span class="etiquette-camion">{{ h.heure }}h</span>
+            <span class="valeur-colonne">{{ h.tickets || '' }}</span>
+          </span>
+        }
+      </div>
+    </figure>
+  </section>
+}

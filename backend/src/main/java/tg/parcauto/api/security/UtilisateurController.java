@@ -98,6 +98,14 @@ public class UtilisateurController {
         service.reinitialiserMotDePasse(id, demande.motDePasse());
     }
 
+    @PutMapping("/{id}/pin")
+    @PreAuthorize(Autorisations.ADMINISTRATION)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Definit ou efface le code PIN de caisse d'un compte")
+    public void definirPin(@PathVariable Long id, @Valid @RequestBody UtilisateurDto.DefinitionPin demande) {
+        service.definirPin(id, demande.pin());
+    }
+
     @PutMapping("/moi/mot-de-passe")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Change son propre mot de passe")

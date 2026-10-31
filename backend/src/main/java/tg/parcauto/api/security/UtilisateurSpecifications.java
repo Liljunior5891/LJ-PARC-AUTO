@@ -12,10 +12,14 @@ public final class UtilisateurSpecifications {
     private UtilisateurSpecifications() {
     }
 
-    /** Recherche multicritere : chaque critere nul est simplement ignore. */
-    public static Specification<Utilisateur> rechercher(String q, Role role, Boolean actif) {
+    /**
+     * Recherche multicritere dans une entreprise : chaque critere nul est
+     * simplement ignore, sauf l'entreprise, toujours imposee.
+     */
+    public static Specification<Utilisateur> rechercher(Long entrepriseId, String q, Role role, Boolean actif) {
         return (racine, requete, cb) -> {
             List<Predicate> predicats = new ArrayList<>();
+            predicats.add(cb.equal(racine.get("entrepriseId"), entrepriseId));
 
             if (actif != null) {
                 predicats.add(cb.equal(racine.get("actif"), actif));

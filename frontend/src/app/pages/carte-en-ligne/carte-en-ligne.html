@@ -1,0 +1,187 @@
+@if (introuvable()) {
+  <main class="introuvable">
+    <span aria-hidden="true">📵</span>
+    <h1>Code QR non reconnu</h1>
+    <p>{{ introuvable() }}</p>
+    <p>Demandez la carte a un serveur.</p>
+  </main>
+} @else if (carte(); as c) {
+  <div class="page">
+    <header class="entete">
+      <div class="identite">
+        @if (c.logo) {
+          <img class="logo" [src]="c.logo" [alt]="c.etablissement" />
+        } @else {
+          <span class="logo vide" aria-hidden="true">🍽️</span>
+        }
+        <div>
+          <h1>{{ c.etablissement }}</h1>
+          <span class="table">Table {{ c.table }}</span>
+        </div>
+      </div>
+      @if (c.messageAccueil) {
+        <p class="accueil">{{ c.messageAccueil }}</p>
+      }
+      <nav class="onglets" aria-label="Sections">
+        <button type="button" [class.actif]="onglet() === 'carte'" (click)="onglet.set('carte')">La carte</button>
+        <button type="button" [class.actif]="onglet() === 'commande'" (click)="onglet.set('commande')">
+          Ma commande
+          @if (suivi()?.lignes?.length) { <span class="nombre">{{ suivi()!.lignes.length }}</span> }
+        </button>
+      </nav>
+    </header>
+
+    @if (confirmation()) {
+      <div class="bandeau succes" role="status">
+        <span>{{ confirmation() }}</span>
+        <button type="button" aria-label="Fermer" (click)="confirmation.set(null)">×</button>
+      </div>
+    }
+    @if (erreur()) {
+      <div class="bandeau erreur" role="alert">
+        <span>{{ erreur() }}</span>
+        <button type="button" aria-label="Fermer" (click)="erreur.set(null)">×</button>
+      </div>
+    }
+    @if (!c.caisseOuverte) {
+      <div class="bandeau info">L'etablissement ne prend pas de commande pour le moment : vous pouvez consulter la carte.</div>
+    } @else if (!c.commandeOuverte) {
+      <div class="bandeau info">La commande en ligne est fermee pour le moment : consultez la carte et appelez un serveur.</div>
+    }
+
+    @if (onglet() === 'carte') {
+      <div class="categories" role="tablist" aria-label="Categories">
+        <button type="button" role="tab" class="puce" [class.actif]="categorie() === null" (click)="categorie.set(null)">Tout</button>
+        @for (cat of c.categories; track cat.id) {
+          <button type="button" role="tab" class="puce" [class.actif]="categorie() === cat.id" (click)="categorie.set(cat.id)">
+            {{ cat.icone }} {{ cat.nom }}
+          </button>
+        }
+      </div>
+
+      <main class="plats">
+        @for (a of articlesAffiches(); track a.id) {
+          @let q = quantite(a.id);
+          <article class="plat" [class.choisi]="q > 0" [class.indisponible]="!a.disponible">
+            <div class="visuel">
+              @if (a.image) {
+                <img [src]="a.image" [alt]="a.nom" loading="lazy" />
+              } @else {
+                <span aria-hidden="true">{{ icone(a.categorieId) }}</span>
+              }
+              @if (!a.disponible) { <span class="epuise">Epuise</span> }
+            </div>
+            <div class="infos">
+              <h2>{{ a.nom }}</h2>
+              <strong>{{ a.prix | number: '1.0-0' }} F</strong>
+            </div>
+            @if (c.commandeOuverte && a.disponible) {
+              @if (q > 0) {
+                <div class="compteur">
+                  <button type="button" aria-label="Retirer un" (click)="changer(a.id, -1)">−</button>
+                  <span>{{ q }}</span>
+                  <button type="button" aria-label="Ajouter un" (click)="changer(a.id, 1)">+</button>
+                </div>
+              } @else {
+                <button type="button" class="ajouter" [attr.aria-label]="'Ajouter ' + a.nom" (click)="ajouter(a)">+</button>
+              }
+            }
+          </article>
+        } @empty {
+          <p class="vide">Aucun article dans cette categorie.</p>
+        }
+      </main>
+    } @else {
+      <main class="suivi">
+        @if (suivi(); as s) {
+          @if (s.appel) {
+            <div class="bandeau info">
+              {{ s.appel === 'ADDITION' ? 'Addition demandee : un serveur arrive avec la note.' : 'Un serveur a ete appele, il arrive.' }}
+            </div>
+          }
+          <ul class="lignes">
+            @for (l of s.lignes; track $index) {
+              <li>
+                <span class="quantite">{{ l.quantite | number: '1.0-3' }}×</span>
+                <span class="libelle">{{ l.libelle }} @if (l.note) { <small>{{ l.note }}</small> }</span>
+                <span class="etape {{ etapes[l.statut].classe }}">{{ etapes[l.statut].libelle }}</span>
+              </li>
+            } @empty {
+              <li class="vide">Rien n'a encore ete commande.</li>
+            }
+          </ul>
+          <div class="total">
+            <span>Total de la table</span>
+            <strong>{{ s.total | number: '1.0-0' }} F</strong>
+          </div>
+          @if (s.total > s.resteAPayer) {
+            <p class="deja">Deja regle : {{ s.total - s.resteAPayer | number: '1.0-0' }} F · reste {{ s.resteAPayer | number: '1.0-0' }} F</p>
+          }
+        } @else {
+          <div class="vide grand">
+            <span aria-hidden="true">🧾</span>
+            <p>Pas encore de commande pour cette table.</p>
+            <button type="button" class="bouton-vert" (click)="onglet.set('carte')">Voir la carte</button>
+          </div>
+        }
+
+        @if (c.caisseOuverte) {
+          <div class="appels">
+            <button type="button" class="appel" (click)="appeler('SERVEUR')">🙋 Appeler un serveur</button>
+            <button type="button" class="appel" [disabled]="!suivi() || suivi()!.total <= 0" (click)="appeler('ADDITION')">🧾 Demander l'addition</button>
+          </div>
+        }
+        <p class="note-paiement">Le reglement se fait aupres du serveur, en especes, mobile money ou carte.</p>
+      </main>
+    }
+
+    <!-- Panier -->
+    @if (nombreArticles() > 0 && c.commandeOuverte) {
+      <button type="button" class="barre-panier" (click)="panierOuvert.set(true)">
+        <span class="pastille">{{ nombreArticles() }}</span>
+        <span>Voir mon panier</span>
+        <strong>{{ totalPanier() | number: '1.0-0' }} F</strong>
+      </button>
+    }
+
+    @if (panierOuvert()) {
+      <div class="voile" (click)="panierOuvert.set(false)"></div>
+      <section class="feuille" role="dialog" aria-modal="true" aria-label="Mon panier">
+        <header>
+          <h2>Mon panier</h2>
+          <button type="button" aria-label="Fermer" (click)="panierOuvert.set(false)">×</button>
+        </header>
+        <ul class="panier">
+          @for (l of panier(); track l.articleId) {
+            <li>
+              <div class="ligne">
+                <span class="libelle">{{ article(l.articleId)?.nom }}</span>
+                <div class="compteur petit">
+                  <button type="button" aria-label="Retirer un" (click)="changer(l.articleId, -1)">−</button>
+                  <span>{{ l.quantite }}</span>
+                  <button type="button" aria-label="Ajouter un" (click)="changer(l.articleId, 1)">+</button>
+                </div>
+                <strong>{{ (article(l.articleId)?.prix ?? 0) * l.quantite | number: '1.0-0' }} F</strong>
+              </div>
+              <input class="consigne" type="text" maxlength="120" placeholder="Une precision ? (ex. sans piment)"
+                     [ngModel]="l.note" (ngModelChange)="changerNote(l, $event)" [attr.aria-label]="'Precision pour ' + article(l.articleId)?.nom" />
+            </li>
+          }
+        </ul>
+        <div class="total">
+          <span>Total</span>
+          <strong>{{ totalPanier() | number: '1.0-0' }} F</strong>
+        </div>
+        <p class="note-paiement">
+          {{ c.validationServeur ? 'Un serveur confirme votre commande avant la cuisine.' : 'Votre commande part directement en cuisine.' }}
+          Vous reglez a la fin du repas.
+        </p>
+        <button type="button" class="bouton-vert large" [disabled]="envoi()" (click)="envoyer()">
+          {{ envoi() ? 'Envoi...' : 'Envoyer ma commande' }}
+        </button>
+      </section>
+    }
+  </div>
+} @else {
+  <main class="introuvable"><p>Chargement de la carte...</p></main>
+}

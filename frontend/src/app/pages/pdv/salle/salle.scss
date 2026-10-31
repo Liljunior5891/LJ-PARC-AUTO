@@ -1,0 +1,382 @@
+/* Plan de service : les tables a leur place, colorees selon leur etat. */
+
+:host {
+  --etat-libre: #1e874b;
+  --etat-occupee: #1565c0;
+  --etat-a-envoyer: #8a94a0;
+  --etat-prete: #e8870e;
+  --etat-addition: #7a4fd1;
+  --etat-demande: #d6336c;
+}
+
+.alerte-demande {
+  color: var(--etat-demande);
+}
+
+.alerte-pret {
+  color: var(--etat-prete);
+}
+
+.service {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.zone-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.onglets-salles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  .filtre small {
+    margin-left: 0.4rem;
+    opacity: 0.7;
+  }
+}
+
+.plan {
+  position: relative;
+  width: 100%;
+  border-radius: var(--rayon);
+  background-color: var(--couleur-surface);
+  background-image:
+    linear-gradient(var(--couleur-bordure) 1px, transparent 1px),
+    linear-gradient(90deg, var(--couleur-bordure) 1px, transparent 1px);
+  background-size: 5% calc(100% / 6);
+  box-shadow: var(--ombre);
+}
+
+.table {
+  --teinte: var(--etat-libre);
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  border: 3px solid var(--teinte);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--teinte) 12%, var(--couleur-surface));
+  color: var(--couleur-texte);
+  font: inherit;
+  line-height: 1.15;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+
+  &:hover,
+  &:focus-visible {
+    transform: scale(1.04);
+    box-shadow: 0 6px 16px rgba(16, 24, 40, 0.18);
+    z-index: 1;
+  }
+
+  &.ronde {
+    border-radius: 50%;
+  }
+
+  &.occupee {
+    --teinte: var(--etat-occupee);
+  }
+
+  &.a-envoyer {
+    --teinte: var(--etat-a-envoyer);
+  }
+
+  &.prete {
+    --teinte: var(--etat-prete);
+    animation: appel 1.4s ease-in-out infinite;
+  }
+
+  &.addition {
+    --teinte: var(--etat-addition);
+  }
+
+  &.demande {
+    --teinte: var(--etat-demande);
+    animation: appel-demande 1.2s ease-in-out infinite;
+  }
+
+  &:not(.libre) {
+    background: var(--teinte);
+    color: #fff;
+  }
+
+  .nom {
+    font-size: clamp(0.8rem, 1.6vw, 1.15rem);
+  }
+
+  .detail,
+  .montant {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: clamp(0.6rem, 1vw, 0.78rem);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .montant {
+    font-weight: 600;
+  }
+
+  /* Hors du cadre de la table : elle ne cache pas le nom, meme sur une petite table ronde. */
+  .pastille {
+    position: absolute;
+    top: -9px;
+    right: -9px;
+    box-shadow: 0 1px 4px rgba(16, 24, 40, 0.3);
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 10px;
+    background: #fff;
+    color: var(--etat-prete);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 20px;
+  }
+}
+
+@keyframes appel-demande {
+  50% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--etat-demande) 35%, transparent);
+  }
+}
+
+@keyframes appel {
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--etat-prete) 35%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table.prete,
+  .table.demande {
+    animation: none;
+  }
+}
+
+.legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+}
+
+.temoin {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--etat-libre);
+
+  &.occupee { background: var(--etat-occupee); }
+  &.a-envoyer { background: var(--etat-a-envoyer); }
+  &.prete { background: var(--etat-prete); }
+  &.addition { background: var(--etat-addition); }
+  &.demande { background: var(--etat-demande); }
+}
+
+.comptoir {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+  }
+}
+
+.commande-comptoir {
+  --teinte: var(--etat-occupee);
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 4px solid var(--teinte);
+  border-radius: 8px;
+  background: var(--couleur-fond);
+  color: inherit;
+  text-decoration: none;
+
+  &.prete { --teinte: var(--etat-prete); }
+  &.addition { --teinte: var(--etat-addition); }
+  &.a-envoyer { --teinte: var(--etat-a-envoyer); }
+
+  span {
+    display: flex;
+    flex-direction: column;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+  }
+
+  .droite {
+    align-items: flex-end;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--teinte) 10%, var(--couleur-fond));
+  }
+}
+
+.vide-plan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 3rem 1rem;
+  text-align: center;
+
+  span {
+    font-size: 3rem;
+  }
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.choix-couverts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+
+  .filtre {
+    min-width: 44px;
+  }
+
+  input {
+    width: 90px;
+  }
+}
+
+/* Sur tablette, le plan prend toute la largeur ; le comptoir passe dessous. */
+@media (max-width: 1200px) {
+  .service {
+    grid-template-columns: 1fr;
+  }
+}
+.filtres-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.filtre {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 999px;
+  background: var(--couleur-surface);
+  font-weight: 600;
+  cursor: pointer;
+
+  &.actif {
+    border-color: var(--teinte, var(--couleur-primaire));
+    background: var(--teinte, var(--couleur-primaire));
+    color: #fff;
+  }
+}
+
+/* ------------------------------------------------ telephone */
+
+.liste-tables {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .plan {
+    display: none;
+  }
+
+  .liste-tables {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 0.6rem;
+  }
+
+  .entete-page {
+    flex-wrap: wrap;
+  }
+
+  .legende {
+    font-size: 0.75rem;
+  }
+}
+
+.tuile-table {
+  --teinte: var(--etat-libre);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-height: 92px;
+  padding: 0.6rem 0.7rem;
+  border: 2px solid var(--teinte);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--teinte) 10%, var(--couleur-surface));
+  color: var(--couleur-texte);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &.occupee { --teinte: var(--etat-occupee); }
+  &.a-envoyer { --teinte: var(--etat-a-envoyer); }
+  &.prete { --teinte: var(--etat-prete); }
+  &.addition { --teinte: var(--etat-addition); }
+  &.demande {
+    --teinte: var(--etat-demande);
+    animation: appel-demande 1.2s ease-in-out infinite;
+  }
+
+  &:not(.libre) {
+    background: var(--teinte);
+    color: #fff;
+  }
+
+  .nom {
+    font-size: 1.3rem;
+    font-weight: 800;
+  }
+
+  .ligne {
+    font-size: 0.78rem;
+  }
+
+  .pastille-liste {
+    margin-top: auto;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--etat-prete);
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+}
+
+/* Etat de la caisse au-dessus du plan : rien ne s'ouvre tant qu'elle est fermee. */
+.bandeau-salle {
+  max-width: 560px;
+  margin-bottom: 0.9rem;
+}

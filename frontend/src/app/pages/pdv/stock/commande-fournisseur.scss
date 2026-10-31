@@ -1,0 +1,68 @@
+.retour {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+  color: var(--couleur-primaire);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+h1 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.statut {
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+
+  &.en_cours {
+    background: #fff1dc;
+    color: #b35f00;
+  }
+
+  &.recue {
+    background: color-mix(in srgb, var(--couleur-succes) 14%, #fff);
+    color: var(--couleur-succes);
+  }
+
+  &.annulee {
+    background: #fde8e4;
+    color: var(--couleur-danger);
+  }
+}
+
+.note {
+  margin: 0 0 1rem;
+  color: var(--couleur-texte-doux);
+}
+
+small {
+  color: var(--couleur-texte-doux);
+}
+
+.message.info {
+  margin-bottom: 1rem;
+}
+
+.aide {
+  margin: 0 0 0.75rem;
+  color: var(--couleur-texte-doux);
+}
+
+.saisie-reception {
+  td {
+    vertical-align: middle;
+  }
+
+  tr.ecart td {
+    background: color-mix(in srgb, var(--couleur-accent) 9%, transparent);
+  }
+}
+
+.total-reception {
+  text-align: right;
+}

@@ -1,5 +1,7 @@
 package tg.parcauto.api.finance.depense;
 
+import tg.parcauto.api.plateforme.module.ModuleApplicatif;
+import tg.parcauto.api.plateforme.module.ModuleRequis;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 
 @RestController
+@ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/carburant")
 @RequiredArgsConstructor
 @Tag(name = "Carburant")

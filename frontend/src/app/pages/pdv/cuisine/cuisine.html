@@ -1,0 +1,83 @@
+<div class="barre-cuisine">
+  <div class="postes" role="tablist" aria-label="Ecran de preparation">
+    @if (ecrans()?.length) {
+      @for (e of ecrans(); track e.id) {
+        <button type="button" role="tab" class="poste" [class.actif]="ecranChoisi() === e.id"
+                [attr.aria-selected]="ecranChoisi() === e.id" (click)="choisirEcran(e.id)"
+                [title]="titreEcran(e)">{{ e.nom }}</button>
+      }
+    } @else if (ecrans()) {
+      <button type="button" role="tab" class="poste" [class.actif]="poste() === 'CUISINE'"
+              [attr.aria-selected]="poste() === 'CUISINE'" (click)="choisirPoste('CUISINE')">🍳 Cuisine</button>
+      <button type="button" role="tab" class="poste" [class.actif]="poste() === 'BAR'"
+              [attr.aria-selected]="poste() === 'BAR'" (click)="choisirPoste('BAR')">🍹 Bar</button>
+    }
+  </div>
+  <div class="compteurs">
+    <span><strong>{{ aPreparer().length }}</strong> a preparer</span>
+    <span><strong>{{ enPreparation().length }}</strong> en cours</span>
+    <span><strong>{{ prets().length }}</strong> prets</span>
+  </div>
+  <div class="outils">
+    <button type="button" class="bouton secondaire petit" (click)="basculerSon()"
+            [attr.aria-pressed]="son()">{{ son() ? '🔔 Son actif' : '🔕 Son coupe' }}</button>
+    <button type="button" class="bouton secondaire petit" (click)="pleinEcran()">⛶ Plein ecran</button>
+  </div>
+</div>
+
+@if (ecranCourant(); as e) {
+  <p class="categories-ecran">
+    Produits affiches :
+    @for (c of e.categories; track c.id; let dernier = $last) { {{ c.icone }} {{ c.nom }}{{ dernier ? '' : ' · ' }} }
+    @if (e.categories.length === 0) { aucune categorie, demandez a votre gerant de configurer cet ecran }
+  </p>
+}
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+<div class="colonnes">
+  @for (colonne of [
+    { titre: 'A preparer', bons: aPreparer(), classe: 'attente' },
+    { titre: 'En preparation', bons: enPreparation(), classe: 'cours' },
+    { titre: 'Prets a servir', bons: prets(), classe: 'prets' }
+  ]; track colonne.classe) {
+    <section class="colonne {{ colonne.classe }}" [attr.aria-label]="colonne.titre">
+      <h2>{{ colonne.titre }} <span>{{ colonne.bons.length }}</span></h2>
+      <div class="bons">
+        @for (bon of colonne.bons; track bon.commandeId + '/' + bon.envoi) {
+          <article class="bon {{ urgence(bon) }}">
+            <header>
+              <strong class="repere">{{ bon.repere }}</strong>
+              <span class="attente">{{ attente(bon) }} min</span>
+            </header>
+            <p class="meta">
+              Bon {{ bon.envoi }} · {{ bon.serveurNom }}
+              @if (bon.couverts) { · {{ bon.couverts }} pers. }
+            </p>
+            <ul>
+              @for (l of bon.lignes; track l.id) {
+                <li>
+                  <button type="button" class="ligne {{ l.statut.toLowerCase() }}" (click)="avancerLigne(bon, l, $event)"
+                          [title]="l.statut === 'PRETE' ? 'Remettre en preparation' : 'Faire avancer cette ligne'">
+                    <span class="quantite">{{ l.quantite | number: '1.0-3' }}</span>
+                    <span class="libelle">
+                      {{ l.libelle }}
+                      @if (l.note) { <em class="note">{{ l.note }}</em> }
+                    </span>
+                    @if (l.statut === 'PRETE') { <span class="coche" aria-label="pret">✓</span> }
+                  </button>
+                </li>
+              }
+            </ul>
+            @if (bon.statut !== 'PRETE') {
+              <button type="button" class="bouton action" (click)="avancer(bon)">{{ libelleAction(bon) }}</button>
+            }
+          </article>
+        } @empty {
+          <p class="vide">{{ chargement() ? 'Chargement...' : 'Rien pour le moment.' }}</p>
+        }
+      </div>
+    </section>
+  }
+</div>

@@ -1,0 +1,151 @@
+<div class="entete-page">
+  <div>
+    <h1>Ventes</h1>
+    <p class="sous-titre">
+      {{ page()?.totalElements ?? 0 }} commande(s) {{ sessionId ? 'sur la session de caisse choisie' : 'sur la periode' }}
+    </p>
+  </div>
+</div>
+
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    @if (peutAnnuler) {
+      <div class="champ">
+        <label for="session">Session de caisse</label>
+        <select id="session" data-recherche="toujours" [ngModel]="sessionId" (ngModelChange)="choisirSession($event)">
+          <option [ngValue]="null">Toutes (par periode)</option>
+          @for (s of sessions(); track s.id) {
+            <option [ngValue]="s.id">
+              {{ s.numero }} · {{ s.caisseNom }} · {{ s.ouverteLe | date: 'dd/MM HH:mm' }}{{ s.statut === 'OUVERTE' ? ' (ouverte)' : '' }}
+            </option>
+          }
+        </select>
+      </div>
+    }
+    <div class="champ">
+      <label for="debut">Du</label>
+      <input id="debut" type="date" [(ngModel)]="debut" [disabled]="!!sessionId" (change)="filtrer()" />
+    </div>
+    <div class="champ">
+      <label for="fin">Au</label>
+      <input id="fin" type="date" [(ngModel)]="fin" [disabled]="!!sessionId" (change)="filtrer()" />
+    </div>
+  </div>
+
+  @if (erreur()) {
+    <div class="message erreur" style="margin-top: 1rem">{{ erreur() }}</div>
+  }
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Commande</th>
+          <th>Date</th>
+          <th>Caissier</th>
+          <th>Client</th>
+          <th>Paiement</th>
+          <th class="numerique">Total</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (v of page()?.content ?? []; track v.id) {
+          <tr style="cursor: pointer" (click)="ouvrir(v)" [style.opacity]="v.statut === 'ANNULEE' ? 0.55 : 1">
+            <td><strong>{{ v.numero }}</strong><br /><small>Caisse {{ v.sessionNumero }}</small></td>
+            <td>{{ v.dateVente | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td>{{ v.caissierNom }}</td>
+            <td>{{ v.clientNom || '—' }}</td>
+            <td>{{ v.modePaiementLibelle }}</td>
+            <td class="numerique"><strong>{{ v.total | number: '1.0-0' }} F</strong></td>
+            <td>
+              <span class="etiquette" [class.disponible]="v.statut === 'VALIDEE'" [class.immobilise]="v.statut === 'ANNULEE'">
+                {{ v.statut === 'VALIDEE' ? 'Validee' : 'Annulee' }}
+              </span>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" style="text-align: center; color: var(--couleur-texte-doux)">{{ sessionId ? 'Aucune vente sur cette session de caisse.' : 'Aucune vente sur la periode.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">Precedent</button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">Suivant</button>
+      </div>
+    }
+  }
+</div>
+
+@if (detail(); as t) {
+  <app-modale [titre]="'Commande ' + t.numero" [sousTitre]="(t.dateVente | date: 'dd/MM/yyyy HH:mm') + ' · ' + t.caissierNom + (t.tableNom ? ' · Table ' + t.tableNom : '')"
+              largeur="620px" [erreur]="erreur()" (ferme)="detail.set(null); annulation.set(false)">
+    @if (t.statut === 'ANNULEE') {
+      <div class="message erreur">
+        Annule le {{ t.annuleeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ t.annuleePar }}
+        @if (t.motifAnnulation) { — {{ t.motifAnnulation }} }
+      </div>
+    }
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr><th>Article</th><th class="numerique">Qte</th><th class="numerique">P.U.</th><th class="numerique">Total</th></tr>
+        </thead>
+        <tbody>
+          @for (l of t.lignes; track $index) {
+            <tr>
+              <td>{{ l.libelle }}</td>
+              <td class="numerique">{{ l.quantite | number: '1.0-3' }}</td>
+              <td class="numerique">{{ l.prixUnitaire | number: '1.0-0' }}</td>
+              <td class="numerique">{{ l.total | number: '1.0-0' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <dl style="margin: 1rem 0 0">
+      @if (t.remise > 0) {
+        <div style="display: flex; justify-content: space-between"><dt>Remise</dt><dd>-{{ t.remise | number: '1.0-0' }} F</dd></div>
+      }
+      <div style="display: flex; justify-content: space-between; font-size: 1.2rem">
+        <dt>Total</dt><dd><strong>{{ t.total | number: '1.0-0' }} F</strong></dd>
+      </div>
+      <div style="display: flex; justify-content: space-between">
+        <dt>{{ t.modePaiementLibelle }}</dt>
+        <dd>{{ t.montantRecu | number: '1.0-0' }} F
+          @if (t.monnaieRendue) { (rendu {{ t.monnaieRendue | number: '1.0-0' }} F) }
+        </dd>
+      </div>
+      @if (t.referencePaiement) {
+        <div style="display: flex; justify-content: space-between"><dt>Reference</dt><dd>{{ t.referencePaiement }}</dd></div>
+      }
+    </dl>
+
+    @if (annulation()) {
+      <div class="champ" style="margin-top: 1rem">
+        <label for="motif">Motif de l'annulation</label>
+        <input id="motif" [(ngModel)]="motif" placeholder="Ex. erreur de saisie, retour client" />
+      </div>
+    }
+
+    <div class="actions-formulaire">
+      <button class="bouton secondaire" type="button" (click)="imprimer(t)">Reimprimer</button>
+      @if (peutAnnuler && t.statut === 'VALIDEE') {
+        @if (annulation()) {
+          <button class="bouton danger" type="button" (click)="annuler(t)">Confirmer l'annulation</button>
+        } @else {
+          <button class="bouton secondaire" type="button" (click)="annulation.set(true)">Annuler la commande</button>
+        }
+      }
+    </div>
+  </app-modale>
+}

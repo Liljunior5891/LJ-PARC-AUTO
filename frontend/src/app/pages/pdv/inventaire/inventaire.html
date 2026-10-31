@@ -1,0 +1,108 @@
+<div class="entete-page">
+  <div>
+    <h1>Inventaire</h1>
+    <p class="sous-titre">Comptez vos produits en rayon : le stock est corrige pour chaque ecart, en une seule validation.</p>
+  </div>
+  <div class="actions-entete">
+    <app-export-pdv type="STOCK" title="Etat du stock" />
+    <button class="bouton secondaire" type="button" (click)="importOuvert.set(true)">⇪ Importer un comptage</button>
+    <a class="bouton secondaire" routerLink="/pdv/stock">Reapprovisionnement</a>
+  </div>
+</div>
+
+@if (succesImport()) {
+  <div class="message succes">{{ succesImport() }}</div>
+}
+@if (importOuvert()) {
+  <app-import-pdv type="STOCK" [typeFixe]="true" (ferme)="importOuvert.set(false)" (importe)="importTermine($event)" />
+}
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (bilan(); as b) {
+  <div class="message succes">
+    Inventaire valide : {{ b.comptes }} produit(s) compte(s),
+    {{ b.corriges === 0 ? 'aucun ecart' : b.corriges + ' stock(s) corrige(s)' }}.
+  </div>
+}
+
+<div class="carte filtres">
+  <div class="champ">
+    <label for="recherche">Rechercher</label>
+    <input id="recherche" type="search" placeholder="Nom, code ou code-barres..." [ngModel]="recherche()"
+           (ngModelChange)="recherche.set($event)" />
+  </div>
+  <div class="champ">
+    <label for="categorie">Categorie</label>
+    <select id="categorie" [ngModel]="categorie()" (ngModelChange)="categorie.set($event)">
+      <option [ngValue]="null">Toutes</option>
+      @for (c of categories(); track c.id) {
+        <option [ngValue]="c.id">{{ c.nom }}</option>
+      }
+    </select>
+  </div>
+  <label class="case">
+    <input type="checkbox" [ngModel]="seulementEcarts()" (ngModelChange)="seulementEcarts.set($event)" />
+    Seulement les ecarts
+  </label>
+</div>
+
+<div class="carte tableau-conteneur">
+  <table class="tableau">
+    <thead>
+      <tr>
+        <th>Produit</th>
+        <th>Categorie</th>
+        <th class="numerique">Stock attendu</th>
+        <th class="numerique">Quantite comptee</th>
+        <th class="numerique">Ecart</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (a of lignes(); track a.id) {
+        @let e = ecart(a);
+        <tr [class.compte]="e !== null" [class.ecart]="e !== null && e !== 0">
+          <td><strong>{{ a.nom }}</strong><br /><small>{{ a.code }}</small></td>
+          <td>{{ a.categorieNom || '—' }}</td>
+          <td class="numerique">{{ a.stockActuel | number: '1.0-3' }} {{ a.unite || '' }}</td>
+          <td class="numerique">
+            <div class="saisie">
+              <app-champ-quantite [valeur]="compte(a)" (valeurChange)="saisir(a, $event)" placeholder="—"
+                                  [libelle]="'Quantite comptee pour ' + a.nom" />
+              <button type="button" class="juste" title="Le stock est juste : reprendre la quantite attendue"
+                      (click)="confirmer(a)">✓ Juste</button>
+            </div>
+          </td>
+          <td class="numerique">
+            @if (e === null) {
+              <span class="attente">—</span>
+            } @else {
+              <strong [class.plus]="e > 0" [class.moins]="e < 0">{{ e > 0 ? '+' : '' }}{{ e | number: '1.0-3' }}</strong>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="5" class="vide">
+          {{ chargement() ? 'Chargement...' : 'Aucun produit suivi en stock ne correspond.' }}
+        </td></tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<div class="barre-validation">
+  <div class="resume">
+    <strong>{{ nombreComptes() }}</strong> produit(s) compte(s) ·
+    <strong>{{ nombreEcarts() }}</strong> ecart(s)
+    @if (valeurEcarts() !== 0) {
+      · valeur <strong [class.plus]="valeurEcarts() > 0" [class.moins]="valeurEcarts() < 0">
+        {{ valeurEcarts() > 0 ? '+' : '' }}{{ valeurEcarts() | number: '1.0-0' }} F</strong> au cout d'achat
+    }
+  </div>
+  <input class="motif champ-ligne" [(ngModel)]="motif" maxlength="255" aria-label="Libelle de l'inventaire" />
+  <button class="bouton secondaire" type="button" [disabled]="nombreComptes() === 0" (click)="vider()">Effacer</button>
+  <button class="bouton" type="button" [disabled]="nombreComptes() === 0 || envoi()" (click)="valider()">
+    {{ envoi() ? 'Validation...' : "Valider l'inventaire" }}
+  </button>
+</div>

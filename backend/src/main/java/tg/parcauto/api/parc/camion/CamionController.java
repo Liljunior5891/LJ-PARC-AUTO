@@ -1,5 +1,7 @@
 package tg.parcauto.api.parc.camion;
 
+import tg.parcauto.api.plateforme.module.ModuleApplicatif;
+import tg.parcauto.api.plateforme.module.ModuleRequis;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,6 +29,7 @@ import java.util.Map;
 import tg.parcauto.api.security.Autorisations;
 
 @RestController
+@ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/camions")
 @RequiredArgsConstructor
 @Tag(name = "Vehicules")

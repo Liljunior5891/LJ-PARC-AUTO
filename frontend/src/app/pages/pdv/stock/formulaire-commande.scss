@@ -1,0 +1,100 @@
+.titre-produits {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.ajout-produit {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0 0.8rem;
+  border: 2px solid var(--couleur-primaire);
+  border-radius: var(--rayon);
+  background: var(--couleur-surface);
+
+  span {
+    color: var(--couleur-primaire);
+    font-size: 1.2rem;
+  }
+
+  input {
+    flex: 1;
+    padding: 0.7rem 0;
+    border: none;
+    outline: none;
+    background: transparent;
+  }
+}
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  right: -2px;
+  left: -2px;
+  z-index: 5;
+  margin: 4px 0 0;
+  padding: 0.3rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: var(--rayon);
+  background: var(--couleur-surface);
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.12);
+  list-style: none;
+
+  button {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+
+    small {
+      color: var(--couleur-texte-doux);
+    }
+
+    &:hover,
+    &:focus-visible {
+      background: color-mix(in srgb, var(--couleur-primaire) 8%, #fff);
+    }
+  }
+}
+
+.lignes-commande {
+  td {
+    vertical-align: middle;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+  }
+
+}
+
+.retirer {
+  border: none;
+  background: none;
+  color: var(--couleur-texte-doux);
+  font-size: 1.3rem;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--couleur-danger);
+  }
+}
+
+.vide {
+  padding: 1.25rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}
+
+.aide {
+  margin: 0.5rem 0 0;
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}

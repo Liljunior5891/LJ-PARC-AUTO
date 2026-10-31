@@ -29,7 +29,13 @@ public final class UtilisateurDto {
             Set<Role> roles,
             List<String> rolesLibelles,
             Instant creeLe,
-            Instant modifieLe) {
+            Instant modifieLe,
+            boolean pinDefini) {
+    }
+
+    /** Code PIN de 4 a 6 chiffres ; nul pour l'effacer (le caissier en creera un nouveau). */
+    public record DefinitionPin(
+            @jakarta.validation.constraints.Pattern(regexp = "^\\d{4,6}$", message = "4 a 6 chiffres") String pin) {
     }
 
     public record Creation(

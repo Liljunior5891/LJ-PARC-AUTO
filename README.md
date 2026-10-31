@@ -1,6 +1,75 @@
-# PARC AUTO
+# LJ SaaS
 
-Logiciel de gestion, de suivi et de rentabilité d'un parc de camions de location.
+Plateforme SaaS de gestion pour entreprises. Chaque entreprise crée son compte
+en libre-service, active les modules dont elle a besoin et travaille sur ses
+propres données, isolées de celles des autres entreprises.
+
+| Module | État |
+| --- | --- |
+| **Gestion de parc** — véhicules, chauffeurs, locations, missions, finances, GPS, maintenance, rentabilité | Disponible |
+| **Point de vente** — deux types d'activité choisis à l'activation : **Boutique** (caisse rapide : douchette, panier, ticket 80 mm) ou **Bar / restaurant / café** (plan de salle, commandes par table sur tablette, écrans cuisine et bar, addition partagée par convive). Socle commun : articles et catégories, stock et inventaires, sessions de caisse avec écart, encaissement espèces / mobile money / carte, annulations, tableau de bord | Disponible (v1) |
+| **Marketplace** | Annoncé (catalogue), à développer |
+
+## Architecture multi-entreprises
+
+- **Isolation des données** : chaque table métier porte `entreprise_id`. Les entités
+  héritent de `BaseEntity`, dont le champ `@TenantId` fait filtrer par Hibernate
+  toutes les lectures (y compris par identifiant) et poser l'entreprise à
+  l'insertion. L'entreprise courante vient du compte connecté
+  (`plateforme.tenant.ContexteEntreprise`) ; sans contexte, aucune donnée métier
+  n'est visible. Les deux requêtes SQL natives (numérotation, évolution mensuelle)
+  filtrent explicitement. Les canaux WebSocket sont propres à chaque entreprise.
+- **Modules** : catalogue dans `plateforme.module.ModuleApplicatif`, souscriptions
+  dans `entreprise_module`. Un contrôleur annoté `@ModuleRequis(...)` répond 403
+  tant que l'entreprise n'a pas activé le module ; côté Angular, `moduleGuard`
+  et le menu suivent les modules de la session.
+- **Ajouter un module** : une constante dans `ModuleApplicatif` (`disponible = true`),
+  ses entités héritant de `BaseEntity`, ses contrôleurs annotés `@ModuleRequis`,
+  ses routes Angular sous un parent `moduleGuard('CODE')`, ses onglets de menu
+  marqués `module: 'CODE'` dans `shell.ts`, et son entrée dans `PRESENTATION_MODULES`.
+- **Variantes de module** : un module peut se décliner (`ModuleApplicatif.getVariantes()`),
+  choisies à l'activation et modifiables par l'administrateur (`entreprise_module.variante`).
+  `@ModuleRequis(value = ..., variante = "RESTAURATION")` réserve un contrôleur à une
+  variante ; un `GardeVariante` refuse un changement qui laisserait des données en plan
+  (tables encore ouvertes). La session expose `variantes`, que suivent le menu et `varianteGuard`.
+- **Profils** : `SUPER_ADMIN` (exploitant de la plateforme : console des entreprises,
+  suspension, sans accès aux données métier), puis par entreprise `ADMIN` (tous
+  les modules), `GESTIONNAIRE_PARC` et `CHAUFFEUR` (Gestion de parc), `GERANT`
+  et `CAISSIER` (Point de vente), `SERVEUR` et `PREPARATEUR` (cuisinier / barman, Point
+  de vente en mode restaurant). Chaque module déclare ses profils
+  (`ModuleApplicatif.getProfils()`) : un caissier n'accède pas au parc même si
+  l'entreprise a activé les deux modules.
+- **Reprise de l'existant** : la migration V13 rattache les données d'une
+  installation mono-entreprise à une première entreprise (nom repris du
+  paramétrage), avec le module Gestion de parc activé ; ses comptes sont conservés.
+
+Le module Gestion de parc implémente le cahier des charges v2.0 (`cahier de charge.txt`).
+
+### Point de vente en mode bar / restaurant / café
+
+- **Plan de salle** : salles et tables dessinées par le gérant (glisser-déposer, formes,
+  places), puis plan de service coloré selon l'état de chaque table (libre, occupée,
+  articles à envoyer, prêt à servir, addition demandée), rafraîchi en continu.
+- **Commande par table** (tablette du serveur) : articles saisis en attente avec consignes
+  (« sans piment »…), puis envoyés d'un geste. Chaque envoi forme un bon par poste ; le poste
+  vient de la catégorie (cuisine, bar ou servi directement). Le stock sort à l'envoi.
+- **Écrans cuisine et bar** : bons à préparer, en préparation, prêts ; signal sonore,
+  retard signalé à 10 et 20 minutes, plein écran.
+- **Addition** imprimée pour la table, puis **encaissement** en une fois ou **par convive**
+  (une quantité partielle scinde la ligne). La commande se ferme quand tout est réglé ;
+  annuler le ticket d'une addition rouvre la commande.
+- Commandes au comptoir ou à emporter, transfert de table, couverts. Une ligne envoyée ne
+  s'annule que par un gérant (retour en stock).
+- **Commande par code QR** : chaque table a un jeton imprévisible imprimé dans son code QR
+  (écran **Codes QR**, impression en chevalets, renouvellement). Le client ouvre la carte
+  en ligne (`/t/{jeton}`, sans compte), compose son panier avec des précisions, suit sa
+  commande, appelle un serveur ou demande l'addition ; il règle à la fin auprès du serveur.
+  Selon le réglage, un serveur valide la demande sur le plan de salle avant la cuisine
+  (par défaut) ou elle part directement en préparation. Garde-fous : quantités bornées,
+  envois en rafale freinés par table, carte publique sans coûts ni stocks chiffrés.
+  L'API publique (`/api/public/qr/{jeton}`) trouve l'entreprise par le jeton
+  (`ContexteTableInterceptor`) puis exige le module en mode restaurant
+  (`@ModuleRequis(..., publique = true)`).
 
 Implémentation du cahier des charges v2.0 (`cahier de charge.txt`).
 
@@ -35,7 +104,7 @@ export DB_PORT=5433 DB_USER=parcauto DB_PASSWORD=parcauto
 
 ```bash
 cd backend
-# Variables d'environnement utiles : DB_USER, DB_PASSWORD, JWT_SECRET, ADMIN_PASSWORD
+# Variables d'environnement utiles : DB_USER, DB_PASSWORD, JWT_SECRET, PLATEFORME_ADMIN_PASSWORD
 mvn spring-boot:run
 ```
 
@@ -44,8 +113,12 @@ Documentation interactive : `http://localhost:8081/swagger-ui.html`.
 
 Au premier démarrage, un compte administrateur est créé :
 
-- email : `admin@parcauto.tg` (`parcauto.admin.email`)
-- mot de passe : valeur de `ADMIN_PASSWORD`, `Admin@2026` par défaut — **à changer immédiatement**
+- c'est le compte **administrateur de la plateforme** (`SUPER_ADMIN`), qui ouvre la console `/plateforme`
+- email : valeur de `PLATEFORME_ADMIN_EMAIL`, `superadmin@plateforme.local` par défaut
+- mot de passe : valeur de `PLATEFORME_ADMIN_PASSWORD`, `Plateforme@2026` par défaut — **à changer immédiatement**
+
+Les entreprises créent ensuite leur compte depuis `/inscription` ; leur premier
+utilisateur en devient l'administrateur.
 
 ### 3. Interface web
 
@@ -66,8 +139,8 @@ L'application est servie sur `http://localhost:4200`.
 | `JWT_EXPIRATION_MINUTES` | `480` | Durée de validité d'une session |
 | `CORS_ORIGINS` | `http://localhost:4200` | Origines autorisées |
 | `DOCUMENTS_DIR` | `./data/documents` | Stockage des justificatifs |
-| `ENTREPRISE_NOM` | `PARC AUTO` | Nom affiché tant que le **Paramétrage** n'a pas été rempli dans l'application |
-| `ADMIN_PASSWORD` | `Admin@2026` | Mot de passe du compte initial |
+| `PLATEFORME_ADMIN_EMAIL` | `superadmin@plateforme.local` | Compte de l'exploitant de la plateforme |
+| `PLATEFORME_ADMIN_PASSWORD` | `Plateforme@2026` | Mot de passe de ce compte, à la création |
 
 ## Périmètre livré
 

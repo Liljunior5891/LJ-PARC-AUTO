@@ -1,5 +1,7 @@
 package tg.parcauto.api.gps.alerte;
 
+import tg.parcauto.api.plateforme.module.ModuleApplicatif;
+import tg.parcauto.api.plateforme.module.ModuleRequis;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import java.util.List;
 import tg.parcauto.api.security.Autorisations;
 
 @RestController
+@ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/gps/alertes")
 @RequiredArgsConstructor
 @Tag(name = "Alertes GPS")

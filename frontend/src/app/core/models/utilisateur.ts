@@ -13,6 +13,8 @@ export interface Utilisateur {
   rolesLibelles: string[];
   creeLe?: string;
   modifieLe?: string;
+  /** Code PIN de caisse defini. */
+  pinDefini: boolean;
 }
 
 export interface CreationUtilisateur {

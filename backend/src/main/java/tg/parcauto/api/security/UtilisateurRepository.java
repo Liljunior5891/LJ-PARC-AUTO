@@ -14,13 +14,23 @@ public interface UtilisateurRepository
 
     boolean existsByEmailIgnoreCase(String email);
 
-    /** Administrateurs actifs autres que celui qu'on s'apprete a modifier. */
+    Optional<Utilisateur> findByIdAndEntrepriseId(Long id, Long entrepriseId);
+
+    long countByEntrepriseId(Long entrepriseId);
+
+    java.util.List<Utilisateur> findByEntrepriseIdOrderByNomAscPrenomAsc(Long entrepriseId);
+
+    @Query("select count(u) > 0 from Utilisateur u join u.roles r where r = :role")
+    boolean existeAvecRole(@Param("role") Role role);
+
+    /** Administrateurs actifs de l'entreprise autres que celui qu'on s'apprete a modifier. */
     @Query("""
             select count(u) from Utilisateur u
             join u.roles r
             where r = tg.parcauto.api.security.Role.ADMIN
               and u.actif = true
               and u.id <> :id
+              and u.entrepriseId = :entrepriseId
             """)
-    long compterAdministrateursActifsHors(@Param("id") Long id);
+    long compterAdministrateursActifsHors(@Param("id") Long id, @Param("entrepriseId") Long entrepriseId);
 }

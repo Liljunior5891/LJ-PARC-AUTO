@@ -1,0 +1,520 @@
+@if (commande(); as c) {
+  <div class="pos" [class.vue-commande]="vueMobile() === 'commande'">
+    <!-- ============================================================ carte -->
+    <section class="pos-carte">
+      <div class="barre-recherche">
+        <a routerLink="/pdv/salle" class="carre" aria-label="Retour au plan de salle" title="Plan de salle">
+          <span aria-hidden="true">▦</span>
+        </a>
+        <label class="recherche">
+          <span aria-hidden="true">⌕</span>
+          <input type="search" placeholder="Rechercher un plat ou une boisson..." autocomplete="off"
+                 [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" (keydown.enter)="valider()"
+                 aria-label="Rechercher un article" />
+        </label>
+        <!-- Les autres commandes s'ouvrent dans un panneau : classees par urgence, avec recherche. -->
+        <button type="button" class="bouton-commandes" (click)="ouvrirTiroir()"
+                [attr.aria-expanded]="tiroir()" aria-controls="tiroir-commandes">
+          <span aria-hidden="true">🧾</span>
+          <span>Commandes</span>
+          <span class="nombre">{{ enCours().length }}</span>
+          @if (urgentes() > 0) {
+            <span class="urgentes" [attr.aria-label]="urgentes() + ' commande(s) a traiter'">{{ urgentes() }}</span>
+          }
+        </button>
+        @if (peutEncaisser) {
+          <app-bouton-especes />
+        }
+      </div>
+
+      <div class="categories" role="tablist" aria-label="Categories">
+        <button type="button" role="tab" class="categorie" [class.active]="categorieChoisie() === null"
+                [attr.aria-selected]="categorieChoisie() === null" (click)="categorieChoisie.set(null)">
+          <span class="icone" aria-hidden="true">▦</span>
+          <strong>Tout</strong>
+          <small>{{ articles().length }} articles</small>
+        </button>
+        @for (cat of categories(); track cat.id) {
+          <button type="button" role="tab" class="categorie" [class.active]="categorieChoisie() === cat.id"
+                  [attr.aria-selected]="categorieChoisie() === cat.id" (click)="categorieChoisie.set(cat.id)">
+            <span class="icone" aria-hidden="true">{{ cat.icone || '🍽️' }}</span>
+            <strong>{{ cat.nom }}</strong>
+            <small>{{ parCategorie().get(cat.id) ?? 0 }} articles</small>
+          </button>
+        }
+      </div>
+
+      @if (!ouverte()) {
+        <div class="commande-close">
+          <span aria-hidden="true">{{ c.resume.statut === 'ENCAISSEE' ? '✓' : '✕' }}</span>
+          <h2>Commande {{ c.resume.statut === 'ENCAISSEE' ? 'reglee' : 'annulee' }}</h2>
+          <a class="bouton-vert" routerLink="/pdv/salle">Retour au plan de salle</a>
+        </div>
+      } @else {
+        @if (salleFermee()) {
+          <div class="salle-fermee" role="status">
+            <span aria-hidden="true">🔒</span>
+            <h2>Caisse fermee</h2>
+            <p>Aucune commande ne peut etre prise, envoyee ou servie tant qu'un gerant n'a pas ouvert la session de caisse.</p>
+          </div>
+        }
+        <div class="plats" [class.verrouilles]="salleFermee()">
+          @for (a of articlesAffiches(); track a.id) {
+            @let enAttente = quantitesAttente().get(a.id);
+            @let epuise = a.suiviStock && a.stockActuel <= 0;
+            <article class="plat" [class.choisi]="!!enAttente" [class.epuise]="epuise">
+              <button type="button" class="visuel" [disabled]="epuise" (click)="ajouter(a)"
+                      [attr.aria-label]="'Ajouter ' + a.nom">
+                @if (a.image) {
+                  <img [src]="a.image" [alt]="a.nom" loading="lazy" />
+                } @else {
+                  <span class="sans-photo" [style.--teinte]="a.categorieCouleur || '#1e9e4a'" aria-hidden="true">
+                    {{ a.categorieIcone || '🍽️' }}
+                  </span>
+                }
+                @if (epuise) {
+                  <span class="badge rupture">Epuise</span>
+                } @else if (a.suiviStock && a.stockBas) {
+                  <span class="badge">Plus que {{ a.stockActuel | number: '1.0-0' }}</span>
+                }
+              </button>
+              <h3>{{ a.nom }}</h3>
+              <div class="prix-ligne">
+                <strong>{{ a.prixVente | number: '1.0-0' }} F</strong>
+                @if (a.categorieNom) {
+                  <small class="pastille-cat" [style.--teinte]="a.categorieCouleur || '#1e9e4a'">{{ a.categorieNom }}</small>
+                }
+              </div>
+              @if (enAttente) {
+                <div class="compteur">
+                  <button type="button" aria-label="Retirer un" (click)="changerQuantite(enAttente, enAttente.quantite - 1)">−</button>
+                  <span>{{ enAttente.quantite | number: '1.0-3' }}</span>
+                  <button type="button" aria-label="Ajouter un" (click)="changerQuantite(enAttente, enAttente.quantite + 1)">+</button>
+                </div>
+              } @else {
+                <button type="button" class="ajouter" [disabled]="epuise" (click)="ajouter(a)">Ajouter</button>
+              }
+            </article>
+          } @empty {
+            <p class="vide">Aucun article ne correspond.</p>
+          }
+        </div>
+      }
+
+    </section>
+
+    <!-- ============================================================ table -->
+    <aside class="pos-table">
+      <!-- Sur telephone : retour a la carte pour ajouter des plats. -->
+      <button type="button" class="retour-carte" (click)="vueMobile.set('carte')">‹ Carte des plats</button>
+      <header>
+        <div>
+          <h2>{{ c.resume.tableId ? 'Table ' + c.resume.repere : c.resume.repere }}</h2>
+          <small>{{ c.resume.serveurNom }}
+            @if (c.resume.couverts) { · {{ c.resume.couverts }} pers. }
+            @if (c.resume.id) { · {{ depuis(c.resume.ouverteLe) }} }</small>
+        </div>
+        @if (ouverte() && c.resume.id) {
+          <button type="button" class="carre" [disabled]="salleFermee()" (click)="ouvrirReglages()" aria-label="Reglages de la table"
+                  title="Couverts, changement de table, annulation">✎</button>
+        }
+      </header>
+
+      @if (peutEncaisser) {
+        <app-bandeau-session />
+      }
+
+      @if (!c.resume.id) {
+        <label class="client-comptoir">
+          <span>Nom du client (facultatif)</span>
+          <input name="client" maxlength="80" [(ngModel)]="clientComptoir" placeholder="Ex. Kossi, a emporter" />
+        </label>
+      }
+
+      <div class="type-service" aria-label="Type de service">
+        <span [class.actif]="!!c.resume.tableId">Sur place</span>
+        <span [class.actif]="!c.resume.tableId">Comptoir / a emporter</span>
+      </div>
+
+      @if (erreur() && !paiement() && !ligneNote() && !reglages() && !transfert()) {
+        <div class="message erreur">{{ erreur() }}</div>
+      }
+      @if (information()) {
+        <div class="message succes">{{ information() }}</div>
+      }
+      @if (c.resume.appel && ouverte()) {
+        <div class="demande-client appel">
+          <span>{{ c.resume.appel === 'ADDITION' ? '🧾 Le client demande l\'addition' : '🙋 Le client appelle un serveur' }}
+            <small>depuis {{ depuis(c.resume.appelLe ?? undefined) }}</small></span>
+          <button type="button" [disabled]="occupe() || salleFermee()" (click)="priseEnCompte()">J'y vais</button>
+        </div>
+      }
+      @if (proposees().length > 0 && ouverte()) {
+        <div class="demande-client">
+          <div class="titre-demande">
+            <strong>📱 Commande du client · {{ totalProposees() | number: '1.0-0' }} F</strong>
+            <small>Passee depuis le code QR de la table</small>
+          </div>
+          <ul>
+            @for (l of proposees(); track l.id) {
+              <li>
+                <span>{{ l.quantite | number: '1.0-3' }} × {{ l.libelle }} @if (l.note) { <em>· {{ l.note }}</em> }</span>
+                <button type="button" class="retirer" [attr.aria-label]="'Retirer ' + l.libelle" (click)="retirer(l)">Retirer</button>
+              </li>
+            }
+          </ul>
+          <div class="actions-demande">
+            <button type="button" class="refuser" [disabled]="occupe() || salleFermee()" (click)="refuserDemandes()">Refuser</button>
+            <button type="button" class="bouton-vert" [disabled]="occupe() || salleFermee()" (click)="validerDemandes()">Valider et envoyer</button>
+          </div>
+        </div>
+      }
+      @if (pretes().length > 0 && ouverte()) {
+        <button type="button" class="alerte-servir" [disabled]="occupe() || salleFermee()" (click)="servir()">
+          🔔 {{ pretes().length }} article(s) pret(s) · tout servir
+        </button>
+      }
+
+      <div class="lignes">
+        @for (l of enAttente(); track l.id) {
+          <div class="ligne attente">
+            <span class="vignette" [style.--teinte]="article(l.articleId)?.categorieCouleur || '#1e9e4a'">
+              @if (article(l.articleId)?.image; as image) {
+                <img [src]="image" alt="" />
+              } @else {
+                {{ article(l.articleId)?.categorieIcone || '🍽️' }}
+              }
+            </span>
+            <div class="texte">
+              <strong>{{ l.libelle }}</strong>
+              <small>{{ l.prixUnitaire | number: '1.0-0' }} F · {{ l.quantite | number: '1.0-3' }}×</small>
+              <button type="button" class="consigne" [disabled]="salleFermee()" (click)="ouvrirNote(l)">{{ l.note ? '✎ ' + l.note : '+ consigne' }}</button>
+            </div>
+            <div class="droite">
+              <strong>{{ l.total | number: '1.0-0' }} F</strong>
+              <span class="statut attente">A envoyer</span>
+              <button type="button" class="retirer" [disabled]="salleFermee()" [attr.aria-label]="'Retirer ' + l.libelle" (click)="retirer(l)">Retirer</button>
+            </div>
+          </div>
+        }
+        @for (l of envoyees(); track l.id) {
+          <div class="ligne" [class.annulee]="l.statut === 'ANNULEE'" [class.payee]="l.payee">
+            <span class="vignette" [style.--teinte]="article(l.articleId)?.categorieCouleur || '#1e9e4a'">
+              @if (article(l.articleId)?.image; as image) {
+                <img [src]="image" alt="" />
+              } @else {
+                {{ article(l.articleId)?.categorieIcone || '🍽️' }}
+              }
+            </span>
+            <div class="texte">
+              <strong>{{ l.libelle }}</strong>
+              <small>{{ l.prixUnitaire | number: '1.0-0' }} F · {{ l.quantite | number: '1.0-3' }}×
+                @if (l.note) { · {{ l.note }} }</small>
+              @if (l.statut === 'A_PREPARER' || l.statut === 'EN_PREPARATION') {
+                <small class="attente-cuisine">depuis {{ depuis(l.envoyeeLe) }}</small>
+              }
+            </div>
+            <div class="droite">
+              <strong>{{ l.total | number: '1.0-0' }} F</strong>
+              <span class="statut {{ l.statut.toLowerCase() }}">{{ l.payee ? 'Regle' : libellesStatut[l.statut] }}</span>
+              @if (ouverte() && l.statut === 'PRETE') {
+                <button type="button" class="servir" [disabled]="salleFermee()" (click)="servir(l)">Servi ✓</button>
+              } @else if (ouverte() && estGestionnaire && !l.payee && l.statut !== 'ANNULEE') {
+                <button type="button" class="retirer" (click)="annulerLigne(l)">Annuler</button>
+              }
+            </div>
+          </div>
+        }
+        @if (c.lignes.length === 0) {
+          <div class="vide-commande">
+            <span aria-hidden="true">🍽️</span>
+            <p>{{ c.resume.id ? 'Touchez un plat ou une boisson pour l\'ajouter a la commande.' : 'Nouvelle vente : touchez un plat ou une boisson pour commencer.' }}</p>
+          </div>
+        }
+      </div>
+
+      <div class="resume">
+        <div><span>Total servi et envoye</span><span>{{ c.resume.total | number: '1.0-0' }} F</span></div>
+        @if (totalAttente() > 0) {
+          <div><span>A envoyer</span><span>{{ totalAttente() | number: '1.0-0' }} F</span></div>
+        }
+        @if (c.resume.total - c.resume.resteAPayer > 0) {
+          <div><span>Deja regle</span><span>−{{ c.resume.total - c.resume.resteAPayer | number: '1.0-0' }} F</span></div>
+        }
+        <div class="montant-total">
+          <span>Reste a payer</span>
+          <strong>{{ c.resume.resteAPayer + totalAttente() | number: '1.0-0' }} F</strong>
+        </div>
+      </div>
+
+      @if (ouverte()) {
+        <div class="moyens">
+          @for (m of modes.slice(0, 3); track m.valeur) {
+            <button type="button" class="moyen" [disabled]="occupe() || !peutEncaisser || !encaissable() || c.resume.resteAPayer <= 0"
+                    (click)="ouvrirPaiement(m.valeur)">
+              <span class="icone" aria-hidden="true">{{ m.icone }}</span>
+              <small>{{ m.libelle }}</small>
+            </button>
+          }
+          <button type="button" class="moyen" [disabled]="occupe() || salleFermee() || c.resume.resteAPayer <= 0" (click)="imprimerAddition()">
+            <span class="icone" aria-hidden="true">🧾</span>
+            <small>Addition</small>
+          </button>
+        </div>
+
+        @if (enAttente().length > 0) {
+          <button type="button" class="bouton-vert principal" [disabled]="occupe() || salleFermee()" (click)="envoyer()">
+            Envoyer en preparation · {{ totalAttente() | number: '1.0-0' }} F
+          </button>
+        } @else if (!c.resume.id) {
+          <button type="button" class="bouton-vert principal" disabled>Choisissez des articles</button>
+        } @else if (peutEncaisser) {
+          <button type="button" class="bouton-vert principal" [disabled]="occupe() || !encaissable() || c.resume.resteAPayer <= 0"
+                  (click)="ouvrirPaiement()">
+            @if (!session()) {
+              Caisse fermee : encaissement impossible
+            } @else if (nonServies().length > 0) {
+              {{ nonServies().length }} article(s) a servir avant l'encaissement
+            } @else {
+              Encaisser {{ c.resume.resteAPayer | number: '1.0-0' }} F
+            }
+          </button>
+        }
+      }
+    </aside>
+  </div>
+
+  <!-- Sur telephone, depuis la carte : la commande en cours en un geste. -->
+  @if (vueMobile() === 'carte') {
+    <button type="button" class="barre-mobile" (click)="vueMobile.set('commande')">
+      <span class="pastille">{{ nombreLignes() }}</span>
+      <span>Voir la commande
+        @if (enAttente().length > 0) { <small>{{ enAttente().length }} a envoyer</small> }
+      </span>
+      <strong>{{ c.resume.resteAPayer + totalAttente() | number: '1.0-0' }} F</strong>
+    </button>
+  }
+
+  <!-- Commandes en cours : panneau lateral, classe par urgence -->
+  @if (tiroir()) {
+    <div class="voile-tiroir" (click)="tiroir.set(false)"></div>
+    <aside class="tiroir" id="tiroir-commandes" role="dialog" aria-modal="true" aria-label="Commandes en cours">
+      <header>
+        <div>
+          <h2>Commandes en cours</h2>
+          <small>{{ enCours().length }} commande(s) · {{ urgentes() }} a traiter</small>
+        </div>
+        <button type="button" class="carre" aria-label="Fermer" (click)="tiroir.set(false)">×</button>
+      </header>
+
+      <label class="recherche">
+        <span aria-hidden="true">⌕</span>
+        <input #rechercheTiroir type="search" placeholder="Table, client ou serveur..." autocomplete="off"
+               [ngModel]="rechercheCommandes()" (ngModelChange)="rechercheCommandes.set($event)"
+               (keydown.enter)="ouvrirPremiere()" aria-label="Rechercher une commande" />
+      </label>
+
+      <div class="filtres-tiroir" role="tablist" aria-label="Filtrer les commandes">
+        @for (f of filtres; track f.valeur) {
+          <button type="button" role="tab" [class.actif]="filtreCommandes() === f.valeur"
+                  [attr.aria-selected]="filtreCommandes() === f.valeur" (click)="filtreCommandes.set(f.valeur)">
+            {{ f.libelle }} <span>{{ compte(f.valeur) }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="groupes">
+        @for (g of groupesCommandes(); track g.classe) {
+          <section class="groupe-commandes">
+            <h3 class="{{ g.classe }}">{{ g.titre }} <span>{{ g.commandes.length }}</span></h3>
+            <div class="grille-commandes">
+              @for (o of g.commandes; track o.id) {
+                <a class="tuile-commande {{ g.classe }}" [class.courante]="o.id === c.resume.id"
+                   [routerLink]="['/pdv/commandes', o.id]" (click)="tiroir.set(false)">
+                  <span class="rond">{{ o.repere.length > 4 ? o.repere.slice(0, 3) : o.repere }}</span>
+                  <span class="infos">
+                    <strong>{{ o.tableId ? 'Table ' + o.repere : o.repere }}</strong>
+                    <small>{{ o.serveurNom }} · {{ depuis(o.ouverteLe) }}</small>
+                    <small class="detail-etat">{{ detailEtat(o) }}</small>
+                  </span>
+                  <span class="total">{{ o.total | number: '1.0-0' }} F</span>
+                </a>
+              }
+            </div>
+          </section>
+        } @empty {
+          <p class="vide">Aucune commande ne correspond.</p>
+        }
+      </div>
+
+      <footer>
+        <a class="bouton secondaire" routerLink="/pdv/salle" (click)="tiroir.set(false)">Plan de salle</a>
+        <a class="bouton-vert" routerLink="/pdv/comptoir" (click)="tiroir.set(false)">+ Vente au comptoir</a>
+      </footer>
+    </aside>
+  }
+
+  <!-- Consigne pour la preparation -->
+  @if (ligneNote(); as l) {
+    <app-modale titre="Consigne" [sousTitre]="l.libelle" largeur="460px" [erreur]="erreur()" (ferme)="ligneNote.set(null)">
+      <form (ngSubmit)="enregistrerNote()">
+        <div class="puces">
+          @for (consigne of consignes; track consigne) {
+            <button type="button" class="puce" (click)="ajouterConsigne(consigne)">{{ consigne }}</button>
+          }
+        </div>
+        <div class="champ">
+          <label for="note">Consigne pour la cuisine ou le bar</label>
+          <input id="note" name="note" maxlength="255" [(ngModel)]="note" />
+        </div>
+        <div class="actions-formulaire">
+          <button class="bouton secondaire" type="button" (click)="ligneNote.set(null)">Annuler</button>
+          <button class="bouton" type="submit" [disabled]="occupe()">Enregistrer</button>
+        </div>
+      </form>
+    </app-modale>
+  }
+
+  <!-- Reglages de la table -->
+  @if (reglages()) {
+    <app-modale [titre]="c.resume.repere" sousTitre="Couverts, changement de table, annulation" largeur="460px"
+                [erreur]="erreur()" (ferme)="reglages.set(false)">
+      <form (ngSubmit)="enregistrerCouverts()">
+        <div class="champ">
+          <label for="couverts">Nombre de personnes</label>
+          <input id="couverts" name="couverts" type="number" min="1" max="200" [(ngModel)]="couverts" />
+        </div>
+        <div class="actions-formulaire">
+          <button class="bouton" type="submit" [disabled]="occupe()">Enregistrer</button>
+        </div>
+      </form>
+      <div class="actions-table">
+        <button class="bouton secondaire" type="button" (click)="demanderTransfert()">Changer de table</button>
+        <button class="bouton danger" type="button" [disabled]="occupe()" (click)="annulerCommande()"
+                title="Possible tant que rien n'est regle ; un gerant si des articles sont partis en preparation">
+          Annuler la commande
+        </button>
+      </div>
+    </app-modale>
+  }
+
+  <!-- Transfert sur une table libre -->
+  @if (transfert(); as tables) {
+    <app-modale titre="Changer de table" sousTitre="Choisissez une table libre" largeur="560px"
+                [erreur]="erreur()" (ferme)="transfert.set(null)">
+      <div class="puces">
+        @for (t of tables; track t.table.id) {
+          <button type="button" class="puce" [disabled]="occupe()" (click)="transferer(t)">
+            {{ t.table.nom }} <small>· {{ t.table.places }} pl.</small>
+          </button>
+        } @empty {
+          <p class="vide">Aucune table libre.</p>
+        }
+      </div>
+    </app-modale>
+  }
+
+  <!-- Encaissement -->
+  @if (paiement()) {
+    <app-modale titre="Encaissement" [sousTitre]="c.resume.repere + ' · a payer : ' + (montantAPayer() | number: '1.0-0') + ' F'"
+                largeur="620px" [erreur]="erreur()" (ferme)="paiement.set(false)">
+      <form class="paiement" (ngSubmit)="encaisser()">
+        <div class="segments">
+          <button type="button" [class.actif]="!parConvive()" (click)="basculerConvive(false)">Toute l'addition</button>
+          <button type="button" [class.actif]="parConvive()" (click)="basculerConvive(true)">Par convive</button>
+        </div>
+
+        @if (parConvive()) {
+          <div class="parts">
+            @for (l of aPayer(); track l.id) {
+              <div class="part" [class.choisie]="(parts()[l.id] || 0) > 0">
+                <span class="libelle">{{ l.libelle }} <small>{{ l.prixUnitaire | number: '1.0-0' }} F</small></span>
+                <div class="compteur">
+                  <button type="button" aria-label="Moins" (click)="changerPart(l, -1)">−</button>
+                  <span>{{ parts()[l.id] || 0 }}/{{ l.quantite | number: '1.0-3' }}</span>
+                  <button type="button" aria-label="Plus" (click)="changerPart(l, 1)">+</button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <div class="moyens">
+          @for (m of modes; track m.valeur) {
+            <button type="button" class="moyen" [class.actif]="mode() === m.valeur" (click)="mode.set(m.valeur)">
+              <span class="icone" aria-hidden="true">{{ m.icone }}</span>
+              <small>{{ m.libelle }}</small>
+            </button>
+          }
+        </div>
+
+        @if (mode() === 'ESPECES') {
+          <div class="champ">
+            <label for="recu">Montant recu</label>
+            <input id="recu" name="recu" type="number" min="0" step="any" class="grand"
+                   [ngModel]="montantRecu()" (ngModelChange)="montantRecu.set($event)" />
+          </div>
+          <div class="puces">
+            @for (b of billets(); track b) {
+              <button type="button" class="puce" (click)="montantRecu.set(b)">{{ b | number: '1.0-0' }}</button>
+            }
+          </div>
+          <div class="monnaie" [class.insuffisant]="(montantRecu() ?? 0) < montantAPayer()">
+            @if ((montantRecu() ?? 0) >= montantAPayer()) {
+              Monnaie a rendre : <strong>{{ monnaie() | number: '1.0-0' }} F</strong>
+            } @else {
+              Il manque <strong>{{ montantAPayer() - (montantRecu() ?? 0) | number: '1.0-0' }} F</strong>
+            }
+          </div>
+        } @else {
+          <div class="champ">
+            <label for="reference">Reference de la transaction (facultatif)</label>
+            <input id="reference" name="reference" [(ngModel)]="reference" placeholder="Ex. ID mobile money" />
+          </div>
+        }
+
+        @if (estGestionnaire) {
+          <div class="champ">
+            <label for="remise">Remise (F CFA)</label>
+            <input id="remise" name="remise" type="number" min="0" step="any" [ngModel]="remise()"
+                   (ngModelChange)="remise.set($event)" />
+          </div>
+        }
+
+        <div class="actions-formulaire">
+          <button class="bouton secondaire" type="button" (click)="paiement.set(false)">Retour</button>
+          <button class="bouton-vert" type="submit" [disabled]="occupe() || !paiementPossible()">
+            {{ occupe() ? 'Enregistrement...' : 'Valider ' + (montantAPayer() | number: '1.0-0') + ' F' }}
+          </button>
+        </div>
+      </form>
+    </app-modale>
+  }
+
+  <!-- Paiement enregistre -->
+  @if (dernierTicket(); as t) {
+    <app-modale titre="Paiement enregistre" [sousTitre]="'Commande ' + t.numero" largeur="460px" (ferme)="fermerTicket()">
+      <div class="ticket-emis">
+        <div class="coche" aria-hidden="true">✓</div>
+        <p class="total-emis">{{ t.total | number: '1.0-0' }} F</p>
+        <p>{{ t.modePaiementLibelle }}
+          @if (t.monnaieRendue) { · monnaie rendue <strong>{{ t.monnaieRendue | number: '1.0-0' }} F</strong> }
+        </p>
+        @if (ouverte()) {
+          <p>Reste a payer sur la table : <strong>{{ c.resume.resteAPayer | number: '1.0-0' }} F</strong></p>
+        }
+        <div class="actions-formulaire">
+          <button class="bouton secondaire" type="button" (click)="imprimerTicket(t)">Imprimer le recu</button>
+          <button class="bouton-vert" type="button" (click)="fermerTicket()">
+            {{ ouverte() ? 'Continuer' : 'Retour au plan' }}
+          </button>
+        </div>
+      </div>
+    </app-modale>
+  }
+} @else if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+  <a class="bouton" routerLink="/pdv/salle">Retour au plan de salle</a>
+} @else {
+  <p class="vide">Chargement de la commande...</p>
+}
