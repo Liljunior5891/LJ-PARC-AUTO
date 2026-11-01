@@ -59,6 +59,7 @@ public class CarteParcService {
 
                     return new PositionGpsDto.MarqueurCarte(
                             camion.getId(), camion.getImmatriculation(), camion.libelleMarque(),
+                            camion.getTypeReference() == null ? null : camion.getTypeReference().getDessin(),
                             camion.getStatut(), camion.getStatut().getLibelle(),
                             chauffeur, activite,
                             position.getLatitude(), position.getLongitude(),

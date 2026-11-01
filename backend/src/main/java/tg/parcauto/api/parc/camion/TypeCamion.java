@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import tg.parcauto.api.common.EntiteAuditee;
 
-/** Type de carrosserie du camion : plateau, benne, citerne... */
+/** Type de vehicule : berline, SUV, plateau, benne, citerne, pelleteuse... */
 @Entity
 @Table(name = "type_camion")
 @Getter
@@ -21,6 +21,14 @@ public class TypeCamion extends EntiteAuditee {
 
     @Column(length = 255)
     private String description;
+
+    /** Famille du type : VOITURE, UTILITAIRE, CAMION ou ENGIN ; vide pour « Autre ». */
+    @Column(length = 20)
+    private String categorie;
+
+    /** Dessin de profil affiche sur la carte du vehicule (cle connue de l'interface). */
+    @Column(length = 30)
+    private String dessin;
 
     @Column(nullable = false)
     private Integer ordre = 100;

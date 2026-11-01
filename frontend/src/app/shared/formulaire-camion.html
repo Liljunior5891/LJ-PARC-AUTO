@@ -13,6 +13,15 @@
         }
       </div>
       <div class="champ">
+        <label for="nc-famille">Famille</label>
+        <select id="nc-famille" [value]="famille() ?? ''" (change)="choisirFamille($any($event.target).value)">
+          <option value="">Toutes les familles</option>
+          @for (f of familles; track f.valeur) {
+            <option [value]="f.valeur" [selected]="famille() === f.valeur">{{ f.libelle }}</option>
+          }
+        </select>
+      </div>
+      <div class="champ">
         <label for="nc-marque">Marque</label>
         <app-select-recherche formControlName="marqueId" [options]="optionsMarque()"
                               placeholder="Selectionner une marque" />
@@ -28,7 +37,7 @@
       <div class="champ">
         <label for="nc-type">Type</label>
         <app-select-recherche formControlName="typeId" [options]="optionsType()"
-                              placeholder="Benne, plateau, citerne..." />
+                              placeholder="Berline, SUV, benne, plateau..." />
       </div>
       <div class="champ">
         <label for="nc-categorie">Categorie</label>

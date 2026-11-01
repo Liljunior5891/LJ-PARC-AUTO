@@ -5,6 +5,10 @@ import {
   CamionRequete,
   MarqueCamion,
   Referentiel,
+  CATEGORIES_VEHICULE,
+  CategorieVehicule,
+  marquesDeFamille,
+  typesDeFamille,
   STATUTS_CAMION,
   TYPES_CARBURANT
 } from '../core/models/models';
@@ -42,8 +46,33 @@ export class FormulaireCamion implements OnInit {
   readonly enregistrement = signal(false);
   readonly erreur = signal<string | null>(null);
 
+  /** Famille choisie (voiture, utilitaire, camion, engin) : elle filtre les types et les marques. */
+  readonly famille = signal<CategorieVehicule | null>(null);
+  readonly familles = CATEGORIES_VEHICULE;
+
+  choisirFamille(valeur: string): void {
+    const famille = (valeur || null) as CategorieVehicule | null;
+    this.famille.set(famille);
+    // Un type ou une marque hors de la nouvelle famille est retire.
+    const { typeId, marqueId } = this.formulaire.controls;
+    if (typeId.value !== null && !typesDeFamille(this.types(), famille).some((t) => t.id === typeId.value)) {
+      typeId.setValue(null);
+    }
+    if (marqueId.value !== null && !marquesDeFamille(this.marques(), famille).some((m) => m.id === marqueId.value)) {
+      marqueId.setValue(null);
+    }
+  }
+
+  /** Un type choisi sans famille fixe la famille. */
+  private suivreType(typeId: number | null): void {
+    const type = this.types().find((t) => t.id === typeId);
+    if (type?.categorie && !this.famille()) {
+      this.famille.set(type.categorie);
+    }
+  }
+
   readonly optionsMarque = computed<OptionSelect[]>(() =>
-    this.marques().map((marque) => ({
+    marquesDeFamille(this.marques(), this.famille()).map((marque) => ({
       valeur: marque.id,
       libelle: marque.nom,
       detail: marque.pays,
@@ -53,7 +82,7 @@ export class FormulaireCamion implements OnInit {
     }))
   );
   readonly optionsType = computed<OptionSelect[]>(() =>
-    this.types().map((type) => ({ valeur: type.id, libelle: type.libelle, detail: type.complement }))
+    typesDeFamille(this.types(), this.famille()).map((type) => ({ valeur: type.id, libelle: type.libelle, detail: type.complement }))
   );
   readonly optionsCouleur = computed<OptionSelect[]>(() =>
     this.couleurs().map((couleur) => ({
@@ -87,7 +116,13 @@ export class FormulaireCamion implements OnInit {
 
   ngOnInit(): void {
     this.service.marques().subscribe({ next: (marques) => this.marques.set(marques) });
-    this.service.types().subscribe({ next: (types) => this.types.set(types) });
+    this.service.types().subscribe({
+      next: (types) => {
+        this.types.set(types);
+        this.suivreType(this.formulaire.controls.typeId.value);
+      }
+    });
+    this.formulaire.controls.typeId.valueChanges.subscribe((id) => this.suivreType(id));
     this.service.couleurs().subscribe({ next: (couleurs) => this.couleurs.set(couleurs) });
     // Le compteur actuel part du compteur a l'achat tant qu'on ne le touche pas.
     this.formulaire.controls.kilometrageInitial.valueChanges.subscribe((initial) => {

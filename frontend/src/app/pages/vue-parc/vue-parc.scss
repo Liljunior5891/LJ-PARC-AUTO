@@ -103,6 +103,7 @@
 }
 
 .carte-camion {
+  position: relative;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--couleur-bordure);
@@ -126,7 +127,7 @@
   flex-direction: column;
   min-height: 132px;
   padding: 0.75rem 0.9rem 0.8rem;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.35);
   overflow: hidden;
 
   .illustration {
@@ -176,12 +177,64 @@
   color: var(--couleur-texte-doux);
 }
 
-/* Bas de carte : trajet, equipage et barre de marge. */
+/* Type du vehicule, sous le kilometrage. */
+.type-vehicule {
+  position: relative;
+  z-index: 1;
+  align-self: flex-start;
+  margin-top: 0.3rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--couleur-fond);
+  color: var(--couleur-texte-doux);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+/* Logo de la marque en fond de toute la carte, centre et en grand, sous un
+   voile clair : il reste bien visible et le texte garde son contraste. */
+.fond-marque {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+  pointer-events: none;
+
+  img {
+    width: 82%;
+    height: 82%;
+    object-fit: contain;
+    opacity: 0.5;
+    filter: saturate(0.9);
+  }
+
+  b {
+    color: var(--teinte-marque);
+    font-size: 6rem;
+    font-weight: 800;
+    line-height: 1;
+    opacity: 0.3;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.25);
+  }
+}
+
+/* Bas de carte : trajet, equipage et barre de marge. Fond blanc a peine
+   transparent : le logo se devine dessous sans gener la lecture. */
 .details {
+  position: relative;
+  z-index: 1;
   margin: 0.55rem;
   padding: 0.75rem 0.8rem 0.8rem;
   border-radius: 10px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .trajet {
@@ -248,4 +301,10 @@
   margin-top: 0.45rem;
   font-size: 0.7rem;
   color: var(--couleur-texte-doux);
+}
+
+/* Halo blanc autour du texte des cartes : il reste net par-dessus le logo de fond. */
+.vitrine,
+.details {
+  text-shadow: 0 0 2px #fff, 0 0 5px rgba(255, 255, 255, 0.95), 0 0 9px rgba(255, 255, 255, 0.8);
 }

@@ -1,3 +1,4 @@
+import { DessinVehicule } from '../../shared/dessin-vehicule';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import {
   AfterViewInit,
@@ -12,6 +13,7 @@ import * as L from 'leaflet';
 import { AlerteGps, COULEURS_STATUT, MarqueurCarte, Trajet, ZoneGeofence } from '../../core/models/gps';
 import { StatutCamion } from '../../core/models/models';
 import { GpsService } from '../../core/services/gps.service';
+import { pictoVehicule } from '../../shared/picto-vehicule';
 
 /** Vue par defaut : Lome, siege de l'exploitation. */
 const CENTRE_PAR_DEFAUT: L.LatLngExpression = [6.1319, 1.2228];
@@ -25,13 +27,10 @@ const SEUIL_DECONNEXION_MIN = 120;
 /** Couleur de l'itineraire et des camions en mouvement. */
 const ORANGE = '#f0a202';
 
-/** Pictogramme de camion, repris dans les marqueurs et la fenetre d'information. */
-const PICTO_CAMION = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor"
-  d="M3 6h11v9H3zM15 9h3.5l2.5 3.2V15h-6zM6.5 18.5a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6zm11 0a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z"/></svg>`;
 
 @Component({
   selector: 'app-carte-parc',
-  imports: [FormsModule, DecimalPipe, DatePipe],
+  imports: [FormsModule, DecimalPipe, DatePipe, DessinVehicule],
   templateUrl: './carte-parc.html',
   styleUrl: './carte-parc.scss'
 })
@@ -181,7 +180,7 @@ export class CarteParc implements AfterViewInit, OnDestroy {
       const icone = L.divIcon({
         className: 'marqueur-parc',
         html: `<span class="${classes.join(' ')}" style="--statut:${this.couleurStatut(marqueur)}"
-                 title="${this.echapper(marqueur.immatriculation)}">${PICTO_CAMION}</span>`,
+                 title="${this.echapper(marqueur.immatriculation)}">${pictoVehicule(marqueur.typeDessin)}</span>`,
         iconSize: [34, 34],
         iconAnchor: [17, 17],
         popupAnchor: [0, -18]
@@ -242,7 +241,7 @@ export class CarteParc implements AfterViewInit, OnDestroy {
       .toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     return `
       <div class="entete-popup">
-        <span class="picto-popup">${PICTO_CAMION}</span>
+        <span class="picto-popup">${pictoVehicule(marqueur.typeDessin)}</span>
         <div>
           <strong>${this.echapper(marqueur.immatriculation)}</strong>
           <small>${this.echapper(marqueur.activite ?? marqueur.statutLibelle)}</small>

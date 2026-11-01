@@ -7,6 +7,10 @@ import {
   MarqueCamion,
   Odometre,
   Referentiel,
+  CATEGORIES_VEHICULE,
+  CategorieVehicule,
+  marquesDeFamille,
+  typesDeFamille,
   STATUTS_CAMION,
   TYPES_CARBURANT,
   LIBELLES_SOURCE_RELEVE
@@ -45,8 +49,33 @@ export class CamionFiche implements OnInit {
   readonly odometre = signal<Odometre | null>(null);
 
   /** Options des listes deroulantes avec recherche. */
+  /** Famille choisie (voiture, utilitaire, camion, engin) : elle filtre les types et les marques. */
+  readonly famille = signal<CategorieVehicule | null>(null);
+  readonly familles = CATEGORIES_VEHICULE;
+
+  choisirFamille(valeur: string): void {
+    const famille = (valeur || null) as CategorieVehicule | null;
+    this.famille.set(famille);
+    // Un type ou une marque hors de la nouvelle famille est retire.
+    const { typeId, marqueId } = this.formulaire.controls;
+    if (typeId.value !== null && !typesDeFamille(this.types(), famille).some((t) => t.id === typeId.value)) {
+      typeId.setValue(null);
+    }
+    if (marqueId.value !== null && !marquesDeFamille(this.marques(), famille).some((m) => m.id === marqueId.value)) {
+      marqueId.setValue(null);
+    }
+  }
+
+  /** Un type choisi sans famille fixe la famille. */
+  private suivreType(typeId: number | null): void {
+    const type = this.types().find((t) => t.id === typeId);
+    if (type?.categorie && !this.famille()) {
+      this.famille.set(type.categorie);
+    }
+  }
+
   readonly optionsMarque = computed<OptionSelect[]>(() =>
-    this.marques().map((marque) => ({
+    marquesDeFamille(this.marques(), this.famille()).map((marque) => ({
       valeur: marque.id,
       libelle: marque.nom,
       detail: marque.pays,
@@ -56,7 +85,7 @@ export class CamionFiche implements OnInit {
     }))
   );
   readonly optionsType = computed<OptionSelect[]>(() =>
-    this.types().map((type) => ({
+    typesDeFamille(this.types(), this.famille()).map((type) => ({
       valeur: type.id,
       libelle: type.libelle,
       detail: type.complement
@@ -74,7 +103,7 @@ export class CamionFiche implements OnInit {
 
   /** Volets de la fiche. */
   readonly volets: { id: Volet; libelle: string; icone: string }[] = [
-    { id: 'fiche', libelle: 'Fiche du vehicule', icone: '🚛' },
+    { id: 'fiche', libelle: 'Fiche du vehicule', icone: '📋' },
     { id: 'recettes', libelle: 'Recettes', icone: '💰' },
     { id: 'depenses', libelle: 'Depenses', icone: '💸' },
     { id: 'odometre', libelle: 'Odometre', icone: '⏱️' },
@@ -134,7 +163,13 @@ export class CamionFiche implements OnInit {
 
   ngOnInit(): void {
     this.service.marques().subscribe({ next: (marques) => this.marques.set(marques) });
-    this.service.types().subscribe({ next: (types) => this.types.set(types) });
+    this.service.types().subscribe({
+      next: (types) => {
+        this.types.set(types);
+        this.suivreType(this.formulaire.controls.typeId.value);
+      }
+    });
+    this.formulaire.controls.typeId.valueChanges.subscribe((id) => this.suivreType(id));
     this.service.couleurs().subscribe({ next: (couleurs) => this.couleurs.set(couleurs) });
     // L'apercu suit la marque choisie dans le formulaire.
     this.formulaire.controls.marqueId.valueChanges.subscribe((id) =>
@@ -147,6 +182,7 @@ export class CamionFiche implements OnInit {
       this.id.set(id);
       this.service.parId(id).subscribe({
         next: (camion) => {
+          this.famille.set(camion.typeCategorie ?? null);
           this.formulaire.patchValue(camion as never);
           this.marqueSelectionnee.set(camion.marqueId ?? null);
         },

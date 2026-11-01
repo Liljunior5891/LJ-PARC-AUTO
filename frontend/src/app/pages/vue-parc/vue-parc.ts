@@ -1,4 +1,4 @@
-import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -8,13 +8,14 @@ import { RentabiliteService } from '../../core/services/rentabilite.service';
 import { COULEURS_STATUT_CAMION, StatutCamion } from '../../core/models/models';
 import { TableauBordService } from '../../core/services/tableau-bord.service';
 import { CamionService } from '../../core/services/camion.service';
+import { DessinVehicule } from '../../shared/dessin-vehicule';
 import { AuthService } from '../../core/auth/auth.service';
 import { Camion } from '../../core/models/models';
 import { FormulaireCamion } from '../../shared/formulaire-camion';
 
 @Component({
   selector: 'app-vue-parc',
-  imports: [FormsModule, RouterLink, DecimalPipe, NgTemplateOutlet, FormulaireCamion],
+  imports: [FormsModule, RouterLink, DecimalPipe, FormulaireCamion, DessinVehicule],
   templateUrl: './vue-parc.html',
   styleUrl: './vue-parc.scss'
 })

@@ -13,6 +13,7 @@ import tg.parcauto.api.finance.rentabilite.RentabiliteService;
 import tg.parcauto.api.parc.affectation.Affectation;
 import tg.parcauto.api.parc.affectation.AffectationRepository;
 import tg.parcauto.api.parc.camion.Camion;
+import tg.parcauto.api.parc.camion.MarqueCamion;
 import tg.parcauto.api.parc.camion.CamionRepository;
 import tg.parcauto.api.parc.camion.CamionService;
 import tg.parcauto.api.parc.camion.StatutCamion;
@@ -138,9 +139,16 @@ public class TableauBordService {
         String marqueModele = ((camion.getMarque() == null ? "" : camion.getMarque()) + " "
                 + (camion.getModele() == null ? "" : camion.getModele())).trim();
 
+        MarqueCamion marque = camion.getMarqueReference();
         return new VueParcDto(
                 camion.getId(), camion.getImmatriculation(),
                 marqueModele.isEmpty() ? null : marqueModele,
+                camion.libelleMarque(),
+                marque == null ? null : marque.getLogoUrl(),
+                marque == null ? null : marque.getCouleur(),
+                marque == null ? null : marque.monogramme(),
+                camion.libelleType(),
+                camion.getTypeReference() == null ? null : camion.getTypeReference().getDessin(),
                 camion.getStatut(), camion.getStatut().getLibelle(),
                 chauffeurId, chauffeurNom, clientNom, activite, localisation,
                 camion.getKilometrageActuel());

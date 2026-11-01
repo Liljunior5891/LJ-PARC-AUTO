@@ -37,7 +37,7 @@
         </header>
 
         <div class="affectes">
-          <small>Categories recues</small>
+          <small>Categories recues :</small>
           @for (c of e.categories; track c.id) {
             <span class="categorie" [style.--teinte]="c.couleur || '#1f6fd1'">{{ c.icone }} {{ c.nom }}</span>
           } @empty {
@@ -46,7 +46,7 @@
         </div>
 
         <div class="affectes">
-          <small>Personnel affecte</small>
+          <small>Personnel affecte :</small>
           @for (u of e.utilisateurs; track u.id) {
             <span class="puce">{{ u.nomComplet }}</span>
           } @empty {

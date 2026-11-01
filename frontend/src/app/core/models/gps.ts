@@ -5,6 +5,8 @@ export interface MarqueurCarte {
   camionId: number;
   immatriculation: string;
   marque?: string;
+  /** Dessin du type de vehicule : il choisit le pictogramme du repere. */
+  typeDessin?: string;
   statut: StatutCamion;
   statutLibelle: string;
   chauffeurNom?: string;

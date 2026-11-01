@@ -56,12 +56,35 @@ export type StatutCamion =
 
 export type TypeCarburant = 'DIESEL' | 'ESSENCE' | 'GPL' | 'ELECTRIQUE' | 'HYBRIDE' | 'AUTRE';
 
-/** Entree de referentiel (type de camion, couleur). */
+/** Entree de referentiel (type de vehicule, couleur). */
 export interface Referentiel {
   id: number;
   libelle: string;
   complement?: string;
+  /** Types de vehicule : famille et dessin de la carte. */
+  categorie?: CategorieVehicule;
+  dessin?: string;
 }
+
+/** Familles de vehicules : elles filtrent les types et les marques a la saisie. */
+export type CategorieVehicule = 'VOITURE' | 'UTILITAIRE' | 'CAMION' | 'ENGIN';
+
+/** Types proposes pour une famille ; « Autre » (sans famille) reste toujours propose. */
+export function typesDeFamille(types: Referentiel[], famille: CategorieVehicule | null): Referentiel[] {
+  return famille ? types.filter((t) => !t.categorie || t.categorie === famille) : types;
+}
+
+/** Marques qui fabriquent dans la famille ; une marque sans famille reste proposee. */
+export function marquesDeFamille(marques: MarqueCamion[], famille: CategorieVehicule | null): MarqueCamion[] {
+  return famille ? marques.filter((m) => !m.categories?.length || m.categories.includes(famille)) : marques;
+}
+
+export const CATEGORIES_VEHICULE: { valeur: CategorieVehicule; libelle: string }[] = [
+  { valeur: 'VOITURE', libelle: 'Voiture' },
+  { valeur: 'UTILITAIRE', libelle: 'Utilitaire, minibus et bus' },
+  { valeur: 'CAMION', libelle: 'Camion et poids lourd' },
+  { valeur: 'ENGIN', libelle: 'Engin de chantier' }
+];
 
 export interface Camion {
   id: number;
@@ -76,6 +99,9 @@ export interface Camion {
   annee?: number;
   typeId?: number;
   type?: string;
+  typeCategorie?: CategorieVehicule;
+  /** Dessin de profil de la carte (berline, suv, benne...). */
+  typeDessin?: string;
   categorie?: string;
   numeroChassis?: string;
   numeroMoteur?: string;
@@ -150,6 +176,8 @@ export interface MarqueCamion {
   couleur?: string;
   monogramme: string;
   pays?: string;
+  /** Familles ou la marque fabrique ; vide = toutes. */
+  categories: CategorieVehicule[];
   ordre: number;
   actif: boolean;
 }

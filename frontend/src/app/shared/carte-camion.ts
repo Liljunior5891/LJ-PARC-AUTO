@@ -16,12 +16,11 @@ import * as L from 'leaflet';
 import { MarqueurCarte, Trajet } from '../core/models/gps';
 import { COULEURS_STATUT_CAMION } from '../core/models/models';
 import { GpsService } from '../core/services/gps.service';
+import { pictoVehicule } from './picto-vehicule';
 
 /** Lome : centre de la carte tant qu'aucune position n'est connue. */
 const CENTRE_PAR_DEFAUT: L.LatLngTuple = [6.1319, 1.2228];
 const ORANGE = '#f0a202';
-const PICTO_CAMION = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor"
-  d="M3 6h11v9H3zM15 9h3.5l2.5 3.2V15h-6zM6.5 18.5a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6zm11 0a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z"/></svg>`;
 /** Au-dela, la position est consideree comme perdue (meme seuil que l'API). */
 const MINUTES_HORS_CONNEXION = 120;
 
@@ -206,7 +205,7 @@ export class CarteCamion implements AfterViewInit, OnDestroy {
     const icone = L.divIcon({
       className: 'marqueur-camion',
       html: `<span class="halo" style="--statut:${this.couleurStatut()}"></span>
-             <span class="${classes.join(' ')}" style="--statut:${this.couleurStatut()}">${PICTO_CAMION}</span>`,
+             <span class="${classes.join(' ')}" style="--statut:${this.couleurStatut()}">${pictoVehicule(position.typeDessin)}</span>`,
       iconSize: [40, 40],
       iconAnchor: [20, 20]
     });

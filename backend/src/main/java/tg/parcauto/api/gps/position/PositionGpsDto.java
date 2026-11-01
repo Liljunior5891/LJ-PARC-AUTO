@@ -37,6 +37,8 @@ public final class PositionGpsDto {
             Long camionId,
             String immatriculation,
             String marque,
+            /** Dessin du type de vehicule : il choisit le pictogramme du repere. */
+            String typeDessin,
             StatutCamion statut,
             String statutLibelle,
             String chauffeurNom,

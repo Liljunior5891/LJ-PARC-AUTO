@@ -79,16 +79,7 @@
           <button class="bouton secondaire petit" type="button" (click)="suivre(m)">Centrer</button>
           <button class="bouton petit" type="button" (click)="afficherTrajet(m.camionId)">Trajet du jour</button>
         </div>
-        <svg class="illustration" viewBox="0 0 220 120" aria-hidden="true">
-          <ellipse cx="120" cy="110" rx="100" ry="6" fill="rgba(0,0,0,0.12)" />
-          <rect x="70" y="10" width="150" height="80" rx="3" fill="#f7f8f9" stroke="#d5d9de" />
-          <path d="M18 40h34c5 0 8 2 10 6l8 16v32H10V52c0-7 3-12 8-12z" fill="#fff" stroke="#d5d9de" />
-          <path d="M22 46h26c3 0 5 1 6 3l6 13H18V52c0-4 2-6 4-6z" fill="#2c3e50" opacity="0.85" />
-          <rect x="10" y="88" width="210" height="8" fill="#3b4148" />
-          <circle cx="40" cy="98" r="12" fill="#22272c" /><circle cx="40" cy="98" r="5" fill="#c9cfd4" />
-          <circle cx="160" cy="98" r="12" fill="#22272c" /><circle cx="160" cy="98" r="5" fill="#c9cfd4" />
-          <circle cx="188" cy="98" r="12" fill="#22272c" /><circle cx="188" cy="98" r="5" fill="#c9cfd4" />
-        </svg>
+        <app-dessin-vehicule class="illustration" [dessin]="m.typeDessin" />
       </section>
 
       <div class="colonne-tuiles">

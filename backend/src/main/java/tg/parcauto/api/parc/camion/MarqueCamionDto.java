@@ -24,12 +24,13 @@ public final class MarqueCamionDto {
             String couleur,
             String monogramme,
             String pays,
+            java.util.List<String> categories,
             Integer ordre,
             boolean actif) {
 
         public static Reponse de(MarqueCamion m) {
             return new Reponse(m.getId(), m.getNom(), m.getLogoUrl(), m.getCouleur(),
-                    m.monogramme(), m.getPays(), m.getOrdre(), m.isActif());
+                    m.monogramme(), m.getPays(), m.listeCategories(), m.getOrdre(), m.isActif());
         }
     }
 }

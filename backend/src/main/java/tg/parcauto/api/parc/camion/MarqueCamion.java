@@ -34,12 +34,23 @@ public class MarqueCamion extends EntiteAuditee {
     @Column(length = 80)
     private String pays;
 
+    /** Familles ou la marque fabrique, separees par des virgules ; vide = toutes. */
+    @Column(length = 100)
+    private String categories;
+
     /** Ordre d'affichage dans les listes deroulantes. */
     @Column(nullable = false)
     private Integer ordre = 100;
 
     @Column(nullable = false)
     private boolean actif = true;
+
+    public java.util.List<String> listeCategories() {
+        if (categories == null || categories.isBlank()) {
+            return java.util.List.of();
+        }
+        return java.util.Arrays.stream(categories.split(",")).map(String::trim).filter(c -> !c.isEmpty()).toList();
+    }
 
     /** Initiales affichees a defaut de logo. */
     public String monogramme() {

@@ -116,30 +116,20 @@
     </div>
   </header>
 
-  <!-- Illustration commune a toutes les cartes : porteur vu de profil. -->
-  <ng-template #illustration>
-    <svg class="illustration" viewBox="0 0 230 110" aria-hidden="true">
-      <ellipse cx="120" cy="100" rx="112" ry="5" fill="rgba(0,0,0,0.12)" />
-      <rect x="4" y="8" width="150" height="74" rx="3" fill="#f7f8f9" stroke="#d5d9de" />
-      @for (x of [30, 56, 82, 108, 134]; track x) {
-        <line [attr.x1]="x" y1="12" [attr.x2]="x" y2="78" stroke="#e4e7ea" />
-      }
-      <rect x="4" y="80" width="200" height="8" fill="#3b4148" />
-      <path d="M158 26h38c5 0 9 3 11 7l12 22c1 2 2 4 2 6v19h-63z" fill="#ffffff" stroke="#d5d9de" />
-      <path d="M166 32h28c3 0 5 2 6 4l9 17h-43z" fill="#2c3e50" opacity="0.85" />
-      <rect x="160" y="58" width="12" height="3" rx="1.5" fill="#aab2ba" />
-      <rect x="214" y="70" width="8" height="6" rx="2" fill="#f0a202" />
-      @for (x of [30, 58, 184]; track x) {
-        <circle [attr.cx]="x" cy="90" r="12" fill="#22272c" />
-        <circle [attr.cx]="x" cy="90" r="5" fill="#c9cfd4" />
-      }
-    </svg>
-  </ng-template>
-
   <div class="grille-camions">
     @for (ligne of lignesAffichees(); track ligne.camionId) {
       <a class="carte-camion" [routerLink]="['/camions', ligne.camionId]"
          [style.--couleur-statut]="filtre() === 'archives' ? '#8a94a0' : couleurStatut(ligne.statut)">
+        <!-- Logo de la marque en fond de toute la carte, sous un voile clair qui garde le texte lisible. -->
+        @if (ligne.marque) {
+          <span class="fond-marque" aria-hidden="true" [style.--teinte-marque]="ligne.marqueCouleur || '#6b7684'">
+            @if (ligne.marqueLogoUrl) {
+              <img [src]="ligne.marqueLogoUrl" alt="" loading="lazy" />
+            } @else {
+              <b>{{ ligne.marqueMonogramme }}</b>
+            }
+          </span>
+        }
         <div class="vitrine">
           <span class="puce-statut"><i></i>{{ ligne.statutLibelle }}</span>
           <strong class="immatriculation">{{ ligne.immatriculation }}</strong>
@@ -147,7 +137,8 @@
             {{ ligne.kilometrageActuel | number }} km
             @if (ligne.marqueModele) { · {{ ligne.marqueModele }} }
           </span>
-          <ng-container [ngTemplateOutlet]="illustration" />
+          @if (ligne.type) { <span class="type-vehicule">{{ ligne.type }}</span> }
+          <app-dessin-vehicule class="illustration" [dessin]="ligne.typeDessin" />
         </div>
 
         <div class="details">
