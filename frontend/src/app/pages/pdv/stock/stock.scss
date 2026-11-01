@@ -97,6 +97,114 @@ tr.cliquable {
 }
 
 /* Les alertes restent une liste d'appoint : la liste des commandes garde la place. */
-.tableau-conteneur.alertes {
-  max-height: 210px;
+/* Alertes de reapprovisionnement : petites cartes alignees, autant que la largeur le permet. */
+.bloc-alertes {
+  margin-bottom: 1rem;
+}
+
+.cartes-alertes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.6rem;
+  max-height: 172px;
+  overflow-y: auto;
+  padding: 0.15rem;
+}
+
+.carte-alerte {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid #f3d6a4;
+  border-left: 4px solid #e8870e;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fff 55%, #fff4e3 100%);
+
+  &.rupture {
+    border-color: #f3c7c7;
+    border-left-color: var(--couleur-danger);
+    background: linear-gradient(135deg, #fff 55%, #fde8e4 100%);
+
+    .niveau {
+      color: var(--couleur-danger);
+    }
+  }
+}
+
+.vignette-alerte {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--couleur-fond);
+  font-size: 1.2rem;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.infos-alerte {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+
+  strong {
+    overflow: hidden;
+    font-size: 0.85rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+    font-size: 0.72rem;
+  }
+
+  .niveau {
+    color: #b8650a;
+    font-size: 0.78rem;
+    font-weight: 700;
+
+    em {
+      color: var(--couleur-texte-doux);
+      font-style: normal;
+      font-weight: 500;
+    }
+  }
+}
+
+.commander {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid color-mix(in srgb, var(--couleur-primaire) 25%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--couleur-primaire) 10%, #fff);
+  color: var(--couleur-primaire);
+  cursor: pointer;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &:hover {
+    background: var(--couleur-primaire);
+    color: #fff;
+  }
 }

@@ -22,31 +22,34 @@
 }
 
 @if (alertes().length > 0) {
-  <div class="carte" style="margin-bottom: 1rem; border-left: 4px solid #d97706">
+  <!-- Produits sous leur seuil : une petite carte chacun, plusieurs par ligne. -->
+  <section class="bloc-alertes" aria-label="Produits a reapprovisionner">
     <div class="titre-alerte">
       <h2>⚠ {{ alertes().length }} produit(s) a reapprovisionner</h2>
       <button class="bouton petit" type="button" (click)="nouvelleCommande.set(alertes())">Commander ces produits</button>
     </div>
-    <div class="tableau-conteneur hauteur-fixe alertes">
-      <table class="tableau">
-        <thead>
-          <tr><th>Article</th><th class="numerique">Stock</th><th class="numerique">Seuil</th><th></th></tr>
-        </thead>
-        <tbody>
-          @for (a of alertes(); track a.id) {
-            <tr>
-              <td><strong>{{ a.nom }}</strong> <small>{{ a.code }}</small></td>
-              <td class="numerique resultat-negatif"><strong>{{ a.stockActuel | number: '1.0-3' }}</strong></td>
-              <td class="numerique">{{ a.seuilAlerte | number: '1.0-3' }}</td>
-              <td style="text-align: right">
-                <button class="bouton secondaire petit" type="button" (click)="nouvelleCommande.set([a])">Commander</button>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+    <div class="cartes-alertes">
+      @for (a of alertes(); track a.id) {
+        <article class="carte-alerte" [class.rupture]="a.stockActuel <= 0">
+          <span class="vignette-alerte" aria-hidden="true">
+            @if (a.image) { <img [src]="a.image" alt="" /> } @else { {{ a.categorieIcone || '📦' }} }
+          </span>
+          <div class="infos-alerte">
+            <strong [title]="a.nom">{{ a.nom }}</strong>
+            <small>{{ a.code }}</small>
+            <span class="niveau">
+              {{ a.stockActuel <= 0 ? 'Rupture' : 'Stock ' + (a.stockActuel | number: '1.0-3') }}
+              <em>/ seuil {{ a.seuilAlerte | number: '1.0-3' }}</em>
+            </span>
+          </div>
+          <button class="commander" type="button" (click)="nouvelleCommande.set([a])"
+                  [title]="'Commander ' + a.nom" [attr.aria-label]="'Commander ' + a.nom">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2 11h10l2-7.5H7" /><circle cx="9.5" cy="19" r="1.4" /><circle cx="16.5" cy="19" r="1.4" /></svg>
+          </button>
+        </article>
+      }
     </div>
-  </div>
+  </section>
 }
 
 @if (onglet() === 'commandes') {

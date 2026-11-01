@@ -1,7 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Page } from '../../../core/models/models';
 import {
   ArticlePdv,
@@ -30,6 +30,7 @@ import { FormulaireCommande } from './formulaire-commande';
   styleUrl: './stock.scss'
 })
 export class StockPdv implements OnInit {
+  private readonly route = inject(ActivatedRoute);
   private readonly service = inject(PdvService);
   private readonly router = inject(Router);
 
@@ -66,7 +67,21 @@ export class StockPdv implements OnInit {
     this.chargerCommandes();
     this.charger();
     this.service.articles({ stockBas: true, actif: true, size: 50 }).subscribe({
-      next: (p) => this.alertes.set(p.content)
+      next: (p) => {
+        this.alertes.set(p.content);
+        // Venue des alertes de la barre du haut (meme depuis cette page) : la commande s'ouvre preremplie.
+        this.route.queryParamMap.subscribe((parametres) => {
+          const commander = parametres.get('commander');
+          if (!commander) {
+            return;
+          }
+          const produits = commander === 'tout' ? this.alertes() : this.alertes().filter((a) => a.id === Number(commander));
+          if (produits.length > 0) {
+            this.nouvelleCommande.set(produits);
+          }
+          void this.router.navigate([], { queryParams: {}, replaceUrl: true });
+        });
+      }
     });
     // Liste des articles suivis, pour la saisie d'un mouvement et le filtre.
     this.service.articles({ actif: true, size: 500 }).subscribe({

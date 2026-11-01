@@ -27,8 +27,8 @@ import java.util.List;
 /**
  * Comptes utilisateurs (chapitre 40).
  * <p>
- * Tout est reserve a l'administrateur, sauf le changement de son propre mot de
- * passe, que chaque utilisateur doit pouvoir faire lui-meme.
+ * Tout est reserve a l'administrateur, sauf son propre compte : chacun met a
+ * jour son nom, son prenom, son telephone et son mot de passe lui-meme.
  */
 @RestController
 @RequestMapping("/api/utilisateurs")
@@ -104,6 +104,19 @@ public class UtilisateurController {
     @Operation(summary = "Definit ou efface le code PIN de caisse d'un compte")
     public void definirPin(@PathVariable Long id, @Valid @RequestBody UtilisateurDto.DefinitionPin demande) {
         service.definirPin(id, demande.pin());
+    }
+
+    @GetMapping("/moi")
+    @Operation(summary = "Son propre compte")
+    public UtilisateurDto.Reponse moi(@AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.moi(principal.getId());
+    }
+
+    @PutMapping("/moi")
+    @Operation(summary = "Met a jour son nom, son prenom et son telephone")
+    public UtilisateurDto.Reponse mettreAJourSonProfil(@Valid @RequestBody UtilisateurDto.MiseAJourProfil demande,
+                                                       @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.mettreAJourSonProfil(principal.getId(), demande);
     }
 
     @PutMapping("/moi/mot-de-passe")

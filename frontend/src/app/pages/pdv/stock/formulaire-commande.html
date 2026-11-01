@@ -1,5 +1,5 @@
 <app-modale [titre]="commande() ? 'Modifier la commande ' + commande()!.resume.numero : 'Nouvelle commande'"
-            sousTitre="Commande de reapprovisionnement aupres d'un fournisseur" largeur="900px"
+            sousTitre="Commande de reapprovisionnement aupres d'un fournisseur" largeur="1240px" [grande]="true"
             [erreur]="erreur()" (ferme)="ferme.emit()">
   <form (ngSubmit)="enregistrer()">
     <div class="grille-formulaire">

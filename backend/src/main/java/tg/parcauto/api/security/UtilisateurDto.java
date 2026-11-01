@@ -61,6 +61,16 @@ public final class UtilisateurDto {
             @NotBlank @Size(min = LONGUEUR_MOT_DE_PASSE, max = 72) String motDePasse) {
     }
 
+    /**
+     * Ce que chacun met a jour sur son propre compte. L'adresse e-mail (son
+     * identifiant de connexion) et les profils restent geres par l'administrateur.
+     */
+    public record MiseAJourProfil(
+            @NotBlank @Size(max = 100) String nom,
+            @Size(max = 100) String prenom,
+            @Size(max = 30) String telephone) {
+    }
+
     /** Changement par l'utilisateur lui-meme, qui doit prouver l'ancien. */
     public record ChangementMotDePasse(
             @NotBlank String motDePasseActuel,

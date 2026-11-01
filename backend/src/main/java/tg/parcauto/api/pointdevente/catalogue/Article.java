@@ -69,8 +69,11 @@ public class Article extends BaseEntity {
     @Column(columnDefinition = "text")
     private String image;
 
-    /** Vrai si le stock suivi est passe sous le seuil d'alerte. */
+    /**
+     * Vrai si le stock suivi est passe sous le seuil d'alerte sans etre epuise :
+     * un produit en rupture a depasse ce stade, il est compte comme rupture.
+     */
     public boolean stockBas() {
-        return suiviStock && seuilAlerte != null && stockActuel.compareTo(seuilAlerte) <= 0;
+        return suiviStock && seuilAlerte != null && stockActuel.signum() > 0 && stockActuel.compareTo(seuilAlerte) <= 0;
     }
 }

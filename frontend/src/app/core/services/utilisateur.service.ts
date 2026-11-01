@@ -61,6 +61,16 @@ export class UtilisateurService {
   }
 
   /** Changement par l'utilisateur connecte, qui doit fournir l'ancien. */
+  /** Compte de la personne connectee. */
+  moi(): Observable<Utilisateur> {
+    return this.http.get<Utilisateur>(`${this.base}/moi`);
+  }
+
+  /** Nom, prenom et telephone, mis a jour par l'utilisateur lui-meme. */
+  mettreAJourSonProfil(profil: { nom: string; prenom?: string | null; telephone?: string | null }): Observable<Utilisateur> {
+    return this.http.put<Utilisateur>(`${this.base}/moi`, profil);
+  }
+
   changerSonMotDePasse(demande: ChangementMotDePasse): Observable<void> {
     return this.http.put<void>(`${this.base}/moi/mot-de-passe`, demande);
   }

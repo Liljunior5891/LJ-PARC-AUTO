@@ -13,7 +13,32 @@
         <small>{{ ecranPoste() }}</small>
       </span>
       <span class="actions-poste">
-        <span class="qui"><span class="avatar">{{ initiales() }}</span><span class="nom-poste">{{ utilisateur()?.nomComplet }}</span></span>
+        @if (notificationsPdv) {
+          <app-alertes-pdv />
+        }
+        <span class="zone-compte">
+          <button type="button" class="qui" (click)="basculerMenuCompte()" [attr.aria-expanded]="menuCompte()" aria-haspopup="menu"
+                  title="Mon compte et deconnexion">
+            <span class="avatar">{{ initiales() }}</span><span class="nom-poste">{{ utilisateur()?.nomComplet }}</span>
+            <span class="fleche" aria-hidden="true">▾</span>
+          </button>
+          @if (menuCompte()) {
+            <div class="menu-compte" role="menu">
+              <div class="tete-menu">
+                <strong>{{ utilisateur()?.nomComplet }}</strong>
+                <small>{{ utilisateur()?.email }}</small>
+              </div>
+              <button type="button" role="menuitem" (click)="ouvrirCompte()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6" /><path d="M5 20c.8-3.8 3.6-6 7-6s6.2 2.2 7 6" /></svg>
+                Mon compte
+              </button>
+              <button type="button" role="menuitem" class="danger" (click)="deconnexion()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v8" /><path d="M7 6.3a7.5 7.5 0 1 0 10 0" /></svg>
+                Deconnexion
+              </button>
+            </div>
+          }
+        </span>
         <button type="button" class="outil" (click)="basculerPleinEcran()"
                 [attr.aria-label]="pleinEcran() ? 'Quitter le plein ecran' : 'Plein ecran'"
                 [title]="pleinEcran() ? 'Quitter le plein ecran' : 'Plein ecran'">{{ pleinEcran() ? '🗗' : '⛶' }}</button>
@@ -21,7 +46,6 @@
           <button type="button" class="outil" (click)="verrou.verrouiller()" aria-label="Verrouiller la caisse"
                   title="Verrouiller la caisse">🔒</button>
         }
-        <button type="button" class="outil quitter" (click)="deconnexion()" aria-label="Se deconnecter" title="Se deconnecter">⏻</button>
       </span>
     </header>
     @if (avecVerrou && verrou.verrouille()) {
@@ -45,14 +69,36 @@
       @if (clocheVisible()) {
         <app-cloche-notifications />
       }
-      <a class="profil" routerLink="/mon-compte" title="Mon compte">
-        <span class="avatar">{{ initiales() }}</span>
-        <span class="identite">
-          <strong>{{ utilisateur()?.nomComplet }}</strong>
-          <small>{{ utilisateur()?.roles?.join(', ') }}</small>
-        </span>
-      </a>
-      <button class="bouton secondaire petit" type="button" (click)="deconnexion()">Deconnexion</button>
+      @if (notificationsPdv) {
+        <app-alertes-pdv />
+      }
+      <div class="zone-compte">
+        <button type="button" class="profil" (click)="basculerMenuCompte()" [attr.aria-expanded]="menuCompte()" aria-haspopup="menu"
+                title="Mon compte et deconnexion">
+          <span class="avatar">{{ initiales() }}</span>
+          <span class="identite">
+            <strong>{{ utilisateur()?.nomComplet }}</strong>
+            <small>{{ utilisateur()?.roles?.join(', ') }}</small>
+          </span>
+          <span class="fleche" aria-hidden="true">▾</span>
+        </button>
+        @if (menuCompte()) {
+          <div class="menu-compte" role="menu">
+            <div class="tete-menu">
+              <strong>{{ utilisateur()?.nomComplet }}</strong>
+              <small>{{ utilisateur()?.email }}</small>
+            </div>
+            <button type="button" role="menuitem" (click)="ouvrirCompte()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6" /><path d="M5 20c.8-3.8 3.6-6 7-6s6.2 2.2 7 6" /></svg>
+              Mon compte
+            </button>
+            <button type="button" role="menuitem" class="danger" (click)="deconnexion()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v8" /><path d="M7 6.3a7.5 7.5 0 1 0 10 0" /></svg>
+              Deconnexion
+            </button>
+          </div>
+        }
+      </div>
     </div>
   </header>
 
@@ -127,3 +173,7 @@
     <router-outlet />
   </main>
 </div>
+
+@if (compteOuvert()) {
+  <app-panneau-compte (ferme)="compteOuvert.set(false)" />
+}

@@ -64,6 +64,16 @@
   }
 }
 
+/*
+ * Plusieurs produits d'un coup : la liste prend toute la hauteur laissee par
+ * les champs de la fenetre, et defile seule au-dela.
+ */
+form .tableau-conteneur.liste-modale {
+  flex: 1 1 auto;
+  min-height: 220px;
+  max-height: none;
+}
+
 .lignes-commande {
   td {
     vertical-align: middle;

@@ -66,3 +66,10 @@ small {
 .total-reception {
   text-align: right;
 }
+
+/* Reception de nombreux produits : la liste prend la hauteur de la grande fenetre et defile seule. */
+form .tableau-conteneur.liste-modale {
+  flex: 1 1 auto;
+  min-height: 220px;
+  max-height: none;
+}

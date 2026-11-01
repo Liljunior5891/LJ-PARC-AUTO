@@ -23,6 +23,31 @@
   animation: apparition-modale 0.18s ease-out;
 }
 
+/* Grande fenetre : elle occupe la hauteur de l'ecran, le contenu s'etire dedans. */
+.modale.grande {
+  height: calc(100vh - 32px);
+  max-height: calc(100vh - 32px);
+
+  .corps-modale {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+}
+
+/* Le formulaire remplit la grande fenetre : sa liste s'etire, les boutons restent au pied. */
+:host ::ng-deep .modale.grande .corps-modale > form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+
+  > .actions-formulaire:last-child {
+    margin-top: auto;
+  }
+}
+
 @keyframes apparition-modale {
   from {
     opacity: 0;
@@ -89,7 +114,7 @@
 
 /*
  * Le formulaire projete etait une carte de la page : dans la fenetre, il perd
- * son cadre, et sa barre d'actions reste collee au bas de la fenetre.
+ * son cadre ; ses boutons forment le pied de la fenetre.
  */
 :host ::ng-deep .corps-modale {
   > form,
@@ -103,17 +128,52 @@
     box-shadow: none;
   }
 
-  /* Seule la barre principale colle au bas : pas celles des sous-blocs. */
-  form > .actions-formulaire,
-  > .carte > .actions-formulaire {
+  /*
+   * Barres d'actions des fenetres : boutons centres, plus grands et espaces,
+   * sur un pied detache du contenu par un filet et un fond doux.
+   */
+  .actions-formulaire {
+    justify-content: center;
+    gap: 0.75rem;
+    margin: 1.4rem 0 1.25rem;
+
+    .bouton,
+    .bouton-vert {
+      justify-content: center;
+      min-width: 140px;
+      padding: 0.7rem 1.5rem;
+      border-radius: 11px;
+      font-weight: 600;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+      }
+
+      &.bouton:not(.secondaire):not(:disabled) {
+        box-shadow: 0 6px 16px color-mix(in srgb, var(--couleur-primaire) 28%, transparent);
+      }
+
+      &.bouton-vert:not(:disabled) {
+        box-shadow: 0 6px 16px rgba(30, 158, 74, 0.28);
+      }
+
+      &.danger:not(:disabled) {
+        box-shadow: 0 6px 16px color-mix(in srgb, var(--couleur-danger) 28%, transparent);
+      }
+    }
+  }
+
+  /* La barre qui termine la fenetre devient son pied : collee en bas pendant le defilement. */
+  .actions-formulaire:last-child {
     position: sticky;
     bottom: 0;
     z-index: 2;
-    justify-content: flex-end;
-    margin: 1.25rem -1.4rem 0;
-    padding: 0.9rem 1.4rem;
+    margin: 1.5rem -1.4rem 0;
+    padding: 1rem 1.4rem 1.2rem;
     border-top: 1px solid var(--couleur-bordure);
-    background: var(--couleur-surface);
+    border-radius: 0 0 16px 16px;
+    background: color-mix(in srgb, var(--couleur-fond) 70%, var(--couleur-surface));
   }
 }
 
@@ -126,5 +186,11 @@
     border-radius: 16px 16px 0 0;
     transform: translateX(-50%);
     animation: none;
+  }
+
+  /* Sur telephone, les boutons se partagent la largeur. */
+  :host ::ng-deep .corps-modale .actions-formulaire :is(.bouton, .bouton-vert) {
+    flex: 1 1 0;
+    min-width: 0;
   }
 }

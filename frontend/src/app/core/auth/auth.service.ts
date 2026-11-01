@@ -81,7 +81,7 @@ export class AuthService {
         }
         return this.aRole('SERVEUR') ? '/pdv/salle' : '/pdv/cuisine';
       }
-      return this.aRole('CAISSIER', 'SERVEUR') ? '/pdv/caisse' : '/mon-compte';
+      return '/pdv/caisse';
     }
     return module === 'GESTION_PARC' ? '/tableau-bord' : '/modules';
   }
@@ -126,6 +126,14 @@ export class AuthService {
     }
     const module = (['GESTION_PARC', 'POINT_DE_VENTE'] as CodeModule[]).find((m) => this.peutUtiliser(m));
     return module ? this.accueilModule(module) : '/modules';
+  }
+
+  /** Nom change depuis « Mon compte » : la barre du haut suit sans reconnexion. */
+  mettreAJourNom(nomComplet: string): void {
+    const utilisateur = this.utilisateurSignal();
+    if (utilisateur) {
+      this.memoriser({ ...utilisateur, nomComplet });
+    }
   }
 
   private memoriser(utilisateur: UtilisateurCourant): void {

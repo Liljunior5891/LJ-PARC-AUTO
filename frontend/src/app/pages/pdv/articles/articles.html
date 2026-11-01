@@ -35,7 +35,7 @@
       <label for="stock">Stock</label>
       <select id="stock" [(ngModel)]="filtreStock" (change)="filtrer()">
         <option [ngValue]="false">Tous les niveaux</option>
-        <option [ngValue]="true">Sous le seuil d'alerte</option>
+        <option [ngValue]="true">A reapprovisionner (sous le seuil ou en rupture)</option>
       </select>
     </div>
     <div class="champ">
@@ -81,8 +81,12 @@
             <td class="numerique">{{ a.prixAchat != null ? (a.prixAchat | number: '1.0-0') + ' F' : '—' }}</td>
             <td class="numerique">
               @if (a.suiviStock) {
-                <span [class.resultat-negatif]="a.stockBas"><strong>{{ a.stockActuel | number: '1.0-3' }}</strong></span>
-                @if (a.stockBas) { <br /><small class="resultat-negatif">sous le seuil ({{ a.seuilAlerte }})</small> }
+                <span [class.resultat-negatif]="a.stockBas || a.stockActuel <= 0"><strong>{{ a.stockActuel | number: '1.0-3' }}</strong></span>
+                @if (a.stockActuel <= 0) {
+                  <br /><small class="resultat-negatif">rupture</small>
+                } @else if (a.stockBas) {
+                  <br /><small class="resultat-negatif">sous le seuil ({{ a.seuilAlerte }})</small>
+                }
               } @else {
                 <small>non suivi</small>
               }

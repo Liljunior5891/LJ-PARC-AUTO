@@ -1,7 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, input, model, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Billettage, ControleCaisse, SessionCaisse } from '../core/models/pdv';
+import { Billettage, SessionCaisse } from '../core/models/pdv';
 import { PdvService } from '../core/services/pdv.service';
 import { ChampQuantite } from './champ-quantite';
 import { Modale } from './modale';
@@ -143,106 +143,119 @@ export class OuvertureSession {
 }
 
 /**
- * Fermeture d'une session par un gerant, en trois temps : comptage du tiroir
- * a l'aveugle (le montant attendu n'est pas montre), revelation de l'ecart a
- * justifier s'il n'est pas nul, puis bilan avec le rapport PDF a telecharger.
+ * Fermeture d'une session par un gerant, sur un seul formulaire : billettage
+ * du tiroir face au montant attendu (fond, ventes en especes, entrees et
+ * sorties) avec le solde en direct, justification obligatoire d'un ecart non
+ * nul et observations. Une fois fermee, le bilan propose le rapport PDF.
  */
 @Component({
   selector: 'app-fermeture-session',
   imports: [DecimalPipe, DatePipe, FormsModule, Modale, SaisieBillettage],
   template: `
-    <app-modale [titre]="'Fermer ' + session().caisseNom" [sousTitre]="'Session ' + session().numero + sousTitreEtape()"
-                largeur="720px" [erreur]="erreur()" (ferme)="ferme.emit()">
-      @switch (etape()) {
-        @case ('comptage') {
-          @if (session().commandesEnCours > 0) {
-            <div class="message erreur">
-              {{ session().commandesEnCours }} commande(s) en cours non reglee(s) : encaissez-les ou annulez-les
-              avant de fermer la caisse.
-            </div>
-          }
-          <p class="consigne">Comptez les especes du tiroir. Le montant attendu s'affichera apres votre comptage.</p>
-          <app-saisie-billettage [(quantites)]="quantites" />
-          <div class="actions-formulaire">
-            <button class="bouton secondaire" type="button" (click)="ferme.emit()">Annuler</button>
-            <button class="bouton" type="button" [disabled]="envoi()" (click)="controler()">
-              {{ envoi() ? 'Controle...' : 'Valider le comptage' }}
-            </button>
+    <app-modale [titre]="'Fermer ' + session().caisseNom"
+                [sousTitre]="'Session ' + session().numero + (resultat() ? ' · fermee' : ' · comptage du tiroir')"
+                largeur="940px" [erreur]="erreur()" (ferme)="ferme.emit()">
+      @if (resultat(); as s) {
+        <div class="bilan-fermeture">
+          <span class="coche" aria-hidden="true">✓</span>
+          <p>{{ s.caisseNom }} fermee le {{ s.fermeeLe | date: "dd/MM/yyyy 'a' HH:mm" }}</p>
+          <dl>
+            <div><dt>Ventes</dt><dd>{{ s.nombreVentes }} · {{ s.chiffreAffaires | number: '1.0-0' }} F</dd></div>
+            <div><dt>Especes attendues</dt><dd>{{ s.montantTheorique | number: '1.0-0' }} F</dd></div>
+            <div><dt>Especes comptees</dt><dd>{{ s.montantCompte | number: '1.0-0' }} F</dd></div>
+            <div [class.negatif]="(s.ecart ?? 0) < 0"><dt>Ecart</dt><dd>{{ s.ecart | number: '1.0-0' }} F</dd></div>
+          </dl>
+        </div>
+        <div class="actions-formulaire">
+          <button class="bouton secondaire" type="button" (click)="telecharger(s)">⤓ Rapport de caisse (PDF)</button>
+          <button class="bouton" type="button" (click)="ferme.emit()">Terminer</button>
+        </div>
+      } @else {
+        @if (session().commandesEnCours > 0) {
+          <div class="message erreur">
+            {{ session().commandesEnCours }} commande(s) en cours non reglee(s) : encaissez-les ou annulez-les
+            avant de fermer la caisse.
           </div>
         }
-        @case ('ecart') {
-          @if (controle(); as c) {
-            <div class="resultat" [class.juste]="c.ecart === 0" [class.manque]="c.ecart < 0" [class.surplus]="c.ecart > 0">
-              <div><span>Especes comptees</span><strong>{{ c.montantCompte | number: '1.0-0' }} F</strong></div>
-              <div><span>Especes attendues</span><strong>{{ c.especesAttendues | number: '1.0-0' }} F</strong></div>
-              <div class="ecart">
-                <span>{{ c.ecart === 0 ? 'Caisse juste' : c.ecart < 0 ? 'Il manque' : 'Excedent' }}</span>
-                <strong>{{ c.ecart | number: '1.0-0' }} F</strong>
+        <div class="comptage">
+          <div>
+            <p class="consigne">Comptez les especes du tiroir : le solde se met a jour a chaque saisie.</p>
+            <app-saisie-billettage [(quantites)]="quantites" />
+          </div>
+          <aside class="controle-direct" aria-live="polite">
+            <h3>Controle des especes</h3>
+            <dl>
+              <div><dt>Fond de caisse</dt><dd>{{ session().fondInitial | number: '1.0-0' }} F</dd></div>
+              <div><dt>+ Ventes en especes <small>({{ especes()?.nombre ?? 0 }})</small></dt>
+                <dd>{{ especes()?.total ?? 0 | number: '1.0-0' }} F</dd></div>
+              <div><dt>+ Entrees d'especes</dt><dd>{{ session().entrees | number: '1.0-0' }} F</dd></div>
+              <div><dt>− Sorties d'especes</dt><dd>{{ session().sorties | number: '1.0-0' }} F</dd></div>
+              <div class="attendu"><dt>= Especes attendues</dt><dd>{{ session().especesAttendues | number: '1.0-0' }} F</dd></div>
+              <div class="compte"><dt>Especes comptees</dt><dd>{{ totalCompte() | number: '1.0-0' }} F</dd></div>
+              <div class="ecart-direct" [class.juste]="ecartDirect() === 0" [class.manque]="ecartDirect() < 0"
+                   [class.surplus]="ecartDirect() > 0">
+                <dt>{{ ecartDirect() === 0 ? 'Solde : caisse juste' : ecartDirect() < 0 ? 'Solde : il manque' : 'Solde : excedent' }}</dt>
+                <dd>{{ ecartDirect() | number: '1.0-0' }} F</dd>
               </div>
+            </dl>
+            @if (autresModes().length > 0) {
+              <h4>Hors tiroir</h4>
+              <dl>
+                @for (m of autresModes(); track m.mode) {
+                  <div><dt>{{ m.libelle }} <small>({{ m.nombre }})</small></dt><dd>{{ m.total | number: '1.0-0' }} F</dd></div>
+                }
+              </dl>
+            }
+            <p class="ventes-session">{{ session().nombreVentes }} vente(s) · {{ session().chiffreAffaires | number: '1.0-0' }} F
+              de chiffre d'affaires</p>
+
+            <div class="champ">
+              <label for="justification">Justification de l'ecart{{ ecartDirect() !== 0 ? ' *' : '' }}</label>
+              <textarea id="justification" rows="2" maxlength="2000" [(ngModel)]="justification"
+                        [class.requise]="ecartDirect() !== 0 && !justification.trim()" [disabled]="ecartDirect() === 0"
+                        [placeholder]="ecartDirect() === 0 ? 'Caisse juste : rien a justifier' : 'Ex. erreur de rendu de monnaie, billet refuse...'"></textarea>
             </div>
-            <p class="detail-attendu">
-              Attendu = fond {{ session().fondInitial | number: '1.0-0' }} F + ventes en especes
-              + entrees {{ session().entrees | number: '1.0-0' }} F − sorties {{ session().sorties | number: '1.0-0' }} F
-            </p>
-            @if (c.commandesEnCours.length > 0) {
-              <div class="message erreur">
-                Fermeture impossible : {{ c.commandesEnCours.length }} commande(s) a regler ({{ c.commandesEnCours.join(', ') }}).
-              </div>
-            }
-            @if (c.ecart !== 0) {
-              <div class="champ">
-                <label for="justification">Justification de l'ecart *</label>
-                <textarea id="justification" rows="2" maxlength="2000" [(ngModel)]="justification"
-                          placeholder="Ex. erreur de rendu de monnaie, billet refuse..."></textarea>
-              </div>
-            }
             <div class="champ">
               <label for="observations">Observations</label>
               <textarea id="observations" rows="2" maxlength="2000" [(ngModel)]="observations"></textarea>
             </div>
-            <div class="actions-formulaire">
-              <button class="bouton secondaire" type="button" (click)="etape.set('comptage')">‹ Recompter</button>
-              <button class="bouton" type="button"
-                      [disabled]="envoi() || c.commandesEnCours.length > 0 || (c.ecart !== 0 && !justification.trim())"
-                      (click)="fermer()">
-                {{ envoi() ? 'Fermeture...' : 'Fermer la caisse' }}
-              </button>
-            </div>
-          }
-        }
-        @case ('bilan') {
-          @if (resultat(); as s) {
-            <div class="bilan-fermeture">
-              <span class="coche" aria-hidden="true">✓</span>
-              <p>{{ s.caisseNom }} fermee le {{ s.fermeeLe | date: "dd/MM/yyyy 'a' HH:mm" }}</p>
-              <dl>
-                <div><dt>Ventes</dt><dd>{{ s.nombreVentes }} · {{ s.chiffreAffaires | number: '1.0-0' }} F</dd></div>
-                <div><dt>Especes attendues</dt><dd>{{ s.montantTheorique | number: '1.0-0' }} F</dd></div>
-                <div><dt>Especes comptees</dt><dd>{{ s.montantCompte | number: '1.0-0' }} F</dd></div>
-                <div [class.negatif]="(s.ecart ?? 0) < 0"><dt>Ecart</dt><dd>{{ s.ecart | number: '1.0-0' }} F</dd></div>
-              </dl>
-            </div>
-            <div class="actions-formulaire">
-              <button class="bouton secondaire" type="button" (click)="telecharger(s)">⤓ Rapport de caisse (PDF)</button>
-              <button class="bouton" type="button" (click)="ferme.emit()">Terminer</button>
-            </div>
-          }
-        }
+          </aside>
+        </div>
+        <div class="actions-formulaire">
+          <button class="bouton secondaire" type="button" (click)="ferme.emit()">Annuler</button>
+          <button class="bouton" type="button" [disabled]="!fermable()" (click)="fermer()">
+            {{ envoi() ? 'Fermeture...' : 'Fermer la caisse' }}
+          </button>
+        </div>
       }
     </app-modale>
   `,
   styles: `
     .consigne { margin: 0 0 0.8rem; color: var(--couleur-texte-doux); }
-    .resultat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 0.6rem; }
-    .resultat > div { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.8rem; border-radius: 12px; background: var(--couleur-fond); }
-    .resultat span { color: var(--couleur-texte-doux); font-size: 0.8rem; }
-    .resultat strong { font-size: 1.3rem; }
-    .resultat.juste .ecart { background: #e3f6ed; color: #1f9d6b; }
-    .resultat.manque .ecart { background: #fde8e4; color: #d9452b; }
-    .resultat.surplus .ecart { background: #fff2df; color: #b8650a; }
-    .resultat .ecart span { color: inherit; }
-    .detail-attendu { margin: 0 0 0.8rem; color: var(--couleur-texte-doux); font-size: 0.8rem; }
-    .champ textarea { width: 100%; }
+    .comptage { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 1rem; align-items: start; }
+    .controle-direct {
+      padding: 0.8rem 0.9rem; border: 1px solid var(--couleur-bordure); border-radius: 12px; background: var(--couleur-fond);
+    }
+    .controle-direct h3 { margin: 0 0 0.5rem; font-size: 0.9rem; }
+    .controle-direct h4 { margin: 0.8rem 0 0.3rem; color: var(--couleur-texte-doux); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .controle-direct dl { display: grid; gap: 0.3rem; margin: 0; }
+    .controle-direct dl div { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.85rem; }
+    .controle-direct dt { color: var(--couleur-texte-doux); }
+    .controle-direct dt small { font-size: 0.75rem; }
+    .controle-direct dd { margin: 0; font-weight: 600; white-space: nowrap; }
+    .controle-direct .attendu { padding-top: 0.35rem; border-top: 1px dashed var(--couleur-bordure); }
+    .controle-direct .attendu dt, .controle-direct .attendu dd, .controle-direct .compte dd { color: var(--couleur-texte); font-weight: 700; }
+    .controle-direct .ecart-direct { margin-top: 0.3rem; padding: 0.45rem 0.55rem; border-radius: 8px; font-size: 0.92rem; }
+    .controle-direct .ecart-direct dt, .controle-direct .ecart-direct dd { color: inherit; font-weight: 700; }
+    .controle-direct .ecart-direct.juste { background: #e3f6ed; color: #1f9d6b; }
+    .controle-direct .ecart-direct.manque { background: #fde8e4; color: #d9452b; }
+    .controle-direct .ecart-direct.surplus { background: #fff2df; color: #b8650a; }
+    .ventes-session { margin: 0.7rem 0 0.6rem; color: var(--couleur-texte-doux); font-size: 0.78rem; }
+    .controle-direct .champ { margin-top: 0.5rem; }
+    .champ textarea { width: 100%; background: #fff; }
+    .champ textarea.requise { border-color: var(--couleur-danger); }
+    .champ textarea:disabled { background: #f3f5f7; }
+    @media (max-width: 760px) { .comptage { grid-template-columns: 1fr; } }
     .bilan-fermeture { text-align: center; }
     .bilan-fermeture .coche {
       display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
@@ -253,7 +266,6 @@ export class OuvertureSession {
     .bilan-fermeture dt { color: var(--couleur-texte-doux); }
     .bilan-fermeture dd { margin: 0; font-weight: 700; }
     .bilan-fermeture .negatif dd { color: var(--couleur-danger); }
-    @media (max-width: 620px) { .resultat { grid-template-columns: 1fr; } }
   `
 })
 export class FermetureSession {
@@ -262,8 +274,6 @@ export class FermetureSession {
   readonly ferme = output<void>();
   readonly fermee = output<SessionCaisse>();
 
-  readonly etape = signal<'comptage' | 'ecart' | 'bilan'>('comptage');
-  readonly controle = signal<ControleCaisse | null>(null);
   /** Session fermee, pour le bilan. */
   readonly resultat = signal<SessionCaisse | null>(null);
   readonly erreur = signal<string | null>(null);
@@ -272,35 +282,37 @@ export class FermetureSession {
   justification = '';
   observations = '';
 
-  readonly sousTitreEtape = computed(() =>
-    ({ comptage: ' · 1. comptage du tiroir', ecart: ' · 2. controle', bilan: ' · fermee' })[this.etape()]
-  );
+  /** Ventes en especes de la session, et les autres moyens qui ne passent pas par le tiroir. */
+  readonly especes = computed(() => this.session().parMode.find((m) => m.mode === 'ESPECES'));
+  readonly autresModes = computed(() => this.session().parMode.filter((m) => m.mode !== 'ESPECES'));
 
-  controler(): void {
-    this.envoi.set(true);
-    this.erreur.set(null);
-    this.service.controlerSession(this.session().id, versBillettage(this.quantites)).subscribe({
-      next: (c) => {
-        this.envoi.set(false);
-        this.controle.set(c);
-        this.etape.set('ecart');
-      },
-      error: (e) => {
-        this.envoi.set(false);
-        this.erreur.set(message(e, 'Controle impossible.'));
-      }
-    });
+  /** Total compte et solde, recalcules a chaque saisie du billettage. */
+  totalCompte(): number {
+    return versBillettage(this.quantites).reduce((somme, c) => somme + c.valeur * c.quantite, 0);
+  }
+
+  ecartDirect(): number {
+    return this.totalCompte() - this.session().especesAttendues;
+  }
+
+  /** Plus de commande a regler, et un ecart non nul justifie. */
+  fermable(): boolean {
+    return !this.envoi() && this.session().commandesEnCours === 0
+      && (this.ecartDirect() === 0 || !!this.justification.trim());
   }
 
   fermer(): void {
+    if (!this.fermable()) {
+      return;
+    }
     this.envoi.set(true);
     this.erreur.set(null);
+    const justification = this.ecartDirect() === 0 ? undefined : this.justification.trim();
     this.service.fermerSession(this.session().id, versBillettage(this.quantites),
-      this.justification.trim() || undefined, this.observations.trim() || undefined).subscribe({
+      justification, this.observations.trim() || undefined).subscribe({
       next: (s) => {
         this.envoi.set(false);
         this.resultat.set(s);
-        this.etape.set('bilan');
         this.fermee.emit(s);
       },
       error: (e) => {

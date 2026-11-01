@@ -56,6 +56,9 @@ export class NotificationsPdvService {
 
   /** Messages affiches, le plus recent en tete. */
   readonly messages = signal<NotificationPdv[]>([]);
+  /** Derniers evenements recus, consultables depuis la barre du haut, et ceux pas encore vus. */
+  readonly historique = signal<NotificationPdv[]>([]);
+  readonly nonLues = signal(0);
   readonly son = signal(this.lireSon());
   readonly permission = signal<PermissionSysteme>(this.lirePermission());
   /** L'utilisateur a repousse la proposition : elle ne revient pas sur ce navigateur. */
@@ -97,6 +100,10 @@ export class NotificationsPdvService {
     } catch {
       // Rien a nettoyer.
     }
+  }
+
+  marquerLues(): void {
+    this.nonLues.set(0);
   }
 
   fermer(cle: string): void {
@@ -162,6 +169,8 @@ export class NotificationsPdvService {
       return;
     }
     this.messages.update((liste) => [...nouveaux, ...liste].slice(0, 6));
+    this.historique.update((liste) => [...nouveaux, ...liste].slice(0, 20));
+    this.nonLues.update((n) => n + nouveaux.length);
     nouveaux.forEach((e) => this.fermetures.set(e.cle, setTimeout(() => this.fermer(e.cle), DUREE_AFFICHAGE_MS)));
     this.jouer(nouveaux[0].type);
     navigator.vibrate?.([180, 90, 180]);

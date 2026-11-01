@@ -92,7 +92,7 @@
   }
 
   @if (reception()) {
-    <app-modale [titre]="'Receptionner ' + c.resume.numero" [sousTitre]="c.resume.fournisseur" largeur="820px"
+    <app-modale [titre]="'Receptionner ' + c.resume.numero" [sousTitre]="c.resume.fournisseur" largeur="1240px" [grande]="true"
                 [erreur]="erreur()" (ferme)="reception.set(false)">
       <form (ngSubmit)="receptionner()">
         <p class="aide">Saisissez ce qui a ete reellement livre. Ces quantites entrent en stock, au cout indique,

@@ -8,6 +8,8 @@ import { ClocheNotifications } from '../shared/cloche-notifications';
 import { MINUTES_INACTIVITE, VerrouService } from '../core/services/verrou.service';
 import { VerrouCaisse } from './verrou-caisse';
 import { NotificationsPdv } from './notifications-pdv';
+import { AlertesPdv } from './alertes-pdv';
+import { PanneauCompte } from './panneau-compte';
 import { activerDefilementTableaux } from '../shared/defilement-tableaux';
 import { CodeModule, Role } from '../core/models/models';
 import { environment } from '../../environments/environment';
@@ -40,7 +42,8 @@ interface Onglet {
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, VerrouCaisse, NotificationsPdv],
+  host: { '(document:click)': 'clicDocument($event)' },
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, VerrouCaisse, NotificationsPdv, AlertesPdv, PanneauCompte],
   templateUrl: './shell.html',
   styleUrl: './shell.scss'
 })
@@ -180,8 +183,7 @@ export class Shell {
         { libelle: 'Rapports PDF', route: '/rapports', description: 'Etats a imprimer ou a envoyer', module: 'GESTION_PARC' },
         { libelle: 'Modules', route: '/modules', description: 'Applications activees pour l\'entreprise' },
         { libelle: 'Utilisateurs', route: '/utilisateurs', description: 'Comptes et profils d\'acces', roles: ['ADMIN'] },
-        { libelle: 'Parametrage', route: '/parametrage', description: 'Societe, logo et referentiels', roles: ['ADMIN'] },
-        { libelle: 'Mon compte', route: '/mon-compte', description: 'Identite et mot de passe' }
+        { libelle: 'Parametrage', route: '/parametrage', description: 'Societe, logo et referentiels', roles: ['ADMIN'] }
       ]
     }
   ];
@@ -191,8 +193,7 @@ export class Shell {
     {
       id: 'plateforme', libelle: 'Plateforme',
       entrees: [
-        { libelle: 'Entreprises', route: '/plateforme', description: 'Abonnes, modules et suspensions' },
-        { libelle: 'Mon compte', route: '/mon-compte', description: 'Identite et mot de passe' }
+        { libelle: 'Entreprises', route: '/plateforme', description: 'Abonnes, modules et suspensions' }
       ]
     }
   ];
@@ -333,7 +334,28 @@ export class Shell {
     this.panneauOuvert.update((ouvert) => !ouvert);
   }
 
+  /** Menu du compte, ouvert par le nom ou l'avatar : « Mon compte » et deconnexion. */
+  readonly menuCompte = signal(false);
+  readonly compteOuvert = signal(false);
+
+  basculerMenuCompte(): void {
+    this.menuCompte.update((ouvert) => !ouvert);
+  }
+
+  ouvrirCompte(): void {
+    this.menuCompte.set(false);
+    this.compteOuvert.set(true);
+  }
+
+  /** Un clic ailleurs referme le menu du compte. */
+  clicDocument(evenement: MouseEvent): void {
+    if (this.menuCompte() && !(evenement.target as HTMLElement)?.closest?.('.zone-compte')) {
+      this.menuCompte.set(false);
+    }
+  }
+
   deconnexion(): void {
+    this.menuCompte.set(false);
     this.verrou.verrouiller();
     if (document.fullscreenElement) {
       void document.exitFullscreen();

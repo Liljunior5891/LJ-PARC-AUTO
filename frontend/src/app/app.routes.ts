@@ -342,9 +342,10 @@ export const routes: Routes = [
         title: 'Parametrage — LJ SaaS'
       },
       {
+        // « Mon compte » s'ouvre sous l'avatar : l'ancienne adresse ramene a l'accueil.
         path: 'mon-compte',
-        loadComponent: () => import('./pages/mon-compte/mon-compte').then((m) => m.MonCompte),
-        title: 'Mon compte — LJ SaaS'
+        pathMatch: 'full',
+        redirectTo: ''
       },
 
       // --- Console de l'exploitant de la plateforme --------------------------

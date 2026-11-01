@@ -117,6 +117,22 @@ public class UtilisateurService {
         charger(id).setMotDePasse(encodeur.encode(motDePasse));
     }
 
+    /** Compte de la personne connectee (y compris l'administrateur de la plateforme). */
+    @Transactional(readOnly = true)
+    public UtilisateurDto.Reponse moi(Long id) {
+        return versDto(repository.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Utilisateur", id)));
+    }
+
+    /** Nom, prenom et telephone mis a jour par l'utilisateur lui-meme. */
+    public UtilisateurDto.Reponse mettreAJourSonProfil(Long id, UtilisateurDto.MiseAJourProfil demande) {
+        Utilisateur utilisateur = repository.findById(id)
+                .orElseThrow(() -> ResourceNotFoundException.of("Utilisateur", id));
+        utilisateur.setNom(demande.nom().trim());
+        utilisateur.setPrenom(demande.prenom() == null || demande.prenom().isBlank() ? null : demande.prenom().trim());
+        utilisateur.setTelephone(demande.telephone() == null || demande.telephone().isBlank() ? null : demande.telephone().trim());
+        return versDto(utilisateur);
+    }
+
     /**
      * Changement par l'utilisateur lui-meme, qui doit prouver l'ancien mot de passe.
      * Ouvert aussi a l'administrateur de la plateforme, qui n'a pas d'entreprise.
