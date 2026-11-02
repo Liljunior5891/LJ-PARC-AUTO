@@ -101,6 +101,35 @@ public class Chauffeur extends BaseEntity {
     @Column(nullable = false)
     private boolean actif = true;
 
+    /** Salarie, journalier ou prestataire : decide des informations d'emploi demandees. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type_chauffeur", nullable = false, length = 20)
+    private TypeChauffeur typeChauffeur = TypeChauffeur.SALARIE;
+
+    /** CDI ou CDD, pour un salarie. */
+    @Column(name = "type_contrat", length = 10)
+    private String typeContrat;
+
+    @Column(name = "date_fin_contrat")
+    private LocalDate dateFinContrat;
+
+    @Column(name = "numero_cnss", length = 40)
+    private String numeroCnss;
+
+    /** Remuneration d'un journalier ou d'un prestataire, dans l'unite ci-dessous. */
+    @Column(precision = 16, scale = 2)
+    private BigDecimal tarif;
+
+    /** JOUR, VOYAGE ou MOIS. */
+    @Column(name = "unite_tarif", length = 10)
+    private String uniteTarif;
+
+    @Column(name = "identifiant_fiscal", length = 60)
+    private String identifiantFiscal;
+
+    @Column(name = "groupe_sanguin", length = 5)
+    private String groupeSanguin;
+
     public String nomComplet() {
         return prenom + " " + nom;
     }

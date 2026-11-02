@@ -28,7 +28,7 @@ const CIRCONFERENCE = 2 * Math.PI * 52;
               <p>{{ d.message }}</p>
             }
             <div class="boutons">
-              <button class="bouton secondaire" type="button" (click)="operation.repondre(false)">Annuler</button>
+              <button class="bouton secondaire annuler" type="button" (click)="operation.repondre(false)">Annuler</button>
               <button #valider class="bouton" [class.danger]="d.danger" type="button"
                       (click)="operation.repondre(true)">
                 {{ d.libelleAction || 'Confirmer' }}

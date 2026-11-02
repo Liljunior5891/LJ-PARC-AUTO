@@ -56,14 +56,14 @@ public class CaisseController {
     }
 
     @GetMapping("/ouvertes")
-    @PreAuthorize(Autorisations.PDV_CAISSE)
+    @PreAuthorize(Autorisations.PDV_SESSIONS)
     @Operation(summary = "Sessions ouvertes sur lesquelles l'utilisateur peut encaisser")
     public List<CaisseService.Reponse> ouvertes(@AuthenticationPrincipal UtilisateurPrincipal principal) {
         return service.ouvertesPour(principal);
     }
 
     @GetMapping("/courante")
-    @PreAuthorize(Autorisations.PDV_CAISSE)
+    @PreAuthorize(Autorisations.PDV_SESSIONS)
     @Operation(summary = "Session choisie par le poste, ou la seule ouverte a l'utilisateur ; 204 sinon")
     public ResponseEntity<CaisseService.Reponse> courante(@RequestParam(required = false) Long sessionId,
                                                           @AuthenticationPrincipal UtilisateurPrincipal principal) {

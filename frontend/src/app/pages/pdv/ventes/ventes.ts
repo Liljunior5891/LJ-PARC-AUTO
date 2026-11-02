@@ -29,6 +29,10 @@ export class VentesPdv implements OnInit {
   private readonly route = inject(ActivatedRoute);
 
   readonly peutAnnuler = this.auth.aRole('ADMIN', 'GERANT');
+  /** Point de vente et Marketplace : les ventes en ligne et au comptoir se cotoient ici. */
+  readonly avecEnLigne = this.auth.aModule('MARKETPLACE');
+  /** Canal filtre : tous, en ligne ou comptoir. */
+  canal: '' | 'en-ligne' | 'comptoir' = '';
   readonly page = signal<Page<VenteResume> | null>(null);
   readonly erreur = signal<string | null>(null);
   readonly succes = signal<string | null>(null);
@@ -66,6 +70,12 @@ export class VentesPdv implements OnInit {
     this.charger();
   }
 
+  choisirCanal(canal: '' | 'en-ligne' | 'comptoir'): void {
+    this.canal = canal;
+    this.numeroPage = 0;
+    this.charger();
+  }
+
   changerPage(sens: number): void {
     this.numeroPage += sens;
     this.charger();
@@ -81,6 +91,7 @@ export class VentesPdv implements OnInit {
         debut: debut.toISOString(),
         fin: fin.toISOString(),
         sessionId: this.sessionId ?? undefined,
+        enLigne: this.canal === '' ? undefined : this.canal === 'en-ligne',
         page: this.numeroPage
       })
       .subscribe({

@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, output, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   Camion,
   CamionRequete,
@@ -24,9 +24,14 @@ import { VALIDATION_FORMULAIRE } from './validation-formulaire';
  * entre au parc est forcement actif. La fiche complete reste accessible ensuite
  * depuis sa carte.
  */
+import { MarketplaceService } from '../core/services/marketplace.service';
+import { ReglageLocationEnLigne } from '../core/models/marketplace';
+import { AuthService } from '../core/auth/auth.service';
+import { PhotoVehicule } from './photo-vehicule';
+import { GaleriePhotos } from './galerie-photos';
 @Component({
   selector: 'app-formulaire-camion',
-  imports: [ReactiveFormsModule, SelectRecherche, Modale, VALIDATION_FORMULAIRE],
+  imports: [PhotoVehicule, GaleriePhotos, ReactiveFormsModule, FormsModule, SelectRecherche, Modale, VALIDATION_FORMULAIRE],
   templateUrl: './formulaire-camion.html',
   styleUrl: './formulaire-camion.scss'
 })
@@ -92,8 +97,41 @@ export class FormulaireCamion implements OnInit {
     }))
   );
 
+  // Gestion de parc avec Marketplace : la location en ligne se regle dans la fiche du vehicule.
+  private readonly marketplace = inject(MarketplaceService);
+  readonly avecEnLigne = inject(AuthService).aModule('MARKETPLACE');
+  enLigne: ReglageLocationEnLigne = { publiee: false, tarifJour: null, caution: null, photos: [] };
+  private enLigneInitial = JSON.stringify(this.enLigne);
+
+  /** Location en ligne a enregistrer avec la fiche : renvoie un message si elle est incomplete. */
+  private controleEnLigne(): string | null {
+    return this.avecEnLigne && this.enLigne.publiee && !this.enLigne.tarifJour
+      ? 'Indiquez le tarif par jour de la location en ligne.' : null;
+  }
+
+  /** Apres l'enregistrement de la fiche : publie, met a jour ou retire la location en ligne si elle a change. */
+  private enregistrerEnLigne(camionId: number, suite: () => void): void {
+    if (!this.avecEnLigne || JSON.stringify(this.enLigne) === this.enLigneInitial) {
+      suite();
+      return;
+    }
+    const r = this.enLigne;
+    // Les autres photos ne sont envoyees que si elles ont change (null = galerie inchangee).
+    const photosChangees = JSON.stringify(r.photos) !== JSON.stringify(JSON.parse(this.enLigneInitial).photos);
+    this.marketplace.publierVehicule(camionId, r.publiee, r.tarifJour, r.caution,
+      r.publiee && photosChangees ? r.photos : undefined).subscribe({
+      next: () => {
+        this.enLigneInitial = JSON.stringify(this.enLigne);
+        suite();
+      },
+      error: (e) => this.erreur.set(e.error?.message ?? 'Vehicule enregistre, mais la location en ligne n\'a pas pu etre modifiee.')
+    });
+  }
+
   readonly formulaire = this.fb.nonNullable.group({
     immatriculation: ['', [Validators.required, Validators.maxLength(40)]],
+    /** Photo encodee (data URL) ; elle remplace le dessin du type sur la carte du vehicule. */
+    photoUrl: [null as string | null],
     marqueId: [null as number | null],
     modele: [''],
     annee: [null as number | null],
@@ -144,12 +182,17 @@ export class FormulaireCamion implements OnInit {
       this.formulaire.markAllAsTouched();
       return;
     }
+    const incomplet = this.controleEnLigne();
+    if (incomplet) {
+      this.erreur.set(incomplet);
+      return;
+    }
     this.enregistrement.set(true);
     this.erreur.set(null);
     this.service.creer(this.formulaire.getRawValue() as unknown as CamionRequete).subscribe({
       next: (camion) => {
         this.enregistrement.set(false);
-        this.enregistre.emit(camion);
+        this.enregistrerEnLigne(camion.id, () => this.enregistre.emit(camion));
       },
       error: (erreur) => {
         this.enregistrement.set(false);

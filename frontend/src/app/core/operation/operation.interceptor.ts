@@ -96,7 +96,9 @@ const RESSOURCES: Record<string, Ressource> = {
   commandes: { nom: 'commande', le: 'la ', un: 'une ' },
   lignes: { nom: 'article de la commande', le: "l'", un: 'un ' },
   caisses: { nom: 'caisse', le: 'la ', un: 'une ' },
-  ecrans: { nom: 'ecran de preparation', le: "l'", un: 'un ' }
+  ecrans: { nom: 'ecran de preparation', le: "l'", un: 'un ' },
+  offres: { nom: 'offre', le: "l'", un: 'une ' },
+  boutique: { nom: 'boutique en ligne', le: 'la ', un: 'une ' }
 };
 
 /** Actions designees par le dernier segment de l'adresse. */
@@ -175,6 +177,12 @@ function decrire(req: HttpRequest<unknown>): DemandeConfirmation {
       message: 'Plus aucune vente ne sera possible sur cette caisse avant une nouvelle ouverture.',
       libelleAction: 'Fermer la caisse' };
   }
+  if (segments.includes('marketplace')) {
+    const marketplace = decrireMarketplace(req.method, dernier);
+    if (marketplace) {
+      return marketplace;
+    }
+  }
   const action = ACTIONS[dernier];
   if (action) {
     return action(ressource);
@@ -198,5 +206,29 @@ function decrire(req: HttpRequest<unknown>): DemandeConfirmation {
         titre: `Enregistrer les modifications ${ressource.le === "l'" ? 'de l\'' : ressource.le === 'la ' ? 'de la ' : 'du '}${ressource.nom} ?`,
         libelleAction: 'Enregistrer'
       };
+  }
+}
+
+/** Operations de la Marketplace dont l'adresse seule ne dit pas assez. */
+function decrireMarketplace(methode: string, dernier: string): DemandeConfirmation | null {
+  switch (dernier) {
+    case 'boutique':
+      return { titre: 'Enregistrer les reglages de la boutique en ligne ?', libelleAction: 'Enregistrer' };
+    case 'articles':
+      return { titre: 'Publier ces articles dans la boutique ?',
+        message: 'Ils gardent le prix, la photo et le stock du point de vente.', libelleAction: 'Publier' };
+    case 'paiement':
+      return { titre: 'Marquer la commande comme payee ?', libelleAction: 'Marquer payee' };
+    case 'accepter':
+      return { titre: 'Accepter la demande de location ?',
+        message: 'Le contrat de location est cree en brouillon ; le client voit la reponse sur son lien de suivi.',
+        libelleAction: 'Accepter' };
+    case 'refuser':
+      return { titre: 'Refuser la demande de location ?', message: 'Le client voit la reponse sur son lien de suivi.',
+        libelleAction: 'Refuser', danger: true };
+    case 'offres':
+      return methode === 'POST' ? { titre: 'Publier cette offre dans la boutique ?', libelleAction: 'Publier' } : null;
+    default:
+      return null;
   }
 }

@@ -30,8 +30,8 @@
     <label class="choix" [class.actif]="formulaire.qrValidation">
       <input type="radio" name="validation" [value]="true" [(ngModel)]="formulaire.qrValidation" />
       <span>
-        <strong>Un serveur valide d'abord (recommande)</strong>
-        <small>La commande apparait sur le plan de salle ; le serveur la confirme ou la refuse avant la cuisine.</small>
+        <strong>La caisse valide d'abord (recommande)</strong>
+        <small>La commande arrive a la caisse, qui la confirme ou la refuse avant la cuisine.</small>
       </span>
     </label>
     <label class="choix" [class.actif]="!formulaire.qrValidation">

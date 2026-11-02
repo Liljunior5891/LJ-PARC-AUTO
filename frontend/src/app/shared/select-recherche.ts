@@ -19,8 +19,10 @@ export interface OptionSelect {
  * <p>
  * Le composant pose un select natif que Select2Service habille, comme toutes
  * les listes de l'application. Pastille, logo et ligne de detail passent par
- * des attributs data-* que Select2 affiche. Les valeurs typees (nombre, texte,
- * null) sont retrouvees par leur rang, le select ne connaissant que du texte.
+ * des attributs data-* que Select2 affiche. Chaque option porte une cle stable
+ * tiree de sa valeur (pas son rang) : quand la liste change (un client cree et
+ * ajoute en tete), une option garde son libelle, et Select2 n'affiche jamais le
+ * nom d'une autre entree a la place de celle choisie.
  */
 @Component({
   selector: 'app-select-recherche',
@@ -34,10 +36,10 @@ export interface OptionSelect {
       @if (autoriserVide() || indexChoisi() < 0) {
         <option value="" [selected]="indexChoisi() < 0">{{ placeholder() }}</option>
       }
-      @for (option of options(); track $index) {
+      @for (option of options(); track cle(option)) {
         <option
-          [value]="$index"
-          [selected]="$index === indexChoisi()"
+          [value]="cle(option)"
+          [selected]="option.valeur === valeur()"
           [attr.data-couleur]="option.couleur || (option.logoUrl || option.monogramme ? '#6b7684' : null)"
           [attr.data-logo]="option.logoUrl || null"
           [attr.data-monogramme]="option.monogramme || null"
@@ -93,9 +95,14 @@ export class SelectRecherche implements ControlValueAccessor {
     this.desactive.set(desactive);
   }
 
+  /** Cle texte d'une option, unique dans la liste : son type et sa valeur. */
+  cle(option: OptionSelect): string {
+    return `${typeof option.valeur}:${option.valeur}`;
+  }
+
   surSelection(evenement: Event): void {
-    const rang = (evenement.target as HTMLSelectElement).value;
-    const valeur = rang === '' ? null : (this.options()[Number(rang)]?.valeur ?? null);
+    const cle = (evenement.target as HTMLSelectElement).value;
+    const valeur = cle === '' ? null : (this.options().find((o) => this.cle(o) === cle)?.valeur ?? null);
     this.valeur.set(valeur);
     this.surChangement(valeur);
   }

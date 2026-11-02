@@ -92,7 +92,8 @@ public class Camion extends BaseEntity {
     @Column(nullable = false, length = 30)
     private StatutCamion statut = StatutCamion.DISPONIBLE;
 
-    @Column(name = "photo_url", length = 500)
+    /** Photo du vehicule : image encodee (data URL), reduite dans le navigateur. */
+    @Column(name = "photo_url", columnDefinition = "text")
     private String photoUrl;
 
     @Column(name = "gps_device_id", length = 80)

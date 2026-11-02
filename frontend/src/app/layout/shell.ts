@@ -5,6 +5,7 @@ import { filter, map } from 'rxjs';
 import { AuthService } from '../core/auth/auth.service';
 import { SocieteService } from '../core/services/societe.service';
 import { ClocheNotifications } from '../shared/cloche-notifications';
+import { IconeDemandesEnLigne } from '../shared/icone-demandes-en-ligne';
 import { MINUTES_INACTIVITE, VerrouService } from '../core/services/verrou.service';
 import { VerrouCaisse } from './verrou-caisse';
 import { NotificationsPdv } from './notifications-pdv';
@@ -26,6 +27,12 @@ interface EntreeMenu {
   module?: CodeModule;
   /** Type d'activite du point de vente exige (les tables n'existent qu'en restauration). */
   variante?: string;
+  /** Masquee si l'entreprise a l'un de ces modules (ses ecrans y sont deja integres). */
+  sansModules?: CodeModule[];
+  /** Visible seulement si l'entreprise a aussi tous ces modules. */
+  avecModules?: CodeModule[];
+  /** Visible seulement si l'entreprise a aussi au moins l'un de ces modules. */
+  avecUnDesModules?: CodeModule[];
   /** Sous-menus d'un groupe (Stock, Caisse), affiches sur une seconde rangee. */
   enfants?: EntreeMenu[];
 }
@@ -38,12 +45,14 @@ interface Onglet {
   autresRoutes?: string[];
   /** Module dont depend l'onglet entier. */
   module?: CodeModule;
+  /** Masque si l'entreprise a l'un de ces modules (ses ecrans y sont deja integres). */
+  sansModules?: CodeModule[];
 }
 
 @Component({
   selector: 'app-shell',
   host: { '(document:click)': 'clicDocument($event)' },
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, VerrouCaisse, NotificationsPdv, AlertesPdv, PanneauCompte],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, IconeDemandesEnLigne, VerrouCaisse, NotificationsPdv, AlertesPdv, PanneauCompte],
   templateUrl: './shell.html',
   styleUrl: './shell.scss'
 })
@@ -60,8 +69,8 @@ export class Shell {
    * barre fine, sans le menu de l'application.
    */
   readonly estPoste = this.auth.estPoste();
-  /** Le caissier leve le verrou de sa caisse avec son code PIN. */
-  readonly avecVerrou = this.estPoste && this.auth.aRole('CAISSIER');
+  /** Le caissier et le serveur levent le verrou de leur ecran avec leur code PIN. */
+  readonly avecVerrou = this.estPoste && this.auth.aRole('CAISSIER', 'SERVEUR');
   /** Sons et messages du point de vente : commandes a valider, bons, plats prets, caisse ouverte. */
   readonly notificationsPdv = this.auth.peutUtiliser('POINT_DE_VENTE')
     && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'PREPARATEUR');
@@ -69,6 +78,12 @@ export class Shell {
   readonly pleinEcran = signal(false);
 
   /** Les alertes de la cloche viennent du parc : seuls ses profils les recoivent. */
+  /** Gestion de parc avec Marketplace : icone des demandes de location en ligne, a cote de la cloche. */
+  readonly demandesEnLigneVisibles = computed(() => {
+    this.utilisateur();
+    return !this.estSuperAdmin && this.auth.aModule('GESTION_PARC') && this.auth.peutUtiliser('MARKETPLACE');
+  });
+
   readonly clocheVisible = computed(() => {
     this.utilisateur();
     return this.auth.peutUtiliser('GESTION_PARC');
@@ -123,10 +138,10 @@ export class Shell {
     },
     {
       id: 'exploitation', module: 'GESTION_PARC', libelle: 'Exploitation',
-      autresRoutes: ['/missions', '/locations', '/livraisons'],
+      autresRoutes: ['/missions', '/livraisons'],
       entrees: [
         { libelle: 'Chauffeurs', route: '/chauffeurs', description: 'Equipe, permis et disponibilite' },
-        { libelle: 'Clients', route: '/clients', description: 'Portefeuille et contrats en cours' }
+        { libelle: 'Clients', route: '/clients', description: 'Portefeuille et contrats en cours' },
       ]
     },
     {
@@ -135,7 +150,9 @@ export class Shell {
         { libelle: 'Recettes', route: '/recettes', description: 'Locations, transports et livraisons' },
         { libelle: 'Depenses', route: '/depenses', description: 'Charges rattachees a chaque vehicule' },
         { libelle: 'Carburant', route: '/carburant', description: 'Pleins et consommation' },
-        { libelle: 'Facturation', route: '/facturation', description: 'Factures clients et reglements' }
+        { libelle: 'Facturation', route: '/facturation', description: 'Factures clients et reglements' },
+        // Gestion de parc avec Marketplace : les vehicules reserves en ligne, a valider.
+        { libelle: 'Demandes en ligne', route: '/marketplace/locations', description: 'Vehicules reserves dans la boutique en ligne', module: 'MARKETPLACE', roles: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC'] }
       ]
     },
     {
@@ -178,10 +195,22 @@ export class Shell {
       ]
     },
     {
+      // Seul pour une entreprise qui n'a que la Marketplace ; sinon ses ecrans rejoignent le module de base.
+      id: 'marketplace', libelle: 'Marketplace', module: 'MARKETPLACE', sansModules: ['POINT_DE_VENTE', 'GESTION_PARC'],
+      entrees: [
+        { libelle: 'Commandes', route: '/marketplace/commandes', description: 'Commandes passees en ligne', roles: ['ADMIN', 'GERANT'] },
+        { libelle: 'Demandes de location', route: '/marketplace/locations', description: 'Vehicules reserves en ligne', roles: ['ADMIN', 'GERANT'] },
+        { libelle: 'Offres', route: '/marketplace/offres', description: 'Produits et vehicules publies', roles: ['ADMIN', 'GERANT'] },
+        { libelle: 'Ma boutique', route: '/marketplace/boutique', description: 'Vitrine, livraison, paiement et lien', roles: ['ADMIN', 'GERANT'] }
+      ]
+    },
+    {
       id: 'administration', libelle: 'Administration',
       entrees: [
         { libelle: 'Rapports PDF', route: '/rapports', description: 'Etats a imprimer ou a envoyer', module: 'GESTION_PARC' },
         { libelle: 'Modules', route: '/modules', description: 'Applications activees pour l\'entreprise' },
+        // Point de vente + Marketplace : la boutique se regle ici ; ventes et produits en ligne sont dans le point de vente.
+        { libelle: 'Ma boutique', route: '/marketplace/boutique', description: 'Boutique en ligne : vitrine, livraison, paiement et lien', module: 'MARKETPLACE', avecUnDesModules: ['POINT_DE_VENTE', 'GESTION_PARC'], roles: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Utilisateurs', route: '/utilisateurs', description: 'Comptes et profils d\'acces', roles: ['ADMIN'] },
         { libelle: 'Parametrage', route: '/parametrage', description: 'Societe, logo et referentiels', roles: ['ADMIN'] }
       ]
@@ -207,8 +236,12 @@ export class Shell {
     if (this.estSuperAdmin) {
       return this.menuPlateforme;
     }
-    const autorise = (e: { roles?: Role[]; module?: CodeModule; variante?: string }) =>
+    const autorise = (e: { roles?: Role[]; module?: CodeModule; variante?: string; sansModules?: CodeModule[];
+                           avecModules?: CodeModule[]; avecUnDesModules?: CodeModule[] }) =>
       (!e.roles || this.auth.aRole(...e.roles)) &&
+      (!e.sansModules || !e.sansModules.some((m) => this.auth.aModule(m))) &&
+      (!e.avecModules || e.avecModules.every((m) => this.auth.aModule(m))) &&
+      (!e.avecUnDesModules || e.avecUnDesModules.some((m) => this.auth.aModule(m))) &&
       (!e.module || this.auth.peutUtiliser(e.module)) &&
       (!e.variante || this.auth.variante('POINT_DE_VENTE') === e.variante);
     const filtrer = (entrees: EntreeMenu[]): EntreeMenu[] =>

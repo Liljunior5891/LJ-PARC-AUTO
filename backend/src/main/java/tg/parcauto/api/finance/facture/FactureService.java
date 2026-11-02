@@ -44,8 +44,9 @@ public class FactureService {
 
     @Transactional(readOnly = true)
     public Page<FactureDto.Reponse> rechercher(String q, StatutFacture statut, Long clientId,
-                                               LocalDate debut, LocalDate fin, Pageable pageable) {
-        return repository.findAll(FactureSpecifications.rechercher(q, statut, clientId, debut, fin), pageable)
+                                               LocalDate debut, LocalDate fin, Boolean enLigne, Pageable pageable) {
+        return repository.findAll(FactureSpecifications.rechercher(q, statut, clientId, debut, fin)
+                        .and(tg.parcauto.api.common.CanalSpecifications.parContrat(enLigne)), pageable)
                 .map(FactureDto.Reponse::resume);
     }
 

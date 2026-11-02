@@ -3,7 +3,7 @@ import { AuthService } from '../core/auth/auth.service';
 import { VerrouService } from '../core/services/verrou.service';
 
 /**
- * Ecran de verrouillage de la caisse : le caissier saisit son code PIN sur
+ * Ecran de verrouillage du poste (caisse ou serveur) : l'utilisateur saisit son code PIN sur
  * un pave numerique (clavier physique accepte). Sans code defini, il en cree
  * un, saisi deux fois.
  */
@@ -11,7 +11,7 @@ import { VerrouService } from '../core/services/verrou.service';
   selector: 'app-verrou-caisse',
   host: { '(document:keydown)': 'clavier($event)' },
   template: `
-    <div class="verrou" role="dialog" aria-modal="true" aria-label="Caisse verrouillee">
+    <div class="verrou" role="dialog" aria-modal="true" aria-label="Ecran verrouille">
       <div class="boite">
         <span class="cadenas" aria-hidden="true">🔒</span>
         <h1>{{ titre() }}</h1>
@@ -185,7 +185,7 @@ export class VerrouCaisse implements OnInit {
 
   readonly titre = computed(() => this.defini() === false
     ? (this.premiere() ? 'Confirmez votre code' : 'Creez votre code PIN')
-    : 'Caisse verrouillee');
+    : 'Ecran verrouille');
   readonly aide = computed(() => this.defini() === false
     ? 'De 4 a 6 chiffres, a garder pour vous'
     : 'Saisissez votre code PIN');

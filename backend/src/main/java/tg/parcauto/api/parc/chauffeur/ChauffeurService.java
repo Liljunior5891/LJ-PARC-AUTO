@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tg.parcauto.api.common.BusinessException;
+import tg.parcauto.api.common.NumerotationService;
 import tg.parcauto.api.common.ResourceNotFoundException;
 
 import java.time.LocalDate;
@@ -17,6 +18,7 @@ import java.util.List;
 public class ChauffeurService {
 
     private final ChauffeurRepository repository;
+    private final NumerotationService numerotation;
 
     @Transactional(readOnly = true)
     public Page<ChauffeurDto.Reponse> rechercher(String q, StatutChauffeur statut, Boolean actif, Pageable pageable) {
@@ -43,10 +45,14 @@ public class ChauffeurService {
     }
 
     public ChauffeurDto.Reponse creer(ChauffeurDto.Requete requete) {
-        if (repository.existsByMatriculeIgnoreCase(requete.matricule())) {
-            throw new BusinessException("Un chauffeur existe deja avec le matricule " + requete.matricule());
+        String matricule = requete.matricule() == null || requete.matricule().isBlank()
+                ? numerotation.prochainNumero("CH")
+                : requete.matricule().trim().toUpperCase();
+        if (repository.existsByMatriculeIgnoreCase(matricule)) {
+            throw new BusinessException("Un chauffeur existe deja avec le matricule " + matricule);
         }
         Chauffeur chauffeur = new Chauffeur();
+        chauffeur.setMatricule(matricule);
         appliquer(chauffeur, requete);
         return ChauffeurDto.Reponse.de(repository.save(chauffeur));
     }
@@ -69,7 +75,10 @@ public class ChauffeurService {
                 && r.permisExpiration().isBefore(r.permisObtention())) {
             throw new BusinessException("La date d'expiration du permis precede sa date d'obtention");
         }
-        c.setMatricule(r.matricule().trim().toUpperCase());
+        // En modification, un matricule vide garde le matricule existant.
+        if (r.matricule() != null && !r.matricule().isBlank()) {
+            c.setMatricule(r.matricule().trim().toUpperCase());
+        }
         c.setNom(r.nom().trim());
         c.setPrenom(r.prenom().trim());
         c.setPhotoUrl(r.photoUrl());
@@ -92,11 +101,25 @@ public class ChauffeurService {
         c.setGarantProfession(r.garantProfession());
         c.setGarantPieceIdentite(r.garantPieceIdentite());
         c.setObservations(r.observations());
+        if (r.typeChauffeur() != null) {
+            c.setTypeChauffeur(r.typeChauffeur());
+        }
+        c.setTypeContrat(vide(r.typeContrat()));
+        c.setDateFinContrat(r.dateFinContrat());
+        c.setNumeroCnss(vide(r.numeroCnss()));
+        c.setTarif(r.tarif());
+        c.setUniteTarif(vide(r.uniteTarif()));
+        c.setIdentifiantFiscal(vide(r.identifiantFiscal()));
+        c.setGroupeSanguin(vide(r.groupeSanguin()));
         if (r.statut() != null) {
             c.setStatut(r.statut());
         }
         if (r.actif() != null) {
             c.setActif(r.actif());
         }
+    }
+
+    private static String vide(String valeur) {
+        return valeur == null || valeur.isBlank() ? null : valeur.trim();
     }
 }

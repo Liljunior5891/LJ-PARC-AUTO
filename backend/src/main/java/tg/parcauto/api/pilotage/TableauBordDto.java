@@ -39,6 +39,9 @@ public final class TableauBordDto {
             long facturesImpayees,
             long facturesEnRetard,
             java.math.BigDecimal recetteMoyenneParCamion,
-            java.math.BigDecimal depenseMoyenneParCamion) {
+            java.math.BigDecimal depenseMoyenneParCamion,
+            /** Part du chiffre d'affaires faite en ligne (Marketplace), le reste en agence. */
+            java.math.BigDecimal chiffreEnLigne,
+            java.math.BigDecimal chiffreAgence) {
     }
 }

@@ -7,7 +7,7 @@
         · <strong class="alerte-pret">{{ compteurs().pretes }} commande(s) a servir</strong>
       }
       @if (compteurs().demandes > 0) {
-        · <strong class="alerte-demande">{{ compteurs().demandes }} demande(s) de client</strong>
+        · <strong class="alerte-demande">{{ compteurs().demandes }} table(s) a valider ou en appel</strong>
       }
     </p>
   </div>
@@ -64,7 +64,9 @@
                 <strong class="nom">{{ t.table.nom }}</strong>
                 @if (t.commande; as c) {
                   <span class="detail">{{ c.couverts ? c.couverts + ' pers. · ' : '' }}{{ duree(c) }}</span>
-                  @if (etat(c) === 'demande') {
+                  @if (!c.id) {
+                    <span class="montant">{{ c.serveurNom }}</span>
+                  } @else if (etat(c) === 'demande') {
                     <span class="montant">{{ demande(c) }}</span>
                   } @else {
                     <span class="montant">{{ c.total | number: '1.0-0' }} F</span>
@@ -86,7 +88,7 @@
                 <span class="nom">{{ t.table.nom }}</span>
                 @if (t.commande; as c) {
                   <span class="ligne">{{ c.couverts ? c.couverts + ' pers. · ' : '' }}{{ duree(c) }}</span>
-                  <strong class="ligne">{{ etat(c) === 'demande' ? demande(c) : (c.total | number: '1.0-0') + ' F' }}</strong>
+                  <strong class="ligne">{{ !c.id ? c.serveurNom : etat(c) === 'demande' ? demande(c) : (c.total | number: '1.0-0') + ' F' }}</strong>
                   @if (c.pretes > 0) {
                     <span class="pastille-liste">{{ c.pretes }} pret(s)</span>
                   }
@@ -104,7 +106,7 @@
           <li><span class="temoin a-envoyer"></span>Articles a envoyer</li>
           <li><span class="temoin prete"></span>Pret a servir</li>
           <li><span class="temoin addition"></span>Addition imprimee</li>
-          <li><span class="temoin demande"></span>Demande du client (code QR)</li>
+          <li><span class="temoin demande"></span>A valider par la caisse ou appel du client</li>
         </ul>
       </section>
 
@@ -155,7 +157,7 @@
         </div>
       }
       <div class="actions-formulaire">
-        <button class="bouton secondaire" type="button" (click)="ouverture.set(null)">Annuler</button>
+        <button class="bouton secondaire annuler" type="button" (click)="ouverture.set(null)">Annuler</button>
         <button class="bouton" type="submit" [disabled]="enCours() || (!o.table && !libelle.trim())">
           {{ enCours() ? 'Ouverture...' : 'Prendre la commande' }}
         </button>

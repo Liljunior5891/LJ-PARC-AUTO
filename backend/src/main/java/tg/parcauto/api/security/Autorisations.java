@@ -20,11 +20,20 @@ public final class Autorisations {
     /** Point de vente : catalogue, stock, annulations et rapports. */
     public static final String PDV_GESTION = "hasAnyRole('ADMIN','GERANT')";
 
-    /** Point de vente : encaissement, ouvert en plus au caissier et au serveur. */
-    public static final String PDV_CAISSE = "hasAnyRole('ADMIN','GERANT','CAISSIER','SERVEUR')";
+    /** Point de vente : encaissement, especes et addition ; le serveur n'encaisse pas. */
+    public static final String PDV_CAISSE = "hasAnyRole('ADMIN','GERANT','CAISSIER')";
+
+    /** Point de vente : savoir si sa caisse est ouverte (le serveur ne prend de commande que caisse ouverte). */
+    public static final String PDV_SESSIONS = "hasAnyRole('ADMIN','GERANT','CAISSIER','SERVEUR')";
 
     /** Bar / restaurant : plan de salle et commandes des tables. */
     public static final String PDV_SALLE = "hasAnyRole('ADMIN','GERANT','CAISSIER','SERVEUR')";
+
+    /**
+     * Bar / restaurant : envoi des commandes en preparation, reserve a la caisse.
+     * Le serveur transmet ses commandes a la caisse, qui les valide et les envoie.
+     */
+    public static final String PDV_ENVOI = "hasAnyRole('ADMIN','GERANT','CAISSIER')";
 
     /** Bar / restaurant : ecrans de preparation de la cuisine et du bar. */
     public static final String PDV_PREPARATION = "hasAnyRole('ADMIN','GERANT','PREPARATEUR')";

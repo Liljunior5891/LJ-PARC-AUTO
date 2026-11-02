@@ -1,0 +1,126 @@
+<div class="suivi">
+  @if (introuvable()) {
+    <div class="carte etat">
+      <strong>{{ introuvable() }}</strong>
+      <a routerLink="/marche">Aller a la place de marche</a>
+    </div>
+  } @else if (!suivi()) {
+    <div class="carte etat">Chargement...</div>
+  } @else if (suivi(); as s) {
+    <header>
+      <a [routerLink]="['/boutique', s.slug]" class="boutique">← {{ s.boutique }}</a>
+    </header>
+
+    <!-- Commande ---------------------------------------------------------------- -->
+    @if (s.commande; as c) {
+      <section class="carte">
+        <p class="sur-titre">Commande {{ c.numero }}</p>
+        @if (c.statut === 'ANNULEE') {
+          <h1 class="annulee">Commande annulee</h1>
+          @if (c.motifAnnulation) { <p class="doux">{{ c.motifAnnulation }}</p> }
+        } @else if (c.statut === 'LIVREE') {
+          <h1 class="faite">{{ c.modeRemise === 'LIVRAISON' ? 'Commande livree' : 'Commande retiree' }} — merci !</h1>
+        } @else {
+          <h1>Merci {{ c.clientNom.split(' ')[0] }}, votre commande est {{ c.statut === 'NOUVELLE' ? 'bien recue' : c.statutLibelle.toLowerCase() }}</h1>
+          @if (s.messageConfirmation && c.statut === 'NOUVELLE') { <p class="doux">{{ s.messageConfirmation }}</p> }
+        }
+
+        @if (c.statut !== 'ANNULEE') {
+          <ol class="etapes">
+            @for (e of etapes(); track e.statut) {
+              <li [class.faite]="rang(e.statut) <= rangActuel()" [class.courante]="rang(e.statut) === rangActuel()">
+                <span></span>{{ e.libelle }}
+              </li>
+            }
+          </ol>
+        }
+      </section>
+
+      @if (attendPaiement()) {
+        <section class="carte paiement">
+          <h2>Paiement mobile money en attente</h2>
+          <p class="doux">Montant : <strong>{{ c.total | number: '1.0-0' }} FCFA</strong></p>
+          @if (erreur()) { <p class="erreur">{{ erreur() }}</p> }
+          @if (s.paiementSimule && s.urlPaiement) {
+            <p class="demo">Mode demonstration : aucun argent n'est debite.</p>
+            <button class="principal" type="button" [disabled]="paiementEnCours()" (click)="confirmerSimulation()">
+              {{ paiementEnCours() ? 'Paiement...' : 'Confirmer le paiement (demonstration)' }}
+            </button>
+          } @else {
+            <button class="principal" type="button" [disabled]="paiementEnCours()" (click)="payer()">
+              {{ paiementEnCours() ? 'Ouverture...' : 'Payer maintenant' }}
+            </button>
+          }
+        </section>
+      } @else if (c.modePaiement === 'MOBILE_MONEY' && c.statutPaiement === 'PAYEE') {
+        <p class="bandeau-paye">✔ Paiement recu</p>
+      }
+
+      <section class="carte">
+        <h2>Detail</h2>
+        <ul class="lignes">
+          @for (l of c.lignes; track $index) {
+            <li><span>{{ l.quantite }} × {{ l.libelle }}</span><span>{{ l.total | number: '1.0-0' }}</span></li>
+          }
+          @if (c.fraisLivraison > 0) {
+            <li><span>Livraison</span><span>{{ c.fraisLivraison | number: '1.0-0' }}</span></li>
+          }
+          <li class="total"><span>Total</span><strong>{{ c.total | number: '1.0-0' }} FCFA</strong></li>
+        </ul>
+        <p class="doux">
+          {{ c.modeRemiseLibelle }}{{ c.adresseLivraison ? ' : ' + c.adresseLivraison : '' }} ·
+          {{ c.modePaiementLibelle }}
+        </p>
+      </section>
+    }
+
+    <!-- Demande de location ------------------------------------------------------ -->
+    @if (s.location; as d) {
+      <section class="carte">
+        <p class="sur-titre">Demande de location {{ d.numero }}</p>
+        @switch (d.statut) {
+          @case ('ACCEPTEE') {
+            <h1 class="faite">Votre reservation est acceptee</h1>
+            <p class="doux">Le vehicule vous est reserve. Presentez-vous en agence avec votre piece d'identite
+              avant le {{ d.dateDebut | date: 'dd/MM/yyyy' }} pour signer le contrat.</p>
+          }
+          @case ('CONCLUE') { <h1 class="faite">Location confirmee en agence — bonne route !</h1> }
+          @case ('EXPIREE') {
+            <h1 class="annulee">Reservation expiree</h1>
+            <p class="doux">Vous ne vous etes pas presente avant la date de debut : le vehicule a ete libere.</p>
+          }
+          @case ('ANNULEE') {
+            <h1 class="annulee">Reservation annulee</h1>
+            @if (d.motifRefus) { <p class="doux">{{ d.motifRefus }}</p> }
+          }
+          @case ('REFUSEE') {
+            <h1 class="annulee">Votre demande n'a pas pu etre acceptee</h1>
+            @if (d.motifRefus) { <p class="doux">{{ d.motifRefus }}</p> }
+          }
+          @default {
+            <h1>Demande envoyee : la boutique vous recontacte</h1>
+            @if (s.messageConfirmation) { <p class="doux">{{ s.messageConfirmation }}</p> }
+          }
+        }
+        <ul class="lignes">
+          <li><span>Vehicule</span><span>{{ d.vehicule }}</span></li>
+          <li><span>Periode</span><span>{{ d.dateDebut | date: 'dd/MM/yyyy' }} → {{ d.dateFin | date: 'dd/MM/yyyy' }}</span></li>
+          <li><span>Duree</span><span>{{ d.jours }} jour(s) × {{ d.tarifJour | number: '1.0-0' }} FCFA</span></li>
+          <li class="total"><span>{{ d.statut === 'ACCEPTEE' ? 'Montant' : 'Estimation' }}</span>
+            <strong>{{ d.montantEstime | number: '1.0-0' }} FCFA</strong></li>
+        </ul>
+      </section>
+    }
+
+    <section class="carte contacts">
+      <p class="doux">Une question ? Contactez {{ s.boutique }}</p>
+      <div>
+        @if (s.telephone) { <a class="contact" [href]="'tel:' + s.telephone">📞 {{ s.telephone }}</a> }
+        @if (s.whatsapp) { <a class="contact whatsapp" [href]="whatsapp(s.whatsapp)" target="_blank" rel="noopener">WhatsApp</a> }
+      </div>
+      <button class="lien" type="button" (click)="copierLien()">
+        {{ copie() ? 'Lien copie ✔' : 'Copier le lien de cette page pour la retrouver' }}
+      </button>
+    </section>
+  }
+</div>

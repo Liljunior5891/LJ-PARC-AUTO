@@ -55,16 +55,14 @@
             <label for="fin">Au</label>
             <input id="fin" type="date" [(ngModel)]="fin" (ngModelChange)="marquerPerime()" />
           </div>
-          <div class="raccourcis">
-            <button class="bouton secondaire petit" type="button" (click)="periodeRapide('mois')">
-              Ce mois
-            </button>
-            <button class="bouton secondaire petit" type="button" (click)="periodeRapide('trimestre')">
-              Ce trimestre
-            </button>
-            <button class="bouton secondaire petit" type="button" (click)="periodeRapide('annee')">
-              Cette annee
-            </button>
+          <!-- Periode rapide : liste deroulante habillee par Select2 (Select2Service). -->
+          <div class="champ raccourcis">
+            <label for="periode-rapide">Raccourci</label>
+            <select id="periode-rapide" [ngModel]="periodeCourante()" (ngModelChange)="periodeRapide($event)">
+              @for (p of choixPeriodes; track p.valeur) {
+                <option [ngValue]="p.valeur">{{ p.libelle }}</option>
+              }
+            </select>
           </div>
         </div>
 

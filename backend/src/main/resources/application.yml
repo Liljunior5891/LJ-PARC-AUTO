@@ -30,6 +30,11 @@ server:
     include-message: always
 
 parcauto:
+  # Paiement mobile money de la Marketplace. Vide : pas de paiement en ligne,
+  # seules les commandes payees au retrait / a la livraison sont proposees.
+  # « simulation » : paiement de demonstration (developpement uniquement).
+  paiement:
+    fournisseur: ${PAIEMENT_FOURNISSEUR:}
   security:
     jwt:
       # A remplacer imperativement en production (variable d'environnement JWT_SECRET)

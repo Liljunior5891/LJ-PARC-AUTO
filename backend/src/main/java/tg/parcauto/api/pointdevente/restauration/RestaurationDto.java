@@ -158,7 +158,19 @@ public final class RestaurationDto {
             long aEnvoyer, long enPreparation, long pretes,
             /** Articles commandes par le client, en attente de validation. */
             long aValider,
-            Commande.Appel appel, Instant appelLe) {
+            Commande.Appel appel, Instant appelLe,
+            /** Passee dans la boutique en ligne. */
+            boolean enLigne) {
+
+        /**
+         * Table tenue par un autre serveur : le serveur la voit occupee, sans
+         * le detail ni le montant de la commande.
+         */
+        public static CommandeResume masquee(Commande c) {
+            return new CommandeResume(null, null, c.getTable() == null ? null : c.getTable().getId(),
+                    c.repere(), c.getServeurNom(), null, c.getStatut(), c.getOuverteLe(), null,
+                    BigDecimal.ZERO, BigDecimal.ZERO, 0, 0, 0, 0, null, null, c.isEnLigne());
+        }
 
         public static CommandeResume de(Commande c) {
             BigDecimal total = BigDecimal.ZERO;
@@ -186,7 +198,7 @@ public final class RestaurationDto {
             return new CommandeResume(c.getId(), c.getNumero(), c.getTable() == null ? null : c.getTable().getId(),
                     c.repere(), c.getServeurNom(), c.getCouverts(), c.getStatut(), c.getOuverteLe(),
                     c.getAdditionLe(), montant(total), montant(reste), aEnvoyer, enPreparation, pretes,
-                    aValider, c.getAppelMotif(), c.getAppelLe());
+                    aValider, c.getAppelMotif(), c.getAppelLe(), c.isEnLigne());
         }
     }
 

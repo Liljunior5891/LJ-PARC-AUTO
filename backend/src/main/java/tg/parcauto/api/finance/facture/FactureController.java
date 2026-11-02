@@ -50,8 +50,10 @@ public class FactureController {
             @RequestParam(required = false) Long clientId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
+            /** Canal : vrai = en ligne (Marketplace), faux = agence ; absent = tous. */
+            @RequestParam(required = false) Boolean enLigne,
             @PageableDefault(size = 20, sort = "dateEmission", direction = Sort.Direction.DESC) Pageable pageable) {
-        return service.rechercher(q, statut, clientId, debut, fin, pageable);
+        return service.rechercher(q, statut, clientId, debut, fin, enLigne, pageable);
     }
 
     @GetMapping("/impayees")

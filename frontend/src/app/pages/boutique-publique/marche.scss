@@ -1,0 +1,525 @@
+/* Place de marche commune : toutes les boutiques en ligne et leurs offres. */
+@use './vitrine';
+
+.marche {
+  min-height: 100vh;
+}
+
+/* En-tete : choix de la ville. */
+.ville {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+  color: var(--accent);
+
+  select {
+    width: auto;
+    max-width: 150px;
+    border: 0;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--texte);
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 980px) {
+  .masque-etroit {
+    display: none !important;
+  }
+}
+
+/* ----------------------------------------------------------------- Heros */
+.heros {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  align-items: center;
+  gap: 2rem;
+  margin-top: 1.5rem;
+  padding: clamp(1.4rem, 4vw, 2.75rem);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 85% 20%, rgba(240, 162, 2, 0.16), transparent 42%),
+    linear-gradient(135deg, #ffffff 0%, var(--accent-clair) 100%);
+  overflow: hidden;
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.surtitre {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vert);
+}
+
+.texte-heros {
+  h1 {
+    margin: 0.7rem 0 0.8rem;
+    font-size: clamp(1.9rem, 4.2vw, 3rem);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+
+    em {
+      display: block;
+      font-style: normal;
+      color: var(--accent);
+    }
+  }
+
+  p {
+    max-width: 34rem;
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--doux);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-top: 1.5rem;
+  }
+}
+
+/* Collage des produits en ligne. */
+.visuel-heros {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  height: 380px;
+
+  &.vide {
+    display: grid;
+    place-items: center;
+    grid-template-columns: 1fr;
+  }
+
+  .decor {
+    font-size: 8rem;
+    filter: drop-shadow(0 18px 30px rgba(15, 76, 129, 0.25));
+  }
+
+  @media (max-width: 860px) {
+    height: 280px;
+  }
+}
+
+.apercu {
+  position: relative;
+  display: block;
+  min-height: 0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--ombre-carte);
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    padding: 0.6rem 0.6rem 2.6rem;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+  }
+
+  &:hover img {
+    transform: scale(1.05);
+  }
+
+  .etiquette-apercu {
+    position: absolute;
+    right: 0.6rem;
+    bottom: 0.55rem;
+    left: 0.6rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+
+    strong {
+      overflow: hidden;
+      color: var(--texte);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      flex: none;
+      font-weight: 800;
+      color: var(--accent);
+    }
+  }
+}
+
+/* Disposition du collage selon le nombre de photos (1 a 4). */
+.visuel-heros {
+  &[data-nombre='1'] {
+    grid-template-columns: 1fr;
+  }
+
+  &[data-nombre='1'] .apercu,
+  &[data-nombre='2'] .apercu,
+  &[data-nombre='3'] .apercu-0,
+  &[data-nombre='4'] .apercu-0 {
+    grid-row: span 2;
+  }
+
+  &[data-nombre='4'] {
+    grid-template-columns: 1.2fr 1fr 1fr;
+  }
+
+  &[data-nombre='4'] .apercu-3 {
+    grid-column: 2 / span 2;
+  }
+}
+
+.pastille-chiffre {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 86px;
+  height: 86px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(15, 76, 129, 0.3);
+
+  strong {
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+
+  small {
+    font-size: 0.68rem;
+    opacity: 0.9;
+  }
+}
+
+/* ---------------------------------------------------------------- Rayons */
+.rayons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 0.75rem;
+  padding-bottom: 0.3rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+
+.rayon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.9rem 0.5rem 0.8rem;
+  border: 1.5px solid var(--bord);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--texte);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+
+  .embleme {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--fond-image);
+    font-size: 2rem;
+  }
+
+  &:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  &.actif {
+    border-color: var(--accent);
+    background: var(--accent-clair);
+    box-shadow: inset 0 0 0 1px var(--accent);
+
+    .embleme {
+      background: #fff;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------- Offres */
+.carte-produit {
+  .boutique-offre {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .voir {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-top: 0.65rem;
+    padding: 0.55rem;
+    border: 1.5px solid var(--accent);
+    border-radius: 9px;
+    color: var(--accent);
+    font-size: 0.82rem;
+    font-weight: 700;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  &:hover .voir {
+    background: var(--accent);
+    color: #fff;
+  }
+}
+
+/* -------------------------------------------------------- Bandeaux d'appel */
+.bandeaux {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 1rem;
+  margin-top: 1.5rem;
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bandeau-appel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 190px;
+  padding: 1.6rem;
+  border-radius: 18px;
+  overflow: hidden;
+
+  h3 {
+    margin: 0 0 0.6rem;
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.15;
+
+    em {
+      font-style: normal;
+    }
+  }
+
+  p {
+    max-width: 28rem;
+    margin: 0 0 1rem;
+    line-height: 1.5;
+  }
+
+  &.principal {
+    background:
+      radial-gradient(circle at 90% 110%, rgba(240, 162, 2, 0.35), transparent 45%),
+      linear-gradient(135deg, var(--accent-fonce), var(--accent));
+    color: #fff;
+
+    em {
+      color: var(--ambre);
+    }
+
+    p {
+      color: rgba(255, 255, 255, 0.85);
+    }
+  }
+
+  &.secondaire {
+    background: linear-gradient(135deg, var(--ambre-clair), #fff);
+
+    em {
+      color: var(--accent);
+    }
+
+    p {
+      margin: 0;
+      color: var(--doux);
+    }
+  }
+
+  .pastille-promo {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: var(--ambre);
+    color: var(--accent-fonce);
+    font-size: 3rem;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  }
+
+  .illustration {
+    flex: none;
+    font-size: 5rem;
+  }
+
+  @media (max-width: 520px) {
+    .pastille-promo,
+    .illustration {
+      display: none;
+    }
+  }
+}
+
+/* ------------------------------------------------------------- Boutiques */
+.boutiques {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.carte-boutique {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--bord);
+  border-radius: 14px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+
+  &:hover {
+    border-color: transparent;
+    box-shadow: 0 10px 28px rgba(15, 76, 129, 0.13);
+    transform: translateY(-2px);
+
+    .visiter {
+      background: var(--accent);
+      color: #fff;
+    }
+  }
+
+  .couverture {
+    height: 120px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-fonce)) center / cover;
+  }
+
+  .identite {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.7rem;
+    margin-top: -28px;
+    padding: 0 0.9rem;
+  }
+
+  .logo {
+    flex: none;
+    width: 60px;
+    height: 60px;
+    border: 3px solid #fff;
+    border-radius: 14px;
+    background: #fff;
+    object-fit: contain;
+    box-shadow: 0 4px 12px rgba(16, 24, 40, 0.15);
+
+    &.initiale {
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+  }
+
+  .textes {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding-bottom: 0.1rem;
+
+    strong {
+      overflow: hidden;
+      font-size: 1rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      font-size: 0.76rem;
+      color: var(--doux);
+    }
+  }
+
+  .slogan {
+    display: -webkit-box;
+    margin: 0.6rem 0.9rem 0;
+    overflow: hidden;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: var(--doux);
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .pied-boutique {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding: 0.9rem;
+  }
+
+  .nombre {
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: var(--ambre-clair);
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #8a5a00;
+  }
+
+  .visiter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    border: 1.5px solid var(--accent);
+    border-radius: 9px;
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: background 0.15s, color 0.15s;
+  }
+}
+
+.titre-section.centre {
+  justify-content: center;
+  text-align: center;
+}

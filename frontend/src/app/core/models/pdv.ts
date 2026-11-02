@@ -292,6 +292,8 @@ export interface Encaissement {
   clientNom?: string;
   /** Session de caisse choisie par le poste quand plusieurs sont ouvertes. */
   sessionId?: number | null;
+  /** Commande de la boutique en ligne reglee par ce ticket (caisse boutique). */
+  commandeEnLigneId?: number | null;
 }
 
 export interface LigneTicket {
@@ -342,6 +344,8 @@ export interface VenteResume {
   statut: StatutVente;
   sessionNumero: string;
   tableNom?: string;
+  /** Vendue en ligne (Marketplace) plutot qu'au comptoir. */
+  enLigne?: boolean;
 }
 
 export interface TableauBordPdv {
@@ -383,4 +387,9 @@ export interface TableauBordPdv {
     pretesAServir: number;
     demandesClients: number;
   } | null;
+  /** Part du chiffre d'affaires faite en ligne (Marketplace), le reste au comptoir. */
+  chiffreEnLigne: number;
+  ticketsEnLigne: number;
+  chiffreComptoir: number;
+  ticketsComptoir: number;
 }

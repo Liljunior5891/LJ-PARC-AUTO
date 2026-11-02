@@ -1,0 +1,155 @@
+<div class="entete-page">
+  <div>
+    <h1>Demandes de location</h1>
+    <p class="sous-titre">Acceptez pour reserver le vehicule ; quand le client se presente, enregistrez sa recette</p>
+  </div>
+  <div class="actions-entete">
+    <button class="bouton secondaire" type="button" (click)="charger()">↻ Actualiser</button>
+  </div>
+</div>
+
+@if (erreur() && !reponse()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="filtre-demandes">Statut</label>
+      <select id="filtre-demandes" [ngModel]="filtre()" (ngModelChange)="changerFiltre($event)">
+        <option value="">Toutes les demandes</option>
+        <option value="NOUVELLE">Demandes en attente de reponse</option>
+        <option value="ACCEPTEE">Acceptees, client attendu en agence</option>
+        <option value="CONCLUE">Conclues (recette enregistree)</option>
+        <option value="EXPIREE">Expirees (client non venu)</option>
+        <option value="REFUSEE">Refusees</option>
+        <option value="ANNULEE">Annulees</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Demande</th>
+          <th>Vehicule</th>
+          <th>Client</th>
+          <th>Periode</th>
+          <th class="numerique">Montant estime</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of page()?.content ?? []; track d.id) {
+          <tr>
+            <td><strong>{{ d.numero }}</strong><small class="bloc">{{ d.dateDemande | date: 'dd/MM HH:mm' }}</small></td>
+            <td>{{ d.vehicule }}</td>
+            <td>
+              {{ d.clientNom }}
+              <small class="bloc">
+                <a [href]="'tel:' + d.clientTelephone">{{ d.clientTelephone }}</a> ·
+                <a [href]="whatsapp(d.clientTelephone)" target="_blank" rel="noopener">WhatsApp</a>
+              </small>
+            </td>
+            <td>
+              {{ d.dateDebut | date: 'dd/MM/yyyy' }} → {{ d.dateFin | date: 'dd/MM/yyyy' }}
+              <small class="bloc">{{ d.jours }} jour(s){{ d.destination ? ' · vers ' + d.destination : '' }}</small>
+            </td>
+            <td class="numerique">
+              {{ d.montantEstime | number: '1.0-0' }} FCFA
+              <small class="bloc">{{ d.tarifJour | number: '1.0-0' }} / jour</small>
+            </td>
+            <td>
+              <span class="mkt-statut statut-{{ d.statut | lowercase }}">{{ d.statutLibelle }}</span>
+              @if (d.motifRefus) { <small class="bloc">{{ d.motifRefus }}</small> }
+            </td>
+            <td class="actions-ligne">
+              @if (d.statut === 'NOUVELLE') {
+                <button class="bouton petit" type="button" (click)="repondre(d, true)">Accepter</button>
+                <button class="bouton secondaire petit" type="button" (click)="repondre(d, false)">Refuser</button>
+              } @else if (d.statut === 'ACCEPTEE') {
+                <!-- Le client se presente en agence : on enregistre sa recette, avec sa fiche client. -->
+                <a class="bouton petit" routerLink="/recettes" [queryParams]="{ demande: d.id }">Enregistrer la recette</a>
+                <button class="bouton secondaire petit" type="button" (click)="annulation.set(d)">Annuler</button>
+              } @else if (d.recetteNumero) {
+                <span class="etiquette">Recette {{ d.recetteNumero }}</span>
+              } @else if (d.locationNumero) {
+                <span class="etiquette">Contrat {{ d.locationNumero }}</span>
+              }
+            </td>
+          </tr>
+          @if (d.message) {
+            <tr class="message-client"><td colspan="7">Message du client : « {{ d.message }} »</td></tr>
+          }
+        } @empty {
+          <tr>
+            <td colspan="7">
+              <div class="message vide">{{ chargement() ? 'Chargement...' : 'Aucune demande ici.' }}</div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">Precedent</button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">Suivant</button>
+      </div>
+    }
+  }
+</div>
+
+@if (reponse(); as r) {
+  <app-modale [titre]="(r.accepter ? 'Accepter la demande ' : 'Refuser la demande ') + r.demande.numero"
+              [sousTitre]="r.demande.vehicule + ' · ' + r.demande.clientNom" largeur="640px"
+              [erreur]="erreur()" (ferme)="reponse.set(null)">
+    @if (r.accepter) {
+      <p class="aide">
+        Le vehicule est reserve du {{ r.demande.dateDebut | date: 'dd/MM/yyyy' }} au
+        {{ r.demande.dateFin | date: 'dd/MM/yyyy' }} ({{ r.demande.jours }} jour(s)). Quand le client se presente en
+        agence, enregistrez sa recette depuis cette liste. Sans visite avant le debut, la demande expire et libere le vehicule.
+      </p>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="tarif-jour">Tarif par jour (FCFA)</label>
+          <input id="tarif-jour" type="number" min="0" [(ngModel)]="r.tarifJour" />
+          <small>Total : {{ (r.tarifJour ?? 0) * r.demande.jours | number: '1.0-0' }} FCFA</small>
+        </div>
+      </div>
+    } @else {
+      <div class="champ">
+        <label for="motif-refus">Motif (vu par le client)</label>
+        <input id="motif-refus" [(ngModel)]="r.motif" placeholder="Vehicule deja reserve, dates impossibles..." />
+      </div>
+    }
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="reponse.set(null)">Annuler</button>
+      <button class="bouton" [class.danger]="!r.accepter" type="button" [disabled]="envoi()" (click)="confirmer()">
+        {{ r.accepter ? 'Accepter et reserver le vehicule' : 'Refuser la demande' }}
+      </button>
+    </div>
+  </app-modale>
+}
+
+@if (annulation(); as a) {
+  <app-modale [titre]="'Annuler la demande ' + a.numero" [sousTitre]="a.vehicule + ' · ' + a.clientNom" largeur="560px"
+              [erreur]="erreur()" (ferme)="annulation.set(null)">
+    <div class="champ">
+      <label for="motif-annulation">Motif (vu par le client)</label>
+      <input id="motif-annulation" [(ngModel)]="motifAnnulation" placeholder="Le client s'est desiste..." />
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="annulation.set(null)">Retour</button>
+      <button class="bouton danger" type="button" [disabled]="envoi()" (click)="annuler(a)">Annuler la demande</button>
+    </div>
+  </app-modale>
+}

@@ -106,7 +106,7 @@ export class SaisieBillettage {
       <app-saisie-billettage [(quantites)]="quantites" />
       <p class="aide">Une fois la session ouverte, tout le personnel affecte a cette caisse peut encaisser.</p>
       <div class="actions-formulaire">
-        <button class="bouton secondaire" type="button" (click)="ferme.emit()">Annuler</button>
+        <button class="bouton secondaire annuler" type="button" (click)="ferme.emit()">Annuler</button>
         <button class="bouton" type="button" [disabled]="envoi()" (click)="ouvrir()">
           {{ envoi() ? 'Ouverture...' : 'Ouvrir la session' }}
         </button>
@@ -222,7 +222,7 @@ export class OuvertureSession {
           </aside>
         </div>
         <div class="actions-formulaire">
-          <button class="bouton secondaire" type="button" (click)="ferme.emit()">Annuler</button>
+          <button class="bouton secondaire annuler" type="button" (click)="ferme.emit()">Annuler</button>
           <button class="bouton" type="button" [disabled]="!fermable()" (click)="fermer()">
             {{ envoi() ? 'Fermeture...' : 'Fermer la caisse' }}
           </button>
@@ -364,7 +364,7 @@ export class FermetureSession {
           </ul>
         }
         <div class="actions-formulaire">
-          <button class="bouton secondaire" type="button" (click)="ferme.emit()">Annuler</button>
+          <button class="bouton secondaire annuler" type="button" (click)="ferme.emit()">Annuler</button>
           <button class="bouton" type="submit" [disabled]="envoi() || !montant || montant <= 0 || !motif.trim()">
             Enregistrer
           </button>

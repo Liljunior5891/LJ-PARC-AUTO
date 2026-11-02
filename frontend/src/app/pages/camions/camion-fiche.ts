@@ -1,6 +1,6 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   CamionRequete,
@@ -26,9 +26,14 @@ import { CarteCamion } from '../../shared/carte-camion';
 import { Modale } from '../../shared/modale';
 import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 
+import { MarketplaceService } from '../../core/services/marketplace.service';
+import { ReglageLocationEnLigne } from '../../core/models/marketplace';
+import { AuthService } from '../../core/auth/auth.service';
+import { PhotoVehicule } from '../../shared/photo-vehicule';
+import { GaleriePhotos } from '../../shared/galerie-photos';
 @Component({
   selector: 'app-camion-fiche',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe, SelectRecherche, FormulaireRecette, FormulaireDepense, CarteCamion, Modale, VALIDATION_FORMULAIRE],
+  imports: [PhotoVehicule, GaleriePhotos, ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe, SelectRecherche, FormulaireRecette, FormulaireDepense, CarteCamion, Modale, VALIDATION_FORMULAIRE],
   templateUrl: './camion-fiche.html'
 })
 export class CamionFiche implements OnInit {
@@ -43,6 +48,37 @@ export class CamionFiche implements OnInit {
   readonly carburants = TYPES_CARBURANT;
 
   readonly id = signal<number | null>(null);
+  // Gestion de parc avec Marketplace : la location en ligne se regle dans la fiche du vehicule.
+  private readonly marketplace = inject(MarketplaceService);
+  readonly avecEnLigne = inject(AuthService).aModule('MARKETPLACE');
+  enLigne: ReglageLocationEnLigne = { publiee: false, tarifJour: null, caution: null, photos: [] };
+  private enLigneInitial = JSON.stringify(this.enLigne);
+
+  /** Location en ligne a enregistrer avec la fiche : renvoie un message si elle est incomplete. */
+  private controleEnLigne(): string | null {
+    return this.avecEnLigne && this.enLigne.publiee && !this.enLigne.tarifJour
+      ? 'Indiquez le tarif par jour de la location en ligne.' : null;
+  }
+
+  /** Apres l'enregistrement de la fiche : publie, met a jour ou retire la location en ligne si elle a change. */
+  private enregistrerEnLigne(camionId: number, suite: () => void): void {
+    if (!this.avecEnLigne || JSON.stringify(this.enLigne) === this.enLigneInitial) {
+      suite();
+      return;
+    }
+    const r = this.enLigne;
+    // Les autres photos ne sont envoyees que si elles ont change (null = galerie inchangee).
+    const photosChangees = JSON.stringify(r.photos) !== JSON.stringify(JSON.parse(this.enLigneInitial).photos);
+    this.marketplace.publierVehicule(camionId, r.publiee, r.tarifJour, r.caution,
+      r.publiee && photosChangees ? r.photos : undefined).subscribe({
+      next: () => {
+        this.enLigneInitial = JSON.stringify(this.enLigne);
+        suite();
+      },
+      error: (e) => this.erreur.set(e.error?.message ?? 'Vehicule enregistre, mais la location en ligne n\'a pas pu etre modifiee.')
+    });
+  }
+
   readonly marques = signal<MarqueCamion[]>([]);
   readonly types = signal<Referentiel[]>([]);
   readonly couleurs = signal<Referentiel[]>([]);
@@ -126,6 +162,8 @@ export class CamionFiche implements OnInit {
 
   readonly formulaire = this.fb.nonNullable.group({
     immatriculation: ['', [Validators.required, Validators.maxLength(40)]],
+    /** Photo encodee (data URL) ; elle remplace le dessin du type sur la carte du vehicule. */
+    photoUrl: [null as string | null],
     marqueId: [null as number | null],
     marque: [''],
     modele: [''],
@@ -162,6 +200,7 @@ export class CamionFiche implements OnInit {
   }
 
   ngOnInit(): void {
+    this.chargerEnLigne();
     this.service.marques().subscribe({ next: (marques) => this.marques.set(marques) });
     this.service.types().subscribe({
       next: (types) => {
@@ -233,12 +272,20 @@ export class CamionFiche implements OnInit {
   }
 
   /** Recharge la liste apres une saisie et referme le formulaire. */
-  recetteEnregistree(): void {
+  /** Derniere recette enregistree : son contrat est propose a l'impression. */
+  readonly recetteAImprimer = signal<Recette | null>(null);
+
+  imprimerContrat(recette: Recette): void {
+    this.recetteService.ouvrirContrat(recette, (message) => this.erreur.set(message));
+  }
+
+  recetteEnregistree(recette?: Recette): void {
     this.saisieRecette.set(false);
     const id = this.id();
     if (id !== null) {
       this.chargerRecettes(id);
       this.succes.set('Recette enregistree.');
+      this.recetteAImprimer.set(recette ?? null);
     }
   }
 
@@ -263,9 +310,38 @@ export class CamionFiche implements OnInit {
     return LIBELLES_SOURCE_RELEVE[source as keyof typeof LIBELLES_SOURCE_RELEVE] ?? source;
   }
 
+  /** Location en ligne actuelle du vehicule ouvert. */
+  private chargerEnLigne(): void {
+    const parametre = this.route.snapshot.paramMap.get('id');
+    const id = parametre && parametre !== 'nouveau' ? Number(parametre) : null;
+    if (!this.avecEnLigne || id === null) {
+      return;
+    }
+    this.marketplace.vehiculesEnLigne().subscribe({
+      next: (liste) => {
+        const v = liste.find((x) => x.camionId === id);
+        if (v) {
+          this.enLigne = { publiee: v.publiee, tarifJour: v.tarifJour ?? null, caution: v.caution ?? null, photos: [] };
+          this.enLigneInitial = JSON.stringify(this.enLigne);
+          this.marketplace.photosVehicule(id).subscribe({
+            next: (r) => {
+              this.enLigne = { ...this.enLigne, photos: r.photos };
+              this.enLigneInitial = JSON.stringify({ ...JSON.parse(this.enLigneInitial), photos: r.photos });
+            }
+          });
+        }
+      }
+    });
+  }
+
   soumettre(): void {
     if (this.formulaire.invalid || this.enregistrement()) {
       this.formulaire.markAllAsTouched();
+      return;
+    }
+    const incomplet = this.controleEnLigne();
+    if (incomplet) {
+      this.erreur.set(incomplet);
       return;
     }
     this.enregistrement.set(true);
@@ -279,11 +355,13 @@ export class CamionFiche implements OnInit {
     requete.subscribe({
       next: (camion) => {
         this.enregistrement.set(false);
-        if (id === null) {
-          void this.router.navigate(['/camions', camion.id]);
-        } else {
-          this.succes.set('Fiche enregistree.');
-        }
+        this.enregistrerEnLigne(camion.id, () => {
+          if (id === null) {
+            void this.router.navigate(['/camions', camion.id]);
+          } else {
+            this.succes.set('Fiche enregistree.');
+          }
+        });
       },
       error: (erreur) => {
         this.enregistrement.set(false);

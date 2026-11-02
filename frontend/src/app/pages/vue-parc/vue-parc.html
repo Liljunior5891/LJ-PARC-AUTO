@@ -105,13 +105,23 @@
         <input type="search" placeholder="Rechercher un vehicule..." aria-label="Rechercher un vehicule"
                [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" />
       </label>
-      <div class="selecteur" role="group" aria-label="Affichage">
-        @for (f of filtres; track f.valeur) {
-          <button type="button" [class.actif]="filtre() === f.valeur"
-                  [attr.aria-pressed]="filtre() === f.valeur" (click)="changerFiltre(f.valeur)">
-            {{ f.libelle }}
-          </button>
-        }
+      @if (avecEnLigne) {
+        <!-- Gestion de parc avec Marketplace : vehicules proposes ou non a la location en ligne. -->
+        <div class="selecteur">
+          <select aria-label="Location en ligne" [ngModel]="filtreEnLigne()" (ngModelChange)="filtreEnLigne.set($event)">
+            <option value="">En ligne et agence</option>
+            <option value="oui">Proposes en ligne</option>
+            <option value="non">Agence seulement</option>
+          </select>
+        </div>
+      }
+      <!-- Filtre d'affichage : liste deroulante habillee par Select2 (Select2Service). -->
+      <div class="selecteur">
+        <select aria-label="Affichage" [ngModel]="filtre()" (ngModelChange)="changerFiltre($event)">
+          @for (f of filtres; track f.valeur) {
+            <option [ngValue]="f.valeur" [attr.data-couleur]="f.couleur">{{ f.libelle }}</option>
+          }
+        </select>
       </div>
     </div>
   </header>
@@ -132,13 +142,20 @@
         }
         <div class="vitrine">
           <span class="puce-statut"><i></i>{{ ligne.statutLibelle }}</span>
+          @if (avecEnLigne && enLigne().has(ligne.camionId)) {
+            <span class="badge-en-ligne" title="Propose a la location dans la boutique en ligne">🌐 En ligne</span>
+          }
           <strong class="immatriculation">{{ ligne.immatriculation }}</strong>
           <span class="kilometrage">
             {{ ligne.kilometrageActuel | number }} km
             @if (ligne.marqueModele) { · {{ ligne.marqueModele }} }
           </span>
           @if (ligne.type) { <span class="type-vehicule">{{ ligne.type }}</span> }
-          <app-dessin-vehicule class="illustration" [dessin]="ligne.typeDessin" />
+          @if (ligne.photoUrl) {
+            <img class="illustration photo" [src]="ligne.photoUrl" [alt]="'Photo ' + ligne.immatriculation" loading="lazy" />
+          } @else {
+            <app-dessin-vehicule class="illustration" [dessin]="ligne.typeDessin" />
+          }
         </div>
 
         <div class="details">

@@ -1,5 +1,8 @@
 package tg.parcauto.api.pointdevente.notification;
 
+import tg.parcauto.api.marketplace.CommandeEnLigne;
+import tg.parcauto.api.marketplace.CommandeEnLigneRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +33,8 @@ import java.util.stream.Collectors;
  * n'a pas encore vu. Un evenement porte une cle stable : elle change quand il
  * se renouvelle (nouvel article propose, nouvel appel, nouveau plat pret).
  * <ul>
- *   <li>caisse (gerant, caissier) : commandes passees depuis le code QR a valider, additions demandees ;</li>
+ *   <li>caisse (gerant, caissier) : commandes transmises par les serveurs ou passees depuis le code QR
+ *   a valider, additions demandees ;</li>
  *   <li>serveur : appels et plats prets de ses tables (ceux sans serveur vont a tous) ;</li>
  *   <li>preparateur : nouveaux bons sur ses ecrans de preparation ;</li>
  *   <li>personnel de caisse : ouverture d'une session sur sa caisse.</li>
@@ -51,6 +55,7 @@ public class NotificationPdvService {
     private final EcranPreparationService ecranService;
     private final EcranPreparationRepository ecranRepository;
     private final SessionTravailService sessionsTravail;
+    private final CommandeEnLigneRepository commandesEnLigne;
 
     public List<Evenement> pour(UtilisateurPrincipal u) {
         List<Evenement> evenements = new ArrayList<>();
@@ -59,6 +64,15 @@ public class NotificationPdvService {
         if (caisse || serveur) {
             for (Commande c : commandeRepository.ouvertes()) {
                 salle(c, u, caisse, serveur, evenements);
+            }
+            // Caisse boutique : les commandes en ligne arrivent a la caisse, sans commande de salle.
+            if (caisse) {
+                commandesEnLigne.aTraiterEnCaisse().stream()
+                        .filter(c -> c.getStatut() == CommandeEnLigne.Statut.NOUVELLE)
+                        .forEach(c -> evenements.add(new Evenement("en-ligne-" + c.getId(), Type.VALIDATION,
+                                "Nouvelle commande en ligne",
+                                c.getNumero() + " · " + c.getClientNom() + " · " + c.getModeRemise().getLibelle(),
+                                "/pdv/caisse?enLigne=" + c.getId(), c.getDateCommande())));
             }
             if (!PersonnelService.gestionnaire(u)) {
                 sessionsTravail.ouvertesPour(u).forEach(s -> evenements.add(new Evenement("caisse-" + s.getId(),
@@ -77,14 +91,20 @@ public class NotificationPdvService {
     private static void salle(Commande c, UtilisateurPrincipal u, boolean caisse, boolean serveur, List<Evenement> sortie) {
         // Le serveur de la table ; une commande sans serveur (passee par le client) concerne tous les serveurs.
         boolean saTable = Objects.equals(c.getServeurId(), u.getId()) || (serveur && c.getServeurId() == null);
+        boolean siennePret = Objects.equals(c.getServeurId(), u.getId());
         String lien = "/pdv/commandes/" + c.getId();
 
         List<LigneCommande> proposees = lignes(c, LigneCommande.Statut.PROPOSEE);
-        if (!proposees.isEmpty() && (caisse || saTable)) {
+        // Seule la caisse envoie en preparation : elle seule est appelee a valider.
+        if (!proposees.isEmpty() && caisse) {
             long derniere = proposees.stream().mapToLong(LigneCommande::getId).max().orElse(0);
-            sortie.add(new Evenement("validation-" + c.getId() + "-" + derniere, Type.VALIDATION,
-                    "Commande client a valider",
-                    c.repere() + " : " + proposees.size() + " article(s) commande(s) depuis le code QR",
+            boolean duServeur = proposees.stream().anyMatch(l -> l.getOrigine() == LigneCommande.Origine.SERVEUR);
+            String titre = c.isEnLigne() ? "Commande en ligne a valider"
+                    : duServeur ? "Commande de " + c.getServeurNom() + " a valider" : "Commande client a valider";
+            String origine = c.isEnLigne() ? "commande(s) dans la boutique en ligne"
+                    : duServeur ? "transmis par le serveur" : "commande(s) depuis le code QR";
+            sortie.add(new Evenement("validation-" + c.getId() + "-" + derniere, Type.VALIDATION, titre,
+                    c.repere() + " : " + proposees.size() + " article(s) " + origine,
                     lien, c.getAppelLe() != null ? c.getAppelLe() : c.getOuverteLe()));
         }
 
@@ -99,7 +119,8 @@ public class NotificationPdvService {
         }
 
         List<LigneCommande> pretes = lignes(c, LigneCommande.Statut.PRETE);
-        if (!pretes.isEmpty() && (saTable || (c.getServeurId() == null && caisse))) {
+        // Plat pret : le serveur de la table ; sans serveur, la caisse s'en charge.
+        if (!pretes.isEmpty() && (siennePret || (c.getServeurId() == null && caisse))) {
             Instant derniere = pretes.stream().map(LigneCommande::getPreteLe).filter(Objects::nonNull)
                     .max(Comparator.naturalOrder()).orElse(c.getOuverteLe());
             sortie.add(new Evenement("pret-" + c.getId() + "-" + derniere.toEpochMilli(), Type.PRET,

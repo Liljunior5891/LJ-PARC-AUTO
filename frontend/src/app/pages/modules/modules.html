@@ -82,7 +82,7 @@
       }
     </div>
     <div class="actions-formulaire">
-      <button class="bouton secondaire" type="button" (click)="choix.set(null)">Annuler</button>
+      <button class="bouton secondaire annuler" type="button" (click)="choix.set(null)">Annuler</button>
       <button class="bouton" type="submit" [disabled]="!varianteChoisie() || enCours() !== null">
         {{ enCours() ? 'Enregistrement...' : (c.activation ? 'Activer' : 'Enregistrer') }}
       </button>

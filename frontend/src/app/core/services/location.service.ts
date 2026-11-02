@@ -13,6 +13,8 @@ export interface FiltreLocation {
   camionId?: number;
   page?: number;
   size?: number;
+  /** Canal : vrai = en ligne (Marketplace), faux = agence. */
+  enLigne?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -25,6 +27,9 @@ export class LocationService {
       .set('page', filtre.page ?? 0)
       .set('size', filtre.size ?? 20)
       .set('sort', 'dateDebut,desc');
+    if (filtre.enLigne !== undefined) {
+      params = params.set('enLigne', filtre.enLigne);
+    }
     if (filtre.q) {
       params = params.set('q', filtre.q);
     }

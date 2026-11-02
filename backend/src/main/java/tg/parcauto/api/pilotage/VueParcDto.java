@@ -25,5 +25,7 @@ public record VueParcDto(
         String clientNom,
         String activite,
         String localisation,
-        Long kilometrageActuel) {
+        Long kilometrageActuel,
+        /** Photo du vehicule ; absente, la carte montre le dessin de son type. */
+        String photoUrl) {
 }

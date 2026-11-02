@@ -48,6 +48,10 @@ export class Factures implements OnInit {
 
   recherche = '';
   statut: StatutFacture | '' = '';
+  /** Gestion de parc avec Marketplace : canal de chaque element, en ligne ou agence. */
+  readonly avecEnLigne = this.auth.aModule('MARKETPLACE');
+  canal: '' | 'en-ligne' | 'agence' = '';
+
   private pageCourante = 0;
 
   /** Source retenue pour la generation : contrat de location ou mission terminee. */
@@ -75,7 +79,7 @@ export class Factures implements OnInit {
   charger(): void {
     this.chargement.set(true);
     this.service
-      .lister({ q: this.recherche, statut: this.statut, page: this.pageCourante })
+      .lister({ q: this.recherche, statut: this.statut, page: this.pageCourante, enLigne: this.canal === '' ? undefined : this.canal === 'en-ligne', })
       .subscribe({
         next: (page) => {
           this.page.set(page);

@@ -1,0 +1,291 @@
+<div class="formulaire-client" [class.compact]="compact()" [formGroup]="formulaire"
+     (keydown.enter)="surEntree($event)">
+  @if (erreur()) {
+    <div class="message erreur">{{ erreur() }}</div>
+  }
+
+  <!-- Type de chauffeur : il decide des informations d'emploi et des pieces demandees. -->
+  <div class="types-client" role="radiogroup" aria-label="Type de chauffeur">
+    @for (t of types; track t.valeur) {
+      <button type="button" class="tuile-type" role="radio" [class.actif]="type() === t.valeur"
+              [attr.aria-checked]="type() === t.valeur" (click)="choisirType(t.valeur)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="t.icone" /></svg>
+        <span>
+          <strong>{{ t.libelle }}</strong>
+          <small>{{ t.description }}</small>
+        </span>
+      </button>
+    }
+  </div>
+
+  <h3>Identite</h3>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="fch-nom">Nom <span class="requis">*</span></label>
+      <input id="fch-nom" formControlName="nom" autocomplete="family-name" />
+    </div>
+    <div class="champ">
+      <label for="fch-prenom">Prenoms <span class="requis">*</span></label>
+      <input id="fch-prenom" formControlName="prenom" autocomplete="given-name" />
+    </div>
+    <div class="champ">
+      <label for="fch-telephone">Telephone <span class="requis">*</span></label>
+      <input id="fch-telephone" type="tel" formControlName="telephone" placeholder="+228 90 00 00 00" />
+    </div>
+    <div class="champ">
+      <label for="fch-matricule">Matricule</label>
+      <input id="fch-matricule" formControlName="matricule" placeholder="Genere automatiquement" />
+    </div>
+    @if (!compact()) {
+      <div class="champ">
+        <label for="fch-naissance">Date de naissance</label>
+        <input id="fch-naissance" type="date" formControlName="dateNaissance" />
+      </div>
+      <div class="champ">
+        <label for="fch-groupe">Groupe sanguin</label>
+        <select id="fch-groupe" formControlName="groupeSanguin">
+          <option value="">Non renseigne</option>
+          @for (g of groupesSanguins; track g) {
+            <option [value]="g">{{ g }}</option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="fch-urgence">Telephone d'urgence</label>
+        <input id="fch-urgence" type="tel" formControlName="telephoneUrgence" />
+      </div>
+      <div class="champ">
+        <label for="fch-email">Email</label>
+        <input id="fch-email" type="email" formControlName="email" />
+      </div>
+      <div class="champ champ-large">
+        <label for="fch-adresse">Adresse</label>
+        <input id="fch-adresse" formControlName="adresse" />
+      </div>
+    }
+  </div>
+
+  <h3>Permis de conduire</h3>
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="fch-permis">Numero de permis</label>
+      <input id="fch-permis" formControlName="numeroPermis" />
+    </div>
+    @if (!compact()) {
+      <div class="champ">
+        <label for="fch-obtention">Date d'obtention</label>
+        <input id="fch-obtention" type="date" formControlName="permisObtention" />
+      </div>
+    }
+    <div class="champ">
+      <label for="fch-expiration">Date d'expiration</label>
+      <input id="fch-expiration" type="date" formControlName="permisExpiration" />
+    </div>
+    <div class="champ">
+      <label for="fch-categorie">Categorie</label>
+      <select id="fch-categorie" formControlName="categoriesPermis">
+        <option value="">Non renseignee</option>
+        @for (c of optionsCategories(); track c.valeur) {
+          <option [value]="c.valeur">{{ c.libelle }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <!-- Emploi : contrat et salaire pour un salarie, tarif pour un journalier ou un prestataire. -->
+  <h3>{{ profil().salarie ? 'Contrat et remuneration' : 'Collaboration et tarif' }}</h3>
+  <div class="grille-formulaire">
+    @if (profil().salarie) {
+      <div class="champ">
+        <label for="fch-contrat">Type de contrat</label>
+        <select id="fch-contrat" formControlName="typeContrat">
+          <option value="CDI">CDI — duree indeterminee</option>
+          <option value="CDD">CDD — duree determinee</option>
+        </select>
+      </div>
+    }
+    <div class="champ">
+      <label for="fch-debut">{{ profil().libelleDebut }}</label>
+      <input id="fch-debut" type="date" formControlName="dateEmbauche" />
+    </div>
+    @if (profil().salarie && estCdd()) {
+      <div class="champ">
+        <label for="fch-fin-contrat">Fin du contrat</label>
+        <input id="fch-fin-contrat" type="date" formControlName="dateFinContrat"
+               [min]="formulaire.controls.dateEmbauche.value" />
+      </div>
+    }
+    @if (profil().salarie) {
+      <div class="champ">
+        <label for="fch-salaire">Salaire mensuel (FCFA)</label>
+        <input id="fch-salaire" type="number" min="0" formControlName="salaireMensuel" />
+      </div>
+      @if (!compact()) {
+        <div class="champ">
+          <label for="fch-cnss">N° CNSS</label>
+          <input id="fch-cnss" formControlName="numeroCnss" />
+        </div>
+      }
+    }
+    @if (profil().tarif) {
+      <div class="champ">
+        <label for="fch-tarif">Tarif (FCFA)</label>
+        <div class="tarif">
+          <input id="fch-tarif" type="number" min="0" formControlName="tarif" />
+          @if (profil().unites.length > 1) {
+            <select formControlName="uniteTarif" aria-label="Unite du tarif">
+              @for (u of profil().unites; track u.valeur) {
+                <option [value]="u.valeur">{{ u.libelle }}</option>
+              }
+            </select>
+          } @else {
+            <span class="unite">{{ profil().unites[0].libelle }}</span>
+          }
+        </div>
+      </div>
+    }
+    @if (profil().identifiantFiscal) {
+      <div class="champ">
+        <label for="fch-nif">NIF (identifiant fiscal)</label>
+        <input id="fch-nif" formControlName="identifiantFiscal" />
+      </div>
+    }
+  </div>
+
+  @if (profil().garant) {
+    <h3>Garant — personne a prevenir</h3>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="fch-garant">Nom complet</label>
+        <input id="fch-garant" formControlName="garantNom" />
+      </div>
+      <div class="champ">
+        <label for="fch-garant-tel">Telephone</label>
+        <input id="fch-garant-tel" type="tel" formControlName="garantTelephone" />
+      </div>
+      <div class="champ">
+        <label for="fch-garant-lien">Lien avec le chauffeur</label>
+        <input id="fch-garant-lien" formControlName="garantLien" placeholder="Pere, epouse, frere..." />
+      </div>
+      @if (!compact()) {
+        <div class="champ">
+          <label for="fch-garant-tel2">Telephone secondaire</label>
+          <input id="fch-garant-tel2" type="tel" formControlName="garantTelephoneSecondaire" />
+        </div>
+        <div class="champ">
+          <label for="fch-garant-profession">Profession</label>
+          <input id="fch-garant-profession" formControlName="garantProfession" />
+        </div>
+        <div class="champ">
+          <label for="fch-garant-piece">N° de piece d'identite</label>
+          <input id="fch-garant-piece" formControlName="garantPieceIdentite" />
+        </div>
+        <div class="champ champ-large">
+          <label for="fch-garant-adresse">Adresse</label>
+          <input id="fch-garant-adresse" formControlName="garantAdresse" />
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Pieces justificatives : les types proposes dependent du type de chauffeur. -->
+  <h3>Pieces justificatives</h3>
+  @if (documents().length) {
+    <ul class="pieces-enregistrees">
+      @for (d of documents(); track d.id) {
+        <li>
+          <span class="coche" aria-hidden="true">✔</span>
+          <span class="textes">
+            <strong>{{ d.typeLibelle }}</strong>
+            <small>
+              {{ d.numero ? 'N° ' + d.numero : 'Sans numero' }}
+              @if (d.dateExpiration) { · expire le {{ d.dateExpiration }} }
+              @if (d.expire) { <b class="expiree">· expiree</b> }
+            </small>
+          </span>
+          @if (d.fichierDisponible) {
+            <button class="bouton secondaire petit" type="button" (click)="telecharger(d)">Voir</button>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  <div class="pieces">
+    @for (piece of pieces(); track piece.cle) {
+      <div class="piece">
+        <div class="champs-piece">
+          <div class="champ">
+            <label [for]="'fch-type-piece-' + piece.cle">Type de piece</label>
+            <select [id]="'fch-type-piece-' + piece.cle"
+                    (change)="modifierPiece(piece.cle, 'type', $any($event.target).value)">
+              @for (t of profil().pieces; track t) {
+                <option [value]="t" [selected]="t === piece.type">{{ libelleType(t) }}</option>
+              }
+            </select>
+          </div>
+          @if (reprisDuPermis(piece.type)) {
+            <p class="aide-piece">Numero et dates repris de la rubrique Permis de conduire.</p>
+          } @else {
+            <div class="champ">
+              <label [for]="'fch-numero-piece-' + piece.cle">Numero</label>
+              <input [id]="'fch-numero-piece-' + piece.cle" type="text" [value]="piece.numero"
+                     (input)="modifierPiece(piece.cle, 'numero', $any($event.target).value)" />
+            </div>
+            @if (expirable(piece.type)) {
+              <div class="champ">
+                <label [for]="'fch-expiration-piece-' + piece.cle">Expire le</label>
+                <input [id]="'fch-expiration-piece-' + piece.cle" type="date" [value]="piece.dateExpiration"
+                       (change)="modifierPiece(piece.cle, 'dateExpiration', $any($event.target).value)" />
+              </div>
+            }
+          }
+        </div>
+        <div class="depot-piece">
+          <app-piece-jointe [libelle]="libelleType(piece.type)" [fichier]="piece.fichier"
+                            (fichierChange)="modifierPiece(piece.cle, 'fichier', $event)" />
+          <button class="retirer" type="button" title="Retirer cette piece" aria-label="Retirer cette piece"
+                  (click)="retirerPiece(piece.cle)">✕</button>
+        </div>
+      </div>
+    }
+  </div>
+  <button class="bouton secondaire petit ajouter-piece" type="button" (click)="ajouterPiece()">
+    + Ajouter une piece
+  </button>
+
+  @if (!compact()) {
+    <h3>Suivi</h3>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="fch-statut">Statut</label>
+        <select id="fch-statut" formControlName="statut">
+          @for (s of statuts; track s.valeur) {
+            <option [value]="s.valeur">{{ s.libelle }}</option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="fch-actif">Fiche active</label>
+        <select id="fch-actif" formControlName="actif">
+          <option [ngValue]="true">Oui</option>
+          <option [ngValue]="false">Non (archive)</option>
+        </select>
+      </div>
+      <div class="champ champ-large">
+        <label for="fch-observations">Observations</label>
+        <textarea id="fch-observations" formControlName="observations"></textarea>
+      </div>
+    </div>
+  }
+
+  <div class="actions-formulaire">
+    <button class="bouton secondaire annuler" type="button" (click)="annule.emit()">Annuler</button>
+    <button class="bouton" type="button" [disabled]="enregistrement()" (click)="enregistrer()">
+      {{ enregistrement() ? 'Enregistrement...' : libelleEnregistrer() }}
+    </button>
+    @if (champsManquants().length) {
+      <small class="manquants">Il manque {{ champsManquants().join(', ') }}.</small>
+    }
+  </div>
+</div>

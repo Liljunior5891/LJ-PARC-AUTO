@@ -1,0 +1,193 @@
+<div class="entete-page">
+  <div>
+    <h1>Ma boutique en ligne</h1>
+    <p class="sous-titre">Votre vitrine publique, et sa place sur la place de marche de la plateforme</p>
+  </div>
+  @if (lienPublic(); as lien) {
+    <a class="bouton secondaire" [href]="lien" target="_blank" rel="noopener">Voir ma boutique ↗</a>
+  }
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+@if (chargement()) {
+  <div class="message vide">Chargement...</div>
+} @else if (boutique; as b) {
+  <div class="mkt-reglages">
+    <form class="carte" (ngSubmit)="enregistrer()">
+      <h2>Adresse et publication</h2>
+      <div class="grille-formulaire">
+        <div class="champ champ-large">
+          <label for="slug">Adresse de la boutique <span class="requis">*</span></label>
+          <div class="mkt-adresse">
+            <span>{{ 'https://…/boutique/' }}</span>
+            <input id="slug" name="slug" [ngModel]="b.slug" (ngModelChange)="nettoyerSlug($event)"
+                   placeholder="chez-ama" required minlength="3" />
+          </div>
+          <small>Minuscules, chiffres et tirets. C'est le lien que vous partagez a vos clients.</small>
+        </div>
+        <label class="mkt-interrupteur champ-large">
+          <input type="checkbox" name="publiee" [(ngModel)]="b.publiee" />
+          <span>
+            <strong>Boutique publiee</strong>
+            <small>Visible par tous a son adresse et sur la place de marche. Decochez pour la fermer.</small>
+          </span>
+        </label>
+      </div>
+
+      <h2>Vitrine</h2>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="nom">Nom affiche <span class="requis">*</span></label>
+          <input id="nom" name="nom" [(ngModel)]="b.nom" required />
+        </div>
+        <div class="champ">
+          <label for="categorie">Rayon sur la place de marche</label>
+          <select id="categorie" name="categorie" [(ngModel)]="b.categorie">
+            <option [ngValue]="undefined">Non classe</option>
+            @for (c of categories; track c) {
+              <option [ngValue]="c">{{ c }}</option>
+            }
+          </select>
+        </div>
+        <div class="champ champ-large">
+          <label for="slogan">Slogan</label>
+          <input id="slogan" name="slogan" [(ngModel)]="b.slogan" maxlength="200"
+                 placeholder="Le meilleur poulet braise de Lome" />
+        </div>
+        <div class="champ champ-large">
+          <label for="description">Presentation</label>
+          <textarea id="description" name="description" rows="3" [(ngModel)]="b.description"></textarea>
+        </div>
+        <div class="champ champ-large">
+          <label>Image de bandeau</label>
+          <div class="mkt-bandeau" [style.background-image]="b.couverture ? 'url(' + b.couverture + ')' : null">
+            @if (!b.couverture) {
+              <span>Aucune image : un degrade aux couleurs de la plateforme est affiche</span>
+            }
+            <div class="actions">
+              <label class="bouton petit">
+                {{ b.couverture ? 'Remplacer' : 'Choisir une image' }}
+                <input type="file" accept="image/*" hidden (change)="choisirCouverture($event)" />
+              </label>
+              @if (b.couverture) {
+                <button class="bouton secondaire petit" type="button" (click)="retirerCouverture()">Retirer</button>
+              }
+            </div>
+          </div>
+          <small>Le logo affiche est celui du parametrage de la societe.</small>
+        </div>
+      </div>
+
+      <h2>Contacts</h2>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="telephone">Telephone</label>
+          <input id="telephone" name="telephone" type="tel" [(ngModel)]="b.telephone" />
+        </div>
+        <div class="champ">
+          <label for="whatsapp">WhatsApp</label>
+          <input id="whatsapp" name="whatsapp" type="tel" [(ngModel)]="b.whatsapp" placeholder="+228 90 00 00 00" />
+        </div>
+        <div class="champ">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" [(ngModel)]="b.email" />
+        </div>
+        <div class="champ">
+          <label for="ville">Ville</label>
+          <input id="ville" name="ville" [(ngModel)]="b.ville" />
+        </div>
+        <div class="champ champ-large">
+          <label for="adresse">Adresse</label>
+          <input id="adresse" name="adresse" [(ngModel)]="b.adresse" placeholder="Quartier, rue, repere..." />
+        </div>
+        <div class="champ champ-large">
+          <label for="horaires">Horaires</label>
+          <input id="horaires" name="horaires" [(ngModel)]="b.horaires" placeholder="Lun-Sam 8h-20h" />
+        </div>
+      </div>
+
+      <h2>Retrait et livraison</h2>
+      <div class="grille-formulaire">
+        <label class="mkt-interrupteur">
+          <input type="checkbox" name="retrait" [(ngModel)]="b.retraitActif" />
+          <span><strong>Retrait en boutique</strong><small>Le client vient chercher sa commande.</small></span>
+        </label>
+        <label class="mkt-interrupteur">
+          <input type="checkbox" name="livraison" [(ngModel)]="b.livraisonActive" />
+          <span><strong>Livraison</strong><small>Vous livrez a l'adresse du client.</small></span>
+        </label>
+        @if (b.livraisonActive) {
+          <div class="champ">
+            <label for="frais">Frais de livraison (FCFA)</label>
+            <input id="frais" name="frais" type="number" min="0" [(ngModel)]="b.fraisLivraison" />
+          </div>
+          <div class="champ">
+            <label for="zone">Zone desservie</label>
+            <input id="zone" name="zone" [(ngModel)]="b.zoneLivraison" placeholder="Lome et environs" />
+          </div>
+        }
+      </div>
+
+      <h2>Paiement</h2>
+      <div class="grille-formulaire">
+        <label class="mkt-interrupteur">
+          <input type="checkbox" name="paiementRemise" [(ngModel)]="b.paiementRemise" />
+          <span><strong>Au retrait ou a la livraison</strong><small>Especes ou mobile money, a la remise.</small></span>
+        </label>
+        <label class="mkt-interrupteur" [class.indisponible]="!b.mobileMoneyDisponible">
+          <input type="checkbox" name="paiementMm" [(ngModel)]="b.paiementMobileMoney" />
+          <span>
+            <strong>Mobile money en ligne</strong>
+            <small>
+              @if (b.mobileMoneyDisponible) {
+                Le client paie au moment de la commande.
+              } @else {
+                Bientot disponible : propose aux clients des que le paiement en ligne sera branche.
+              }
+            </small>
+          </span>
+        </label>
+        <div class="champ champ-large">
+          <label for="message">Message apres commande</label>
+          <input id="message" name="message" [(ngModel)]="b.messageConfirmation" maxlength="500"
+                 placeholder="Merci ! Nous vous appelons dans l'heure pour confirmer." />
+        </div>
+      </div>
+
+      <div class="actions-formulaire">
+        <button class="bouton" type="submit" [disabled]="enregistrement()">
+          {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
+        </button>
+      </div>
+    </form>
+
+    <!-- Partage : lien et code QR, une fois la boutique enregistree. -->
+    <aside class="carte mkt-partage">
+      <h2>Partager</h2>
+      @if (lienPublic(); as lien) {
+        <p class="statut-boutique" [class.en-ligne]="b.publiee">
+          <i></i>{{ b.publiee ? 'En ligne' : 'Non publiee' }}
+        </p>
+        <div class="lien">
+          <code>{{ lien }}</code>
+          <button class="bouton secondaire petit" type="button" (click)="copierLien()">
+            {{ copie() ? 'Copie ✔' : 'Copier' }}
+          </button>
+        </div>
+        @if (codeQr(); as qr) {
+          <img class="qr" [src]="qr" alt="Code QR de la boutique" />
+          <button class="bouton secondaire petit" type="button" (click)="telechargerQr()">Telecharger le code QR</button>
+        }
+        <p class="aide">A imprimer sur vos affiches, cartes de visite et sacs : vos clients commandent en le scannant.</p>
+      } @else {
+        <p class="aide">Enregistrez la boutique pour obtenir son lien et son code QR.</p>
+      }
+    </aside>
+  </div>
+}

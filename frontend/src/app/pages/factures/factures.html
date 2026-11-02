@@ -89,7 +89,7 @@
     </div>
     <div class="actions-formulaire">
       <button class="bouton" type="button" (click)="generer()">Generer en brouillon</button>
-      <button class="bouton secondaire" type="button" (click)="basculerGeneration()">Annuler</button>
+      <button class="bouton secondaire annuler" type="button" (click)="basculerGeneration()">Annuler</button>
     </div>
   </div>
   </app-modale>
@@ -203,7 +203,7 @@
       </div>
       <div class="actions-formulaire">
         <button class="bouton" type="button" (click)="payer(f)">Valider le reglement</button>
-        <button class="bouton secondaire" type="button" (click)="paiementVisible.set(false)">
+        <button class="bouton secondaire annuler" type="button" (click)="paiementVisible.set(false)">
           Annuler
         </button>
       </div>
@@ -260,6 +260,16 @@
         }
       </select>
     </div>
+    @if (avecEnLigne) {
+      <div class="champ">
+        <label for="canal">Canal</label>
+        <select id="canal" [(ngModel)]="canal" (change)="filtrer()">
+          <option value="">En ligne et agence</option>
+          <option value="en-ligne">En ligne</option>
+          <option value="agence">Agence</option>
+        </select>
+      </div>
+    }
   </div>
 
   <div class="tableau-conteneur" style="margin-top: 1rem">
@@ -268,6 +278,7 @@
         <tr>
           <th>Numero</th>
           <th>Client</th>
+          @if (avecEnLigne) { <th>Canal</th> }
           <th>Emission</th>
           <th>Echeance</th>
           <th class="numerique">Total TTC</th>
@@ -281,6 +292,9 @@
           <tr>
             <td><strong>{{ facture.numero }}</strong></td>
             <td>{{ facture.clientNom }}</td>
+            @if (avecEnLigne) {
+              <td><span class="canal" [class.en-ligne]="facture.enLigne">{{ facture.enLigne ? '🌐 En ligne' : 'Agence' }}</span></td>
+            }
             <td>{{ facture.dateEmission }}</td>
             <td>
               {{ facture.dateEcheance || '—' }}
@@ -303,7 +317,7 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="8">
+            <td [attr.colspan]="avecEnLigne ? 9 : 8">
               <div class="message vide">
                 {{ chargement() ? 'Chargement...' : 'Aucune facture enregistree.' }}
               </div>

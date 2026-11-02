@@ -94,6 +94,10 @@ public class Vente extends BaseEntity {
     @Column(name = "commande_id")
     private Long commandeId;
 
+    /** Encaissee pour une commande passee dans la boutique en ligne. */
+    @Column(name = "en_ligne", nullable = false)
+    private boolean enLigne;
+
     /** Table servie, imprimee sur le ticket d'une addition. */
     @Column(name = "table_nom", length = 80)
     private String tableNom;

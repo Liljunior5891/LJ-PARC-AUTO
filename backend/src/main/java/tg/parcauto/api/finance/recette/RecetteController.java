@@ -11,7 +11,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,6 +40,8 @@ public class RecetteController {
 
 
     private final RecetteService service;
+    private final ContratRecettePdfService contratPdf;
+    private final DisponibiliteVehiculeService disponibilite;
 
     @GetMapping
     @Operation(summary = "Liste paginee des recettes")
@@ -47,8 +52,34 @@ public class RecetteController {
             @RequestParam(required = false) Long clientId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
+            /** Canal : vrai = en ligne (Marketplace), faux = agence ; absent = tous. */
+            @RequestParam(required = false) Boolean enLigne,
             @PageableDefault(size = 20, sort = "dateRecette", direction = Sort.Direction.DESC) Pageable pageable) {
-        return service.rechercher(q, type, camionId, clientId, debut, fin, pageable);
+        return service.rechercher(q, type, camionId, clientId, debut, fin, enLigne, pageable);
+    }
+
+    @GetMapping("/disponibilite")
+    @Operation(summary = "Engagements du vehicule (location, mission, transport...) sur la periode d'une recette")
+    public List<RecetteDto.Occupation> disponibilite(
+            @RequestParam Long camionId,
+            @RequestParam(required = false) TypeRecette type,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin,
+            @RequestParam(required = false) Long recetteId,
+            @RequestParam(required = false) Long locationId,
+            @RequestParam(required = false) Long missionId,
+            @RequestParam(required = false) Long demandeId) {
+        return disponibilite.occupations(camionId, type, debut, fin, recetteId, locationId, missionId, demandeId);
+    }
+
+    /** Contrat a imprimer apres la recette, redige selon son type (location, transport, livraison...). */
+    @GetMapping(value = "/{id}/contrat-pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Contrat de la recette au format PDF, adapte a son type")
+    public ResponseEntity<byte[]> contratPdf(@PathVariable Long id) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + contratPdf.nomFichier(id) + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(contratPdf.produire(id));
     }
 
     @GetMapping("/repartition")

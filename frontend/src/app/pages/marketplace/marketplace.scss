@@ -1,0 +1,530 @@
+/* Ecrans de gestion de la Marketplace : boutique, offres, commandes, demandes. */
+
+:host {
+  display: block;
+}
+
+.champ-large {
+  grid-column: 1 / -1;
+}
+
+small.bloc {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--couleur-texte-doux);
+}
+
+h2 {
+  margin: 1.4rem 0 0.7rem;
+  font-size: 0.95rem;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.aide {
+  font-size: 0.8rem;
+  color: var(--couleur-texte-doux);
+}
+
+/* ------------------------------------------------------------ Ma boutique */
+.mkt-reglages {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 1rem;
+  align-items: start;
+
+  @media (max-width: 1000px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mkt-adresse {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+
+  span {
+    padding: 0 0.6rem;
+    border-right: 1px solid var(--couleur-bordure);
+    background: #f4f6f9;
+    color: var(--couleur-texte-doux);
+    font-size: 0.82rem;
+    line-height: 38px;
+    white-space: nowrap;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    border-radius: 0;
+  }
+}
+
+/* Case a cocher presentee en interrupteur, avec son explication. */
+.mkt-interrupteur {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 10px;
+  background: #fafbfd;
+  cursor: pointer;
+
+  input {
+    margin-top: 0.2rem;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--couleur-primaire);
+  }
+
+  span {
+    display: flex;
+    flex-direction: column;
+  }
+
+  strong {
+    font-size: 0.86rem;
+  }
+
+  small {
+    font-size: 0.74rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  &:has(input:checked) {
+    border-color: var(--couleur-primaire);
+    background: #f2f7fe;
+  }
+
+  &.indisponible {
+    opacity: 0.75;
+  }
+}
+
+.mkt-bandeau {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 140px;
+  border: 1.5px dashed #b8c9e0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1f6fd1, #19b394) center / cover;
+  color: #fff;
+  font-size: 0.8rem;
+  text-align: center;
+
+  > span {
+    padding: 0 1rem;
+    opacity: 0.9;
+  }
+
+  .actions {
+    position: absolute;
+    right: 0.6rem;
+    bottom: 0.6rem;
+    display: flex;
+    gap: 0.4rem;
+  }
+}
+
+.mkt-partage {
+  position: sticky;
+  top: 1rem;
+  text-align: center;
+
+  .statut-boutique {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.75rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    background: #fdeeed;
+    color: #b42318;
+    font-size: 0.8rem;
+    font-weight: 700;
+
+    i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    &.en-ligne {
+      background: #e8f7ee;
+      color: #1e874b;
+    }
+  }
+
+  .lien {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+
+    code {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      padding: 0.45rem 0.55rem;
+      border-radius: 8px;
+      background: #f4f6f9;
+      font-size: 0.74rem;
+      text-align: left;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .qr {
+    display: block;
+    width: 190px;
+    height: 190px;
+    margin: 1rem auto 0.6rem;
+  }
+}
+
+/* ----------------------------------------------------------------- Offres */
+.mkt-grille-offres {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.mkt-offre {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+
+  &.masquee {
+    opacity: 0.6;
+  }
+
+  .visuel {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 3;
+    background: #eef2f7 center / cover;
+    font-size: 2rem;
+  }
+
+  .type {
+    position: absolute;
+    left: 0.5rem;
+    top: 0.5rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    font-size: 0.66rem;
+    font-weight: 700;
+
+    &.type-vehicule {
+      color: #1565c0;
+    }
+
+    &.type-article {
+      color: #1e874b;
+    }
+
+    &.type-libre {
+      color: #8455c8;
+    }
+  }
+
+  .vedette {
+    position: absolute;
+    right: 0.5rem;
+    top: 0.45rem;
+    color: #f5a623;
+    font-size: 1.1rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .corps {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.65rem 0.75rem;
+
+    strong {
+      font-size: 0.9rem;
+    }
+
+    small {
+      font-size: 0.72rem;
+      color: var(--couleur-texte-doux);
+
+      &.epuise {
+        color: var(--couleur-danger, #c63d22);
+        font-weight: 700;
+      }
+    }
+
+    .prix {
+      margin: 0.3rem 0 0;
+      font-weight: 800;
+
+      span {
+        font-weight: 500;
+        font-size: 0.78rem;
+        color: var(--couleur-texte-doux);
+      }
+    }
+  }
+
+  .pied {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.6rem;
+    border-top: 1px solid var(--couleur-bordure);
+
+    .mkt-bascule {
+      flex: 1;
+    }
+  }
+}
+
+.mkt-bascule {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  input {
+    accent-color: var(--couleur-primaire);
+  }
+}
+
+.mkt-choix-articles {
+  .barre {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+
+    input {
+      flex: 1;
+    }
+  }
+
+  ul {
+    max-height: 52vh;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+  }
+
+  li {
+    border-bottom: 1px solid var(--couleur-bordure);
+
+    &.vide {
+      padding: 1rem;
+      color: var(--couleur-texte-doux);
+      text-align: center;
+    }
+  }
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.3rem;
+    cursor: pointer;
+  }
+
+  .vignette {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #eef2f7 center / cover;
+  }
+
+  .textes {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+
+    small {
+      font-size: 0.72rem;
+      color: var(--couleur-texte-doux);
+    }
+  }
+}
+
+.mkt-photo {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+
+  .vignette {
+    flex: none;
+    width: 72px;
+    height: 72px;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 10px;
+    background: #eef2f7 center / cover;
+  }
+
+  small {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.72rem;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+/* ------------------------------------------------- Commandes et demandes */
+.mkt-apercu {
+  margin-bottom: 1rem;
+}
+
+tr.cliquable {
+  cursor: pointer;
+
+  &:hover td {
+    background: color-mix(in srgb, var(--couleur-primaire) 5%, transparent);
+  }
+}
+
+tr.message-client td {
+  padding-top: 0;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--couleur-texte-doux);
+}
+
+.actions-ligne {
+  white-space: nowrap;
+
+  .bouton + .bouton {
+    margin-left: 0.3rem;
+  }
+}
+
+.mkt-statut {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &.statut-nouvelle {
+    background: #fff3e0;
+    color: #c25e00;
+  }
+
+  &.statut-confirmee,
+  &.statut-prete {
+    background: #e3f0fd;
+    color: #1565c0;
+  }
+
+  &.statut-en_livraison {
+    background: #efe7fb;
+    color: #6b3fb5;
+  }
+
+  &.statut-livree,
+  &.statut-acceptee,
+  &.statut-conclue {
+    background: #e8f7ee;
+    color: #1e874b;
+  }
+
+  &.statut-annulee,
+  &.statut-refusee,
+  &.statut-expiree {
+    background: #fdeeed;
+    color: #b42318;
+  }
+}
+
+.mkt-paiement {
+  font-size: 0.78rem;
+  color: #c25e00;
+
+  &.payee {
+    color: #1e874b;
+    font-weight: 700;
+  }
+}
+
+.mkt-detail {
+  .entete-detail {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .blocs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 0.9rem;
+
+    h3 {
+      margin: 0 0 0.3rem;
+      font-size: 0.74rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--couleur-texte-doux);
+    }
+
+    p {
+      margin: 0.1rem 0;
+      font-size: 0.86rem;
+    }
+  }
+
+  .note {
+    font-style: italic;
+    color: var(--couleur-texte-doux);
+  }
+
+  tr.total td {
+    font-weight: 800;
+  }
+
+  .lien-suivi {
+    margin-top: 0.6rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--couleur-primaire);
+    font: inherit;
+    font-size: 0.8rem;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
+.mkt-en-caisse {
+  margin: 0.8rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: #efe7fb;
+  color: #4b2a85;
+  font-size: 0.82rem;
+}

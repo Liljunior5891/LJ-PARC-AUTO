@@ -5,6 +5,7 @@ import { RapportPdfDisponible } from '../../core/models/pilotage';
 import { Camion } from '../../core/models/models';
 import { CamionService } from '../../core/services/camion.service';
 import { PilotageService } from '../../core/services/pilotage.service';
+import { CHOIX_PERIODES, ChoixPeriode, periodeCourante } from '../../shared/periode';
 
 /**
  * Menu Rapports (chapitre 35).
@@ -190,7 +191,19 @@ export class Rapports implements OnInit, OnDestroy {
   }
 
   /** Raccourcis de periode : le mois, le trimestre ou l'annee en cours. */
-  periodeRapide(portee: 'mois' | 'trimestre' | 'annee'): void {
+  /** Options du filtre de periode. */
+  readonly choixPeriodes = CHOIX_PERIODES;
+
+  /** Raccourci correspondant aux dates saisies, ou « personnalisee ». */
+  periodeCourante(): ChoixPeriode {
+    return periodeCourante(this.debut, this.fin);
+  }
+
+  periodeRapide(portee: ChoixPeriode): void {
+    // « Dates personnalisees » laisse les dates telles quelles : on les modifie a cote.
+    if (portee === 'personnalisee') {
+      return;
+    }
     const aujourdhui = new Date();
     const debut =
       portee === 'mois'

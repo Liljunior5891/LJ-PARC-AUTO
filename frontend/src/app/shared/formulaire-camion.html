@@ -50,6 +50,9 @@
       </div>
     </div>
 
+        <app-photo-vehicule [photo]="formulaire.controls.photoUrl.value"
+                        (photoChange)="formulaire.controls.photoUrl.setValue($event)" />
+
     <h3>Caracteristiques techniques</h3>
     <div class="grille-formulaire">
       <div class="champ">
@@ -106,13 +109,40 @@
       </div>
     </div>
 
+    @if (avecEnLigne) {
+      <h3>Location en ligne</h3>
+      <!-- Gestion de parc avec Marketplace seulement : le vehicule propose a la location dans la boutique en ligne. -->
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="nc-en-ligne">Location en ligne</label>
+          <select id="nc-en-ligne" [(ngModel)]="enLigne.publiee" [ngModelOptions]="{ standalone: true }">
+            <option [ngValue]="false">Non, location en agence seulement</option>
+            <option [ngValue]="true">Oui, proposer dans la boutique en ligne</option>
+          </select>
+        </div>
+        @if (enLigne.publiee) {
+          <div class="champ">
+            <label for="nc-tarif-jour">Tarif par jour (FCFA) <span class="requis">*</span></label>
+            <input id="nc-tarif-jour" type="number" min="0" [(ngModel)]="enLigne.tarifJour" [ngModelOptions]="{ standalone: true }" />
+          </div>
+          <div class="champ">
+            <label for="nc-caution">Caution (FCFA)</label>
+            <input id="nc-caution" type="number" min="0" [(ngModel)]="enLigne.caution" [ngModelOptions]="{ standalone: true }" />
+          </div>
+          <div class="champ champ-pleine">
+            <app-galerie-photos [(photos)]="enLigne.photos" />
+          </div>
+        }
+      </div>
+    }
+
     <div class="champ">
       <label for="nc-observations">Observations</label>
       <textarea id="nc-observations" formControlName="observations"></textarea>
     </div>
 
     <div class="actions-formulaire">
-      <button class="bouton secondaire" type="button" (click)="fermer()" [disabled]="enregistrement()">
+      <button class="bouton secondaire annuler" type="button" (click)="fermer()" [disabled]="enregistrement()">
         Annuler
       </button>
       <button class="bouton" type="submit" [disabled]="enregistrement()">

@@ -215,11 +215,24 @@ export interface Chauffeur {
   statutLibelle: string;
   observations?: string;
   actif: boolean;
+  typeChauffeur: TypeChauffeur;
+  typeChauffeurLibelle?: string;
+  /** CDI ou CDD, pour un salarie. */
+  typeContrat?: string;
+  dateFinContrat?: string;
+  numeroCnss?: string;
+  /** Remuneration d'un journalier ou d'un prestataire, dans l'unite uniteTarif. */
+  tarif?: number;
+  uniteTarif?: 'JOUR' | 'VOYAGE' | 'MOIS';
+  identifiantFiscal?: string;
+  groupeSanguin?: string;
 }
+
+export type TypeChauffeur = 'SALARIE' | 'JOURNALIER' | 'PRESTATAIRE';
 
 export type ChauffeurRequete = Omit<
   Chauffeur,
-  'id' | 'nomComplet' | 'statutLibelle' | 'permisBientotExpire' | 'garantRenseigne'
+  'id' | 'nomComplet' | 'statutLibelle' | 'permisBientotExpire' | 'garantRenseigne' | 'typeChauffeurLibelle'
 >;
 
 export interface Affectation {
@@ -245,7 +258,7 @@ export interface AffectationRequete {
   observations?: string;
 }
 
-export type ProprietaireDocument = 'CAMION' | 'CHAUFFEUR';
+export type ProprietaireDocument = 'CAMION' | 'CHAUFFEUR' | 'CLIENT';
 
 export type TypeDocument =
   | 'CARTE_GRISE'
@@ -262,6 +275,20 @@ export type TypeDocument =
   | 'GARANT_PERMIS_CONDUIRE'
   | 'GARANT_ATTESTATION'
   | 'GARANT_JUSTIFICATIF'
+  | 'CARTE_IDENTITE'
+  | 'PASSEPORT'
+  | 'CARTE_ELECTEUR'
+  | 'CARTE_SEJOUR'
+  | 'CARTE_CONSULAIRE'
+  | 'CARTE_OPERATEUR_ECONOMIQUE'
+  | 'RCCM'
+  | 'ATTESTATION_NIF'
+  | 'STATUTS'
+  | 'PIECE_REPRESENTANT'
+  | 'LETTRE_MANDAT'
+  | 'AGREMENT'
+  | 'ACCORD_SIEGE'
+  | 'CASIER_JUDICIAIRE'
   | 'AUTRE';
 
 export interface DocumentParc {
@@ -375,5 +402,19 @@ export const TYPES_DOCUMENT: { valeur: TypeDocument; libelle: string }[] = [
   { valeur: 'GARANT_PERMIS_CONDUIRE', libelle: 'Permis de conduire du garant' },
   { valeur: 'GARANT_ATTESTATION', libelle: 'Attestation de garantie' },
   { valeur: 'GARANT_JUSTIFICATIF', libelle: 'Justificatif du garant' },
+  { valeur: 'CARTE_IDENTITE', libelle: "Carte nationale d'identite" },
+  { valeur: 'PASSEPORT', libelle: 'Passeport' },
+  { valeur: 'CARTE_ELECTEUR', libelle: "Carte d'electeur" },
+  { valeur: 'CARTE_SEJOUR', libelle: 'Carte de sejour' },
+  { valeur: 'CARTE_CONSULAIRE', libelle: 'Carte consulaire' },
+  { valeur: 'CARTE_OPERATEUR_ECONOMIQUE', libelle: "Carte d'operateur economique" },
+  { valeur: 'RCCM', libelle: 'Extrait RCCM' },
+  { valeur: 'ATTESTATION_NIF', libelle: 'Attestation NIF' },
+  { valeur: 'STATUTS', libelle: 'Statuts' },
+  { valeur: 'PIECE_REPRESENTANT', libelle: "Piece d'identite du representant" },
+  { valeur: 'LETTRE_MANDAT', libelle: 'Bon de commande / lettre de mission' },
+  { valeur: 'AGREMENT', libelle: 'Agrement' },
+  { valeur: 'ACCORD_SIEGE', libelle: 'Accord de siege' },
+  { valeur: 'CASIER_JUDICIAIRE', libelle: 'Casier judiciaire' },
   { valeur: 'AUTRE', libelle: 'Autre' }
 ];

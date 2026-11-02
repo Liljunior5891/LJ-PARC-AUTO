@@ -39,8 +39,9 @@ const RAFRAICHISSEMENT_MS = 8000;
  * <p>
  * En haut les categories, au centre les plats en photo, a droite la table et
  * sa commande, en bas les autres commandes en cours pour passer de l'une a
- * l'autre. Un geste sur un plat l'ajoute en attente ; « Envoyer » transmet
- * d'un coup les plats a la cuisine et les boissons au bar. L'addition
+ * l'autre. Un geste sur un plat l'ajoute en attente ; le serveur transmet sa
+ * commande a la caisse, et seule la caisse l'envoie en preparation, d'un coup
+ * les plats a la cuisine et les boissons au bar. L'addition
  * s'imprime pour la table et se regle en une fois ou par convive.
  * <p>
  * Sans commande dans l'adresse, l'ecran sert de caisse au comptoir : le premier
@@ -68,7 +69,10 @@ export class CommandePdv implements OnInit {
   readonly consignes = CONSIGNES;
   readonly modes = MODES_PAIEMENT_PDV;
   readonly estGestionnaire = this.auth.aRole('ADMIN', 'GERANT');
-  readonly peutEncaisser = this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR');
+  /** Le serveur prend et suit ses commandes ; l'encaissement, l'addition et les especes sont a la caisse. */
+  readonly peutEncaisser = this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER');
+  /** Seule la caisse envoie en preparation ; le serveur lui transmet ses commandes. */
+  readonly peutEnvoyer = this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER');
 
   readonly commande = signal<CommandeDetail | null>(null);
   readonly articles = signal<ArticlePdv[]>([]);
@@ -90,12 +94,14 @@ export class CommandePdv implements OnInit {
   // Panneau des commandes en cours
   readonly tiroir = signal(false);
   readonly rechercheCommandes = signal('');
-  readonly filtreCommandes = signal<'toutes' | 'urgentes' | 'salle' | 'comptoir'>('toutes');
-  readonly filtres: { valeur: 'toutes' | 'urgentes' | 'salle' | 'comptoir'; libelle: string }[] = [
+  readonly filtreCommandes = signal<'toutes' | 'urgentes' | 'salle' | 'comptoir' | 'en-ligne'>('toutes');
+  readonly filtres: { valeur: 'toutes' | 'urgentes' | 'salle' | 'comptoir' | 'en-ligne'; libelle: string }[] = [
     { valeur: 'toutes', libelle: 'Toutes' },
     { valeur: 'urgentes', libelle: 'A traiter' },
     { valeur: 'salle', libelle: 'En salle' },
-    { valeur: 'comptoir', libelle: 'Comptoir' }
+    { valeur: 'comptoir', libelle: 'Comptoir' },
+    // Point de vente avec Marketplace seulement.
+    ...(this.auth.aModule('MARKETPLACE') ? [{ valeur: 'en-ligne' as const, libelle: 'En ligne' }] : [])
   ];
   private readonly champRechercheTiroir = viewChild<ElementRef<HTMLInputElement>>('rechercheTiroir');
 
@@ -169,6 +175,8 @@ export class CommandePdv implements OnInit {
   /** Articles commandes par le client depuis le code QR, en attente de validation. */
   readonly proposees = computed(() => this.commande()?.lignes.filter((l) => l.statut === 'PROPOSEE') ?? []);
   readonly totalProposees = computed(() => this.proposees().reduce((s, l) => s + l.total, 0));
+  /** Articles transmis par le serveur (et non commandes par le client) parmi ceux a valider. */
+  readonly transmisParServeur = computed(() => this.proposees().some((l) => l.origine === 'SERVEUR'));
   readonly envoyees = computed(() =>
     (this.commande()?.lignes.filter((l) => l.statut !== 'BROUILLON' && l.statut !== 'PROPOSEE') ?? [])
       .slice()
@@ -205,6 +213,10 @@ export class CommandePdv implements OnInit {
   );
 
   ngOnInit(): void {
+    // Sans le bandeau de caisse (serveur), l'etat de la caisse se lit ici.
+    if (!this.peutEncaisser) {
+      this.sessions.rafraichir();
+    }
     // Passer d'une commande a l'autre par le bandeau du bas reutilise l'ecran.
     this.route.paramMap.subscribe((params) => {
       this.id = Number(params.get('id') ?? 0);
@@ -256,7 +268,7 @@ export class CommandePdv implements OnInit {
       .filter((o) => !motif || o.repere.toLowerCase().includes(motif) || o.numero.toLowerCase().includes(motif)
         || o.serveurNom.toLowerCase().includes(motif))
       .sort((a, b) => this.rang(a) - this.rang(b) || a.ouverteLe.localeCompare(b.ouverteLe));
-    const titres = ['Demandes des clients', 'Prets a servir', 'Addition demandee', 'Articles a envoyer', 'En cuisine', 'Servies'];
+    const titres = ['A valider / appels', 'Prets a servir', 'Addition demandee', 'Articles a envoyer', 'En cuisine', 'Servies'];
     const classes = ['demande', 'pret', 'addition', 'attente', 'cuisine', 'servi'];
     return titres
       .map((titre, rang) => ({ titre, classe: classes[rang], commandes: retenues.filter((o) => this.rang(o) === rang) }))
@@ -279,7 +291,7 @@ export class CommandePdv implements OnInit {
     }
   }
 
-  compte(filtre: 'toutes' | 'urgentes' | 'salle' | 'comptoir'): number {
+  compte(filtre: 'toutes' | 'urgentes' | 'salle' | 'comptoir' | 'en-ligne'): number {
     return this.enCours().filter((o) => this.retenue(o, filtre)).length;
   }
 
@@ -292,7 +304,8 @@ export class CommandePdv implements OnInit {
       return 'Le client appelle un serveur';
     }
     if (o.aValider > 0) {
-      return `${o.aValider} article(s) commande(s) depuis la table`;
+      return o.enLigne ? `Commande en ligne : ${o.aValider} article(s) a valider`
+        : `${o.aValider} article(s) a valider par la caisse`;
     }
     if (o.pretes > 0) {
       return `${o.pretes} article(s) pret(s) a servir`;
@@ -309,14 +322,16 @@ export class CommandePdv implements OnInit {
     return o.total > 0 ? `reste ${o.resteAPayer} F a regler` : 'aucun article';
   }
 
-  private retenue(o: CommandeResume, filtre: 'toutes' | 'urgentes' | 'salle' | 'comptoir'): boolean {
+  private retenue(o: CommandeResume, filtre: 'toutes' | 'urgentes' | 'salle' | 'comptoir' | 'en-ligne'): boolean {
     switch (filtre) {
       case 'urgentes':
         return this.rang(o) <= 2;
       case 'salle':
         return !!o.tableId;
       case 'comptoir':
-        return !o.tableId;
+        return !o.tableId && !o.enLigne;
+      case 'en-ligne':
+        return !!o.enLigne;
       default:
         return true;
     }
@@ -435,17 +450,26 @@ export class CommandePdv implements OnInit {
 
   // ----------------------------------------------------------- service
 
+  /** La caisse envoie en preparation ; le serveur transmet a la caisse. */
   envoyer(): void {
+    if (!this.peutEnvoyer) {
+      this.executer(this.service.transmettre(this.id), () =>
+        this.information.set('Commande transmise a la caisse : elle partira en preparation des sa validation.'));
+      return;
+    }
     this.executer(this.service.envoyer(this.id), () => this.information.set('Commande envoyee en preparation.'));
   }
 
   validerDemandes(): void {
     this.executer(this.service.validerDemandes(this.id), () =>
-      this.information.set('Commande du client envoyee en preparation.'));
+      this.information.set('Commande validee et envoyee en preparation.'));
   }
 
   refuserDemandes(): void {
-    this.executer(this.service.refuserDemandes(this.id), () => this.information.set('Commande du client refusee.'));
+    const serveur = this.transmisParServeur();
+    this.executer(this.service.refuserDemandes(this.id), () => this.information.set(serveur
+      ? 'Commande refusee : les articles du serveur reviennent a corriger.'
+      : 'Commande du client refusee.'));
   }
 
   priseEnCompte(): void {
@@ -509,7 +533,13 @@ export class CommandePdv implements OnInit {
   /** La commande se regle une fois preparee et entierement servie. */
   ouvrirPaiement(mode: ModePaiementPdv = 'ESPECES'): void {
     if (this.enAttente().length > 0) {
-      this.erreur.set("Envoyez d'abord les articles en preparation : ils devront etre servis avant l'encaissement.");
+      this.erreur.set(this.peutEnvoyer
+        ? "Envoyez d'abord les articles en preparation : ils devront etre servis avant l'encaissement."
+        : "Transmettez d'abord les articles a la caisse : ils devront etre prepares et servis avant l'encaissement.");
+      return;
+    }
+    if (this.proposees().length > 0) {
+      this.erreur.set('Des articles attendent la validation de la caisse : ils devront etre prepares et servis avant l\'encaissement.');
       return;
     }
     if (this.nonServies().length > 0) {
@@ -610,7 +640,7 @@ export class CommandePdv implements OnInit {
   private chargerEnCours(): void {
     this.service.plan().subscribe({
       next: (plan) => this.enCours.set([
-        ...plan.salles.flatMap((s) => s.tables).map((t) => t.commande).filter((c): c is CommandeResume => !!c),
+        ...plan.salles.flatMap((s) => s.tables).map((t) => t.commande).filter((c): c is CommandeResume => !!c?.id),
         ...plan.sansTable
       ]),
       error: () => undefined

@@ -72,7 +72,7 @@
         <input id="nom-salle" name="nom" required maxlength="80" [(ngModel)]="nomSalle" placeholder="Ex. Terrasse" />
       </div>
       <div class="actions-formulaire">
-        <button class="bouton secondaire" type="button" (click)="editionSalle.set(null)">Annuler</button>
+        <button class="bouton secondaire annuler" type="button" (click)="editionSalle.set(null)">Annuler</button>
         <button class="bouton" type="submit" [disabled]="!nomSalle.trim()">Enregistrer</button>
       </div>
     </form>
@@ -116,7 +116,7 @@
         @if (edition !== 'nouvelle') {
           <button class="bouton danger" type="button" (click)="retirerTable()">Retirer du plan</button>
         }
-        <button class="bouton secondaire" type="button" (click)="editionTable.set(null)">Annuler</button>
+        <button class="bouton secondaire annuler" type="button" (click)="editionTable.set(null)">Annuler</button>
         <button class="bouton" type="submit" [disabled]="!formulaire.nom.trim()">Enregistrer</button>
       </div>
     </form>

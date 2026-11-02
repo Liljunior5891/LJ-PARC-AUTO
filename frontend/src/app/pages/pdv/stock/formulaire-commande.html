@@ -98,7 +98,7 @@
     <p class="aide">La commande n'entre pas en stock : c'est a la reception, depuis la commande, que les quantites livrees sont ajoutees.</p>
 
     <div class="actions-formulaire">
-      <button class="bouton secondaire" type="button" (click)="ferme.emit()">Annuler</button>
+      <button class="bouton secondaire annuler" type="button" (click)="ferme.emit()">Annuler</button>
       <button class="bouton" type="submit" [disabled]="envoi()">
         {{ envoi() ? 'Enregistrement...' : (commande() ? 'Enregistrer' : 'Passer la commande') }}
       </button>

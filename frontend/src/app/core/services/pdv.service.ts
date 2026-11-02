@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Page } from '../models/models';
 import { SANS_SUIVI } from '../operation/operation.interceptor';
+import { CommandeEnLigne, StatutCommandeEnLigne } from '../models/marketplace';
 import {
   ArticlePdv,
   ArticleRequete,
@@ -36,6 +37,8 @@ export interface FiltreArticle {
   stockBas?: boolean;
   page?: number;
   size?: number;
+  /** Publie (vrai) ou non (faux) dans la boutique en ligne. */
+  enLigne?: boolean;
 }
 
 /** Acces a l'API du module Point de vente. */
@@ -74,6 +77,9 @@ export class PdvService {
     }
     if (filtre.stockBas) {
       params = params.set('stockBas', true);
+    }
+    if (filtre.enLigne !== undefined) {
+      params = params.set('enLigne', filtre.enLigne);
     }
     return this.http.get<Page<ArticlePdv>>(`${this.base}/articles`, { params });
   }
@@ -242,14 +248,29 @@ export class PdvService {
    * La fenetre d'encaissement tient lieu de confirmation : une seconde
    * question a chaque ticket ralentirait la file d'attente.
    */
+  /** Commandes de la boutique en ligne qui attendent la caisse boutique. */
+  commandesEnLigne(): Observable<CommandeEnLigne[]> {
+    return this.http.get<CommandeEnLigne[]>(`${this.base}/commandes-en-ligne`);
+  }
+
+  /** Accepte, marque prete ou refuse une commande en ligne (geste de caisse, sans confirmation). */
+  changerStatutEnLigne(id: number, statut: StatutCommandeEnLigne, motif?: string): Observable<CommandeEnLigne> {
+    return this.http.post<CommandeEnLigne>(`${this.base}/commandes-en-ligne/${id}/statut`, { statut, motif }, {
+      context: new HttpContext().set(SANS_SUIVI, true)
+    });
+  }
+
   encaisser(encaissement: Encaissement): Observable<Ticket> {
     return this.http.post<Ticket>(`${this.base}/ventes`, encaissement, {
       context: new HttpContext().set(SANS_SUIVI, true)
     });
   }
 
-  ventes(filtre: { debut?: string; fin?: string; sessionId?: number; page?: number }): Observable<Page<VenteResume>> {
+  ventes(filtre: { debut?: string; fin?: string; sessionId?: number; enLigne?: boolean; page?: number }): Observable<Page<VenteResume>> {
     let params = new HttpParams().set('page', filtre.page ?? 0).set('size', 30);
+    if (filtre.enLigne !== undefined) {
+      params = params.set('enLigne', filtre.enLigne);
+    }
     if (filtre.sessionId) {
       params = params.set('sessionId', filtre.sessionId);
     } else {

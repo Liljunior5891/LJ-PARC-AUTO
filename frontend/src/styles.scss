@@ -214,11 +214,48 @@ body.modale-ouverte {
   overflow: hidden;
 }
 
+/*
+ * Boutons de fin de formulaire, dans tout le projet : centres, Annuler a
+ * gauche et validation (Enregistrer, Valider...) a droite. L'ordre du HTML
+ * n'importe pas : le bouton d'annulation porte la classe .annuler.
+ */
 .actions-formulaire {
   display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 0.75rem;
   margin-top: 1.25rem;
   flex-wrap: wrap;
+
+  > .annuler {
+    order: -1;
+  }
+
+  > .bouton:not(.annuler),
+  > .bouton-vert {
+    order: 1;
+  }
+
+  /* Message d'aide (« Il manque... ») : sur sa propre ligne, centre sous les boutons. */
+  > small {
+    order: 2;
+    flex-basis: 100%;
+    text-align: center;
+  }
+}
+
+/* Bouton d'annulation : rouge leger, pour le distinguer de la validation sans alarmer. */
+.bouton.secondaire.annuler,
+.bouton.annuler {
+  border-color: #f3c4c0;
+  background: #fdeeed;
+  color: #b42318;
+
+  &:hover:not(:disabled) {
+    border-color: #eba59f;
+    background: #fbdcd9;
+    color: #9a1c13;
+  }
 }
 
 /* --------------------------- Boutons ----------------------------- */
@@ -865,7 +902,7 @@ table.tableau {
   }
 }
 
-/* Choix de la periode : raccourcis (mois, trimestre, annee) et dates libres. */
+/* Choix de la periode : liste de raccourcis (mois, trimestre, annee) et dates libres. */
 .filtres-periode {
   display: flex;
   align-items: center;
@@ -873,33 +910,10 @@ table.tableau {
   gap: 0.5rem;
 }
 
+/* Liste de periode (Select2) a cote des dates. */
 .raccourcis {
-  display: inline-flex;
-  padding: 3px;
-  border: 1px solid var(--couleur-bordure);
-  border-radius: 10px;
-  background: #fff;
-
-  button {
-    padding: 0.4rem 0.8rem;
-    border: 0;
-    border-radius: 8px;
-    background: none;
-    color: var(--couleur-texte-doux);
-    font: inherit;
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-
-    &:hover {
-      color: var(--couleur-texte);
-    }
-
-    &.actif {
-      background: var(--couleur-primaire);
-      color: #fff;
-    }
-  }
+  width: 180px;
+  font-weight: 600;
 }
 
 .dates {
@@ -1134,6 +1148,11 @@ table.tableau {
 }
 
 /* Champ elargi sur deux colonnes de la grille (une seule sur petit ecran). */
+/* Champ sur toute la largeur de la grille (galerie de photos...). */
+.grille-formulaire > .champ-pleine {
+  grid-column: 1 / -1;
+}
+
 .grille-formulaire > .champ-double {
   grid-column: span 2;
 
@@ -1271,4 +1290,41 @@ select.invalide + .select2-container .select2-selection--single {
     font-size: 0.72rem;
     opacity: 0.75;
   }
+}
+
+/* Canal de vente (point de vente avec Marketplace) : en ligne ou comptoir. */
+.canal {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: var(--couleur-texte-doux);
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &.en-ligne {
+    background: #efe7fb;
+    color: #6b3fb5;
+  }
+}
+
+.bascule-canal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+
+  input {
+    accent-color: #8455c8;
+  }
+}
+
+/* Message apres l'enregistrement d'une recette, avec l'impression de son contrat. */
+.message.bandeau-contrat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
 }

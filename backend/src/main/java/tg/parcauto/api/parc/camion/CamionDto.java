@@ -33,7 +33,10 @@ public final class CamionDto {
             @PositiveOrZero Long kilometrageInitial,
             @PositiveOrZero Long kilometrageActuel,
             StatutCamion statut,
-            @Size(max = 500) String photoUrl,
+            /** Photo encodee (data URL JPEG, PNG ou WebP), reduite a l'envoi. */
+            @Size(max = 2_000_000)
+            @jakarta.validation.constraints.Pattern(regexp = "^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$",
+                    message = "photo au format JPEG, PNG ou WebP") String photoUrl,
             @Size(max = 80) String gpsDeviceId,
             @Min(30) Integer vitesseMaxKmh,
             String observations,

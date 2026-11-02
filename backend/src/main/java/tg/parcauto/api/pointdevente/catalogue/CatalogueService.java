@@ -52,8 +52,9 @@ public class CatalogueService {
 
     @Transactional(readOnly = true)
     public Page<CatalogueDto.ArticleReponse> rechercher(String q, Long categorieId, Boolean actif, Boolean stockBas,
-                                                        Pageable pageable) {
-        return articleRepository.findAll(ArticleSpecifications.rechercher(q, categorieId, actif, stockBas), pageable)
+                                                        Boolean enLigne, Pageable pageable) {
+        return articleRepository.findAll(ArticleSpecifications.rechercher(q, categorieId, actif, stockBas, enLigne),
+                        pageable)
                 .map(CatalogueDto.ArticleReponse::de);
     }
 

@@ -33,6 +33,8 @@ export class TableauBordPdvPage implements OnInit {
   private readonly service = inject(PdvService);
   private readonly locale = inject(LOCALE_ID);
   readonly restauration = inject(AuthService).estRestauration();
+  /** Avec la Marketplace, le chiffre d'affaires se detaille : en ligne et au comptoir. */
+  readonly venteEnLigne = inject(AuthService).aModule('MARKETPLACE');
 
   readonly portees = PERIODES;
   readonly portee = signal<Periode>('CE_MOIS');

@@ -66,6 +66,7 @@ export const LIBELLES_STATUT_LIGNE: Record<StatutLigneCommande, string> = {
 };
 
 export interface CommandeResume {
+  /** Nul (0 ou null) pour une table tenue par un autre serveur : occupee, sans detail ni numero. */
   id: number;
   numero: string;
   tableId?: number;
@@ -84,6 +85,8 @@ export interface CommandeResume {
   aValider: number;
   appel?: AppelClient | null;
   appelLe?: string | null;
+  /** Passee dans la boutique en ligne. */
+  enLigne?: boolean;
 }
 
 export interface LigneCommande {

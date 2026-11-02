@@ -1,0 +1,191 @@
+<div class="entete-page">
+  <div>
+    <h1>Commandes en ligne</h1>
+    <p class="sous-titre">Passees dans votre boutique, a confirmer puis a remettre au client</p>
+  </div>
+  <button class="bouton secondaire" type="button" (click)="charger()">↻ Actualiser</button>
+</div>
+
+@if (resume(); as r) {
+  <section class="cartes-apercu mkt-apercu">
+    <div class="carte-apercu orange">
+      <span class="textes"><span class="libelle">Nouvelles</span><strong>{{ r.commandesNouvelles }}</strong>
+        <small>a confirmer</small></span>
+    </div>
+    <div class="carte-apercu bleu">
+      <span class="textes"><span class="libelle">En cours</span><strong>{{ r.commandesEnCours }}</strong>
+        <small>confirmees, pretes ou en livraison</small></span>
+    </div>
+    <div class="carte-apercu vert">
+      <span class="textes"><span class="libelle">Demandes de location</span><strong>{{ r.demandesNouvelles }}</strong>
+        <small>en attente de reponse</small></span>
+    </div>
+    <div class="carte-apercu" [class.rouge]="!r.boutiquePubliee">
+      <span class="textes"><span class="libelle">Boutique</span>
+        <strong>{{ r.boutiquePubliee ? 'En ligne' : 'Fermee' }}</strong>
+        <small>{{ r.offresPubliees }} offre(s) publiee(s)</small></span>
+    </div>
+  </section>
+}
+
+@if (erreur() && !detail()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="filtre-commandes">Afficher</label>
+      <select id="filtre-commandes" [ngModel]="filtre()" (ngModelChange)="changerFiltre($event)">
+        <option value="en-cours">Commandes en cours</option>
+        <option value="terminees">Commandes terminees ou annulees</option>
+        <option value="toutes">Toutes les commandes</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Commande</th>
+          <th>Client</th>
+          <th>Remise</th>
+          <th>Paiement</th>
+          <th class="numerique">Total</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of page()?.content ?? []; track c.id) {
+          <tr class="cliquable" (click)="ouvrir(c)">
+            <td>
+              <strong>{{ c.numero }}</strong>
+              <small class="bloc">{{ c.dateCommande | date: 'dd/MM HH:mm' }}</small>
+            </td>
+            <td>{{ c.clientNom }}<small class="bloc">{{ c.clientTelephone }}</small></td>
+            <td>{{ c.modeRemiseLibelle }}</td>
+            <td>
+              <span class="mkt-paiement" [class.payee]="c.statutPaiement === 'PAYEE'">
+                {{ c.statutPaiement === 'PAYEE' ? 'Payee' : (c.modePaiement === 'MOBILE_MONEY' ? 'Mobile money en attente' : 'A la remise') }}
+              </span>
+            </td>
+            <td class="numerique">{{ c.total | number: '1.0-0' }} FCFA</td>
+            <td><span class="mkt-statut statut-{{ c.statut | lowercase }}">{{ c.statutLibelle }}</span></td>
+            <td><button class="bouton secondaire petit" type="button">Ouvrir</button></td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7">
+              <div class="message vide">{{ chargement() ? 'Chargement...' : 'Aucune commande ici pour le moment.' }}</div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">Precedent</button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">Suivant</button>
+      </div>
+    }
+  }
+</div>
+
+@if (detail(); as c) {
+  <app-modale [titre]="'Commande ' + c.numero" [sousTitre]="(c.dateCommande | date: 'dd/MM/yyyy a HH:mm') ?? ''"
+              largeur="720px" [erreur]="erreur()" (ferme)="detail.set(null)">
+    <div class="mkt-detail">
+      <div class="entete-detail">
+        <span class="mkt-statut statut-{{ c.statut | lowercase }}">{{ c.statutLibelle }}</span>
+        <span class="mkt-paiement" [class.payee]="c.statutPaiement === 'PAYEE'">
+          {{ c.modePaiementLibelle }} — {{ c.statutPaiement === 'PAYEE' ? 'payee' : 'non payee' }}
+        </span>
+      </div>
+
+      <div class="blocs">
+        <div>
+          <h3>Client</h3>
+          <p><strong>{{ c.clientNom }}</strong></p>
+          <p>
+            <a [href]="'tel:' + c.clientTelephone">{{ c.clientTelephone }}</a> ·
+            <a [href]="whatsapp(c.clientTelephone)" target="_blank" rel="noopener">WhatsApp</a>
+          </p>
+          @if (c.clientEmail) { <p>{{ c.clientEmail }}</p> }
+        </div>
+        <div>
+          <h3>{{ c.modeRemiseLibelle }}</h3>
+          @if (c.adresseLivraison) {
+            <p>{{ c.adresseLivraison }}</p>
+          } @else {
+            <p>Le client vient chercher sa commande.</p>
+          }
+          @if (c.note) { <p class="note">« {{ c.note }} »</p> }
+        </div>
+      </div>
+
+      <table class="tableau">
+        <tbody>
+          @for (l of c.lignes; track $index) {
+            <tr>
+              <td>{{ l.quantite }} × {{ l.libelle }}</td>
+              <td class="numerique">{{ l.total | number: '1.0-0' }}</td>
+            </tr>
+          }
+          @if (c.fraisLivraison > 0) {
+            <tr><td>Frais de livraison</td><td class="numerique">{{ c.fraisLivraison | number: '1.0-0' }}</td></tr>
+          }
+          <tr class="total"><td>Total</td><td class="numerique">{{ c.total | number: '1.0-0' }} FCFA</td></tr>
+        </tbody>
+      </table>
+
+      @if (c.motifAnnulation) {
+        <p class="note">Motif d'annulation : {{ c.motifAnnulation }}</p>
+      }
+
+      <button class="lien-suivi" type="button" (click)="copierSuivi(c)">
+        {{ copie() ? 'Lien de suivi copie ✔' : 'Copier le lien de suivi du client' }}
+      </button>
+    </div>
+
+    @if (annulation()) {
+      <div class="champ">
+        <label for="motif">Motif de l'annulation (vu par le client)</label>
+        <input id="motif" [(ngModel)]="motifAnnulation" placeholder="Produit en rupture, client injoignable..." />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="annulation.set(false)">Retour</button>
+        <button class="bouton danger" type="button" [disabled]="action()" (click)="annuler(c)">Annuler la commande</button>
+      </div>
+    } @else if (c.pdvCommandeId && c.statut !== 'LIVREE' && c.statut !== 'ANNULEE') {
+      <!-- Restaurant : la commande vit a la caisse, comme une commande sur place. -->
+      <p class="mkt-en-caisse">
+        Cette commande se traite a la caisse, comme une commande sur place : validation, ecrans de preparation,
+        puis encaissement. Son etat ici suit celui de la caisse.
+      </p>
+      <div class="actions-formulaire">
+        <a class="bouton" [routerLink]="['/pdv/commandes', c.pdvCommandeId]">Ouvrir a la caisse</a>
+      </div>
+    } @else if (c.statut !== 'LIVREE' && c.statut !== 'ANNULEE') {
+      @if (c.enCaisse) {
+        <p class="mkt-en-caisse">La remise au client se fait en l'encaissant a la caisse (bouton « En ligne »).</p>
+      }
+      <div class="actions-formulaire">
+        <button class="bouton danger" type="button" (click)="annulation.set(true)">Annuler la commande</button>
+        @if (c.statutPaiement !== 'PAYEE') {
+          <button class="bouton secondaire" type="button" [disabled]="action()" (click)="marquerPayee(c)">Marquer payee</button>
+        }
+        @for (e of etapes[c.statut]; track e.statut) {
+          @if ((e.statut !== 'EN_LIVRAISON' || c.modeRemise === 'LIVRAISON') && !(c.enCaisse && e.statut === 'LIVREE')) {
+            <button class="bouton" type="button" [disabled]="action()" (click)="avancer(c, e.statut)">{{ e.libelle }}</button>
+          }
+        }
+      </div>
+    }
+  </app-modale>
+}

@@ -28,6 +28,22 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/carte-en-ligne/carte-en-ligne').then((m) => m.CarteEnLignePage),
     title: 'La carte'
   },
+  // Marketplace : place de marche, boutiques et suivi de commande, sans compte ni menu.
+  {
+    path: 'marche',
+    loadComponent: () => import('./pages/boutique-publique/marche').then((m) => m.MarchePage),
+    title: 'Place de marche — LJ SaaS'
+  },
+  {
+    path: 'boutique/:slug',
+    loadComponent: () => import('./pages/boutique-publique/boutique-publique').then((m) => m.BoutiquePublique),
+    title: 'Boutique en ligne'
+  },
+  {
+    path: 'suivi/:jeton',
+    loadComponent: () => import('./pages/boutique-publique/suivi-commande').then((m) => m.SuiviCommande),
+    title: 'Suivi de commande'
+  },
   {
     path: 'connexion',
     loadComponent: () => import('./pages/login/login').then((m) => m.Login),
@@ -116,17 +132,17 @@ export const routes: Routes = [
           },
           {
             path: 'locations',
-            loadComponent: () => import('./pages/locations/locations-liste').then((m) => m.LocationsListe),
+            redirectTo: '/recettes',
             title: 'Contrats de location — LJ SaaS'
           },
           {
             path: 'locations/nouveau',
-            loadComponent: () => import('./pages/locations/location-fiche').then((m) => m.LocationFiche),
+            redirectTo: '/recettes',
             title: 'Nouveau contrat — LJ SaaS'
           },
           {
             path: 'locations/:id',
-            loadComponent: () => import('./pages/locations/location-fiche').then((m) => m.LocationFiche),
+            redirectTo: '/recettes',
             title: 'Contrat de location — LJ SaaS'
           },
           {
@@ -319,6 +335,35 @@ export const routes: Routes = [
             ]
           },
           { path: '', pathMatch: 'full', redirectTo: 'caisse' }
+        ]
+      },
+
+      // --- Module Marketplace ------------------------------------------------
+      {
+        path: 'marketplace',
+        canActivate: [moduleGuard('MARKETPLACE'), roleGuard('ADMIN', 'GERANT', 'GESTIONNAIRE_PARC')],
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'commandes' },
+          {
+            path: 'commandes',
+            loadComponent: () => import('./pages/marketplace/commandes-en-ligne').then((m) => m.CommandesEnLigne),
+            title: 'Commandes en ligne — LJ SaaS'
+          },
+          {
+            path: 'locations',
+            loadComponent: () => import('./pages/marketplace/demandes-location').then((m) => m.DemandesLocation),
+            title: 'Demandes de location — LJ SaaS'
+          },
+          {
+            path: 'offres',
+            loadComponent: () => import('./pages/marketplace/offres').then((m) => m.OffresMarketplace),
+            title: 'Offres en ligne — LJ SaaS'
+          },
+          {
+            path: 'boutique',
+            loadComponent: () => import('./pages/marketplace/ma-boutique').then((m) => m.MaBoutique),
+            title: 'Ma boutique en ligne — LJ SaaS'
+          }
         ]
       },
 

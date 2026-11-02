@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import tg.parcauto.api.common.BusinessException;
 import tg.parcauto.api.common.ResourceNotFoundException;
+import tg.parcauto.api.exploitation.client.ClientService;
 import tg.parcauto.api.parc.camion.CamionService;
 import tg.parcauto.api.parc.chauffeur.ChauffeurService;
 
@@ -24,6 +25,7 @@ public class DocumentService {
     private final StockageFichierService stockage;
     private final CamionService camionService;
     private final ChauffeurService chauffeurService;
+    private final ClientService clientService;
 
     @Transactional(readOnly = true)
     public Page<DocumentDto.Reponse> rechercher(ProprietaireDocument proprietaireType, Long proprietaireId,
@@ -115,18 +117,20 @@ public class DocumentService {
     }
 
     private void verifierProprietaire(ProprietaireDocument type, Long id) {
-        if (type == ProprietaireDocument.CAMION) {
-            camionService.charger(id);
-        } else {
-            chauffeurService.charger(id);
+        switch (type) {
+            case CAMION -> camionService.charger(id);
+            case CHAUFFEUR -> chauffeurService.charger(id);
+            case CLIENT -> clientService.charger(id);
         }
     }
 
     private String libelleProprietaire(Document d) {
         try {
-            return d.getProprietaireType() == ProprietaireDocument.CAMION
-                    ? camionService.charger(d.getProprietaireId()).getImmatriculation()
-                    : chauffeurService.charger(d.getProprietaireId()).nomComplet();
+            return switch (d.getProprietaireType()) {
+                case CAMION -> camionService.charger(d.getProprietaireId()).getImmatriculation();
+                case CHAUFFEUR -> chauffeurService.charger(d.getProprietaireId()).nomComplet();
+                case CLIENT -> clientService.charger(d.getProprietaireId()).getRaisonSociale();
+            };
         } catch (ResourceNotFoundException e) {
             return null;
         }

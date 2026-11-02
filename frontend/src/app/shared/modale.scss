@@ -129,8 +129,9 @@
   }
 
   /*
-   * Barres d'actions des fenetres : boutons centres, plus grands et espaces,
-   * sur un pied detache du contenu par un filet et un fond doux.
+   * Barres d'actions des fenetres : boutons centres, plus grands et espaces
+   * (Annuler a gauche, validation a droite : regle globale), sur un pied
+   * detache du contenu par un filet et un fond doux.
    */
   .actions-formulaire {
     justify-content: center;

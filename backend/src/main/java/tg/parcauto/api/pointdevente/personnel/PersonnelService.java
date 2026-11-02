@@ -70,6 +70,19 @@ public class PersonnelService {
         return new java.util.HashSet<>(ids);
     }
 
+    /**
+     * Serveur sans autre profil de caisse ou de gestion : il prend et suit ses
+     * propres commandes, sans encaisser ni voir celles des autres serveurs.
+     */
+    public static boolean serveurSeul(UtilisateurPrincipal p) {
+        java.util.Set<String> roles = new java.util.HashSet<>();
+        p.getAuthorities().forEach(a -> roles.add(a.getAuthority()));
+        return roles.contains(Role.SERVEUR.authority())
+                && !roles.contains(Role.ADMIN.authority())
+                && !roles.contains(Role.GERANT.authority())
+                && !roles.contains(Role.CAISSIER.authority());
+    }
+
     public static boolean gestionnaire(UtilisateurPrincipal p) {
         return p.getAuthorities().stream().anyMatch(a ->
                 a.getAuthority().equals(Role.ADMIN.authority()) || a.getAuthority().equals(Role.GERANT.authority()));

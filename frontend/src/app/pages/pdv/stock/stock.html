@@ -54,11 +54,14 @@
 
 @if (onglet() === 'commandes') {
   <div class="carte">
-    <div class="filtres-statut" role="tablist" aria-label="Statut des commandes">
-      <button type="button" class="puce" [class.actif]="filtreStatut() === null" (click)="filtrerCommandes(null)">Toutes</button>
-      <button type="button" class="puce" [class.actif]="filtreStatut() === 'EN_COURS'" (click)="filtrerCommandes('EN_COURS')">A receptionner</button>
-      <button type="button" class="puce" [class.actif]="filtreStatut() === 'RECUE'" (click)="filtrerCommandes('RECUE')">Receptionnees</button>
-      <button type="button" class="puce" [class.actif]="filtreStatut() === 'ANNULEE'" (click)="filtrerCommandes('ANNULEE')">Annulees</button>
+    <!-- Statut des commandes : liste deroulante habillee par Select2 (Select2Service). -->
+    <div class="filtres-statut">
+      <select aria-label="Statut des commandes" [ngModel]="filtreStatut()" (ngModelChange)="filtrerCommandes($event)">
+        <option [ngValue]="null">Toutes les commandes</option>
+        <option [ngValue]="'EN_COURS'">A receptionner</option>
+        <option [ngValue]="'RECUE'">Receptionnees</option>
+        <option [ngValue]="'ANNULEE'">Annulees</option>
+      </select>
     </div>
     <div class="tableau-conteneur">
       <table class="tableau">
@@ -206,7 +209,7 @@
         </div>
       </div>
       <div class="actions-formulaire">
-        <button class="bouton secondaire" type="button" (click)="saisie.set(false)">Annuler</button>
+        <button class="bouton secondaire annuler" type="button" (click)="saisie.set(false)">Annuler</button>
         <button class="bouton" type="submit">Enregistrer</button>
       </div>
     </form>

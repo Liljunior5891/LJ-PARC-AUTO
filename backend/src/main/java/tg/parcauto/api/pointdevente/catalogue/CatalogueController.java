@@ -65,8 +65,10 @@ public class CatalogueController {
             @RequestParam(required = false) Long categorieId,
             @RequestParam(required = false) Boolean actif,
             @RequestParam(required = false) Boolean stockBas,
+            /** Publie (vrai) ou non (faux) dans la boutique en ligne ; absent = tous. */
+            @RequestParam(required = false) Boolean enLigne,
             @PageableDefault(size = 20, sort = "nom", direction = Sort.Direction.ASC) Pageable pageable) {
-        return service.rechercher(q, categorieId, actif, stockBas, pageable);
+        return service.rechercher(q, categorieId, actif, stockBas, enLigne, pageable);
     }
 
     @GetMapping("/articles/caisse")

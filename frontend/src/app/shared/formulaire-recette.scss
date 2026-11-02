@@ -86,3 +86,36 @@
   font-size: 0.78rem;
   color: #b8650a;
 }
+
+/* Vehicule deja engage sur la periode de la recette. */
+.vehicule-occupe {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #f3c4c0;
+  border-radius: var(--rayon);
+  background: #fdeeed;
+  color: #9a1c13;
+
+  strong {
+    font-size: 0.85rem;
+  }
+
+  small {
+    color: #9a1c13;
+  }
+}
+
+/* Recette qui conclut une demande en ligne. */
+.bandeau-demande {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 0.9rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--rayon);
+  background: #efe7fb;
+  color: #4b2a85;
+  font-size: 0.82rem;
+}

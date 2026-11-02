@@ -37,26 +37,11 @@
   }
 }
 
+/* Statut des commandes : liste deroulante Select2. */
 .filtres-statut {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  width: 220px;
   margin-bottom: 0.9rem;
-}
-
-.puce {
-  padding: 0.4rem 0.9rem;
-  border: 1px solid var(--couleur-bordure);
-  border-radius: 999px;
-  background: var(--couleur-surface);
   font-weight: 600;
-  cursor: pointer;
-
-  &.actif {
-    border-color: var(--couleur-primaire);
-    background: var(--couleur-primaire);
-    color: #fff;
-  }
 }
 
 tr.cliquable {

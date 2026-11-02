@@ -46,6 +46,10 @@ public class Facture extends BaseEntity {
     @JoinColumn(name = "location_id")
     private Location location;
 
+    /** Facture d'une recette nee dans la boutique en ligne (canal « en ligne »). */
+    @Column(name = "en_ligne", nullable = false)
+    private boolean enLigne;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mission_id")
     private Mission mission;

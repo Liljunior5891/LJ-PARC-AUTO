@@ -35,6 +35,11 @@ export class ClientService {
     return this.http.get<Page<ClientParc>>(this.base, { params });
   }
 
+  /** Clients dont le numero de telephone est le meme, quelle que soit l'ecriture (+228, espaces...). */
+  parTelephone(telephone: string): Observable<ClientParc[]> {
+    return this.http.get<ClientParc[]>(`${this.base}/par-telephone`, { params: { telephone } });
+  }
+
   parId(id: number): Observable<ClientParc> {
     return this.http.get<ClientParc>(`${this.base}/${id}`);
   }

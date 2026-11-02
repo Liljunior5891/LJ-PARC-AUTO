@@ -1,9 +1,10 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { Component, effect, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { map } from 'rxjs';
-import { ClientParc, TYPES_CLIENT, TYPES_LOCATION, TypeLocation } from '../core/models/exploitation';
+import { ClientParc, TYPES_LOCATION, TypeLocation } from '../core/models/exploitation';
+import { ClientEnregistre, FormulaireClient } from './formulaire-client';
 import {
   MODES_PAIEMENT,
   Recette,
@@ -16,7 +17,7 @@ import { Camion } from '../core/models/models';
 import { AffectationService } from '../core/services/affectation.service';
 import { CamionService } from '../core/services/camion.service';
 import { ClientService } from '../core/services/client.service';
-import { RecetteService } from '../core/services/recette.service';
+import { OccupationVehicule, RecetteService } from '../core/services/recette.service';
 import { OptionSelect, SelectRecherche } from './select-recherche';
 import { VALIDATION_FORMULAIRE } from './validation-formulaire';
 
@@ -99,9 +100,13 @@ const PROFILS: Record<Exclude<TypeRecette, 'LOCATION'>, ProfilRecette> = {
  * le contrat correspondant est cree avec la recette. Le chauffeur n'est jamais
  * saisi : il decoule de l'affectation en cours du vehicule.
  */
+
+/** Types de recette qui engagent le vehicule sur leur periode (les recettes d'appoint ne l'engagent pas). */
+const TYPES_ENGAGEANTS: string[] = ['LOCATION', 'TRANSPORT', 'LIVRAISON', 'VOYAGE', 'MISSION_SPECIALE', 'CONTRAT'];
+import { DemandeLocationEnLigne } from '../core/models/marketplace';
 @Component({
   selector: 'app-formulaire-recette',
-  imports: [ReactiveFormsModule, FormsModule, SelectRecherche, DecimalPipe, VALIDATION_FORMULAIRE],
+  imports: [ReactiveFormsModule, SelectRecherche, DecimalPipe, VALIDATION_FORMULAIRE, FormulaireClient],
   templateUrl: './formulaire-recette.html',
   styleUrl: './formulaire-recette.scss'
 })
@@ -114,6 +119,8 @@ export class FormulaireRecette implements OnInit {
 
   /** Vehicule impose par l'ecran appelant ; le champ devient alors non modifiable. */
   readonly camionImpose = input<number | null>(null);
+  /** Demande de location en ligne acceptee que la recette conclut : elle preremplit la saisie. */
+  readonly demande = input<DemandeLocationEnLigne | null>(null);
 
   readonly enregistree = output<Recette>();
   readonly annulee = output<void>();
@@ -121,7 +128,6 @@ export class FormulaireRecette implements OnInit {
   readonly types = TYPES_RECETTE;
   readonly modes = MODES_PAIEMENT;
   readonly typesLocation = TYPES_LOCATION;
-  readonly typesClient = TYPES_CLIENT;
 
   readonly camions = signal<Camion[]>([]);
   readonly clients = signal<ClientParc[]>([]);
@@ -133,10 +139,6 @@ export class FormulaireRecette implements OnInit {
 
   /** Creation d'un client a la volee, quand il n'existe pas encore. */
   readonly creationClient = signal(false);
-  readonly creationEnCours = signal(false);
-  nouveauClientNom = '';
-  nouveauClientTelephone = '';
-  nouveauClientType: string = 'ENTREPRISE';
 
   readonly formulaire = this.fb.nonNullable.group({
     camionId: [null as number | null, [Validators.required]],
@@ -266,11 +268,49 @@ export class FormulaireRecette implements OnInit {
   private readonly libelleFinal = computed(() => this.valeurs().libelle.trim() || this.libelleSuggere());
 
   /** Ce qui manque encore pour enregistrer, selon le type choisi. */
+  /**
+   * Periode sur laquelle la recette engage le vehicule : ses dates pour une
+   * location ou un type a periode, sinon son jour. Nulle pour les recettes
+   * d'appoint (frais, kilometres, autre), qui n'engagent pas le vehicule.
+   */
+  readonly periodeEngagee = computed<{ camionId: number; type: string; debut: string; fin: string } | null>(() => {
+    const v = this.valeurs();
+    const camionId = this.camionImpose() ?? v.camionId;
+    if (camionId === null || !TYPES_ENGAGEANTS.includes(v.type)) {
+      return null;
+    }
+    const avecPeriode = this.estLocation() || !!this.profil()?.periode;
+    const debut = avecPeriode ? v.dateDebut : v.dateRecette;
+    const fin = avecPeriode ? (v.dateFin || v.dateDebut) : v.dateRecette;
+    return debut ? { camionId, type: v.type, debut, fin: fin || debut } : null;
+  });
+
+  /** Engagements du vehicule qui chevauchent cette periode : la recette est alors refusee. */
+  readonly occupations = signal<OccupationVehicule[]>([]);
+  private readonly verificationDisponibilite = effect((nettoyage) => {
+    const periode = this.periodeEngagee();
+    if (!periode) {
+      this.occupations.set([]);
+      return;
+    }
+    // Petite attente : la verification part quand la saisie des dates se pose.
+    const minuterie = setTimeout(() => {
+      this.service.disponibilite(periode.camionId, periode.type, periode.debut, periode.fin, this.demande()?.id).subscribe({
+        next: (occupations) => this.occupations.set(occupations),
+        error: () => this.occupations.set([])
+      });
+    }, 250);
+    nettoyage(() => clearTimeout(minuterie));
+  });
+
   readonly champsManquants = computed(() => {
     const v = this.valeurs();
     const manquants: string[] = [];
     if (v.camionId === null) {
       manquants.push('le vehicule');
+    }
+    if (this.occupations().length) {
+      manquants.push('un vehicule libre sur ces dates');
     }
     if (this.estLocation()) {
       if (v.clientId === null) {
@@ -353,6 +393,43 @@ export class FormulaireRecette implements OnInit {
     if (impose !== null) {
       this.formulaire.patchValue({ camionId: impose });
     }
+    this.preremplirDepuisDemande();
+  }
+
+  /**
+   * Le client d'une demande en ligne se presente : vehicule, dates, tarif et
+   * trajet viennent de la demande (location a la journee par defaut, type
+   * modifiable). Le client est retrouve par son telephone, sinon sa fiche est
+   * a creer, preremplie, avec ses pieces.
+   */
+  private preremplirDepuisDemande(): void {
+    const d = this.demande();
+    if (!d) {
+      return;
+    }
+    this.formulaire.patchValue({
+      camionId: d.camionId,
+      type: 'LOCATION',
+      typeLocation: 'JOURNALIERE',
+      dateDebut: d.dateDebut,
+      dateFin: d.dateFin,
+      tarif: d.tarifJour,
+      lieuDepart: d.lieuDepart ?? '',
+      destination: d.destination ?? '',
+      observations: d.message ? `Demande en ligne ${d.numero} — message du client : ${d.message}` : `Demande en ligne ${d.numero}`
+    });
+    this.clientService.parTelephone(d.clientTelephone).subscribe({
+      next: (trouves) => {
+        const trouve = trouves[0];
+        if (trouve) {
+          this.clients.update((liste) => liste.some((c) => c.id === trouve.id) ? liste : [trouve, ...liste]);
+          this.formulaire.patchValue({ clientId: trouve.id });
+        } else {
+          this.creationClient.set(true);
+        }
+      },
+      error: () => this.creationClient.set(true)
+    });
   }
 
   private camionChange(camionId: number | null): void {
@@ -374,43 +451,20 @@ export class FormulaireRecette implements OnInit {
     });
   }
 
-  /** Ouvre ou referme le petit formulaire de creation de client. */
+  /** Ouvre ou referme le formulaire de creation de client. */
   basculerCreationClient(): void {
     this.creationClient.update((ouvert) => !ouvert);
-    this.nouveauClientNom = '';
-    this.nouveauClientTelephone = '';
   }
 
-  /**
-   * Cree le client sans quitter la saisie, puis le selectionne.
-   * Seule la raison sociale est exigee : la fiche complete se complete plus tard
-   * depuis l'ecran Clients.
-   */
-  creerClient(): void {
-    const nom = this.nouveauClientNom.trim();
-    if (!nom || this.creationEnCours()) {
-      return;
+  /** Client cree depuis la recette : il rejoint la liste et se trouve selectionne. */
+  clientCree({ client, echecsPieces }: ClientEnregistre): void {
+    this.clients.update((liste) => [client, ...liste.filter((c) => c.id !== client.id)]);
+    this.formulaire.patchValue({ clientId: client.id });
+    this.creationClient.set(false);
+    if (echecsPieces) {
+      this.erreur.set(`Client cree, mais ${echecsPieces} piece(s) n'ont pas pu etre envoyee(s) : `
+        + 'reprenez-les depuis sa fiche.');
     }
-    this.creationEnCours.set(true);
-    this.erreur.set(null);
-    this.clientService
-      .creer({
-        raisonSociale: nom,
-        telephone: this.nouveauClientTelephone.trim() || undefined,
-        type: this.nouveauClientType as ClientParc['type']
-      })
-      .subscribe({
-        next: (client) => {
-          this.creationEnCours.set(false);
-          this.clients.update((liste) => [client, ...liste]);
-          this.formulaire.patchValue({ clientId: client.id });
-          this.creationClient.set(false);
-        },
-        error: (reponse) => {
-          this.creationEnCours.set(false);
-          this.erreur.set(reponse.error?.message ?? 'Creation du client impossible.');
-        }
-      });
   }
 
   enregistrer(): void {
@@ -458,7 +512,8 @@ export class FormulaireRecette implements OnInit {
       dateRecette: v.dateRecette,
       modePaiement: (v.modePaiement || null) as RecetteRequete['modePaiement'],
       reference: v.reference || undefined,
-      observations: v.observations || undefined
+      observations: v.observations || undefined,
+      demandeEnLigneId: this.demande()?.id ?? null
     };
   }
 
@@ -480,7 +535,8 @@ export class FormulaireRecette implements OnInit {
       lieuDepart: profil.trajet ? v.lieuDepart || null : null,
       destination: profil.trajet ? v.destination || null : null,
       marchandise: profil.marchandise ? v.marchandise || null : null,
-      kilometres: profil.kilometres ? v.kilometrage : null
+      kilometres: profil.kilometres ? v.kilometrage : null,
+      demandeEnLigneId: this.demande()?.id ?? null
     };
   }
 

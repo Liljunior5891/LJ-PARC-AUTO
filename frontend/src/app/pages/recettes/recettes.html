@@ -16,7 +16,12 @@
   <div class="message erreur">{{ erreur() }}</div>
 }
 @if (succes()) {
-  <div class="message succes">{{ succes() }}</div>
+  <div class="message succes bandeau-contrat">
+    <span>{{ succes() }}</span>
+    @if (recetteAImprimer(); as r) {
+      <button class="bouton petit" type="button" (click)="imprimerContrat(r)">🖨 Imprimer le contrat</button>
+    }
+  </div>
 }
 
 @if (recetteAFacturer(); as r) {
@@ -38,8 +43,10 @@
 }
 
 @if (formulaireVisible()) {
-  <app-modale titre="Enregistrer une recette" [erreur]="erreur()" (ferme)="basculerFormulaire()">
+  <app-modale [titre]="demandeAConclure() ? 'Recette de la demande ' + demandeAConclure()!.numero : 'Enregistrer une recette'"
+              [erreur]="erreur()" (ferme)="basculerFormulaire()">
     <app-formulaire-recette
+      [demande]="demandeAConclure()"
       (enregistree)="recetteEnregistree($event)"
       (annulee)="basculerFormulaire()"
     />
@@ -65,6 +72,16 @@
         }
       </select>
     </div>
+    @if (avecEnLigne) {
+      <div class="champ">
+        <label for="canal">Canal</label>
+        <select id="canal" [(ngModel)]="canal" (change)="filtrer()">
+          <option value="">En ligne et agence</option>
+          <option value="en-ligne">En ligne</option>
+          <option value="agence">Agence</option>
+        </select>
+      </div>
+    }
     <div class="champ">
       <label for="type">Type</label>
       <select id="type" [(ngModel)]="type" (change)="filtrer()">
@@ -113,6 +130,7 @@
           <th>Type</th>
           <th>Libelle</th>
           <th>Client</th>
+          @if (avecEnLigne) { <th>Canal</th> }
           <th>Rattachement</th>
           <th class="numerique">Montant</th>
           <th></th>
@@ -127,11 +145,16 @@
             <td>{{ recette.typeLibelle }}</td>
             <td>{{ recette.libelle }}</td>
             <td>{{ recette.clientNom || '—' }}</td>
+            @if (avecEnLigne) {
+              <td><span class="canal" [class.en-ligne]="recette.enLigne">{{ recette.enLigne ? '🌐 En ligne' : 'Agence' }}</span></td>
+            }
             <td>
               {{ recette.factureNumero || recette.missionNumero || recette.locationNumero || '—' }}
             </td>
             <td class="numerique"><strong>{{ recette.montant | number }}</strong></td>
-            <td>
+            <td style="white-space: nowrap">
+              <button class="bouton secondaire petit" type="button" (click)="imprimerContrat(recette)"
+                      [title]="'Contrat ' + recette.typeLibelle.toLowerCase() + ' a imprimer'">Contrat</button>
               @if (peutGerer && !recette.factureNumero) {
                 <button class="bouton danger petit" type="button" (click)="supprimer(recette)">
                   Supprimer
@@ -141,7 +164,7 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="9">
+            <td [attr.colspan]="avecEnLigne ? 10 : 9">
               <div class="message vide">
                 {{ chargement() ? 'Chargement...' : 'Aucune recette sur cette periode.' }}
               </div>

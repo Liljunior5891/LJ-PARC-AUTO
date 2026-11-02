@@ -47,9 +47,11 @@ public enum ModuleApplicatif {
                             "Plan de salle, commandes par table, ecrans cuisine et bar, additions."))),
     MARKETPLACE(
             "Marketplace",
-            "Publication de vos offres et reception de commandes en ligne.",
-            false,
-            EnumSet.of(Role.ADMIN),
+            "Boutique en ligne et place de marche : vos produits, vos vehicules a louer, "
+                    + "commandes payees au retrait, a la livraison ou par mobile money.",
+            true,
+            // Gerant (point de vente) et gestionnaire de parc (demandes de location) y travaillent aussi.
+            EnumSet.of(Role.ADMIN, Role.GERANT, Role.GESTIONNAIRE_PARC),
             List.of());
 
     /** Declinaison d'un module, choisie par l'entreprise. */

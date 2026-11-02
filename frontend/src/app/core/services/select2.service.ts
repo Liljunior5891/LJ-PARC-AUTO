@@ -7,10 +7,11 @@ import { Injectable, afterEveryRender } from '@angular/core';
 const SELECTEUR = 'select:not([data-natif])';
 
 /**
- * En dessous de ce nombre d'options, la zone de recherche est inutile. Une
- * liste qui la veut toujours porte data-recherche="toujours".
+ * Toutes les listes ont leur zone de saisie, quel que soit le nombre
+ * d'options, pour choisir au clavier sans faire defiler. Une liste qui n'en
+ * veut pas porte data-recherche="jamais".
  */
-const SEUIL_RECHERCHE = 8;
+const SANS_RECHERCHE = Infinity;
 
 /** Ce que Select2 transmet pour une option : son texte et, s'il existe, l'element d'origine. */
 interface OptionRendue {
@@ -62,7 +63,7 @@ export class Select2Service {
     $select.select2({
       language: 'fr',
       width: '100%',
-      minimumResultsForSearch: select.dataset['recherche'] === 'toujours' ? 0 : SEUIL_RECHERCHE,
+      minimumResultsForSearch: select.dataset['recherche'] === 'jamais' ? SANS_RECHERCHE : 0,
       templateResult: (option) => this.rendu(option, true),
       templateSelection: (option) => this.rendu(option, false),
       matcher: (parametres, option) => this.correspond(parametres, option)
@@ -75,9 +76,30 @@ export class Select2Service {
         select.dispatchEvent(new Event('change', { bubbles: true }));
       }
     });
+    this.saisieDirecte($select);
     // Le select natif etant masque, c'est la fermeture qui marque le champ comme visite.
     $select.on('select2:close', () => select.dispatchEvent(new Event('blur')));
     this.enrichies.set(select, this.etat(select));
+  }
+
+  /**
+   * Saisie directe : une lettre tapee sur la liste fermee (atteinte au clavier
+   * ou deja cliquee) l'ouvre et part dans la zone de recherche. On tape le
+   * debut du libelle puis Entree, sans passer par la souris.
+   */
+  private saisieDirecte($select: JQuery<HTMLSelectElement>): void {
+    const instance = $select.data('select2');
+    instance?.$container.find('.select2-selection').on('keydown', (evenement: JQuery.KeyDownEvent) => {
+      const caractere = evenement.key;
+      if (caractere.length !== 1 || caractere === ' ' || evenement.ctrlKey || evenement.metaKey
+          || evenement.altKey || instance.$container.hasClass('select2-container--open')) {
+        return;
+      }
+      evenement.preventDefault();
+      $select.select2('open');
+      const champ = instance.$dropdown.find('.select2-search__field');
+      champ.val(caractere).trigger('input').trigger('focus');
+    });
   }
 
   /**

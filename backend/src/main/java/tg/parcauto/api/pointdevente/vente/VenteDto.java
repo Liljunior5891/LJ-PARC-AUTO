@@ -31,7 +31,9 @@ public final class VenteDto {
             @Size(max = 80) String referencePaiement,
             @Size(max = 150) String clientNom,
             /** Session de caisse choisie par le poste quand plusieurs sont ouvertes. */
-            Long sessionId) {
+            Long sessionId,
+            /** Commande de la boutique en ligne reglee par ce ticket (caisse boutique). */
+            Long commandeEnLigneId) {
 
         public Reglement reglement() {
             return new Reglement(remise, modePaiement, montantRecu, referencePaiement, clientNom, sessionId);
@@ -63,12 +65,14 @@ public final class VenteDto {
     public record Resume(
             Long id, String numero, Instant dateVente, String caissierNom, String clientNom,
             BigDecimal total, ModePaiementPdv modePaiement, String modePaiementLibelle,
-            Vente.Statut statut, String sessionNumero, String tableNom) {
+            Vente.Statut statut, String sessionNumero, String tableNom,
+            /** Vendue en ligne (Marketplace) plutot qu'au comptoir. */
+            boolean enLigne) {
 
         public static Resume de(Vente v) {
             return new Resume(v.getId(), v.getNumero(), v.getDateVente(), v.getCaissierNom(), v.getClientNom(),
                     v.getTotal(), v.getModePaiement(), v.getModePaiement().getLibelle(), v.getStatut(),
-                    v.getSession().getNumero(), v.getTableNom());
+                    v.getSession().getNumero(), v.getTableNom(), v.isEnLigne());
         }
     }
 

@@ -36,8 +36,10 @@ public class SalleController {
     @GetMapping("/plan")
     @PreAuthorize(Autorisations.PDV_SALLE)
     @Operation(summary = "Plan de service : salles, tables et commandes en cours")
-    public RestaurationDto.Plan plan() {
-        return service.plan();
+    public RestaurationDto.Plan plan(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal
+            tg.parcauto.api.security.UtilisateurPrincipal principal) {
+        return service.plan(principal);
     }
 
     @GetMapping("/salles")

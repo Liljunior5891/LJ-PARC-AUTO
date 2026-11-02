@@ -103,7 +103,7 @@ export class SallePdv implements OnInit {
     return 'occupee';
   }
 
-  /** Ce que le client demande depuis le code QR de sa table. */
+  /** Appel du client, ou articles (du serveur ou du code QR) en attente de la caisse. */
   demande(commande: CommandeResume): string {
     if (commande.appel === 'ADDITION') {
       return '🧾 Addition';
@@ -111,7 +111,7 @@ export class SallePdv implements OnInit {
     if (commande.appel === 'SERVEUR') {
       return '🙋 Appel';
     }
-    return `📱 ${commande.aValider} a valider`;
+    return `⏳ ${commande.aValider} a valider`;
   }
 
   /** Temps passe a table, en minutes ou en heures. */
@@ -121,6 +121,10 @@ export class SallePdv implements OnInit {
   }
 
   toucher(t: TablePlan): void {
+    if (t.commande && !t.commande.id) {
+      this.erreur.set(`La table ${t.table.nom} est servie par ${t.commande.serveurNom}.`);
+      return;
+    }
     if (t.commande) {
       void this.router.navigate(['/pdv/commandes', t.commande.id]);
       return;

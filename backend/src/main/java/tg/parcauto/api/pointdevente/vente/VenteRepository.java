@@ -28,6 +28,15 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
             """)
     Page<Vente> periode(@Param("debut") Instant debut, @Param("fin") Instant fin, Pageable pageable);
 
+    /** Ventes d'une periode, en ligne (Marketplace) ou au comptoir. */
+    @Query("""
+            select v from Vente v
+            where v.dateVente >= :debut and v.dateVente < :fin and v.enLigne = :enLigne
+            order by v.dateVente desc
+            """)
+    Page<Vente> periodeParCanal(@Param("debut") Instant debut, @Param("fin") Instant fin,
+                                @Param("enLigne") boolean enLigne, Pageable pageable);
+
     Page<Vente> findBySessionIdOrderByDateVenteDesc(Long sessionId, Pageable pageable);
 
     /** [mode, total, nombre] des ventes validees d'une session. */
@@ -68,6 +77,14 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
             group by v.modePaiement
             """)
     List<Object[]> totauxPeriode(@Param("debut") Instant debut, @Param("fin") Instant fin);
+
+    /** [total, nombre] des ventes validees encaissees pour des commandes en ligne, sur une periode. */
+    @Query("""
+            select coalesce(sum(v.total), 0), count(v) from Vente v
+            where v.dateVente >= :debut and v.dateVente < :fin and v.enLigne = true
+              and v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
+            """)
+    List<Object[]> totauxEnLigne(@Param("debut") Instant debut, @Param("fin") Instant fin);
 
     @Query("""
             select count(v) from Vente v

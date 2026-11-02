@@ -1183,34 +1183,9 @@ input.grand {
   }
 }
 
+/* Filtre des commandes : liste deroulante Select2, nombre de commandes entre parentheses. */
 .filtres-tiroir {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-
-  button {
-    padding: 0.4rem 0.8rem;
-    border: 1px solid var(--couleur-bordure);
-    border-radius: 999px;
-    background: var(--carte);
-    font-weight: 600;
-    cursor: pointer;
-
-    span {
-      margin-left: 0.2rem;
-      color: var(--couleur-texte-doux);
-    }
-
-    &.actif {
-      border-color: var(--vert);
-      background: var(--vert);
-      color: #fff;
-
-      span {
-        color: rgba(255, 255, 255, 0.85);
-      }
-    }
-  }
+  font-weight: 600;
 }
 
 /* La liste defile seule : la recherche, les filtres et les boutons restent en place. */
@@ -1482,4 +1457,26 @@ input.grand {
   opacity: 0.45;
   filter: grayscale(0.6);
   pointer-events: none;
+}
+
+/* Commande passee dans la boutique en ligne : reperable d'un coup d'oeil dans la liste. */
+.tuile-commande.en-ligne {
+  box-shadow: inset 4px 0 0 #8455c8;
+
+  .rond {
+    background: #efe7fb;
+  }
+}
+
+.bandeau-en-ligne {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.5rem 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: #efe7fb;
+  color: #4b2a85;
+  font-size: 0.8rem;
+  line-height: 1.35;
 }

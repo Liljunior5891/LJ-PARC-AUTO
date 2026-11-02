@@ -13,8 +13,26 @@ public final class ArticleSpecifications {
     }
 
     public static Specification<Article> rechercher(String q, Long categorieId, Boolean actif, Boolean stockBas) {
+        return rechercher(q, categorieId, actif, stockBas, null);
+    }
+
+    /**
+     * Avec {@code enLigne} : seulement les articles publies (vrai) ou non publies
+     * (faux) dans la boutique en ligne de la Marketplace.
+     */
+    public static Specification<Article> rechercher(String q, Long categorieId, Boolean actif, Boolean stockBas,
+                                                    Boolean enLigne) {
         return (racine, requete, cb) -> {
             List<Predicate> predicats = new ArrayList<>();
+
+            if (enLigne != null) {
+                var sousRequete = requete.subquery(Long.class);
+                var offre = sousRequete.from(tg.parcauto.api.marketplace.Offre.class);
+                sousRequete.select(offre.get("id")).where(
+                        cb.equal(offre.get("articleId"), racine.get("id")),
+                        cb.isTrue(offre.get("publiee")));
+                predicats.add(enLigne ? cb.exists(sousRequete) : cb.not(cb.exists(sousRequete)));
+            }
 
             if (categorieId != null) {
                 predicats.add(cb.equal(racine.get("categorie").get("id"), categorieId));

@@ -66,6 +66,11 @@ public class VenteService {
             lignes.add(ligne);
         }
         Vente vente = enregistrer(lignes, demande.reglement(), caissier, null, null);
+        if (demande.commandeEnLigneId() != null) {
+            // Commande en ligne remise et reglee : la boutique en ligne la clot (et peut refuser l'encaissement).
+            vente.setEnLigne(true);
+            evenements.publishEvent(new VenteEnLigneEncaissee(demande.commandeEnLigneId(), vente.getId()));
+        }
         for (LigneVente ligne : vente.getLignes()) {
             if (ligne.getArticle().isSuiviStock()) {
                 stockService.appliquer(ligne.getArticle(), TypeMouvementStock.VENTE, ligne.getQuantite(),
@@ -148,9 +153,12 @@ public class VenteService {
     }
 
     @Transactional(readOnly = true)
-    public Page<VenteDto.Resume> lister(Instant debut, Instant fin, Long sessionId, Pageable pageable) {
+    public Page<VenteDto.Resume> lister(Instant debut, Instant fin, Long sessionId, Boolean enLigne,
+                                        Pageable pageable) {
         Page<Vente> page = sessionId != null
                 ? repository.findBySessionIdOrderByDateVenteDesc(sessionId, pageable)
+                : enLigne != null
+                ? repository.periodeParCanal(debut, fin, enLigne, pageable)
                 : repository.periode(debut, fin, pageable);
         return page.map(VenteDto.Resume::de);
     }
@@ -187,5 +195,9 @@ public class VenteService {
 
     private static String vide(String valeur) {
         return valeur == null || valeur.isBlank() ? null : valeur.trim();
+    }
+
+    /** Ticket encaisse pour une commande de la boutique en ligne. */
+    public record VenteEnLigneEncaissee(Long commandeEnLigneId, Long venteId) {
     }
 }

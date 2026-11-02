@@ -42,3 +42,133 @@
 .message.avertissement {
   margin: 0;
 }
+
+/* Commandes de la boutique en ligne a la caisse boutique. */
+.bouton-en-ligne {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  b {
+    min-width: 22px;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: #8455c8;
+    color: #fff;
+    font-size: 0.78rem;
+    text-align: center;
+  }
+
+  &.alerte {
+    border-color: #8455c8;
+    background: #efe7fb;
+    animation: clignote-en-ligne 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes clignote-en-ligne {
+  50% {
+    box-shadow: 0 0 0 4px rgba(132, 85, 200, 0.25);
+  }
+}
+
+.bandeau-en-ligne {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0.5rem 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: #efe7fb;
+  color: #4b2a85;
+  font-size: 0.8rem;
+}
+
+.liste-en-ligne {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 0.75rem 0.2rem;
+    border-bottom: 1px solid var(--couleur-bordure);
+
+    &.nouvelle {
+      box-shadow: inset 4px 0 0 #8455c8;
+      padding-left: 0.7rem;
+    }
+
+    &.vide {
+      color: var(--couleur-texte-doux);
+      text-align: center;
+    }
+  }
+
+  .entete-ligne {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+  }
+
+  .articles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.8rem;
+    margin: 0.35rem 0;
+    font-size: 0.85rem;
+  }
+
+  .note {
+    margin: 0 0 0.35rem;
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--couleur-texte-doux);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+
+    .montant {
+      margin-right: auto;
+    }
+
+    input {
+      flex: 1;
+      min-width: 160px;
+    }
+  }
+
+  .statut {
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: #eef2f7;
+    font-size: 0.72rem;
+    font-weight: 700;
+
+    &.statut-nouvelle {
+      background: #fff3e0;
+      color: #c25e00;
+    }
+
+    &.statut-confirmee,
+    &.statut-prete {
+      background: #e3f0fd;
+      color: #1565c0;
+    }
+  }
+}

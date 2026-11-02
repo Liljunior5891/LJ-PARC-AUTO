@@ -1,0 +1,268 @@
+<div class="marche">
+  <!-- Bandeau d'informations. -->
+  <div class="bande-info">
+    <div class="conteneur">
+      <div class="groupe">
+        <span><app-icone-vitrine nom="boutique" /> Commerces et loueurs pres de chez vous</span>
+        <span class="masque-mobile"><app-icone-vitrine nom="livraison" /> Retrait ou livraison</span>
+        <span class="masque-mobile"><app-icone-vitrine nom="mobile" /> Paiement a la remise ou mobile money</span>
+      </div>
+      <a routerLink="/inscription">Vous etes commercant ? Ouvrez votre boutique →</a>
+    </div>
+  </div>
+
+  <!-- En-tete : marque, recherche avec rayon, ville et acces commercant. -->
+  <header class="entete-site">
+    <div class="conteneur">
+      <a routerLink="/" class="marque-site">
+        <span class="pictogramme"><app-icone-vitrine nom="boutique" /></span>
+        <span class="textes"><strong>LJ SaaS</strong><small>La place de marche</small></span>
+      </a>
+      <label class="champ-recherche">
+        <input type="search" placeholder="Que cherchez-vous ? Poulet, ciment, voiture..." aria-label="Rechercher"
+               [(ngModel)]="recherche" (ngModelChange)="rechercher()" />
+        <select data-natif aria-label="Rayon" [(ngModel)]="categorie" (ngModelChange)="charger()">
+          <option value="">Tous les rayons</option>
+          @for (c of categories(); track c) {
+            <option [value]="c">{{ c }}</option>
+          }
+        </select>
+        <span class="loupe"><app-icone-vitrine nom="recherche" /></span>
+      </label>
+      <div class="actions-entete">
+        <label class="ville">
+          <app-icone-vitrine nom="position" />
+          <select data-natif aria-label="Ville" [(ngModel)]="ville" (ngModelChange)="charger()">
+            <option value="">Toutes les villes</option>
+            @for (v of villes(); track v) {
+              <option [value]="v">{{ v }}</option>
+            }
+          </select>
+        </label>
+        <a routerLink="/inscription" class="lien-entete masque-etroit">
+          <app-icone-vitrine nom="personne" /> Ouvrir ma boutique
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="conteneur">
+    <!-- Heros : promesse, actions, rassurance et apercu des produits en ligne. -->
+    @if (!recherche && !categorie && !ville) {
+      <section class="heros">
+        <div class="texte-heros">
+          <span class="surtitre"><app-icone-vitrine nom="bouclier" /> Commandez en confiance, sans compte</span>
+          <h1>Tout ce qu'il vous faut, <em>pres de chez vous</em></h1>
+          <p>Produits, repas et vehicules a louer aupres des commerces de votre ville : retrait sur place ou livraison,
+            paiement a la remise ou par mobile money.</p>
+          <div class="actions">
+            <button type="button" class="bouton-site" (click)="defilerVers('offres')">
+              Voir les offres <app-icone-vitrine nom="fleche" />
+            </button>
+            <button type="button" class="bouton-site contour" (click)="defilerVers('boutiques')">Parcourir les boutiques</button>
+          </div>
+          <ul class="rassurances">
+            <li><app-icone-vitrine nom="boutique" /><span><strong>Retrait sur place</strong><small>Sans frais</small></span></li>
+            <li><app-icone-vitrine nom="livraison" /><span><strong>Livraison</strong><small>Selon la boutique</small></span></li>
+            <li><app-icone-vitrine nom="mobile" /><span><strong>Mobile money</strong><small>Ou a la remise</small></span></li>
+            <li><app-icone-vitrine nom="suivi" /><span><strong>Suivi en direct</strong><small>De votre commande</small></span></li>
+          </ul>
+        </div>
+        <div class="visuel-heros" [class.vide]="!apercus().length" [attr.data-nombre]="apercus().length">
+          @for (o of apercus(); track o.id; let i = $index) {
+            <a [class]="'apercu apercu-' + i" [routerLink]="['/boutique', o.slug]" [queryParams]="{ offre: o.id }">
+              <img [src]="o.image" [alt]="o.titre" loading="lazy" />
+              <span class="etiquette-apercu">
+                <strong>{{ o.titre }}</strong>
+                <small>{{ o.prix | number: '1.0-0' }} FCFA</small>
+              </span>
+            </a>
+          } @empty {
+            <span class="decor">🛍️</span>
+          }
+          @if (marche(); as m) {
+            <span class="pastille-chiffre">
+              <strong>{{ m.boutiques.length }}</strong>
+              <small>boutique{{ m.boutiques.length > 1 ? 's' : '' }}</small>
+            </span>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- Rayons. -->
+    @if (categories().length) {
+      <section class="section">
+        <div class="titre-section">
+          <h2><app-icone-vitrine nom="grille" /> Rayons</h2>
+          @if (categorie) {
+            <button type="button" class="lien" (click)="choisirRayon('')">Tous les rayons <app-icone-vitrine nom="fleche" /></button>
+          }
+        </div>
+        <div class="rayons">
+          @for (c of categories(); track c) {
+            <button type="button" class="rayon" [class.actif]="categorie === c" (click)="choisirRayon(c)">
+              <span class="embleme">{{ emojiRayon(c) }}</span>
+              <span>{{ c }}</span>
+            </button>
+          }
+        </div>
+      </section>
+    }
+
+    @if (erreur()) {
+      <p class="etat">{{ erreur() }}</p>
+    } @else if (marche(); as m) {
+      @if (!m.boutiques.length && !m.offres.length) {
+        <div class="etat section">
+          <strong>{{ chargement() ? 'Recherche...' : 'Rien ne correspond pour le moment.' }}</strong>
+          @if (recherche || categorie || ville) {
+            <button type="button" (click)="reinitialiser()">Effacer les filtres</button>
+          }
+        </div>
+      }
+
+      <!-- Offres. -->
+      @if (m.offres.length) {
+        <section class="section" id="offres">
+          <div class="titre-section">
+            <h2><app-icone-vitrine nom="etiquette" /> {{ recherche ? 'Offres correspondantes' : 'Dernieres offres' }}</h2>
+            <span class="complement">{{ m.offres.length }} offre{{ m.offres.length > 1 ? 's' : '' }}</span>
+          </div>
+          <div class="grille-produits">
+            @for (o of m.offres; track o.id) {
+              <a class="carte-produit" [routerLink]="['/boutique', o.slug]" [queryParams]="{ offre: o.id }">
+                <div class="badges">
+                  @if (o.type === 'VEHICULE') { <span class="badge">Location</span> }
+                </div>
+                <div class="image">
+                  @if (o.image) {
+                    <img [src]="o.image" [alt]="o.titre" loading="lazy" />
+                  } @else {
+                    <span class="sans-image">{{ o.type === 'VEHICULE' ? '🚗' : '🛍️' }}</span>
+                  }
+                </div>
+                <div class="corps">
+                  @if (o.categorie) { <span class="categorie">{{ o.categorie }}</span> }
+                  <h3>{{ o.titre }}</h3>
+                  <span class="prix">{{ o.prix | number: '1.0-0' }} FCFA @if (o.unitePrix) { <small>/ {{ o.unitePrix }}</small> }</span>
+                  <span class="meta boutique-offre"><app-icone-vitrine nom="boutique" /> {{ o.boutique }}{{ o.ville ? ' · ' + o.ville : '' }}</span>
+                  <span class="voir">Voir l'offre <app-icone-vitrine nom="fleche" /></span>
+                </div>
+              </a>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Bandeaux d'appel. -->
+      @if (!recherche && !categorie && !ville) {
+        <section class="bandeaux">
+          <div class="bandeau-appel principal">
+            <div>
+              <h3>Votre commerce<br /><em>ouvert en ligne</em></h3>
+              <p>Boutique, catalogue, commandes et paiements mobile money, relies a votre caisse ou a votre parc.</p>
+              <a routerLink="/inscription" class="bouton-site ambre">Ouvrir ma boutique <app-icone-vitrine nom="fleche" /></a>
+            </div>
+            <span class="pastille-promo"><app-icone-vitrine nom="boutique" /></span>
+          </div>
+          <div class="bandeau-appel secondaire">
+            <div>
+              <h3>Retrait ou livraison,<br /><em>c'est vous qui choisissez</em></h3>
+              <p>Suivez votre commande en direct, sans creer de compte.</p>
+            </div>
+            <span class="illustration">🛵</span>
+          </div>
+        </section>
+      }
+
+      <!-- Boutiques. -->
+      @if (m.boutiques.length) {
+        <section class="section" id="boutiques">
+          <div class="titre-section">
+            <h2><app-icone-vitrine nom="boutique" /> Boutiques</h2>
+            <span class="complement">{{ m.boutiques.length }} boutique{{ m.boutiques.length > 1 ? 's' : '' }}</span>
+          </div>
+          <div class="boutiques">
+            @for (b of m.boutiques; track b.slug) {
+              <a class="carte-boutique" [routerLink]="['/boutique', b.slug]">
+                <span class="couverture" [style.background-image]="b.couverture ? 'url(' + b.couverture + ')' : null"></span>
+                <span class="identite">
+                  @if (b.logo) {
+                    <img class="logo" [src]="b.logo" [alt]="'Logo ' + b.nom" loading="lazy" />
+                  } @else {
+                    <span class="logo initiale">{{ b.nom.charAt(0) }}</span>
+                  }
+                  <span class="textes">
+                    <strong>{{ b.nom }}</strong>
+                    <small>{{ b.categorie || 'Boutique' }}{{ b.ville ? ' · ' + b.ville : '' }}</small>
+                  </span>
+                </span>
+                @if (b.slogan) { <span class="slogan">{{ b.slogan }}</span> }
+                <span class="pied-boutique">
+                  <span class="nombre">{{ b.offres }} offre{{ b.offres > 1 ? 's' : '' }}</span>
+                  <span class="visiter">Visiter <app-icone-vitrine nom="fleche" /></span>
+                </span>
+              </a>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Pourquoi commander ici. -->
+      <section class="section">
+        <div class="titre-section centre">
+          <h2>Pourquoi commander sur la place de marche ?</h2>
+        </div>
+        <div class="avantages">
+          <div class="avantage"><app-icone-vitrine nom="personne" />
+            <div><strong>Sans compte</strong><small>Votre nom et votre telephone suffisent pour commander.</small></div></div>
+          <div class="avantage"><app-icone-vitrine nom="boutique" />
+            <div><strong>Commerces de proximite</strong><small>Des boutiques et loueurs de votre ville.</small></div></div>
+          <div class="avantage"><app-icone-vitrine nom="livraison" />
+            <div><strong>Retrait ou livraison</strong><small>Recuperez sur place ou faites-vous livrer.</small></div></div>
+          <div class="avantage"><app-icone-vitrine nom="cadenas" />
+            <div><strong>Paiement sur</strong><small>A la remise ou par mobile money, au choix.</small></div></div>
+        </div>
+      </section>
+    } @else {
+      <p class="etat">Chargement...</p>
+    }
+  </main>
+
+  <footer class="pied-site">
+    <div class="conteneur colonnes">
+      <div>
+        <div class="marque-pied">LJ SaaS · Place de marche</div>
+        <p>La place de marche des commerces et loueurs equipes de LJ SaaS : commandez en ligne, retirez ou faites-vous livrer.</p>
+      </div>
+      @if (categories().length) {
+        <div>
+          <h4>Rayons</h4>
+          <ul>
+            @for (c of categories().slice(0, 6); track c) {
+              <li><button type="button" (click)="choisirRayon(c); defilerVers('offres')">{{ c }}</button></li>
+            }
+          </ul>
+        </div>
+      }
+      <div>
+        <h4>Commercants</h4>
+        <ul>
+          <li><a routerLink="/inscription">Ouvrir ma boutique</a></li>
+          <li><a routerLink="/login">Se connecter</a></li>
+          <li><a routerLink="/">Decouvrir LJ SaaS</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Paiement</h4>
+        <ul>
+          <li><app-icone-vitrine nom="mobile" /> Mobile money</li>
+          <li><app-icone-vitrine nom="boutique" /> A la remise</li>
+          <li><app-icone-vitrine nom="bouclier" /> Sans compte client</li>
+        </ul>
+      </div>
+    </div>
+    <div class="bas">© {{ annee }} Place de marche · propulse par <a routerLink="/">LJ SaaS</a></div>
+  </footer>
+</div>

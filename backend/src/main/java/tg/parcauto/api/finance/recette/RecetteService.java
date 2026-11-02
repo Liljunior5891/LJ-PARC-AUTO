@@ -25,7 +25,9 @@ import java.util.List;
 @Transactional
 public class RecetteService {
 
+    private final DisponibiliteVehiculeService disponibilite;
     private final RecetteRepository repository;
+    private final org.springframework.context.ApplicationEventPublisher evenements;
     private final CamionService camionService;
     private final ClientService clientService;
     private final LocationService locationService;
@@ -35,9 +37,10 @@ public class RecetteService {
 
     @Transactional(readOnly = true)
     public Page<RecetteDto.Reponse> rechercher(String q, TypeRecette type, Long camionId, Long clientId,
-                                               LocalDate debut, LocalDate fin, Pageable pageable) {
+                                               LocalDate debut, LocalDate fin, Boolean enLigne, Pageable pageable) {
         return repository
-                .findAll(RecetteSpecifications.rechercher(q, type, camionId, clientId, debut, fin), pageable)
+                .findAll(RecetteSpecifications.rechercher(q, type, camionId, clientId, debut, fin)
+                        .and(tg.parcauto.api.common.CanalSpecifications.parContrat(enLigne)), pageable)
                 .map(RecetteDto.Reponse::de);
     }
 
@@ -58,11 +61,42 @@ public class RecetteService {
                 .toList();
     }
 
+    /** Periode d'une recette : ses dates si elle en a, sinon son jour. */
+    private void verifierDisponibilite(RecetteDto.Requete r, Long recetteExclue) {
+        LocalDate debut = r.dateDebut() != null ? r.dateDebut() : r.dateRecette();
+        LocalDate fin = r.dateFin() != null ? r.dateFin() : debut;
+        disponibilite.exiger(r.camionId(), r.type(), debut, fin, recetteExclue, r.locationId(), r.missionId(),
+                r.demandeEnLigneId());
+    }
+
+    /**
+     * Recette qui conclut une demande en ligne : canal « en ligne » (recette et
+     * facture), et la boutique en ligne passe la demande a « conclue » — ou
+     * refuse si la demande n'est plus acceptee (expiree, annulee).
+     */
+    private Recette conclureDemande(Recette recette, Long demandeId) {
+        if (demandeId == null) {
+            return recette;
+        }
+        recette.setEnLigne(true);
+        if (recette.getFacture() != null) {
+            recette.getFacture().setEnLigne(true);
+        }
+        if (recette.getLocation() != null) {
+            locationService.marquerEnLigne(recette.getLocation().getId());
+        }
+        evenements.publishEvent(new RecetteDto.RecetteDepuisDemande(recette.getId(), demandeId,
+                recette.getCamion().getId()));
+        return recette;
+    }
+
     public RecetteDto.Reponse creer(RecetteDto.Requete requete) {
+        verifierDisponibilite(requete, null);
         Recette recette = new Recette();
         recette.setNumero(numerotation.prochainNumero("REC"));
         appliquer(recette, requete);
-        return RecetteDto.Reponse.de(facturer(repository.save(recette)));
+        recette.setEnLigne(requete.demandeEnLigneId() != null);
+        return RecetteDto.Reponse.de(conclureDemande(facturer(repository.save(recette)), requete.demandeEnLigneId()));
     }
 
     /**
@@ -97,6 +131,9 @@ public class RecetteService {
         if (demande.tarif().signum() <= 0) {
             throw new BusinessException("Le tarif de la location doit etre superieur a zero");
         }
+        disponibilite.exiger(demande.camionId(), TypeRecette.LOCATION, demande.dateDebut(),
+                demande.dateFin() == null ? demande.dateDebut() : demande.dateFin(), null, null, null,
+                demande.demandeEnLigneId());
         if (demande.typeLocation().baseSurKilometrage()
                 && (demande.kilometrage() == null || demande.kilometrage() <= 0)) {
             throw new BusinessException(
@@ -128,10 +165,12 @@ public class RecetteService {
         recette.setModePaiement(demande.modePaiement());
         recette.setReference(demande.reference());
         recette.setObservations(demande.observations());
-        return RecetteDto.Reponse.de(facturer(repository.save(recette)));
+        recette.setEnLigne(demande.demandeEnLigneId() != null);
+        return RecetteDto.Reponse.de(conclureDemande(facturer(repository.save(recette)), demande.demandeEnLigneId()));
     }
 
     public RecetteDto.Reponse modifier(Long id, RecetteDto.Requete requete) {
+        verifierDisponibilite(requete, id);
         Recette recette = charger(id);
         appliquer(recette, requete);
         return RecetteDto.Reponse.de(repository.save(recette));

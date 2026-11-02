@@ -20,7 +20,7 @@ public class ReglageRestauration extends BaseEntity {
     @Column(name = "qr_actif", nullable = false)
     private boolean qrActif = true;
 
-    /** Un serveur valide la commande du client avant qu'elle parte en cuisine. */
+    /** La caisse valide la commande du client avant qu'elle parte en cuisine. */
     @Column(name = "qr_validation", nullable = false)
     private boolean qrValidation = true;
 

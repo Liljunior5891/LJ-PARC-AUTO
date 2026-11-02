@@ -63,56 +63,20 @@
       <textarea id="observations" formControlName="observations"></textarea>
     </div>
     @if (creationChauffeurVisible()) {
-      <div class="bloc-creation" [formGroup]="formChauffeur">
+      <!-- Creation d'un chauffeur sans quitter l'affectation : fiche courte adaptee a son type. -->
+      <div class="bloc-creation">
         <h2>Nouveau chauffeur</h2>
         <p class="sous-titre">
-          Les informations essentielles suffisent : la fiche complete se remplit ensuite
+          L'essentiel pour le mettre au volant : la fiche complete se remplit ensuite
         </p>
-        <div class="grille-formulaire">
-          <div class="champ">
-            <label for="matriculeChauffeur">Matricule <span class="requis">*</span></label>
-            <input id="matriculeChauffeur" formControlName="matricule" placeholder="CH-002" />
-          </div>
-          <div class="champ">
-            <label for="nomChauffeur">Nom <span class="requis">*</span></label>
-            <input id="nomChauffeur" formControlName="nom" />
-          </div>
-          <div class="champ">
-            <label for="prenomChauffeur">Prenom <span class="requis">*</span></label>
-            <input id="prenomChauffeur" formControlName="prenom" />
-          </div>
-          <div class="champ">
-            <label for="telephoneChauffeur">Telephone <span class="requis">*</span></label>
-            <input id="telephoneChauffeur" formControlName="telephone" />
-          </div>
-          <div class="champ">
-            <label for="categoriesChauffeur">Categories de permis</label>
-            <input id="categoriesChauffeur" formControlName="categoriesPermis" placeholder="C, CE" />
-          </div>
-          <div class="champ">
-            <label for="expirationChauffeur">Expiration du permis</label>
-            <input id="expirationChauffeur" type="date" formControlName="permisExpiration" />
-          </div>
-          <div class="champ">
-            <label for="garantNomChauffeur">Garant</label>
-            <input id="garantNomChauffeur" formControlName="garantNom" placeholder="Personne a prevenir" />
-          </div>
-          <div class="champ">
-            <label for="garantTelChauffeur">Telephone du garant</label>
-            <input id="garantTelChauffeur" formControlName="garantTelephone" />
-          </div>
-        </div>
-        <div class="actions-formulaire" style="margin-top: 1rem">
-          <button class="bouton" type="button" (click)="creerChauffeur()">
-            Creer et selectionner
-          </button>
-        </div>
+        <app-formulaire-chauffeur [compact]="true" libelleEnregistrer="Creer et selectionner"
+                                  (enregistre)="chauffeurCree($event)" (annule)="creationChauffeurVisible.set(false)" />
       </div>
     }
 
     <div class="actions-formulaire">
       <button class="bouton" type="submit">Affecter</button>
-      <button class="bouton secondaire" type="button" (click)="basculerFormulaire()">Annuler</button>
+      <button class="bouton secondaire annuler" type="button" (click)="basculerFormulaire()">Annuler</button>
     </div>
   </form>
   </app-modale>
@@ -206,7 +170,7 @@
       </div>
       <div class="actions-formulaire">
         <button class="bouton" type="button" (click)="cloturer(a)">Valider la cloture</button>
-        <button class="bouton secondaire" type="button" (click)="annulerCloture()">Annuler</button>
+        <button class="bouton secondaire annuler" type="button" (click)="annulerCloture()">Annuler</button>
       </div>
     </div>
   </app-modale>

@@ -31,7 +31,8 @@ import java.util.Objects;
 /**
  * Commandes des tables, de l'ouverture a l'encaissement.
  * <p>
- * Le serveur saisit les articles en brouillon puis les envoie : chaque envoi
+ * Le serveur saisit les articles en brouillon puis les transmet a la caisse
+ * (statut propose) ; seule la caisse les envoie en preparation : chaque envoi
  * forme un bon pour la cuisine et un bon pour le bar, et sort les articles du
  * stock (le plat est engage, qu'il soit regle maintenant ou plus tard). Une
  * ligne envoyee ne s'efface plus : elle s'annule, par un gerant, et revient en
@@ -39,8 +40,8 @@ import java.util.Objects;
  * ferme quand plus rien ne reste a payer.
  * <p>
  * Le client peut aussi commander depuis le code QR de sa table : selon le
- * reglage de l'etablissement, ses articles attendent la validation d'un
- * serveur (statut propose) ou partent directement en preparation.
+ * reglage de l'etablissement, ses articles attendent la validation de la
+ * caisse (statut propose) ou partent directement en preparation.
  */
 @Service
 @RequiredArgsConstructor
@@ -81,6 +82,21 @@ public class CommandeService {
         commande.setOuverteLe(Instant.now());
         commande.setNumero(numerotation.prochainNumero("CMD"));
         return RestaurationDto.CommandeDetail.de(repository.save(commande));
+    }
+
+    /**
+     * Un serveur n'accede qu'a ses commandes, et a celles qu'aucun serveur n'a
+     * encore prises (code QR) pour pouvoir s'en charger.
+     */
+    @Transactional(readOnly = true)
+    public void verifierAcces(Long id, UtilisateurPrincipal utilisateur) {
+        if (!tg.parcauto.api.pointdevente.personnel.PersonnelService.serveurSeul(utilisateur)) {
+            return;
+        }
+        Commande commande = charger(id);
+        if (commande.getServeurId() != null && !commande.getServeurId().equals(utilisateur.getId())) {
+            throw new BusinessException("Cette commande est suivie par " + commande.getServeurNom());
+        }
     }
 
     @Transactional(readOnly = true)
@@ -192,28 +208,56 @@ public class CommandeService {
         return RestaurationDto.CommandeDetail.de(commande);
     }
 
-    // ------------------------------------------------- commande du client
-
     /**
-     * Le serveur accepte la demande du client : les articles proposes partent
-     * en preparation, et il prend la table en charge si personne ne l'avait.
+     * Le serveur transmet ses articles en brouillon a la caisse : ils attendent
+     * sa validation avant de partir en preparation. Il peut encore les
+     * modifier ou les retirer tant que la caisse ne les a pas envoyes.
      */
-    public RestaurationDto.CommandeDetail validerDemandes(Long id, UtilisateurPrincipal serveur) {
+    public RestaurationDto.CommandeDetail transmettre(Long id) {
         Commande commande = chargerOuverte(id);
-        List<LigneCommande> proposees = proposees(commande);
-        if (proposees.isEmpty()) {
-            throw new BusinessException("Aucune demande du client a valider");
+        List<LigneCommande> brouillons = commande.getLignes().stream()
+                .filter(l -> l.getStatut() == LigneCommande.Statut.BROUILLON)
+                .toList();
+        if (brouillons.isEmpty()) {
+            throw new BusinessException("Aucun article a transmettre");
         }
-        envoyerLignes(commande, proposees);
-        prendreEnCharge(commande, serveur);
+        brouillons.forEach(l -> l.setStatut(LigneCommande.Statut.PROPOSEE));
         return RestaurationDto.CommandeDetail.de(commande);
     }
 
-    /** Le serveur ecarte la demande du client (commande farfelue, plat indisponible). */
-    public RestaurationDto.CommandeDetail refuserDemandes(Long id, UtilisateurPrincipal serveur) {
+    // ------------------------------------------- validation par la caisse
+
+    /**
+     * La caisse valide les articles transmis par le serveur ou commandes par le
+     * client : ils partent en preparation.
+     */
+    public RestaurationDto.CommandeDetail validerDemandes(Long id, UtilisateurPrincipal caissier) {
         Commande commande = chargerOuverte(id);
+        List<LigneCommande> proposees = proposees(commande);
+        if (proposees.isEmpty()) {
+            throw new BusinessException("Aucun article a valider");
+        }
+        envoyerLignes(commande, proposees);
+        return RestaurationDto.CommandeDetail.de(commande);
+    }
+
+    /**
+     * La caisse ecarte les articles en attente : ceux du client disparaissent
+     * (commande farfelue, plat indisponible), ceux du serveur lui reviennent
+     * en brouillon pour qu'il les corrige.
+     */
+    public RestaurationDto.CommandeDetail refuserDemandes(Long id, UtilisateurPrincipal caissier) {
+        Commande commande = chargerOuverte(id);
+        commande.getLignes().stream()
+                .filter(l -> l.getStatut() == LigneCommande.Statut.PROPOSEE
+                        && l.getOrigine() == LigneCommande.Origine.SERVEUR)
+                .forEach(l -> l.setStatut(LigneCommande.Statut.BROUILLON));
         commande.getLignes().removeIf(l -> l.getStatut() == LigneCommande.Statut.PROPOSEE);
-        prendreEnCharge(commande, serveur);
+        // Commande en ligne refusee en entier : elle n'a plus d'objet et se ferme.
+        if (commande.isEnLigne() && commande.getLignes().isEmpty()) {
+            commande.setStatut(Commande.Statut.ANNULEE);
+            commande.setFermeeLe(Instant.now());
+        }
         return RestaurationDto.CommandeDetail.de(commande);
     }
 
@@ -268,6 +312,40 @@ public class CommandeService {
         return repository.saveAndFlush(commande);
     }
 
+    /**
+     * Commande passee dans la boutique en ligne : une commande sans table, au nom
+     * du client, dont les articles attendent la validation de la caisse avant de
+     * partir sur les ecrans de preparation, comme une commande par code QR.
+     */
+    public Commande commandeEnLigne(String libelle, String note, List<RestaurationDto.AjoutLigne> demandes,
+                                    Long commandeEnLigneId) {
+        Commande commande = new Commande();
+        commande.setLibelle(libelle);
+        commande.setServeurNom(CLIENT_EN_LIGNE);
+        commande.setOuverteLe(Instant.now());
+        commande.setNumero(numerotation.prochainNumero("CMD"));
+        commande.setNote(note);
+        commande.setEnLigne(true);
+        commande.setCommandeEnLigneId(commandeEnLigneId);
+        for (RestaurationDto.AjoutLigne demande : demandes) {
+            Article article = articleRepository.findById(demande.articleId())
+                    .filter(Article::isActif)
+                    .orElseThrow(() -> new BusinessException("Un article de votre commande n'est plus a la carte"));
+            LigneCommande ligne = new LigneCommande();
+            ligne.setArticle(article);
+            ligne.setLibelle(article.getNom());
+            ligne.setPrixUnitaire(article.getPrixVente());
+            ligne.setPrixAchat(article.getPrixAchat());
+            ligne.setQuantite(demande.quantite());
+            ligne.setNote(vide(demande.note()));
+            ligne.setPoste(article.getCategorie() == null ? PostePreparation.AUCUN : article.getCategorie().getPoste());
+            ligne.setOrigine(LigneCommande.Origine.CLIENT);
+            ligne.setStatut(LigneCommande.Statut.PROPOSEE);
+            commande.ajouter(ligne);
+        }
+        return repository.saveAndFlush(commande);
+    }
+
     /** Appel du client depuis sa table ; une commande vide s'ouvre au besoin pour porter l'appel. */
     public Commande appelClient(TableRestaurant table, Commande.Appel motif) {
         Commande commande = repository.ouvertes().stream()
@@ -290,6 +368,7 @@ public class CommandeService {
     }
 
     static final String CLIENT_QR = "Client (code QR)";
+    static final String CLIENT_EN_LIGNE = "Commande en ligne";
 
     private static List<LigneCommande> proposees(Commande commande) {
         return commande.getLignes().stream()
@@ -412,10 +491,10 @@ public class CommandeService {
         List<LigneCommande> reglees = new ArrayList<>();
         if (demande.lignes() == null || demande.lignes().isEmpty()) {
             if (commande.getLignes().stream().anyMatch(l -> l.getStatut() == LigneCommande.Statut.BROUILLON)) {
-                throw new BusinessException("Des articles n'ont pas ete envoyes : envoyez-les ou retirez-les avant l'addition");
+                throw new BusinessException("Des articles n'ont pas ete envoyes en preparation : envoyez-les ou retirez-les avant l'addition");
             }
             if (!proposees(commande).isEmpty()) {
-                throw new BusinessException("Le client a commande depuis sa table : validez ou refusez sa demande avant l'addition");
+                throw new BusinessException("Des articles attendent la validation de la caisse : validez-les ou refusez-les avant l'addition");
             }
             commande.getLignes().stream().filter(LigneCommande::aPayer).forEach(reglees::add);
         } else {
@@ -446,6 +525,8 @@ public class CommandeService {
         Vente vente = venteService.encaisserAddition(lignesTicket, reglement, caissier,
                 commande.getId(), commande.getTable() == null ? null : commande.getTable().getNom());
         reglees.forEach(l -> l.setVente(vente));
+        // Le chiffre d'affaires d'une commande en ligne se distingue de celui du comptoir.
+        vente.setEnLigne(commande.isEnLigne());
         if (commande.getSessionId() == null) {
             commande.setSessionId(vente.getSession().getId());
         }

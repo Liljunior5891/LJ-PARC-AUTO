@@ -93,6 +93,14 @@ public class FacturePdfService {
         return sortie.toByteArray();
     }
 
+    /**
+     * Decor de page commun aux documents remis au client (facture, contrat) :
+     * bandeaux, logo, coordonnees et identifiants de l'emetteur.
+     */
+    public PdfPageEventHelper decorPage(Societe societe, boolean brouillon) {
+        return new Decor(societe, brouillon);
+    }
+
     public String nomFichier(Long factureId) {
         return repository.findById(factureId)
                 .map(f -> "facture_" + f.getNumero() + ".pdf")

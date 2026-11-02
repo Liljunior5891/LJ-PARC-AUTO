@@ -45,11 +45,11 @@ export class ChauffeurService {
     });
   }
 
-  creer(chauffeur: ChauffeurRequete): Observable<Chauffeur> {
+  creer(chauffeur: Partial<ChauffeurRequete>): Observable<Chauffeur> {
     return this.http.post<Chauffeur>(this.base, chauffeur);
   }
 
-  modifier(id: number, chauffeur: ChauffeurRequete): Observable<Chauffeur> {
+  modifier(id: number, chauffeur: Partial<ChauffeurRequete>): Observable<Chauffeur> {
     return this.http.put<Chauffeur>(`${this.base}/${id}`, chauffeur);
   }
 

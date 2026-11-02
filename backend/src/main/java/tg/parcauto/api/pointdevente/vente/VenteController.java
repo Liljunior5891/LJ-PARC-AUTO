@@ -53,10 +53,12 @@ public class VenteController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant debut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fin,
             @RequestParam(required = false) Long sessionId,
+            /** Canal de vente : vrai = en ligne (Marketplace), faux = comptoir ; absent = tous. */
+            @RequestParam(required = false) Boolean enLigne,
             @PageableDefault(size = 30) Pageable pageable) {
         Instant finRetenue = fin == null ? Instant.now().plusSeconds(1) : fin;
         Instant debutRetenu = debut == null ? finRetenue.minus(1, ChronoUnit.DAYS) : debut;
-        return service.lister(debutRetenu, finRetenue, sessionId, pageable);
+        return service.lister(debutRetenu, finRetenue, sessionId, enLigne, pageable);
     }
 
     @GetMapping("/{id}")

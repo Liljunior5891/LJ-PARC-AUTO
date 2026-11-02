@@ -18,6 +18,9 @@ import { FormulaireRecette } from '../../shared/formulaire-recette';
 import { Modale } from '../../shared/modale';
 import { OperationService } from '../../core/operation/operation.service';
 
+import { ActivatedRoute } from '@angular/router';
+import { DemandeLocationEnLigne } from '../../core/models/marketplace';
+import { MarketplaceService } from '../../core/services/marketplace.service';
 @Component({
   selector: 'app-recettes',
   imports: [FormsModule, DecimalPipe, FormulaireRecette, Modale],
@@ -51,6 +54,10 @@ export class Recettes implements OnInit {
 
   recherche = '';
   type: TypeRecette | '' = '';
+  /** Gestion de parc avec Marketplace : canal de chaque element, en ligne ou agence. */
+  readonly avecEnLigne = this.auth.aModule('MARKETPLACE');
+  canal: '' | 'en-ligne' | 'agence' = '';
+
   camionId?: number;
   debut = this.premierJourDuMois();
   fin = this.aujourdhui();
@@ -59,8 +66,27 @@ export class Recettes implements OnInit {
   readonly peutGerer = this.auth.peutGererParc();
 
 
+  /** Demande en ligne acceptee dont le client se presente : la recette la conclut. */
+  readonly demandeAConclure = signal<DemandeLocationEnLigne | null>(null);
+  private readonly route = inject(ActivatedRoute);
+  private readonly marketplace = inject(MarketplaceService);
+
   ngOnInit(): void {
     this.charger();
+    const demande = Number(this.route.snapshot.queryParamMap.get('demande'));
+    if (demande) {
+      this.marketplace.demande(demande).subscribe({
+        next: (d) => {
+          if (d.statut !== 'ACCEPTEE') {
+            this.erreur.set(`La demande ${d.numero} est ${d.statutLibelle.toLowerCase()} : elle ne peut plus etre conclue.`);
+            return;
+          }
+          this.demandeAConclure.set(d);
+          this.formulaireVisible.set(true);
+        },
+        error: () => this.erreur.set('Demande en ligne introuvable.')
+      });
+    }
     this.camionService.lister({ actif: true, size: 200 }).subscribe({
       next: (page) => this.camions.set(page.content)
     });
@@ -78,6 +104,7 @@ export class Recettes implements OnInit {
         camionId: this.camionId,
         debut: this.debut,
         fin: this.fin,
+        enLigne: this.canal === '' ? undefined : this.canal === 'en-ligne',
         page: this.pageCourante
       })
       .subscribe({
@@ -116,6 +143,9 @@ export class Recettes implements OnInit {
 
   basculerFormulaire(): void {
     this.formulaireVisible.update((visible) => !visible);
+    if (!this.formulaireVisible()) {
+      this.demandeAConclure.set(null);
+    }
     this.erreur.set(null);
     this.succes.set(null);
   }
@@ -124,8 +154,20 @@ export class Recettes implements OnInit {
    * Le formulaire partage a enregistre la recette : il reste a rafraichir la
    * liste et a proposer la facture, ce que l'ecran seul sait faire.
    */
+  /** Derniere recette enregistree : son contrat est propose a l'impression. */
+  readonly recetteAImprimer = signal<Recette | null>(null);
+
+  imprimerContrat(recette: Recette): void {
+    this.service.ouvrirContrat(recette, (message) => this.erreur.set(message));
+  }
+
   recetteEnregistree(recette: Recette): void {
     this.succes.set(`Recette ${recette.numero} enregistree.`);
+    this.recetteAImprimer.set(recette);
+    if (this.demandeAConclure()) {
+      this.succes.set(`Recette ${recette.numero} enregistree : la demande ${this.demandeAConclure()!.numero} est conclue.`);
+      this.demandeAConclure.set(null);
+    }
     this.formulaireVisible.set(false);
     // La facture n'est proposee que si la recette a un client a qui la remettre.
     // La facture est desormais emise avec la recette : on propose de la telecharger.

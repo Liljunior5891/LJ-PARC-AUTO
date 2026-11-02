@@ -31,7 +31,7 @@ export const ICONES_VARIANTES: Record<string, string> = {
 export const PRESENTATION_MODULES: Record<CodeModule, { icone: string; accueil: string }> = {
   GESTION_PARC: { icone: '🚛', accueil: '/tableau-bord' },
   POINT_DE_VENTE: { icone: '🧾', accueil: '/pdv/tableau-bord' },
-  MARKETPLACE: { icone: '🛒', accueil: '/modules' }
+  MARKETPLACE: { icone: '🛒', accueil: '/marketplace/commandes' }
 };
 
 /**
@@ -41,7 +41,7 @@ export const PRESENTATION_MODULES: Record<CodeModule, { icone: string; accueil: 
 export const PROFILS_MODULES: Record<CodeModule, Role[]> = {
   GESTION_PARC: ['ADMIN', 'GESTIONNAIRE_PARC', 'CHAUFFEUR'],
   POINT_DE_VENTE: ['ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'PREPARATEUR'],
-  MARKETPLACE: ['ADMIN']
+  MARKETPLACE: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC']
 };
 
 export interface DemandeInscription {

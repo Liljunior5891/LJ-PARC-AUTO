@@ -124,6 +124,11 @@ export class RestaurationService {
     return this.http.post<CommandeDetail>(`${this.base}/commandes/${id}/lignes/${ligneId}/annulation`, {});
   }
 
+  /** Le serveur transmet ses articles a la caisse, qui seule les envoie en preparation. */
+  transmettre(id: number): Observable<CommandeDetail> {
+    return this.http.post<CommandeDetail>(`${this.base}/commandes/${id}/transmission`, {}, this.direct);
+  }
+
   envoyer(id: number): Observable<CommandeDetail> {
     return this.http.post<CommandeDetail>(`${this.base}/commandes/${id}/envoi`, {}, this.direct);
   }

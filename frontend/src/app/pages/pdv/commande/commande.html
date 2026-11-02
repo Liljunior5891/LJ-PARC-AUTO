@@ -131,10 +131,18 @@
         </label>
       }
 
-      <div class="type-service" aria-label="Type de service">
-        <span [class.actif]="!!c.resume.tableId">Sur place</span>
-        <span [class.actif]="!c.resume.tableId">Comptoir / a emporter</span>
-      </div>
+      @if (c.resume.enLigne) {
+        <!-- Commande de la boutique en ligne : client, remise et paiement, tels qu'il les a choisis. -->
+        <div class="bandeau-en-ligne">
+          <strong>🌐 Commande en ligne</strong>
+          @if (c.note) { <span>{{ c.note }}</span> }
+        </div>
+      } @else {
+        <div class="type-service" aria-label="Type de service">
+          <span [class.actif]="!!c.resume.tableId">Sur place</span>
+          <span [class.actif]="!c.resume.tableId">Comptoir / a emporter</span>
+        </div>
+      }
 
       @if (erreur() && !paiement() && !ligneNote() && !reglages() && !transfert()) {
         <div class="message erreur">{{ erreur() }}</div>
@@ -152,8 +160,13 @@
       @if (proposees().length > 0 && ouverte()) {
         <div class="demande-client">
           <div class="titre-demande">
-            <strong>📱 Commande du client · {{ totalProposees() | number: '1.0-0' }} F</strong>
-            <small>Passee depuis le code QR de la table</small>
+            @if (transmisParServeur()) {
+              <strong>🧾 Commande transmise a la caisse · {{ totalProposees() | number: '1.0-0' }} F</strong>
+              <small>{{ peutEnvoyer ? 'Saisie par ' + c.resume.serveurNom + ' : a valider avant la preparation' : 'En attente de validation par la caisse' }}</small>
+            } @else {
+              <strong>📱 Commande du client · {{ totalProposees() | number: '1.0-0' }} F</strong>
+              <small>{{ peutEnvoyer ? 'Passee depuis le code QR de la table' : 'Passee depuis le code QR : la caisse la valide' }}</small>
+            }
           </div>
           <ul>
             @for (l of proposees(); track l.id) {
@@ -163,10 +176,12 @@
               </li>
             }
           </ul>
-          <div class="actions-demande">
-            <button type="button" class="refuser" [disabled]="occupe() || salleFermee()" (click)="refuserDemandes()">Refuser</button>
-            <button type="button" class="bouton-vert" [disabled]="occupe() || salleFermee()" (click)="validerDemandes()">Valider et envoyer</button>
-          </div>
+          @if (peutEnvoyer) {
+            <div class="actions-demande">
+              <button type="button" class="refuser" [disabled]="occupe() || salleFermee()" (click)="refuserDemandes()">Refuser</button>
+              <button type="button" class="bouton-vert" [disabled]="occupe() || salleFermee()" (click)="validerDemandes()">Valider et envoyer</button>
+            </div>
+          }
         </div>
       }
       @if (pretes().length > 0 && ouverte()) {
@@ -192,7 +207,7 @@
             </div>
             <div class="droite">
               <strong>{{ l.total | number: '1.0-0' }} F</strong>
-              <span class="statut attente">A envoyer</span>
+              <span class="statut attente">{{ peutEnvoyer ? 'A envoyer' : 'A transmettre' }}</span>
               <button type="button" class="retirer" [disabled]="salleFermee()" [attr.aria-label]="'Retirer ' + l.libelle" (click)="retirer(l)">Retirer</button>
             </div>
           </div>
@@ -247,7 +262,7 @@
         </div>
       </div>
 
-      @if (ouverte()) {
+      @if (ouverte() && peutEncaisser) {
         <div class="moyens">
           @for (m of modes.slice(0, 3); track m.valeur) {
             <button type="button" class="moyen" [disabled]="occupe() || !peutEncaisser || !encaissable() || c.resume.resteAPayer <= 0"
@@ -261,10 +276,12 @@
             <small>Addition</small>
           </button>
         </div>
+      }
+      @if (ouverte()) {
 
         @if (enAttente().length > 0) {
           <button type="button" class="bouton-vert principal" [disabled]="occupe() || salleFermee()" (click)="envoyer()">
-            Envoyer en preparation · {{ totalAttente() | number: '1.0-0' }} F
+            {{ peutEnvoyer ? 'Envoyer en preparation' : 'Transmettre a la caisse' }} · {{ totalAttente() | number: '1.0-0' }} F
           </button>
         } @else if (!c.resume.id) {
           <button type="button" class="bouton-vert principal" disabled>Choisissez des articles</button>
@@ -289,7 +306,7 @@
     <button type="button" class="barre-mobile" (click)="vueMobile.set('commande')">
       <span class="pastille">{{ nombreLignes() }}</span>
       <span>Voir la commande
-        @if (enAttente().length > 0) { <small>{{ enAttente().length }} a envoyer</small> }
+        @if (enAttente().length > 0) { <small>{{ enAttente().length }} {{ peutEnvoyer ? 'a envoyer' : 'a transmettre' }}</small> }
       </span>
       <strong>{{ c.resume.resteAPayer + totalAttente() | number: '1.0-0' }} F</strong>
     </button>
@@ -314,13 +331,13 @@
                (keydown.enter)="ouvrirPremiere()" aria-label="Rechercher une commande" />
       </label>
 
-      <div class="filtres-tiroir" role="tablist" aria-label="Filtrer les commandes">
-        @for (f of filtres; track f.valeur) {
-          <button type="button" role="tab" [class.actif]="filtreCommandes() === f.valeur"
-                  [attr.aria-selected]="filtreCommandes() === f.valeur" (click)="filtreCommandes.set(f.valeur)">
-            {{ f.libelle }} <span>{{ compte(f.valeur) }}</span>
-          </button>
-        }
+      <!-- Filtre des commandes : liste deroulante habillee par Select2 (Select2Service). -->
+      <div class="filtres-tiroir">
+        <select aria-label="Filtrer les commandes" [ngModel]="filtreCommandes()" (ngModelChange)="filtreCommandes.set($event)">
+          @for (f of filtres; track f.valeur) {
+            <option [ngValue]="f.valeur">{{ f.libelle }} ({{ compte(f.valeur) }})</option>
+          }
+        </select>
       </div>
 
       <div class="groupes">
@@ -329,9 +346,9 @@
             <h3 class="{{ g.classe }}">{{ g.titre }} <span>{{ g.commandes.length }}</span></h3>
             <div class="grille-commandes">
               @for (o of g.commandes; track o.id) {
-                <a class="tuile-commande {{ g.classe }}" [class.courante]="o.id === c.resume.id"
+                <a class="tuile-commande {{ g.classe }}" [class.courante]="o.id === c.resume.id" [class.en-ligne]="o.enLigne"
                    [routerLink]="['/pdv/commandes', o.id]" (click)="tiroir.set(false)">
-                  <span class="rond">{{ o.repere.length > 4 ? o.repere.slice(0, 3) : o.repere }}</span>
+                  <span class="rond">{{ o.enLigne ? '🌐' : (o.repere.length > 4 ? o.repere.slice(0, 3) : o.repere) }}</span>
                   <span class="infos">
                     <strong>{{ o.tableId ? 'Table ' + o.repere : o.repere }}</strong>
                     <small>{{ o.serveurNom }} · {{ depuis(o.ouverteLe) }}</small>
@@ -368,7 +385,7 @@
           <input id="note" name="note" maxlength="255" [(ngModel)]="note" />
         </div>
         <div class="actions-formulaire">
-          <button class="bouton secondaire" type="button" (click)="ligneNote.set(null)">Annuler</button>
+          <button class="bouton secondaire annuler" type="button" (click)="ligneNote.set(null)">Annuler</button>
           <button class="bouton" type="submit" [disabled]="occupe()">Enregistrer</button>
         </div>
       </form>
@@ -482,7 +499,7 @@
         }
 
         <div class="actions-formulaire">
-          <button class="bouton secondaire" type="button" (click)="paiement.set(false)">Retour</button>
+          <button class="bouton secondaire annuler" type="button" (click)="paiement.set(false)">Retour</button>
           <button class="bouton-vert" type="submit" [disabled]="occupe() || !paiementPossible()">
             {{ occupe() ? 'Enregistrement...' : 'Valider ' + (montantAPayer() | number: '1.0-0') + ' F' }}
           </button>

@@ -47,7 +47,7 @@
       <app-modale titre="Nouvelle recette" [erreur]="erreur()" (ferme)="saisieRecette.set(false)">
         <app-formulaire-recette
           [camionImpose]="id()"
-          (enregistree)="recetteEnregistree()"
+          (enregistree)="recetteEnregistree($event)"
           (annulee)="saisieRecette.set(false)"
         />
       </app-modale>
@@ -64,6 +64,7 @@
             <th>Client</th>
             <th>Rattachement</th>
             <th class="numerique">Montant</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -76,7 +77,7 @@
               <td>{{ recette.clientNom || '—' }}</td>
               <td>
                 @if (recette.locationNumero) {
-                  <a [routerLink]="['/locations', recette.locationId]">
+                  <a routerLink="/recettes">
                     {{ recette.locationNumero }}
                   </a>
                 } @else if (recette.missionNumero) {
@@ -90,10 +91,13 @@
                 }
               </td>
               <td class="numerique"><strong>{{ recette.montant | number }}</strong></td>
+              <td>
+                <button class="bouton secondaire petit" type="button" (click)="imprimerContrat(recette)">Contrat</button>
+              </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="7">
+              <td colspan="8">
                 <div class="message vide">Aucune recette pour ce vehicule.</div>
               </td>
             </tr>
@@ -174,7 +178,12 @@
   <div class="message erreur">{{ erreur() }}</div>
 }
 @if (succes()) {
-  <div class="message succes">{{ succes() }}</div>
+  <div class="message succes bandeau-contrat">
+    <span>{{ succes() }}</span>
+    @if (recetteAImprimer(); as r) {
+      <button class="bouton petit" type="button" (click)="imprimerContrat(r)">🖨 Imprimer le contrat</button>
+    }
+  </div>
 }
 
 <!-- Localisation du camion : position GPS et trajet de la journee choisie. -->
@@ -340,7 +349,10 @@
     </div>
   </div>
 
-  <h2 style="margin-top: 1.5rem">Caracteristiques techniques</h2>
+      <app-photo-vehicule [photo]="formulaire.controls.photoUrl.value"
+                        (photoChange)="formulaire.controls.photoUrl.setValue($event)" />
+
+    <h2 style="margin-top: 1.5rem">Caracteristiques techniques</h2>
   <div class="grille-formulaire">
     <div class="champ">
       <label for="numeroChassis">Numero de chassis</label>
@@ -403,6 +415,33 @@
     </div>
   </div>
 
+  @if (avecEnLigne) {
+    <h2 style="margin-top: 1.5rem">Location en ligne</h2>
+    <!-- Gestion de parc avec Marketplace seulement : le vehicule propose a la location dans la boutique en ligne. -->
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="fiche-en-ligne">Location en ligne</label>
+        <select id="fiche-en-ligne" [(ngModel)]="enLigne.publiee" [ngModelOptions]="{ standalone: true }">
+          <option [ngValue]="false">Non, location en agence seulement</option>
+          <option [ngValue]="true">Oui, proposer dans la boutique en ligne</option>
+        </select>
+      </div>
+      @if (enLigne.publiee) {
+        <div class="champ">
+          <label for="fiche-tarif-jour">Tarif par jour (FCFA) <span class="requis">*</span></label>
+          <input id="fiche-tarif-jour" type="number" min="0" [(ngModel)]="enLigne.tarifJour" [ngModelOptions]="{ standalone: true }" />
+        </div>
+        <div class="champ">
+          <label for="fiche-caution">Caution (FCFA)</label>
+          <input id="fiche-caution" type="number" min="0" [(ngModel)]="enLigne.caution" [ngModelOptions]="{ standalone: true }" />
+        </div>
+        <div class="champ champ-pleine">
+          <app-galerie-photos [(photos)]="enLigne.photos" />
+        </div>
+      }
+    </div>
+  }
+
   <div class="champ" style="margin-top: 1rem">
     <label for="observations">Observations</label>
     <textarea id="observations" formControlName="observations"></textarea>
@@ -412,7 +451,7 @@
     <button class="bouton" type="submit" [disabled]="enregistrement()">
       {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
     </button>
-    <a class="bouton secondaire" routerLink="/vue-parc">Annuler</a>
+    <a class="bouton secondaire annuler" routerLink="/vue-parc">Annuler</a>
   </div>
 </form>
 }

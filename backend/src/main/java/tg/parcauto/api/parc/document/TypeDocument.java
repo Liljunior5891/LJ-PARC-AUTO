@@ -17,6 +17,22 @@ public enum TypeDocument {
     GARANT_PERMIS_CONDUIRE("Permis de conduire du garant", false),
     GARANT_ATTESTATION("Attestation de garantie", false),
     GARANT_JUSTIFICATIF("Justificatif du garant", false),
+    // --- Pieces des clients : particuliers, entreprises, administrations, ONG ---
+    CARTE_IDENTITE("Carte nationale d'identite", true),
+    PASSEPORT("Passeport", true),
+    CARTE_ELECTEUR("Carte d'electeur", false),
+    CARTE_SEJOUR("Carte de sejour", true),
+    CARTE_CONSULAIRE("Carte consulaire", true),
+    CARTE_OPERATEUR_ECONOMIQUE("Carte d'operateur economique", true),
+    RCCM("Extrait RCCM", false),
+    ATTESTATION_NIF("Attestation NIF", false),
+    STATUTS("Statuts", false),
+    PIECE_REPRESENTANT("Piece d'identite du representant", true),
+    LETTRE_MANDAT("Bon de commande / lettre de mission", false),
+    AGREMENT("Agrement", true),
+    ACCORD_SIEGE("Accord de siege", false),
+    // --- Pieces propres aux chauffeurs ---
+    CASIER_JUDICIAIRE("Casier judiciaire", false),
     AUTRE("Autre", false);
 
     private final String libelle;

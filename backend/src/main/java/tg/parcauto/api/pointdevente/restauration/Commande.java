@@ -91,6 +91,14 @@ public class Commande extends BaseEntity {
     @Column(name = "appel_motif", length = 20)
     private Appel appelMotif;
 
+    /** Passee dans la boutique en ligne : signalee comme telle a la caisse et en cuisine. */
+    @Column(name = "en_ligne", nullable = false)
+    private boolean enLigne;
+
+    /** Commande de la boutique en ligne qu'elle porte. */
+    @Column(name = "commande_en_ligne_id")
+    private Long commandeEnLigneId;
+
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id")
     private List<LigneCommande> lignes = new ArrayList<>();

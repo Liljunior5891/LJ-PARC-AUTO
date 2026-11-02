@@ -1,0 +1,235 @@
+/*
+ * Fiches adaptees a leur type : client (ecran Clients, saisie d'une recette)
+ * et chauffeur (ecran Chauffeurs, affectation).
+ */
+.formulaire-client {
+  h3 {
+    margin: 1.3rem 0 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--couleur-texte-doux);
+  }
+
+  &.compact h3 {
+    margin-top: 1rem;
+  }
+
+  .champ-large {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Tuiles du type de client : un clic adapte tout le formulaire. */
+.types-client {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.6rem;
+}
+
+.tuile-type {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.8rem;
+  border: 1.5px solid var(--couleur-bordure);
+  border-radius: 12px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+
+  svg {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    padding: 5px;
+    border-radius: 9px;
+    background: #eef2f7;
+    fill: none;
+    stroke: var(--couleur-texte-doux);
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  span {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  strong {
+    font-size: 0.86rem;
+  }
+
+  small {
+    font-size: 0.72rem;
+    line-height: 1.3;
+    color: var(--couleur-texte-doux);
+  }
+
+  &:hover:not(.actif) {
+    border-color: var(--couleur-primaire-clair, var(--couleur-primaire));
+  }
+
+  &.actif {
+    border-color: var(--couleur-primaire);
+    background: #f2f7fe;
+    box-shadow: 0 0 0 1px var(--couleur-primaire);
+
+    svg {
+      background: var(--couleur-primaire);
+      stroke: #fff;
+    }
+  }
+}
+
+/* Pieces deja enregistrees (modification d'une fiche). */
+.pieces-enregistrees {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid #9fd8bd;
+    border-radius: 10px;
+    background: #f2fbf6;
+  }
+
+  .coche {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #1f9d6b;
+    color: #fff;
+    font-size: 0.75rem;
+  }
+
+  .textes {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+
+    strong {
+      font-size: 0.82rem;
+    }
+
+    small {
+      font-size: 0.72rem;
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  .expiree {
+    color: var(--couleur-danger, #c63d22);
+  }
+}
+
+/* Une piece a saisir : type, numero, expiration, puis la zone de depot. */
+.pieces {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.piece {
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 12px;
+  background: #fafbfd;
+}
+
+.champs-piece {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.depot-piece {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  app-piece-jointe {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.retirer {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--couleur-texte-doux);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--couleur-danger, #c63d22);
+    color: var(--couleur-danger, #c63d22);
+  }
+}
+
+.ajouter-piece {
+  margin-top: 0.6rem;
+}
+
+.manquants {
+  font-size: 0.75rem;
+  color: var(--couleur-texte-doux);
+}
+
+/* Numero deja connu : fiches existantes proposees avant de creer un doublon. */
+.doublons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #f5d39b;
+  border-radius: 10px;
+  background: #fff8ec;
+  font-size: 0.85rem;
+
+  .doublon {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+
+    small {
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  .lien {
+    align-self: flex-start;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--couleur-primaire);
+    font: inherit;
+    font-size: 0.8rem;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}

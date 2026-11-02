@@ -63,7 +63,7 @@
       <button class="bouton" type="button" [disabled]="enregistrement()" (click)="enregistrer()">
         {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
       </button>
-      <button class="bouton secondaire" type="button" (click)="fermerFormulaire()">Annuler</button>
+      <button class="bouton secondaire annuler" type="button" (click)="fermerFormulaire()">Annuler</button>
     </div>
   </div>
   </app-modale>
@@ -90,7 +90,7 @@
       <button class="bouton" type="button" [disabled]="enregistrement()" (click)="reinitialiser()">
         {{ enregistrement() ? 'Enregistrement...' : 'Reinitialiser' }}
       </button>
-      <button class="bouton secondaire" type="button" (click)="reinitialise.set(null)">
+      <button class="bouton secondaire annuler" type="button" (click)="reinitialise.set(null)">
         Annuler
       </button>
     </div>
@@ -168,7 +168,7 @@
                       (click)="ouvrirReinitialisation(utilisateur)">
                 Mot de passe
               </button>
-              @if (utilisateur.roles.includes('CAISSIER')) {
+              @if (utilisateur.roles.includes('CAISSIER') || utilisateur.roles.includes('SERVEUR')) {
                 <button class="bouton secondaire petit" type="button" (click)="ouvrirPin(utilisateur)"
                         [title]="utilisateur.pinDefini ? 'Code PIN defini' : 'Aucun code PIN : il le creera a la premiere ouverture'">
                   PIN {{ utilisateur.pinDefini ? '✓' : '—' }}
@@ -215,11 +215,11 @@
 
 <!-- Code PIN de caisse, defini par l'administrateur. -->
 @if (pinCible(); as cible) {
-  <app-modale titre="Code PIN de caisse" [sousTitre]="cible.nomComplet" largeur="480px"
+  <app-modale titre="Code PIN du poste" [sousTitre]="cible.nomComplet" largeur="480px"
               [erreur]="erreur()" (ferme)="pinCible.set(null)">
   <div class="carte formulaire-compte">
     <p class="aide">
-      Le code PIN deverrouille l'ecran de caisse en debut de service et apres chaque absence.
+      Le code PIN deverrouille l'ecran de caisse ou de serveur en debut de service et apres chaque absence.
       @if (cible.pinDefini) { Un code est deja defini : le nouveau le remplace. }
       @else { Sans code, la personne creera le sien a sa premiere ouverture de caisse. }
     </p>
@@ -233,7 +233,7 @@
         <button class="bouton secondaire" type="button" [disabled]="enregistrement()" (click)="effacerPin()"
                 title="La personne creera un nouveau code a sa prochaine ouverture de caisse">Effacer le code</button>
       }
-      <button class="bouton secondaire" type="button" (click)="pinCible.set(null)">Annuler</button>
+      <button class="bouton secondaire annuler" type="button" (click)="pinCible.set(null)">Annuler</button>
     </div>
   </div>
   </app-modale>

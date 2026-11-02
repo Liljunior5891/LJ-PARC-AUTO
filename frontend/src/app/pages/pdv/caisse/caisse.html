@@ -9,6 +9,13 @@
                aria-label="Code-barres ou nom du produit" />
       </label>
       <app-bouton-especes />
+      @if (marketplace) {
+        <button type="button" class="bouton-en-ligne" [class.alerte]="nouvellesEnLigne() > 0"
+                (click)="chargerEnLigne(); fenetreEnLigne.set(true)" title="Commandes passees dans la boutique en ligne">
+          🌐 En ligne
+          @if (commandesEnLigne().length) { <b>{{ commandesEnLigne().length }}</b> }
+        </button>
+      }
     </div>
 
     <div class="categories" role="tablist" aria-label="Categories">
@@ -93,6 +100,14 @@
     </header>
 
     <app-bandeau-session />
+
+    @if (commandeEnLigne(); as cel) {
+      <div class="bandeau-en-ligne">
+        <strong>🌐 Commande en ligne {{ cel.numero }}</strong>
+        <span>{{ cel.clientNom }} · {{ cel.clientTelephone }} · {{ cel.modeRemiseLibelle }}
+          {{ cel.statutPaiement === 'PAYEE' ? '· deja payee en ligne' : '' }}</span>
+      </div>
+    }
 
     <label class="client-comptoir">
       <span>Nom du client (facultatif)</span>
@@ -181,6 +196,52 @@
 }
 
 <!-- Encaissement -->
+<!-- Commandes de la boutique en ligne : accepter, preparer, refuser, puis encaisser a la remise. -->
+@if (fenetreEnLigne()) {
+  <app-modale titre="Commandes en ligne" sousTitre="A accepter, a preparer puis a encaisser a la remise"
+              largeur="720px" [erreur]="erreur()" (ferme)="fenetreEnLigne.set(false)">
+    <ul class="liste-en-ligne">
+      @for (c of commandesEnLigne(); track c.id) {
+        <li [class.nouvelle]="c.statut === 'NOUVELLE'">
+          <div class="entete-ligne">
+            <strong>{{ c.numero }} · {{ c.clientNom }}</strong>
+            <span class="statut statut-{{ c.statut.toLowerCase() }}">{{ c.statutLibelle }}</span>
+          </div>
+          <small>
+            <a [href]="'tel:' + c.clientTelephone">{{ c.clientTelephone }}</a> · {{ c.modeRemiseLibelle }}
+            {{ c.adresseLivraison ? '(' + c.adresseLivraison + ')' : '' }} ·
+            {{ c.statutPaiement === 'PAYEE' ? 'payee en ligne' : 'a payer a la remise' }}
+          </small>
+          <p class="articles">
+            @for (l of c.lignes; track $index) { <span>{{ l.quantite }} × {{ l.libelle }}</span> }
+          </p>
+          @if (c.note) { <p class="note">« {{ c.note }} »</p> }
+          <div class="actions">
+            <strong class="montant">{{ c.total | number: '1.0-0' }} F</strong>
+            @if (refusEnCours() === c.id) {
+              <input [(ngModel)]="motifRefus" placeholder="Motif (vu par le client)" aria-label="Motif du refus" />
+              <button class="bouton secondaire annuler petit" type="button" (click)="refusEnCours.set(null)">Retour</button>
+              <button class="bouton danger petit" type="button" (click)="avancerEnLigne(c, 'ANNULEE')">Refuser</button>
+            } @else {
+              <button class="bouton danger petit" type="button" (click)="refusEnCours.set(c.id); motifRefus = ''">Refuser</button>
+              @if (c.statut === 'NOUVELLE') {
+                <button class="bouton petit" type="button" (click)="avancerEnLigne(c, 'CONFIRMEE')">Accepter</button>
+              } @else {
+                @if (c.statut === 'CONFIRMEE') {
+                  <button class="bouton secondaire petit" type="button" (click)="avancerEnLigne(c, 'PRETE')">Prete</button>
+                }
+                <button class="bouton-vert petit" type="button" (click)="encaisserEnLigne(c)">Encaisser et remettre</button>
+              }
+            }
+          </div>
+        </li>
+      } @empty {
+        <li class="vide">Aucune commande en ligne en attente.</li>
+      }
+    </ul>
+  </app-modale>
+}
+
 @if (paiement()) {
   <app-modale titre="Encaissement" [sousTitre]="'Total a payer : ' + (total() | number: '1.0-0') + ' F'"
               largeur="600px" [erreur]="erreur()" (ferme)="paiement.set(false)">
@@ -226,7 +287,7 @@
       </div>
 
       <div class="actions-formulaire">
-        <button class="bouton secondaire" type="button" (click)="paiement.set(false)">Retour</button>
+        <button class="bouton secondaire annuler" type="button" (click)="paiement.set(false)">Retour</button>
         <button class="bouton-vert" type="submit" [disabled]="enCours() || !paiementPossible()">
           {{ enCours() ? 'Enregistrement...' : 'Valider ' + (total() | number: '1.0-0') + ' F' }}
         </button>

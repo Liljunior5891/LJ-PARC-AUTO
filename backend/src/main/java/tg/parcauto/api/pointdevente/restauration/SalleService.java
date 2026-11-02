@@ -98,8 +98,16 @@ public class SalleService {
 
     // -------------------------------------------------------------- plan
 
+    /**
+     * Plan de service. Le serveur ne voit que ses commandes et celles qu'aucun
+     * serveur n'a encore prises (code QR) ; les tables des autres apparaissent
+     * occupees, sans detail, et leurs commandes sans table ne figurent pas.
+     */
     @Transactional(readOnly = true)
-    public RestaurationDto.Plan plan() {
+    public RestaurationDto.Plan plan(tg.parcauto.api.security.UtilisateurPrincipal utilisateur) {
+        boolean serveurSeul = tg.parcauto.api.pointdevente.personnel.PersonnelService.serveurSeul(utilisateur);
+        java.util.function.Predicate<Commande> sienne = c -> !serveurSeul
+                || c.getServeurId() == null || c.getServeurId().equals(utilisateur.getId());
         List<Commande> ouvertes = commandeRepository.ouvertes();
         Map<Long, Commande> parTable = ouvertes.stream()
                 .filter(c -> c.getTable() != null)
@@ -116,13 +124,15 @@ public class SalleService {
                                 .sorted(Comparator.comparing(TableRestaurant::getNom, PAR_NUMERO))
                                 .map(t -> new RestaurationDto.TablePlan(
                                         RestaurationDto.TableReponse.de(t),
-                                        parTable.containsKey(t.getId())
+                                        !parTable.containsKey(t.getId()) ? null
+                                                : sienne.test(parTable.get(t.getId()))
                                                 ? RestaurationDto.CommandeResume.de(parTable.get(t.getId()))
-                                                : null))
+                                                : RestaurationDto.CommandeResume.masquee(parTable.get(t.getId()))))
                                 .toList()))
                 .toList();
         List<RestaurationDto.CommandeResume> sansTable = ouvertes.stream()
                 .filter(c -> c.getTable() == null)
+                .filter(sienne)
                 .map(RestaurationDto.CommandeResume::de)
                 .toList();
         return new RestaurationDto.Plan(salles, sansTable);

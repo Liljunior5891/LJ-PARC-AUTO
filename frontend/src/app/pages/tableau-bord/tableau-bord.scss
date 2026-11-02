@@ -6,33 +6,10 @@
 }
 
 /* Selecteur de periode : un seul choix a la fois, l'actif porte la couleur. */
+/* Periode observee : liste deroulante Select2. */
 .selecteur-portee {
-  display: inline-flex;
-  padding: 2px;
-  border: 1px solid var(--couleur-bordure);
-  border-radius: 8px;
-  background: #fff;
-
-  button {
-    padding: 0.4rem 0.8rem;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    font: inherit;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--couleur-texte-doux);
-    cursor: pointer;
-
-    &:hover:not(.actif) {
-      color: var(--couleur-texte);
-    }
-
-    &.actif {
-      background: var(--couleur-primaire);
-      color: #fff;
-    }
-  }
+  width: 190px;
+  font-weight: 600;
 }
 
 .liste-alertes {
@@ -652,4 +629,15 @@ $encre: #1d2b26;
 /* La barre d'etats reste au-dessus des cartes, comme une legende resumee. */
 .barre-etats {
   margin-bottom: 1rem;
+}
+
+/* Marketplace : chiffre d'affaires en ligne et en agence, sous le total. */
+.repartition-ventes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+
+  b {
+    font-weight: 800;
+  }
 }

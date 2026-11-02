@@ -61,6 +61,7 @@ public class CommandeController {
     @PreAuthorize(Autorisations.PDV_SALLE)
     @Operation(summary = "Commande et ses lignes")
     public RestaurationDto.CommandeDetail detail(@PathVariable Long id) {
+        acces(id);
         return service.detail(id);
     }
 
@@ -69,6 +70,7 @@ public class CommandeController {
     @Operation(summary = "Modifie le nombre de couverts et la note de la commande")
     public RestaurationDto.CommandeDetail modifier(@PathVariable Long id,
                                                    @Valid @RequestBody RestaurationDto.Informations infos) {
+        acces(id);
         caisseOuverte();
         return service.modifierInformations(id, infos);
     }
@@ -78,6 +80,7 @@ public class CommandeController {
     @Operation(summary = "Ajoute un article en attente d'envoi")
     public RestaurationDto.CommandeDetail ajouter(@PathVariable Long id,
                                                   @Valid @RequestBody RestaurationDto.AjoutLigne ajout) {
+        acces(id);
         caisseOuverte();
         return service.ajouter(id, ajout);
     }
@@ -87,6 +90,7 @@ public class CommandeController {
     @Operation(summary = "Modifie un article pas encore envoye")
     public RestaurationDto.CommandeDetail modifierLigne(@PathVariable Long id, @PathVariable Long ligneId,
                                                         @Valid @RequestBody RestaurationDto.ModificationLigne m) {
+        acces(id);
         caisseOuverte();
         return service.modifierLigne(id, ligneId, m);
     }
@@ -95,6 +99,7 @@ public class CommandeController {
     @PreAuthorize(Autorisations.PDV_SALLE)
     @Operation(summary = "Retire un article pas encore envoye")
     public RestaurationDto.CommandeDetail retirerLigne(@PathVariable Long id, @PathVariable Long ligneId) {
+        acces(id);
         caisseOuverte();
         return service.retirerLigne(id, ligneId);
     }
@@ -107,28 +112,40 @@ public class CommandeController {
         return service.annulerLigne(id, ligneId, principal);
     }
 
-    @PostMapping("/{id}/envoi")
+    @PostMapping("/{id}/transmission")
     @PreAuthorize(Autorisations.PDV_SALLE)
-    @Operation(summary = "Envoie les articles en attente a la cuisine et au bar")
+    @Operation(summary = "Transmet a la caisse les articles saisis par le serveur, pour validation")
+    public RestaurationDto.CommandeDetail transmettre(@PathVariable Long id) {
+        acces(id);
+        caisseOuverte();
+        return service.transmettre(id);
+    }
+
+    @PostMapping("/{id}/envoi")
+    @PreAuthorize(Autorisations.PDV_ENVOI)
+    @Operation(summary = "Envoie les articles en attente a la cuisine et au bar (caisse uniquement)")
     public RestaurationDto.CommandeDetail envoyer(@PathVariable Long id) {
+        acces(id);
         caisseOuverte();
         return service.envoyer(id);
     }
 
     @PostMapping("/{id}/demandes/validation")
-    @PreAuthorize(Autorisations.PDV_SALLE)
-    @Operation(summary = "Valide la commande passee par le client depuis le code QR et l'envoie en preparation")
+    @PreAuthorize(Autorisations.PDV_ENVOI)
+    @Operation(summary = "Valide les articles transmis (serveur ou code QR) et les envoie en preparation")
     public RestaurationDto.CommandeDetail validerDemandes(@PathVariable Long id,
                                                           @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        acces(id);
         caisseOuverte();
         return service.validerDemandes(id, principal);
     }
 
     @PostMapping("/{id}/demandes/refus")
-    @PreAuthorize(Autorisations.PDV_SALLE)
-    @Operation(summary = "Ecarte la commande passee par le client depuis le code QR")
+    @PreAuthorize(Autorisations.PDV_ENVOI)
+    @Operation(summary = "Ecarte les articles du client ; ceux du serveur lui reviennent a corriger")
     public RestaurationDto.CommandeDetail refuserDemandes(@PathVariable Long id,
                                                           @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        acces(id);
         caisseOuverte();
         return service.refuserDemandes(id, principal);
     }
@@ -138,6 +155,7 @@ public class CommandeController {
     @Operation(summary = "Prend en compte l'appel du client (serveur ou addition)")
     public RestaurationDto.CommandeDetail priseEnCompte(@PathVariable Long id,
                                                         @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        acces(id);
         caisseOuverte();
         return service.priseEnCompte(id, principal);
     }
@@ -147,6 +165,7 @@ public class CommandeController {
     @Operation(summary = "Marque servis les articles prets ; sans selection, tous")
     public RestaurationDto.CommandeDetail servir(@PathVariable Long id,
                                                  @RequestBody(required = false) List<Long> lignes) {
+        acces(id);
         caisseOuverte();
         return service.servir(id, lignes);
     }
@@ -156,14 +175,16 @@ public class CommandeController {
     @Operation(summary = "Deplace la commande sur une table libre")
     public RestaurationDto.CommandeDetail transferer(@PathVariable Long id,
                                                      @Valid @RequestBody RestaurationDto.Transfert transfert) {
+        acces(id);
         caisseOuverte();
         return service.transferer(id, transfert.tableId());
     }
 
     @PostMapping("/{id}/addition")
-    @PreAuthorize(Autorisations.PDV_SALLE)
+    @PreAuthorize(Autorisations.PDV_CAISSE)
     @Operation(summary = "Imprime l'addition : la table attend de payer")
     public RestaurationDto.CommandeDetail addition(@PathVariable Long id) {
+        acces(id);
         caisseOuverte();
         return service.addition(id);
     }
@@ -182,7 +203,16 @@ public class CommandeController {
     @Operation(summary = "Annule la commande ; un gerant si des articles sont partis en preparation")
     public RestaurationDto.CommandeDetail annuler(@PathVariable Long id,
                                                   @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        acces(id);
         return service.annulerCommande(id, principal);
+    }
+
+    /** Le serveur n'ouvre que ses propres commandes. */
+    private void acces(Long id) {
+        if (org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal() instanceof UtilisateurPrincipal utilisateur) {
+            service.verifierAcces(id, utilisateur);
+        }
     }
 
     /**

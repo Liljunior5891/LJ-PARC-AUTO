@@ -92,9 +92,7 @@
 }
 
 .raccourcis {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
+  min-width: 190px;
 }
 
 .aide {

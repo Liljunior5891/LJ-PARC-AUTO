@@ -5,14 +5,12 @@
   </div>
   <div class="commandes-bord">
     <!-- Etendue des donnees observees : tout le volet financier la suit. -->
-    <div class="selecteur-portee" role="group" aria-label="Periode observee">
-      @for (p of portees; track p.valeur) {
-        <button type="button" [class.actif]="portee() === p.valeur"
-                [attr.aria-pressed]="portee() === p.valeur" [attr.title]="p.detail"
-                (click)="changerPortee(p.valeur)">
-          {{ p.libelle }}
-        </button>
-      }
+    <div class="selecteur-portee">
+      <select aria-label="Periode observee" [ngModel]="portee()" (ngModelChange)="changerPortee($event)">
+        @for (p of portees; track p.valeur) {
+          <option [ngValue]="p.valeur" [attr.data-detail]="p.detail">{{ p.libelle }}</option>
+        }
+      </select>
     </div>
     <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
   </div>
@@ -84,7 +82,15 @@
       <a class="carte-tete vert" routerLink="/recettes">
         <span class="titre">Chiffre d'affaires</span>
         <strong>{{ grosMontant(f.chiffreAffaires) }}<small>FCFA</small></strong>
-        <span class="detail">{{ k.totalCamions }} vehicules · dispo. {{ tauxDisponibilite() }} %</span>
+        @if (!avecEnLigne) {
+          <span class="detail">{{ k.totalCamions }} vehicules · dispo. {{ tauxDisponibilite() }} %</span>
+        } @else {
+          <!-- Marketplace : part du chiffre faite en ligne et en agence. -->
+          <span class="detail repartition-ventes">
+            <span>En ligne : <b>{{ f.chiffreEnLigne | number: '1.0-0' }} F</b></span>
+            <span>Agence : <b>{{ f.chiffreAgence | number: '1.0-0' }} F</b></span>
+          </span>
+        }
         <ng-container [ngTemplateOutlet]="illustrationBillets" />
       </a>
       <a class="carte-tete olive" routerLink="/depenses">
@@ -145,7 +151,7 @@
           <span class="jauge"><i [style.width.%]="part(k.camionsEnMission, k.totalCamions)"></i></span>
         </a>
 
-        <a class="carte-apercu violet" routerLink="/locations">
+        <a class="carte-apercu violet" routerLink="/recettes">
           <span class="icone" aria-hidden="true">
             <svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M10.8 12.2 19 4M16 7l2.5 2.5M14 9l2 2" /></svg>
           </span>

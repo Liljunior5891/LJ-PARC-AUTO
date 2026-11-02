@@ -13,6 +13,8 @@ export interface FiltreFacture {
   fin?: string;
   page?: number;
   size?: number;
+  /** Canal : vrai = en ligne (Marketplace), faux = agence. */
+  enLigne?: boolean;
 }
 
 export interface FactureRequete {
@@ -45,6 +47,9 @@ export class FactureService {
       .set('page', filtre.page ?? 0)
       .set('size', filtre.size ?? 20)
       .set('sort', 'dateEmission,desc');
+    if (filtre.enLigne !== undefined) {
+      params = params.set('enLigne', filtre.enLigne);
+    }
     if (filtre.q) {
       params = params.set('q', filtre.q);
     }

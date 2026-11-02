@@ -83,6 +83,10 @@ public class Recette extends BaseEntity {
     @Column(columnDefinition = "text")
     private String observations;
 
+    /** Nee d'une demande faite dans la boutique en ligne (canal « en ligne »), quel que soit son type. */
+    @Column(name = "en_ligne", nullable = false)
+    private boolean enLigne;
+
     // --- Details selon le type de recette (tous facultatifs) ---------------
 
     /** Debut de la prestation : transport, voyage, mission speciale, contrat. */

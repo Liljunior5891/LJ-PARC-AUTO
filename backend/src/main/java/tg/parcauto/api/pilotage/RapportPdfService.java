@@ -340,7 +340,7 @@ public class RapportPdfService {
 
         pdf.section("Detail des recettes");
         List<String[]> lignes = new ArrayList<>();
-        recetteService.rechercher(null, null, unique(camionIds), null, debut, fin,
+        recetteService.rechercher(null, null, unique(camionIds), null, debut, fin, null,
                         PageRequest.of(0, LIGNES_MAX, Sort.by("dateRecette").descending()))
                 .forEach(recette -> lignes.add(new String[]{
                         recette.numero(),

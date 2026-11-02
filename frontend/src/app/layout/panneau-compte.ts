@@ -89,7 +89,7 @@ import { UtilisateurService } from '../core/services/utilisateur.service';
         </section>
 
         <footer class="actions-formulaire">
-          <button class="bouton secondaire" type="button" (click)="ferme.emit()">Annuler</button>
+          <button class="bouton secondaire annuler" type="button" (click)="ferme.emit()">Annuler</button>
           <button class="bouton" type="submit" [disabled]="enregistrement() || !nom.trim()">
             {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
           </button>

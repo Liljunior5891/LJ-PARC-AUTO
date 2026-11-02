@@ -12,6 +12,7 @@ import { DessinVehicule } from '../../shared/dessin-vehicule';
 import { AuthService } from '../../core/auth/auth.service';
 import { Camion } from '../../core/models/models';
 import { FormulaireCamion } from '../../shared/formulaire-camion';
+import { MarketplaceService } from '../../core/services/marketplace.service';
 
 @Component({
   selector: 'app-vue-parc',
@@ -26,6 +27,12 @@ export class VueParc implements OnInit {
 
   /** Creation de camion reservee aux profils qui gerent le parc. */
   readonly peutGerer = inject(AuthService).peutGererParc();
+
+  // Gestion de parc avec Marketplace : vehicules proposes a la location en ligne.
+  private readonly marketplace = inject(MarketplaceService);
+  readonly avecEnLigne = inject(AuthService).aModule('MARKETPLACE');
+  readonly enLigne = signal<Set<number>>(new Set());
+  readonly filtreEnLigne = signal<'' | 'oui' | 'non'>('');
 
   readonly lignes = signal<LigneVueParc[]>([]);
   /** Camions archives : absents de la vue du parc, charges a la demande. */
@@ -44,11 +51,12 @@ export class VueParc implements OnInit {
   /** Heure du dernier chargement, rappelee dans l'apercu. */
   readonly misAJour = signal<Date | null>(null);
 
-  readonly filtres: { valeur: Filtre; libelle: string }[] = [
-    { valeur: 'tous', libelle: 'Tout le parc' },
-    { valeur: 'engages', libelle: 'Engages' },
-    { valeur: 'disponibles', libelle: 'Disponibles' },
-    { valeur: 'archives', libelle: 'Archives' }
+  /** Options du filtre, avec la couleur de la carte d'apercu correspondante. */
+  readonly filtres: { valeur: Filtre; libelle: string; couleur: string }[] = [
+    { valeur: 'tous', libelle: 'Tout le parc', couleur: '#1565c0' },
+    { valeur: 'engages', libelle: 'Engages', couleur: '#e07b00' },
+    { valeur: 'disponibles', libelle: 'Disponibles', couleur: '#1e874b' },
+    { valeur: 'archives', libelle: 'Archives', couleur: '#8a94a0' }
   ];
 
   /** Quatre chiffres de tete : effectif, activite, disponibilite, atelier. */
@@ -77,6 +85,10 @@ export class VueParc implements OnInit {
         .some((texte) => texte?.toLowerCase().includes(recherche))) {
         return false;
       }
+      const enLigne = this.filtreEnLigne();
+      if (enLigne && (enLigne === 'oui') !== this.enLigne().has(ligne.camionId)) {
+        return false;
+      }
       if (filtre === 'engages') {
         return ligne.statut === 'EN_LOCATION' || ligne.statut === 'EN_MISSION'
           || ligne.statut === 'EN_LIVRAISON';
@@ -90,6 +102,11 @@ export class VueParc implements OnInit {
 
   ngOnInit(): void {
     this.charger();
+    if (this.avecEnLigne) {
+      this.marketplace.vehiculesEnLigne().subscribe({
+        next: (liste) => this.enLigne.set(new Set(liste.filter((v) => v.publiee).map((v) => v.camionId)))
+      });
+    }
   }
 
   charger(): void {

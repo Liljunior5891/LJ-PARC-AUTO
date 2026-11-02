@@ -26,6 +26,16 @@
         </select>
       </div>
     }
+    @if (avecEnLigne) {
+      <div class="champ">
+        <label for="canal">Canal de vente</label>
+        <select id="canal" [ngModel]="canal" (ngModelChange)="choisirCanal($event)">
+          <option value="">En ligne et comptoir</option>
+          <option value="en-ligne">En ligne</option>
+          <option value="comptoir">Comptoir</option>
+        </select>
+      </div>
+    }
     <div class="champ">
       <label for="debut">Du</label>
       <input id="debut" type="date" [(ngModel)]="debut" [disabled]="!!sessionId" (change)="filtrer()" />
@@ -48,6 +58,7 @@
           <th>Date</th>
           <th>Caissier</th>
           <th>Client</th>
+          @if (avecEnLigne) { <th>Canal</th> }
           <th>Paiement</th>
           <th class="numerique">Total</th>
           <th>Statut</th>
@@ -60,6 +71,9 @@
             <td>{{ v.dateVente | date: 'dd/MM/yyyy HH:mm' }}</td>
             <td>{{ v.caissierNom }}</td>
             <td>{{ v.clientNom || '—' }}</td>
+            @if (avecEnLigne) {
+              <td><span class="canal" [class.en-ligne]="v.enLigne">{{ v.enLigne ? '🌐 En ligne' : 'Comptoir' }}</span></td>
+            }
             <td>{{ v.modePaiementLibelle }}</td>
             <td class="numerique"><strong>{{ v.total | number: '1.0-0' }} F</strong></td>
             <td>
@@ -69,7 +83,7 @@
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="7" style="text-align: center; color: var(--couleur-texte-doux)">{{ sessionId ? 'Aucune vente sur cette session de caisse.' : 'Aucune vente sur la periode.' }}</td></tr>
+          <tr><td [attr.colspan]="avecEnLigne ? 8 : 7" style="text-align: center; color: var(--couleur-texte-doux)">{{ sessionId ? 'Aucune vente sur cette session de caisse.' : 'Aucune vente sur la periode.' }}</td></tr>
         }
       </tbody>
     </table>

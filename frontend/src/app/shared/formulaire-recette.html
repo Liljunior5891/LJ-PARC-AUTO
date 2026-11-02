@@ -3,6 +3,15 @@
     <div class="message erreur">{{ erreur() }}</div>
   }
 
+  @if (demande(); as d) {
+    <!-- Recette qui conclut une demande en ligne : elle portera le canal « en ligne ». -->
+    <div class="bandeau-demande">
+      <strong>🌐 Demande en ligne {{ d.numero }} — {{ d.clientNom }} ({{ d.clientTelephone }})</strong>
+      <span>{{ d.vehicule }} · du {{ d.dateDebut }} au {{ d.dateFin }} · {{ d.tarifJour }} F / jour.
+        Choisissez le type de recette et completez la fiche client avec ses pieces.</span>
+    </div>
+  }
+
   <div class="grille-formulaire">
     <div class="champ">
       <label for="camionId">Vehicule <span class="requis">*</span></label>
@@ -14,6 +23,16 @@
                               placeholder="Selectionner un vehicule" />
       }
     </div>
+
+    @if (occupations().length) {
+      <!-- Vehicule deja engage sur ces dates : la recette n'est possible qu'a d'autres dates. -->
+      <div class="champ champ-large vehicule-occupe" role="alert">
+        @for (o of occupations(); track o.reference) {
+          <strong>⚠ {{ o.message }}</strong>
+        }
+        <small>Choisissez d'autres dates ou un autre vehicule pour enregistrer cette recette.</small>
+      </div>
+    }
 
     <!-- Le chauffeur n'est pas saisi : il decoule de l'affectation du vehicule. -->
     <div class="champ">
@@ -58,38 +77,10 @@
   @if (creationClient()) {
     <fieldset class="bloc-location">
       <legend>Nouveau client</legend>
-      <div class="grille-formulaire">
-        <div class="champ">
-          <label for="nouveauClientNom">Raison sociale <span class="requis">*</span></label>
-          <input id="nouveauClientNom" type="text" [(ngModel)]="nouveauClientNom"
-                 [ngModelOptions]="{ standalone: true }" placeholder="Nom du client" />
-        </div>
-        <div class="champ">
-          <label for="nouveauClientTelephone">Telephone</label>
-          <input id="nouveauClientTelephone" type="tel" [(ngModel)]="nouveauClientTelephone"
-                 [ngModelOptions]="{ standalone: true }" />
-        </div>
-        <div class="champ">
-          <label for="nouveauClientType">Type</label>
-          <select id="nouveauClientType" [(ngModel)]="nouveauClientType"
-                  [ngModelOptions]="{ standalone: true }">
-            @for (t of typesClient; track t.valeur) {
-              <option [value]="t.valeur">{{ t.libelle }}</option>
-            }
-          </select>
-        </div>
-      </div>
-      <div class="actions-formulaire">
-        <button class="bouton petit" type="button"
-                [disabled]="creationEnCours() || !nouveauClientNom.trim()"
-                (click)="creerClient()">
-          {{ creationEnCours() ? 'Creation...' : 'Creer et selectionner' }}
-        </button>
-      </div>
-      <p class="aide">
-        Seule la raison sociale est exigee. La fiche complete se renseigne plus tard
-        depuis l'ecran Clients.
-      </p>
+      <app-formulaire-client [compact]="true" libelleEnregistrer="Creer et selectionner"
+                             [nomInitial]="demande()?.clientNom ?? null" [telephoneInitial]="demande()?.clientTelephone ?? null"
+                             [emailInitial]="demande()?.clientEmail ?? null"
+                             (enregistre)="clientCree($event)" (annule)="creationClient.set(false)" />
     </fieldset>
   }
 
@@ -275,7 +266,7 @@
     <button class="bouton" type="submit" [disabled]="enregistrement() || !saisieComplete()">
       {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer la recette' }}
     </button>
-    <button class="bouton secondaire" type="button" (click)="annuler()">Annuler</button>
+    <button class="bouton secondaire annuler" type="button" (click)="annuler()">Annuler</button>
     @if (champsManquants().length) {
       <small class="manquants">Pour enregistrer, il manque {{ champsManquants().join(', ') }}.</small>
     }

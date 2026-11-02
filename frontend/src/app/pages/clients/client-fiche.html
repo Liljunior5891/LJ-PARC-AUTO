@@ -15,105 +15,10 @@
   <div class="message succes">{{ succes() }}</div>
 }
 
-<form class="carte" [formGroup]="formulaire" (ngSubmit)="soumettre()">
-  <h2>Identite</h2>
-  <div class="grille-formulaire">
-    <div class="champ">
-      <label for="code">Code</label>
-      <input id="code" formControlName="code" placeholder="Genere automatiquement" />
-    </div>
-    <div class="champ">
-      <label for="raisonSociale">Raison sociale <span class="requis">*</span></label>
-      <input id="raisonSociale" formControlName="raisonSociale" />
-      @if (formulaire.controls.raisonSociale.touched && formulaire.controls.raisonSociale.invalid) {
-        <span class="erreur-champ">Raison sociale requise</span>
-      }
-    </div>
-    <div class="champ">
-      <label for="type">Type</label>
-      <select id="type" formControlName="type">
-        @for (t of types; track t.valeur) {
-          <option [value]="t.valeur">{{ t.libelle }}</option>
-        }
-      </select>
-    </div>
-    <div class="champ">
-      <label for="identifiantFiscal">Identifiant fiscal</label>
-      <input id="identifiantFiscal" formControlName="identifiantFiscal" />
-    </div>
-  </div>
-
-  <h2 style="margin-top: 1.5rem">Coordonnees</h2>
-  <div class="grille-formulaire">
-    <div class="champ">
-      <label for="telephone">Telephone</label>
-      <input id="telephone" formControlName="telephone" />
-    </div>
-    <div class="champ">
-      <label for="email">Email</label>
-      <input id="email" type="email" formControlName="email" />
-    </div>
-    <div class="champ">
-      <label for="adresse">Adresse</label>
-      <input id="adresse" formControlName="adresse" />
-    </div>
-    <div class="champ">
-      <label for="ville">Ville</label>
-      <input id="ville" formControlName="ville" />
-    </div>
-    <div class="champ">
-      <label for="pays">Pays</label>
-      <input id="pays" formControlName="pays" />
-    </div>
-    <div class="champ">
-      <label for="personneContact">Personne de contact</label>
-      <input id="personneContact" formControlName="personneContact" />
-    </div>
-    <div class="champ">
-      <label for="telephoneContact">Telephone du contact</label>
-      <input id="telephoneContact" formControlName="telephoneContact" />
-    </div>
-  </div>
-
-  <h2 style="margin-top: 1.5rem">Conditions commerciales</h2>
-  <div class="grille-formulaire">
-    <div class="champ">
-      <label for="delaiPaiementJours">Delai de paiement (jours)</label>
-      <input id="delaiPaiementJours" type="number" formControlName="delaiPaiementJours" />
-    </div>
-    <div class="champ">
-      <label for="plafondCredit">Plafond de credit (FCFA)</label>
-      <input id="plafondCredit" type="number" formControlName="plafondCredit" />
-    </div>
-    <div class="champ">
-      <label for="actif">Fiche active</label>
-      <select id="actif" formControlName="actif">
-        <option [value]="true">Oui</option>
-        <option [value]="false">Non (archive)</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="champ" style="margin-top: 1rem">
-    <label for="conditionsCommerciales">Conditions particulieres</label>
-    <textarea id="conditionsCommerciales" formControlName="conditionsCommerciales"></textarea>
-  </div>
-  <div class="champ" style="margin-top: 1rem">
-    <label for="observations">Observations</label>
-    <textarea id="observations" formControlName="observations"></textarea>
-  </div>
-
-  <div class="actions-formulaire">
-    <button class="bouton" type="submit" [disabled]="enregistrement()">
-      {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
-    </button>
-    @if (enModale()) {
-      <button class="bouton secondaire" type="button" (click)="annule.emit()">Annuler</button>
-    } @else {
-      <a class="bouton secondaire" routerLink="/clients">Annuler</a>
-    }
-  </div>
-</form>
+<!-- Formulaire adapte au type de client, pieces justificatives comprises. -->
+<div class="carte">
+  <app-formulaire-client [clientId]="id()" (enregistre)="enregistre($event)" (annule)="annuler()" />
+</div>
 
 @if (id() !== null) {
   <div class="carte" style="margin-top: 1rem">
@@ -133,7 +38,7 @@
         <tbody>
           @for (contrat of contrats(); track contrat.id) {
             <tr>
-              <td><a [routerLink]="['/locations', contrat.id]">{{ contrat.numero }}</a></td>
+              <td><strong>{{ contrat.numero }}</strong></td>
               <td>{{ contrat.camionImmatriculation }}</td>
               <td>{{ contrat.typeLibelle }}</td>
               <td>{{ contrat.dateDebut }} → {{ contrat.dateFinReelle || contrat.dateFin || '—' }}</td>

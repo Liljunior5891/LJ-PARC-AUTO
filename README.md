@@ -8,7 +8,7 @@ propres données, isolées de celles des autres entreprises.
 | --- | --- |
 | **Gestion de parc** — véhicules, chauffeurs, locations, missions, finances, GPS, maintenance, rentabilité | Disponible |
 | **Point de vente** — deux types d'activité choisis à l'activation : **Boutique** (caisse rapide : douchette, panier, ticket 80 mm) ou **Bar / restaurant / café** (plan de salle, commandes par table sur tablette, écrans cuisine et bar, addition partagée par convive). Socle commun : articles et catégories, stock et inventaires, sessions de caisse avec écart, encaissement espèces / mobile money / carte, annulations, tableau de bord | Disponible (v1) |
-| **Marketplace** | Annoncé (catalogue), à développer |
+| **Marketplace** — boutique en ligne publique par entreprise (`/boutique/{adresse}`, lien et QR) et place de marché commune (`/marche`). Offres : articles du point de vente (prix, photo, stock en direct), véhicules du parc à louer, produits libres. Commande sans compte (nom + téléphone), retrait ou livraison, paiement à la remise ou mobile money, suivi par lien (`/suivi/{jeton}`) ; demande de location acceptée = contrat. Paiement en ligne : fournisseur à brancher (`parcauto.paiement.fournisseur`, `simulation` en développement) | Disponible (v1) |
 
 ## Architecture multi-entreprises
 

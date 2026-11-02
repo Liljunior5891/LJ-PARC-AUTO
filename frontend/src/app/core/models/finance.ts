@@ -50,6 +50,8 @@ export interface Recette {
   destination?: string;
   marchandise?: string;
   kilometres?: number;
+  /** Ne d'une demande de la boutique en ligne (Marketplace). */
+  enLigne?: boolean;
 }
 
 export interface RecetteRequete {
@@ -70,6 +72,8 @@ export interface RecetteRequete {
   destination?: string | null;
   marchandise?: string | null;
   kilometres?: number | null;
+  /** Demande de location en ligne acceptee que la recette conclut (canal « en ligne »). */
+  demandeEnLigneId?: number | null;
 }
 
 /**
@@ -91,6 +95,8 @@ export interface RecetteLocationRequete {
   modePaiement?: ModePaiement | null;
   reference?: string;
   observations?: string;
+  /** Demande de location en ligne acceptee que la recette conclut (canal « en ligne »). */
+  demandeEnLigneId?: number | null;
 }
 
 export type CategorieDepense =
@@ -255,6 +261,8 @@ export interface Facture {
   observations?: string;
   lignes: LigneFacture[];
   paiements: PaiementFacture[];
+  /** Ne d'une demande de la boutique en ligne (Marketplace). */
+  enLigne?: boolean;
 }
 
 export interface Creances {
@@ -352,6 +360,9 @@ export interface TableauBordFinances {
   facturesEnRetard: number;
   recetteMoyenneParCamion: number;
   depenseMoyenneParCamion: number;
+  /** Part du chiffre d'affaires faite en ligne (Marketplace), le reste en agence. */
+  chiffreEnLigne: number;
+  chiffreAgence: number;
 }
 
 export const MODES_PAIEMENT: { valeur: ModePaiement; libelle: string }[] = [

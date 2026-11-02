@@ -1,5 +1,7 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { CommandeEnLigne } from '../../../core/models/marketplace';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
@@ -41,7 +43,7 @@ const BILLETS = [500, 1000, 2000, 5000, 10000];
   templateUrl: './caisse.html',
   styleUrls: ['../commande/commande.scss', './caisse.scss']
 })
-export class Caisse implements OnInit {
+export class Caisse implements OnInit, OnDestroy {
   private readonly service = inject(PdvService);
   private readonly auth = inject(AuthService);
   private readonly societeService = inject(SocieteService);
@@ -74,6 +76,18 @@ export class Caisse implements OnInit {
   readonly dernierTicket = signal<Ticket | null>(null);
 
   private readonly saisie = viewChild<ElementRef<HTMLInputElement>>('saisie');
+  private readonly route = inject(ActivatedRoute);
+
+  // Commandes de la boutique en ligne : elles arrivent a la caisse, qui les accepte puis les encaisse.
+  readonly marketplace = this.auth.aModule('MARKETPLACE');
+  readonly commandesEnLigne = signal<CommandeEnLigne[]>([]);
+  readonly fenetreEnLigne = signal(false);
+  readonly nouvellesEnLigne = computed(() => this.commandesEnLigne().filter((c) => c.statut === 'NOUVELLE').length);
+  /** Commande en ligne chargee dans le panier : le ticket la reglera et la clora. */
+  readonly commandeEnLigne = signal<CommandeEnLigne | null>(null);
+  motifRefus = '';
+  readonly refusEnCours = signal<number | null>(null);
+  private minuterie?: ReturnType<typeof setInterval>;
 
   readonly articlesAffiches = computed(() => {
     const motif = this.recherche().trim().toLowerCase();
@@ -120,6 +134,64 @@ export class Caisse implements OnInit {
     this.service.catalogueCaisse().subscribe({ next: (a) => this.articles.set(a) });
     this.service.categories().subscribe({ next: (c) => this.categories.set(c.filter((x) => x.actif)) });
     this.refocaliser();
+    if (this.marketplace) {
+      this.chargerEnLigne();
+      this.minuterie = setInterval(() => this.chargerEnLigne(), 30_000);
+      // Ouverte depuis la notification d'une nouvelle commande en ligne.
+      if (this.route.snapshot.queryParamMap.has('enLigne')) {
+        this.fenetreEnLigne.set(true);
+      }
+    }
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.minuterie);
+  }
+
+  // ---------------------------------------------------- commandes en ligne
+
+  chargerEnLigne(): void {
+    this.service.commandesEnLigne().subscribe({
+      next: (commandes) => this.commandesEnLigne.set(commandes),
+      error: () => this.commandesEnLigne.set([])
+    });
+  }
+
+  avancerEnLigne(commande: CommandeEnLigne, statut: 'CONFIRMEE' | 'PRETE' | 'EN_LIVRAISON' | 'ANNULEE'): void {
+    this.erreur.set(null);
+    this.service.changerStatutEnLigne(commande.id, statut, statut === 'ANNULEE' ? this.motifRefus.trim() || undefined : undefined)
+      .subscribe({
+        next: () => {
+          this.refusEnCours.set(null);
+          this.motifRefus = '';
+          this.chargerEnLigne();
+        },
+        error: (e) => this.erreur.set(this.message(e, 'Operation impossible.'))
+      });
+  }
+
+  /** Remise au client : la commande en ligne passe dans le panier, puis s'encaisse comme une vente. */
+  encaisserEnLigne(commande: CommandeEnLigne): void {
+    const lignes: LignePanier[] = [];
+    for (const l of commande.lignes) {
+      const article = this.articles().find((a) => a.id === l.articleId);
+      if (!article) {
+        this.erreur.set(`${l.libelle} n'est plus au catalogue de la caisse : encaissez cette commande a la main.`);
+        return;
+      }
+      lignes.push({ article, quantite: l.quantite });
+    }
+    this.panier.set(lignes);
+    this.remise.set(0);
+    this.clientNom = commande.clientNom;
+    this.commandeEnLigne.set(commande);
+    this.fenetreEnLigne.set(false);
+    this.vueMobile.set('commande');
+    // Deja payee en ligne : le reglement est du mobile money, reference de la commande.
+    this.ouvrirPaiement(commande.statutPaiement === 'PAYEE' ? 'MOBILE_MONEY' : 'ESPECES');
+    if (commande.statutPaiement === 'PAYEE') {
+      this.reference = commande.numero;
+    }
   }
 
   // -------------------------------------------------------------- panier
@@ -189,6 +261,7 @@ export class Caisse implements OnInit {
   }
 
   viderPanier(): void {
+    this.commandeEnLigne.set(null);
     this.panier.set([]);
     this.remise.set(0);
     this.clientNom = '';
@@ -229,7 +302,8 @@ export class Caisse implements OnInit {
         montantRecu: this.mode() === 'ESPECES' ? this.montantRecu() : null,
         referencePaiement: this.reference || undefined,
         clientNom: this.clientNom.trim() || undefined,
-        sessionId: this.session()?.id
+        sessionId: this.session()?.id,
+        commandeEnLigneId: this.commandeEnLigne()?.id ?? null
       })
       .subscribe({
         next: (ticket) => {
@@ -237,6 +311,10 @@ export class Caisse implements OnInit {
           this.paiement.set(false);
           this.dernierTicket.set(ticket);
           this.decompterStock();
+          if (this.commandeEnLigne()) {
+            this.commandeEnLigne.set(null);
+            this.chargerEnLigne();
+          }
           this.panier.set([]);
           this.remise.set(0);
           this.clientNom = '';

@@ -14,7 +14,8 @@ public final class ChauffeurDto {
     }
 
     public record Requete(
-            @NotBlank @Size(max = 40) String matricule,
+            /** Facultatif : genere (CH-2026-0001) s'il est laisse vide. */
+            @Size(max = 40) String matricule,
             @NotBlank @Size(max = 80) String nom,
             @NotBlank @Size(max = 80) String prenom,
             @Size(max = 500) String photoUrl,
@@ -38,7 +39,15 @@ public final class ChauffeurDto {
             @Size(max = 80) String garantPieceIdentite,
             StatutChauffeur statut,
             String observations,
-            Boolean actif) {
+            Boolean actif,
+            TypeChauffeur typeChauffeur,
+            @Size(max = 10) String typeContrat,
+            LocalDate dateFinContrat,
+            @Size(max = 40) String numeroCnss,
+            @PositiveOrZero BigDecimal tarif,
+            @Size(max = 10) String uniteTarif,
+            @Size(max = 60) String identifiantFiscal,
+            @Size(max = 5) String groupeSanguin) {
     }
 
     public record Reponse(
@@ -71,7 +80,16 @@ public final class ChauffeurDto {
             StatutChauffeur statut,
             String statutLibelle,
             String observations,
-            boolean actif) {
+            boolean actif,
+            TypeChauffeur typeChauffeur,
+            String typeChauffeurLibelle,
+            String typeContrat,
+            LocalDate dateFinContrat,
+            String numeroCnss,
+            BigDecimal tarif,
+            String uniteTarif,
+            String identifiantFiscal,
+            String groupeSanguin) {
 
         public static Reponse de(Chauffeur c) {
             return new Reponse(
@@ -82,7 +100,10 @@ public final class ChauffeurDto {
                     c.getGarantNom(), c.getGarantLien(), c.getGarantTelephone(),
                     c.getGarantTelephoneSecondaire(), c.getGarantAdresse(), c.getGarantProfession(),
                     c.getGarantPieceIdentite(), c.garantRenseigne(), c.getStatut(),
-                    c.getStatut().getLibelle(), c.getObservations(), c.isActif());
+                    c.getStatut().getLibelle(), c.getObservations(), c.isActif(),
+                    c.getTypeChauffeur(), c.getTypeChauffeur().getLibelle(), c.getTypeContrat(),
+                    c.getDateFinContrat(), c.getNumeroCnss(), c.getTarif(), c.getUniteTarif(),
+                    c.getIdentifiantFiscal(), c.getGroupeSanguin());
         }
     }
 }

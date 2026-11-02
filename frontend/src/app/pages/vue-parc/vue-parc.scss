@@ -66,33 +66,9 @@
   }
 }
 
+/* Filtre d'affichage : Select2 prend toute la largeur du conteneur. */
 .selecteur {
-  display: inline-flex;
-  padding: 2px;
-  border: 1px solid var(--couleur-bordure);
-  border-radius: 10px;
-  background: #fff;
-
-  button {
-    padding: 0.4rem 0.75rem;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    font: inherit;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--couleur-texte-doux);
-    cursor: pointer;
-
-    &:hover:not(.actif) {
-      color: var(--couleur-texte);
-    }
-
-    &.actif {
-      background: var(--couleur-primaire);
-      color: #fff;
-    }
-  }
+  width: 170px;
 }
 
 /* ---------------------------- Cartes camion ---------------------------- */
@@ -147,17 +123,21 @@
   align-self: flex-start;
   gap: 0.35rem;
   padding: 0.2rem 0.55rem;
-  border: 1px solid var(--couleur-bordure);
   border-radius: 999px;
-  background: #fff;
+  /* Le badge prend la couleur du statut, texte et point en blanc. */
+  background: var(--couleur-statut);
+  color: #fff;
   font-size: 0.7rem;
   font-weight: 600;
+  /* Annule le halo blanc de .vitrine, qui brouillerait le texte blanc. */
+  text-shadow: none;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.18);
 
   i {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: var(--couleur-statut);
+    background: #fff;
   }
 }
 
@@ -191,12 +171,14 @@
   font-weight: 600;
 }
 
-/* Logo de la marque en fond de toute la carte, centre et en grand, sous un
-   voile clair : il reste bien visible et le texte garde son contraste. */
+/* Logo de la marque, centre et en grand. Il passe au-dessus du dessin du
+   vehicule (qui ne le masque plus) mais reste sous le texte et le bas de carte,
+   grace a l'ordre du DOM a z-index egal. Plus de voile blanc : il aurait
+   delave le dessin, l'opacite du logo suffit a garder le texte lisible. */
 .fond-marque {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   display: grid;
   place-items: center;
   padding: 1.2rem;
@@ -206,7 +188,7 @@
     width: 82%;
     height: 82%;
     object-fit: contain;
-    opacity: 0.5;
+    opacity: 0.45;
     filter: saturate(0.9);
   }
 
@@ -215,26 +197,19 @@
     font-size: 6rem;
     font-weight: 800;
     line-height: 1;
-    opacity: 0.3;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(255, 255, 255, 0.25);
+    opacity: 0.25;
   }
 }
 
-/* Bas de carte : trajet, equipage et barre de marge. Fond blanc a peine
-   transparent : le logo se devine dessous sans gener la lecture. */
+/* Bas de carte : trajet, equipage et barre de marge. Fond blanc tres
+   transparent : le logo reste visible dessous, le halo blanc du texte le garde lisible. */
 .details {
   position: relative;
   z-index: 1;
   margin: 0.55rem;
   padding: 0.75rem 0.8rem 0.8rem;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .trajet {
@@ -307,4 +282,32 @@
 .vitrine,
 .details {
   text-shadow: 0 0 2px #fff, 0 0 5px rgba(255, 255, 255, 0.95), 0 0 9px rgba(255, 255, 255, 0.8);
+}
+
+/* Gestion de parc avec Marketplace : vehicule propose a la location en ligne. */
+.badge-en-ligne {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.9rem;
+  z-index: 1;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #8455c8;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+/* Photo du vehicule, a la place du dessin de son type. */
+.vitrine .illustration.photo {
+  right: 0.75rem;
+  bottom: 0.75rem;
+  width: 48%;
+  max-width: 190px;
+  height: 104px;
+  border: 3px solid #fff;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 6px 16px rgba(16, 24, 40, 0.18);
 }

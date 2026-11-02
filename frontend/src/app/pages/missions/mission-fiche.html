@@ -150,9 +150,9 @@
         {{ enregistrement() ? 'Enregistrement...' : 'Enregistrer' }}
       </button>
       @if (enModale()) {
-        <button class="bouton secondaire" type="button" (click)="annule.emit()">Annuler</button>
+        <button class="bouton secondaire annuler" type="button" (click)="annule.emit()">Annuler</button>
       } @else {
-        <a class="bouton secondaire" routerLink="/missions">Annuler</a>
+        <a class="bouton secondaire annuler" routerLink="/missions">Annuler</a>
       }
     </div>
   } @else {

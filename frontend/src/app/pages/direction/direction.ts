@@ -14,7 +14,7 @@ import { CamionService } from '../../core/services/camion.service';
 import { PilotageService } from '../../core/services/pilotage.service';
 import { RentabiliteService } from '../../core/services/rentabilite.service';
 import { grosMontant } from '../../shared/montant';
-import { Periode, aujourdhui, dateIso, debutPeriode, estPeriode } from '../../shared/periode';
+import { CHOIX_PERIODES, ChoixPeriode, aujourdhui, dateIso, debutPeriode, periodeCourante } from '../../shared/periode';
 
 /** Un constat affiche dans la colonne « ce qui va » ou « ce qui coince ». */
 interface Constat {
@@ -289,14 +289,22 @@ export class Direction implements OnInit {
   }
 
   /** Cale la periode sur le mois, le trimestre ou l'annee en cours, puis recharge. */
-  choisirPeriode(periode: Periode): void {
+  /** Options du filtre de periode. */
+  readonly choixPeriodes = CHOIX_PERIODES;
+
+  /** Raccourci correspondant aux dates affichees, ou « personnalisee ». */
+  periodeCourante(): ChoixPeriode {
+    return periodeCourante(this.debut, this.fin);
+  }
+
+  choisirPeriode(periode: ChoixPeriode): void {
+    // « Dates personnalisees » laisse les dates telles quelles : on les modifie a cote.
+    if (periode === 'personnalisee') {
+      return;
+    }
     this.debut = debutPeriode(periode);
     this.fin = aujourdhui();
     this.charger();
-  }
-
-  estPeriode(periode: Periode): boolean {
-    return estPeriode(periode, this.debut, this.fin);
   }
 
   /** Montant du bandeau, lisible en grand corps. */

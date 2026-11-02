@@ -38,6 +38,16 @@
         <option [ngValue]="true">A reapprovisionner (sous le seuil ou en rupture)</option>
       </select>
     </div>
+    @if (avecEnLigne) {
+      <div class="champ">
+        <label for="en-ligne">Vente en ligne</label>
+        <select id="en-ligne" [(ngModel)]="filtreEnLigne" (change)="filtrer()">
+          <option value="">En ligne et comptoir seul</option>
+          <option value="oui">Vendus en ligne</option>
+          <option value="non">Comptoir seulement</option>
+        </select>
+      </div>
+    }
     <div class="champ">
       <label for="archives">Archives</label>
       <select id="archives" [(ngModel)]="masquerArchives" (change)="filtrer()">
@@ -61,6 +71,7 @@
           <th class="numerique">Prix de vente</th>
           <th class="numerique">Cout d'achat</th>
           <th class="numerique">Stock</th>
+          @if (avecEnLigne) { <th>Canal</th> }
           <th></th>
         </tr>
       </thead>
@@ -91,6 +102,15 @@
                 <small>non suivi</small>
               }
             </td>
+            @if (avecEnLigne) {
+              <td>
+                <!-- Vendu en ligne en plus du comptoir : un clic publie ou retire le produit de la boutique. -->
+                <label class="bascule-canal" [title]="enLigne().get(a.id) ? 'Retirer de la boutique en ligne' : 'Vendre aussi en ligne'">
+                  <input type="checkbox" [checked]="!!enLigne().get(a.id)" [disabled]="!a.actif" (change)="basculerEnLigne(a)" />
+                  <span class="canal" [class.en-ligne]="enLigne().get(a.id)">{{ enLigne().get(a.id) ? '🌐 En ligne' : 'Comptoir' }}</span>
+                </label>
+              </td>
+            }
             <td style="white-space: nowrap; text-align: right">
               @if (a.suiviStock) {
                 <a class="bouton secondaire petit" routerLink="/pdv/rapports"
@@ -105,7 +125,7 @@
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="7" style="text-align: center; color: var(--couleur-texte-doux)">
+          <tr><td [attr.colspan]="avecEnLigne ? 8 : 7" style="text-align: center; color: var(--couleur-texte-doux)">
             Aucun article. Commencez par creer vos categories, puis vos articles.
           </td></tr>
         }
@@ -184,6 +204,16 @@
           <label for="unite">Unite</label>
           <input id="unite" name="unite" [(ngModel)]="formulaire.unite" placeholder="piece, kg, litre..." />
         </div>
+        @if (avecEnLigne) {
+          <!-- Point de vente avec Marketplace seulement : vendu au comptoir, ou aussi dans la boutique en ligne. -->
+          <div class="champ">
+            <label for="vente-en-ligne">Vente en ligne</label>
+            <select id="vente-en-ligne" name="venteEnLigne" [(ngModel)]="formulaire.venteEnLigne">
+              <option [ngValue]="false">Comptoir seulement</option>
+              <option [ngValue]="true">Comptoir et boutique en ligne</option>
+            </select>
+          </div>
+        }
         <div class="champ">
           <label for="suivi">Stock</label>
           <select id="suivi" name="suivi" [(ngModel)]="formulaire.suiviStock">
@@ -204,13 +234,18 @@
           </div>
         }
       </div>
+      @if (avecEnLigne && formulaire.venteEnLigne) {
+        <div style="margin-top: 0.75rem">
+          <app-galerie-photos [(photos)]="photosEnLigne" />
+        </div>
+      }
       @if (e !== 'nouveau' && formulaire.suiviStock) {
         <p style="color: var(--couleur-texte-doux); margin: 0.75rem 0 0">
           Le stock ({{ e.stockActuel }}) se modifie depuis l'ecran Stock, pour garder la trace de chaque mouvement.
         </p>
       }
       <div class="actions-formulaire">
-        <button class="bouton secondaire" type="button" (click)="edition.set(null)">Annuler</button>
+        <button class="bouton secondaire annuler" type="button" (click)="edition.set(null)">Annuler</button>
         <button class="bouton" type="submit">Enregistrer</button>
       </div>
     </form>

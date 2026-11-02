@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { FichePerformance, RentabiliteGlobale } from '../../core/models/finance';
 import { RentabiliteService } from '../../core/services/rentabilite.service';
 import { Modale } from '../../shared/modale';
-import { Periode, aujourdhui, debutPeriode, estPeriode } from '../../shared/periode';
+import { CHOIX_PERIODES, ChoixPeriode, aujourdhui, debutPeriode, periodeCourante } from '../../shared/periode';
 
 /** Seuils de lecture de la marge d'un camion : en dessous, la pastille vire a l'orange puis au rouge. */
 const MARGE_CONFORTABLE = 30;
@@ -59,14 +59,22 @@ export class Rentabilite implements OnInit {
     }
   }
 
-  choisirPeriode(periode: Periode): void {
+  /** Options du filtre de periode. */
+  readonly choixPeriodes = CHOIX_PERIODES;
+
+  /** Raccourci correspondant aux dates affichees, ou « personnalisee ». */
+  periodeCourante(): ChoixPeriode {
+    return periodeCourante(this.debut, this.fin);
+  }
+
+  choisirPeriode(periode: ChoixPeriode): void {
+    // « Dates personnalisees » laisse les dates telles quelles : on les modifie a cote.
+    if (periode === 'personnalisee') {
+      return;
+    }
     this.debut = debutPeriode(periode);
     this.fin = aujourdhui();
     this.charger();
-  }
-
-  estPeriode(periode: Periode): boolean {
-    return estPeriode(periode, this.debut, this.fin);
   }
 
   ouvrirFiche(camionId: number): void {

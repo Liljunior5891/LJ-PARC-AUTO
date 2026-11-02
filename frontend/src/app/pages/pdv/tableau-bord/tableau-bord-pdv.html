@@ -86,7 +86,15 @@
     <a class="carte-tete vert" routerLink="/pdv/ventes">
       <span class="titre">Chiffre d'affaires</span>
       <strong>{{ grosMontant(d.chiffreAffaires) }}<small>FCFA</small></strong>
-      <span class="detail">{{ d.tickets }} commande(s) · panier moyen {{ d.panierMoyen | number: '1.0-0' }}</span>
+      @if (!venteEnLigne) {
+        <span class="detail">{{ d.tickets }} commande(s) · panier moyen {{ d.panierMoyen | number: '1.0-0' }}</span>
+      } @else {
+        <!-- Marketplace : part du chiffre faite en ligne et au comptoir. -->
+        <span class="detail repartition-ventes">
+          <span title="{{ d.ticketsEnLigne }} commande(s) en ligne">En ligne : <b>{{ d.chiffreEnLigne | number: '1.0-0' }} F</b></span>
+          <span title="{{ d.ticketsComptoir }} commande(s) au comptoir">Comptoir : <b>{{ d.chiffreComptoir | number: '1.0-0' }} F</b></span>
+        </span>
+      }
       <ng-container [ngTemplateOutlet]="illustrationTicket" />
     </a>
     <a class="carte-tete olive" routerLink="/pdv/stock">

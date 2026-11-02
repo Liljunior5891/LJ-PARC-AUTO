@@ -26,3 +26,20 @@ export function debutPeriode(periode: Periode): string {
 export function estPeriode(periode: Periode, debut: string, fin: string): boolean {
   return debut === debutPeriode(periode) && fin === aujourdhui();
 }
+
+/** Valeur du filtre de periode : un raccourci, ou des dates choisies a la main. */
+export type ChoixPeriode = Periode | 'personnalisee';
+
+/** Options de la liste de periode (Select2), dans l'ordre d'affichage. */
+export const CHOIX_PERIODES: { valeur: ChoixPeriode; libelle: string }[] = [
+  { valeur: 'mois', libelle: 'Ce mois' },
+  { valeur: 'trimestre', libelle: 'Ce trimestre' },
+  { valeur: 'annee', libelle: 'Cette annee' },
+  { valeur: 'personnalisee', libelle: 'Dates personnalisees' }
+];
+
+/** Raccourci correspondant a l'intervalle, ou « personnalisee » si aucun ne colle. */
+export function periodeCourante(debut: string, fin: string): ChoixPeriode {
+  return (['mois', 'trimestre', 'annee'] as Periode[]).find((p) => estPeriode(p, debut, fin))
+    ?? 'personnalisee';
+}

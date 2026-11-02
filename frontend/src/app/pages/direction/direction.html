@@ -4,10 +4,13 @@
     <p class="sous-titre">Ce que la periode dit du parc, et ce qui reste a decider</p>
   </div>
   <div class="filtres-periode">
-    <div class="raccourcis" role="group" aria-label="Periode">
-      <button type="button" [class.actif]="estPeriode('mois')" (click)="choisirPeriode('mois')">Ce mois</button>
-      <button type="button" [class.actif]="estPeriode('trimestre')" (click)="choisirPeriode('trimestre')">Trimestre</button>
-      <button type="button" [class.actif]="estPeriode('annee')" (click)="choisirPeriode('annee')">Annee</button>
+    <!-- Periode : liste deroulante habillee par Select2 (Select2Service). -->
+    <div class="raccourcis">
+      <select aria-label="Periode" [ngModel]="periodeCourante()" (ngModelChange)="choisirPeriode($event)">
+        @for (p of choixPeriodes; track p.valeur) {
+          <option [ngValue]="p.valeur">{{ p.libelle }}</option>
+        }
+      </select>
     </div>
     <div class="dates">
       <input type="date" [(ngModel)]="debut" (change)="charger()" aria-label="Debut de la periode" />

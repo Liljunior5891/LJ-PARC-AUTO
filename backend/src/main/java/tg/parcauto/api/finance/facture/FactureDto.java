@@ -120,7 +120,9 @@ public final class FactureDto {
             boolean enRetard,
             String observations,
             List<LigneReponse> lignes,
-            List<PaiementReponse> paiements) {
+            List<PaiementReponse> paiements,
+            /** Facture d'un contrat ne dans la boutique en ligne. */
+            boolean enLigne) {
 
         /** Vue de liste : ni les lignes ni les paiements ne sont charges. */
         public static Reponse resume(Facture f) {
@@ -146,7 +148,7 @@ public final class FactureDto {
                     f.getDateEmission(), f.getDateEcheance(), f.getPeriodeDebut(), f.getPeriodeFin(),
                     f.getMontantHt(), f.getTauxTva(), f.getMontantTva(), f.getMontantTtc(),
                     f.montantPaye(), f.resteAPayer(), f.enRetard(), f.getObservations(),
-                    lignes, paiements);
+                    lignes, paiements, f.isEnLigne() || (f.getLocation() != null && f.getLocation().isEnLigne()));
         }
     }
 

@@ -1,0 +1,236 @@
+<div class="entete-page">
+  <div>
+    <h1>Offres en ligne</h1>
+    <p class="sous-titre">Ce que vos clients voient et commandent dans votre boutique</p>
+  </div>
+  <div class="actions-entete">
+    @if (sources()?.pointDeVente) {
+      <button class="bouton secondaire" type="button" (click)="ouvrirArticles()">+ Articles du point de vente</button>
+    }
+    @if (sources()?.gestionParc) {
+      <button class="bouton secondaire" type="button" (click)="nouveauVehicule()"
+              [disabled]="!vehiculesProposes().length">+ Vehicule a louer</button>
+    }
+    <!-- Avec le point de vente, tout produit vendu en ligne passe par son catalogue et sa caisse. -->
+    @if (sources() && !sources()!.pointDeVente) {
+      <button class="bouton" type="button" (click)="nouveauProduit()">+ Produit</button>
+    }
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="recherche-offre">Recherche</label>
+      <input id="recherche-offre" type="search" placeholder="Titre ou categorie..."
+             [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" />
+    </div>
+    <div class="champ">
+      <label for="filtre-type">Type d'offre</label>
+      <select id="filtre-type" [ngModel]="filtreType()" (ngModelChange)="filtreType.set($event)">
+        <option value="">Toutes les offres</option>
+        <option value="ARTICLE">Articles du point de vente</option>
+        <option value="VEHICULE">Vehicules a louer</option>
+        <option value="LIBRE">Produits de la boutique</option>
+      </select>
+    </div>
+  </div>
+
+  @if (chargement()) {
+    <div class="message vide">Chargement...</div>
+  } @else if (!offresAffichees().length) {
+    <div class="message vide">
+      {{ offres().length ? 'Aucune offre ne correspond.' : 'Aucune offre : publiez vos premiers produits avec les boutons ci-dessus.' }}
+    </div>
+  } @else {
+    <div class="mkt-grille-offres">
+      @for (o of offresAffichees(); track o.id) {
+        <article class="mkt-offre" [class.masquee]="!o.publiee">
+          <div class="visuel" [style.background-image]="o.imageAffichee ? 'url(' + o.imageAffichee + ')' : null">
+            @if (!o.imageAffichee) {
+              <span>{{ o.type === 'VEHICULE' ? '🚗' : '🛍️' }}</span>
+            }
+            <span class="type type-{{ o.type | lowercase }}">{{ libellesType[o.type] }}</span>
+            @if (o.miseEnAvant) {
+              <span class="vedette" title="Mise en avant">★</span>
+            }
+          </div>
+          <div class="corps">
+            <strong>{{ o.titre }}</strong>
+            <small>{{ o.source }}</small>
+            <p class="prix">
+              {{ o.prixAffiche | number: '1.0-0' }} FCFA
+              @if (o.unitePrix) { <span>/ {{ o.unitePrix }}</span> }
+            </p>
+            @if (o.disponible !== null && o.disponible !== undefined) {
+              <small [class.epuise]="o.disponible <= 0">
+                {{ o.disponible <= 0 ? 'Epuise' : (o.disponible | number: '1.0-0') + ' disponible(s)' }}
+              </small>
+            }
+          </div>
+          <div class="pied">
+            <label class="mkt-bascule" [title]="o.publiee ? 'Masquer de la boutique' : 'Publier dans la boutique'">
+              <input type="checkbox" [checked]="o.publiee" (change)="basculerPublication(o)" />
+              <span>{{ o.publiee ? 'En ligne' : 'Masquee' }}</span>
+            </label>
+            <button class="bouton secondaire petit" type="button" (click)="modifier(o)">Modifier</button>
+            <button class="bouton danger petit" type="button" (click)="retirer(o)" title="Retirer de la boutique">✕</button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</div>
+
+<!-- Publication d'articles du point de vente, cochés en lot. -->
+@if (choixArticles()) {
+  <app-modale titre="Publier des articles du point de vente"
+              sousTitre="Prix, photo et stock restent ceux du point de vente" largeur="760px"
+              [erreur]="erreur()" (ferme)="choixArticles.set(false)">
+    <div class="mkt-choix-articles">
+      <div class="barre">
+        <input type="search" placeholder="Rechercher un article..." [ngModel]="rechercheArticle()"
+               (ngModelChange)="rechercheArticle.set($event)" aria-label="Rechercher un article" />
+        <button class="bouton secondaire petit" type="button" (click)="toutCocher()">Tout cocher</button>
+      </div>
+      <ul>
+        @for (a of articlesProposes(); track a.id) {
+          <li>
+            <label>
+              <input type="checkbox" [checked]="articlesCoches().has(a.id)" (change)="basculerArticle(a.id)" />
+              <span class="vignette" [style.background-image]="a.image ? 'url(' + a.image + ')' : null"></span>
+              <span class="textes">
+                <strong>{{ a.nom }}</strong>
+                <small>{{ a.code }}{{ a.categorie ? ' · ' + a.categorie : '' }}
+                  @if (a.suiviStock) { · {{ a.stock | number: '1.0-0' }} en stock }</small>
+              </span>
+              <b>{{ a.prix | number: '1.0-0' }} FCFA</b>
+            </label>
+          </li>
+        } @empty {
+          <li class="vide">Tous les articles actifs sont deja publies.</li>
+        }
+      </ul>
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="choixArticles.set(false)">Annuler</button>
+      <button class="bouton" type="button" [disabled]="!articlesCoches().size" (click)="publierArticles()">
+        Publier {{ articlesCoches().size || '' }} article(s)
+      </button>
+    </div>
+  </app-modale>
+}
+
+<!-- Creation ou modification d'une offre : les champs suivent son type. -->
+@if (edition(); as e) {
+  <app-modale [titre]="e.id === null ? (e.requete.type === 'VEHICULE' ? 'Proposer un vehicule a la location' : 'Nouveau produit') : 'Modifier l\'offre'"
+              [sousTitre]="libellesType[e.requete.type]" largeur="760px" [erreur]="erreur()"
+              (ferme)="edition.set(null)">
+    <form (ngSubmit)="enregistrer()">
+      <div class="grille-formulaire">
+        @if (e.requete.type === 'VEHICULE' && e.id === null) {
+          <div class="champ champ-large">
+            <label for="vehicule">Vehicule <span class="requis">*</span></label>
+            <select id="vehicule" name="vehicule" [ngModel]="e.requete.camionId" (ngModelChange)="choisirVehicule($event)">
+              @for (v of vehiculesProposes(); track v.id) {
+                <option [ngValue]="v.id">{{ v.immatriculation }} — {{ v.libelle }} ({{ v.statut }})</option>
+              }
+            </select>
+          </div>
+        }
+        <div class="champ champ-large">
+          <label for="titre">Titre affiche <span class="requis">*</span></label>
+          <input id="titre" name="titre" [(ngModel)]="e.requete.titre" required maxlength="150" />
+        </div>
+
+        @switch (e.requete.type) {
+          @case ('ARTICLE') {
+            <div class="champ">
+              <label for="prix">Prix en ligne (FCFA)</label>
+              <input id="prix" name="prix" type="number" min="0" [(ngModel)]="e.requete.prix"
+                     [placeholder]="e.prixSource !== undefined ? (e.prixSource | number: '1.0-0') + ' (prix du point de vente)' : ''" />
+              <small>Laissez vide pour suivre le prix du point de vente.</small>
+            </div>
+          }
+          @case ('VEHICULE') {
+            <div class="champ">
+              <label for="tarif">Tarif par jour (FCFA) <span class="requis">*</span></label>
+              <input id="tarif" name="tarif" type="number" min="0" [(ngModel)]="e.requete.prix" required />
+            </div>
+            <div class="champ">
+              <label for="caution">Caution (FCFA)</label>
+              <input id="caution" name="caution" type="number" min="0" [(ngModel)]="e.requete.caution" />
+            </div>
+          }
+          @case ('LIBRE') {
+            <div class="champ">
+              <label for="prix-libre">Prix (FCFA) <span class="requis">*</span></label>
+              <input id="prix-libre" name="prix" type="number" min="0" [(ngModel)]="e.requete.prix" required />
+            </div>
+            <div class="champ">
+              <label for="unite">Unite de vente</label>
+              <input id="unite" name="unite" [(ngModel)]="e.requete.unitePrix" placeholder="piece, kg, carton..." />
+            </div>
+            <div class="champ">
+              <label for="stock">Quantite disponible</label>
+              <input id="stock" name="stock" type="number" min="0" [(ngModel)]="e.requete.stock" />
+              <small>Laissez vide pour ne pas suivre le stock.</small>
+            </div>
+          }
+        }
+
+        <div class="champ">
+          <label for="categorie-offre">Categorie</label>
+          <input id="categorie-offre" name="categorie" [(ngModel)]="e.requete.categorie" placeholder="Boissons, plats..." />
+        </div>
+        <div class="champ champ-large">
+          <label for="description-offre">Description</label>
+          <textarea id="description-offre" name="description" rows="3" [(ngModel)]="e.requete.description"></textarea>
+        </div>
+
+        <div class="champ champ-large">
+          <label>Photo</label>
+          <div class="mkt-photo">
+            <span class="vignette"
+                  [style.background-image]="(e.requete.image || e.imageSource) ? 'url(' + (e.requete.image || e.imageSource) + ')' : null"></span>
+            <div>
+              <label class="bouton petit">
+                {{ e.requete.image ? 'Remplacer' : 'Choisir une photo' }}
+                <input type="file" accept="image/*" hidden (change)="choisirImage($event)" />
+              </label>
+              @if (e.requete.image) {
+                <button class="bouton secondaire petit" type="button" (click)="retirerImage()">Retirer</button>
+              }
+              @if (e.requete.type !== 'LIBRE') {
+                <small>Sans photo propre, celle {{ e.requete.type === 'ARTICLE' ? 'de l\'article' : 'du vehicule' }} est affichee.</small>
+              }
+            </div>
+          </div>
+        </div>
+
+        <label class="mkt-interrupteur">
+          <input type="checkbox" name="publiee" [(ngModel)]="e.requete.publiee" />
+          <span><strong>En ligne</strong><small>Visible dans la boutique.</small></span>
+        </label>
+        <label class="mkt-interrupteur">
+          <input type="checkbox" name="vedette" [(ngModel)]="e.requete.miseEnAvant" />
+          <span><strong>Mettre en avant</strong><small>Affichee en tete de la boutique.</small></span>
+        </label>
+      </div>
+
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="edition.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="enregistrement()">
+          {{ enregistrement() ? 'Enregistrement...' : (e.id === null ? 'Publier' : 'Enregistrer') }}
+        </button>
+      </div>
+    </form>
+  </app-modale>
+}

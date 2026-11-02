@@ -100,7 +100,9 @@ public class TableauBordPdvService {
             List<Categorie> parCategorie, List<VenteDto.Resume> derniersTickets,
             long articlesActifs, long caissesOuvertes, long caisses,
             long ruptures, long sousSeuil, long commandesFournisseursEnCours, long commandesFournisseursEnRetard,
-            List<CatalogueDto.ArticleReponse> stockBas, Salle salle) {
+            List<CatalogueDto.ArticleReponse> stockBas, Salle salle,
+            /** Part du chiffre d'affaires faite en ligne (Marketplace), le reste au comptoir. */
+            BigDecimal chiffreEnLigne, long ticketsEnLigne, BigDecimal chiffreComptoir, long ticketsComptoir) {
     }
 
     public TableauBord calculer(Instant debut, Instant fin, ZoneId fuseau) {
@@ -115,6 +117,9 @@ public class TableauBordPdvService {
             chiffre = chiffre.add(total);
             tickets += nombre;
         }
+        Object[] enLigne = venteRepository.totauxEnLigne(debut, fin).get(0);
+        BigDecimal chiffreEnLigne = (BigDecimal) enLigne[0];
+        long ticketsEnLigne = (Long) enLigne[1];
         BigDecimal panier = tickets == 0 ? BigDecimal.ZERO
                 : chiffre.divide(BigDecimal.valueOf(tickets), 2, RoundingMode.HALF_UP);
         BigDecimal cout = venteRepository.coutAchatPeriode(debut, fin);
@@ -154,7 +159,8 @@ public class TableauBordPdvService {
                 commandeFournisseurRepository.countByStatut(CommandeFournisseur.Statut.EN_COURS),
                 commandeFournisseurRepository.enRetard(aujourdhui),
                 stockBas.stream().limit(10).toList(),
-                salle());
+                salle(),
+                chiffreEnLigne, ticketsEnLigne, chiffre.subtract(chiffreEnLigne), tickets - ticketsEnLigne);
     }
 
     /** Un point par jour (ou par mois), periodes creuses comprises : la courbe ne saute pas les jours sans vente. */

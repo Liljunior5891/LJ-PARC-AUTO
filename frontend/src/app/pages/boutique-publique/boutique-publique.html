@@ -1,0 +1,466 @@
+<div class="boutique">
+  @if (chargement()) {
+    <div class="etat">Chargement de la boutique...</div>
+  } @else if (introuvable()) {
+    <div class="etat">
+      <strong>{{ introuvable() }}</strong>
+      <a routerLink="/marche">Decouvrir les autres boutiques</a>
+    </div>
+  } @else if (vitrine(); as v) {
+    <!-- Bandeau d'informations : adresse, horaires, contacts. -->
+    <div class="bande-info">
+      <div class="conteneur">
+        <div class="groupe">
+          @if (v.adresse || v.ville) {
+            <span><app-icone-vitrine nom="position" /> {{ v.adresse }}{{ v.adresse && v.ville ? ', ' : '' }}{{ v.ville }}</span>
+          }
+          @if (v.horaires) { <span class="masque-mobile"><app-icone-vitrine nom="horloge" /> {{ v.horaires }}</span> }
+          @if (v.livraisonActive) {
+            <span class="masque-mobile"><app-icone-vitrine nom="livraison" /> Livraison{{ v.zoneLivraison ? ' : ' + v.zoneLivraison : '' }}</span>
+          }
+        </div>
+        <div class="groupe">
+          @if (v.telephone) { <a [href]="'tel:' + v.telephone"><app-icone-vitrine nom="telephone" /> {{ v.telephone }}</a> }
+          @if (v.whatsapp) { <a [href]="whatsapp(v.whatsapp)" target="_blank" rel="noopener">WhatsApp</a> }
+        </div>
+      </div>
+    </div>
+
+    <!-- En-tete : boutique, recherche et panier. -->
+    <header class="entete-site">
+      <div class="conteneur">
+        <a routerLink="/marche" class="retour-marche" title="Place de marche" aria-label="Retour a la place de marche">
+          <app-icone-vitrine nom="retour" />
+        </a>
+        <button type="button" class="marque-site" (click)="defilerVers('haut')">
+          <span class="pictogramme">
+            @if (v.logo) { <img [src]="v.logo" [alt]="'Logo ' + v.nom" /> } @else { {{ v.nom.charAt(0) }} }
+          </span>
+          <span class="textes"><strong>{{ v.nom }}</strong><small>{{ v.categorie || 'Boutique en ligne' }}</small></span>
+        </button>
+        <label class="champ-recherche">
+          <input type="search" placeholder="Rechercher un produit..." aria-label="Rechercher un produit"
+                 [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" (keydown.enter)="defilerVers('produits')" />
+          @if (categories().length > 1) {
+            <select data-natif aria-label="Rayon" [ngModel]="categorie()" (ngModelChange)="choisirRayon($event)">
+              <option value="">Tous les rayons</option>
+              @for (c of categories(); track c) {
+                <option [value]="c">{{ c }}</option>
+              }
+            </select>
+          }
+          <span class="loupe"><app-icone-vitrine nom="recherche" /></span>
+        </label>
+        <div class="actions-entete">
+          <button class="bouton-panier" type="button" (click)="panierOuvert.set(true)" [disabled]="!nombreArticles()"
+                  aria-label="Ouvrir le panier">
+            <app-icone-vitrine nom="panier" />
+            @if (nombreArticles()) { <b class="compte">{{ nombreArticles() }}</b> }
+            <span class="textes masque-panier">
+              <small>Mon panier</small>
+              <strong>{{ sousTotal() | number: '1.0-0' }} FCFA</strong>
+            </span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="conteneur" id="haut">
+      <!-- Heros : identite de la boutique, actions et rassurance. -->
+      <section class="heros">
+        <div class="texte-heros">
+          <span class="statut" [class.ferme]="!v.ouverte">
+            <i></i> {{ v.ouverte ? 'Ouvert : commandes acceptees' : 'Ferme pour le moment' }}
+          </span>
+          <h1>{{ v.nom }}</h1>
+          @if (v.slogan) { <p class="slogan">{{ v.slogan }}</p> }
+          @if (v.description) { <p class="description">{{ v.description }}</p> }
+          <div class="actions">
+            <button type="button" class="bouton-site" (click)="defilerVers('produits')">
+              Voir les produits <app-icone-vitrine nom="fleche" />
+            </button>
+            @if (v.whatsapp) {
+              <a class="bouton-site whatsapp" [href]="whatsapp(v.whatsapp)" target="_blank" rel="noopener">WhatsApp</a>
+            } @else if (v.telephone) {
+              <a class="bouton-site contour" [href]="'tel:' + v.telephone"><app-icone-vitrine nom="telephone" /> Appeler</a>
+            }
+          </div>
+          <ul class="rassurances">
+            @if (v.retraitActif) {
+              <li><app-icone-vitrine nom="boutique" /><span><strong>Retrait sur place</strong><small>Gratuit</small></span></li>
+            }
+            @if (v.livraisonActive) {
+              <li><app-icone-vitrine nom="livraison" /><span><strong>Livraison</strong>
+                <small>{{ v.fraisLivraison ? (v.fraisLivraison | number: '1.0-0') + ' FCFA' : 'Offerte' }}</small></span></li>
+            }
+            @if (v.paiementMobileMoney) {
+              <li><app-icone-vitrine nom="mobile" /><span><strong>Mobile money</strong><small>Paiement en ligne</small></span></li>
+            }
+            @if (v.paiementRemise) {
+              <li><app-icone-vitrine nom="bouclier" /><span><strong>Paiement a la remise</strong><small>Sans avance</small></span></li>
+            }
+          </ul>
+        </div>
+        <div class="visuel-heros">
+          @if (v.couverture) {
+            <span class="couverture" [style.background-image]="'url(' + v.couverture + ')'"></span>
+          } @else if (apercus().length) {
+            <div class="collage" [attr.data-nombre]="apercus().length">
+              @for (o of apercus(); track o.id) {
+                <button type="button" class="apercu" (click)="ouvrirGalerie(o)" [attr.aria-label]="'Voir ' + o.titre">
+                  <img [src]="o.image" [alt]="o.titre" />
+                </button>
+              }
+            </div>
+          } @else {
+            <span class="couverture vide">{{ v.nom.charAt(0) }}</span>
+          }
+          @if (v.logo) { <img class="logo-flottant" [src]="v.logo" [alt]="'Logo ' + v.nom" /> }
+          <span class="pastille-chiffre">
+            <strong>{{ v.offres.length }}</strong>
+            <small>produit{{ v.offres.length > 1 ? 's' : '' }}</small>
+          </span>
+        </div>
+      </section>
+
+      @if (!v.ouverte) {
+        <p class="fermee"><app-icone-vitrine nom="cadenas" /> {{ v.messageFermeture || 'Ferme pour le moment.' }}</p>
+      }
+
+      <!-- Rayons illustres par leurs produits. -->
+      @if (categories().length > 1) {
+        <section class="section">
+          <div class="titre-section">
+            <h2><app-icone-vitrine nom="grille" /> Nos rayons</h2>
+          </div>
+          <div class="rayons">
+            <button type="button" class="rayon" [class.actif]="!categorie()" (click)="choisirRayon('')">
+              <span class="vignette-rayon tout"><app-icone-vitrine nom="grille" /></span>
+              <strong>Tout</strong>
+              <small>{{ v.offres.length }} produit{{ v.offres.length > 1 ? 's' : '' }}</small>
+            </button>
+            @for (r of rayons(); track r.nom) {
+              <button type="button" class="rayon" [class.actif]="categorie() === r.nom" (click)="choisirRayon(r.nom)">
+                <span class="vignette-rayon">
+                  @if (r.image) { <img [src]="r.image" [alt]="r.nom" loading="lazy" /> } @else { 🛍️ }
+                </span>
+                <strong>{{ r.nom }}</strong>
+                <small>{{ r.nombre }} produit{{ r.nombre > 1 ? 's' : '' }}</small>
+              </button>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Produits mis en avant. -->
+      @if (enAvant().length && !categorie() && !recherche().trim()) {
+        <section class="section">
+          <div class="titre-section">
+            <h2><app-icone-vitrine nom="etiquette" /> A la une</h2>
+          </div>
+          <div class="grille-produits">
+            @for (o of enAvant(); track o.id) {
+              <ng-container *ngTemplateOutlet="carte; context: { $implicit: o, v: v, prefixe: 'une-' }" />
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Tous les produits. -->
+      <section class="section" id="produits">
+        <div class="titre-section">
+          <h2><app-icone-vitrine nom="boutique" /> {{ categorie() || 'Tous les produits' }}</h2>
+          <span class="complement">
+            {{ offresAffichees().length }} produit{{ offresAffichees().length > 1 ? 's' : '' }}
+            @if (recherche().trim()) { pour « {{ recherche().trim() }} » }
+          </span>
+        </div>
+        <div class="grille-produits">
+          @for (o of offresAffichees(); track o.id) {
+            <ng-container *ngTemplateOutlet="carte; context: { $implicit: o, v: v, prefixe: 'offre-' }" />
+          } @empty {
+            <div class="etat">
+              <strong>Aucun produit ne correspond.</strong>
+              @if (recherche() || categorie()) {
+                <button type="button" (click)="recherche.set(''); categorie.set('')">Voir tous les produits</button>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    </main>
+
+    <!-- Carte d'un produit : image claire, prix et ajout au panier. -->
+    <ng-template #carte let-o let-v="v" let-prefixe="prefixe">
+      <article class="carte-produit" [id]="prefixe + o.id" [class.epuisee]="!o.disponible"
+               [class.en-avant]="offreEnAvant() === o.id">
+        <div class="badges">
+          @if (o.miseEnAvant) { <span class="badge ambre">★ A la une</span> }
+          @if (o.type === 'VEHICULE') { <span class="badge">Location</span> }
+          @if (!o.disponible) { <span class="badge gris">{{ o.type === 'VEHICULE' ? 'Indisponible' : 'Epuise' }}</span> }
+        </div>
+        <div class="image" [class.cliquable]="o.image || o.photos" [attr.role]="o.image || o.photos ? 'button' : null"
+             [attr.tabindex]="o.image || o.photos ? 0 : null" [attr.aria-label]="'Voir les photos de ' + o.titre"
+             (click)="ouvrirGalerie(o)" (keydown.enter)="ouvrirGalerie(o)">
+          @if (o.image) {
+            <img [src]="o.image" [alt]="o.titre" loading="lazy" />
+          } @else {
+            <span class="sans-image">{{ o.type === 'VEHICULE' ? '🚗' : '🛍️' }}</span>
+          }
+          @if (o.photos) {
+            <span class="nombre-photos"><app-icone-vitrine nom="photo" /> {{ o.photos + (o.image ? 1 : 0) }}</span>
+          }
+        </div>
+        <div class="corps">
+          @if (o.categorie) { <span class="categorie">{{ o.categorie }}</span> }
+          <h3>{{ o.titre }}</h3>
+          @if (o.description) { <p class="description">{{ o.description }}</p> }
+          <span class="prix">{{ o.prix | number: '1.0-0' }} FCFA @if (o.unitePrix) { <small>/ {{ o.unitePrix }}</small> }</span>
+          @if (o.type === 'VEHICULE' && o.caution) {
+            <small class="meta">Caution : {{ o.caution | number: '1.0-0' }} FCFA</small>
+          }
+          <div class="achat">
+            @if (!o.disponible) {
+              <span class="indispo">{{ o.type === 'VEHICULE' ? 'Indisponible pour le moment' : 'Epuise' }}</span>
+            } @else if (o.type === 'VEHICULE') {
+              <button class="bouton-achat plein" type="button" (click)="reserver(o)">Reserver <app-icone-vitrine nom="fleche" /></button>
+            } @else if (!v.ouverte) {
+              <span class="indispo">Boutique fermee</span>
+            } @else if (quantite(o)) {
+              <div class="compteur">
+                <button type="button" (click)="ajouter(o, -1)" aria-label="Retirer un">−</button>
+                <b>{{ quantite(o) }} au panier</b>
+                <button type="button" (click)="ajouter(o)" aria-label="Ajouter un"
+                        [disabled]="o.quantiteMax !== null && o.quantiteMax !== undefined && quantite(o) >= o.quantiteMax">+</button>
+              </div>
+            } @else {
+              <button class="bouton-achat" type="button" (click)="ajouter(o)">Ajouter au panier <app-icone-vitrine nom="panier" /></button>
+            }
+          </div>
+        </div>
+      </article>
+    </ng-template>
+
+    @if (v.ouverte && nombreArticles() && !panierOuvert() && !commande()) {
+      <button class="barre-panier" type="button" (click)="panierOuvert.set(true)">
+        <span>{{ nombreArticles() }} article(s)</span>
+        <strong>Voir le panier · {{ sousTotal() | number: '1.0-0' }} FCFA</strong>
+      </button>
+    }
+
+    <footer class="pied-site">
+      <div class="conteneur colonnes">
+        <div>
+          <div class="marque-pied">{{ v.nom }}</div>
+          <p>{{ v.slogan || 'Commandez en ligne, retirez sur place ou faites-vous livrer.' }}</p>
+        </div>
+        @if (categories().length) {
+          <div>
+            <h4>Rayons</h4>
+            <ul>
+              @for (c of categories().slice(0, 6); track c) {
+                <li><button type="button" (click)="choisirRayon(c)">{{ c }}</button></li>
+              }
+            </ul>
+          </div>
+        }
+        <div>
+          <h4>Nous trouver</h4>
+          <ul>
+            @if (v.adresse || v.ville) {
+              <li><app-icone-vitrine nom="position" /> {{ v.adresse }}{{ v.adresse && v.ville ? ', ' : '' }}{{ v.ville }}</li>
+            }
+            @if (v.horaires) { <li><app-icone-vitrine nom="horloge" /> {{ v.horaires }}</li> }
+            @if (v.telephone) { <li><a [href]="'tel:' + v.telephone">{{ v.telephone }}</a></li> }
+          </ul>
+        </div>
+        <div>
+          <h4>Paiement</h4>
+          <ul>
+            @if (v.paiementMobileMoney) { <li><app-icone-vitrine nom="mobile" /> Mobile money</li> }
+            @if (v.paiementRemise) { <li><app-icone-vitrine nom="boutique" /> A la remise</li> }
+            <li><a routerLink="/marche">Place de marche</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="bas">© {{ annee }} {{ v.nom }} · boutique propulsee par <a routerLink="/">LJ SaaS</a></div>
+    </footer>
+
+    <!-- Panier. -->
+    @if (panierOuvert()) {
+      <div class="voile-fenetre" (click)="panierOuvert.set(false)"></div>
+      <aside class="tiroir" role="dialog" aria-label="Panier">
+        <header>
+          <h2>Votre panier</h2>
+          <button type="button" class="fermer" (click)="panierOuvert.set(false)" aria-label="Fermer">×</button>
+        </header>
+        <ul class="lignes">
+          @for (l of lignesPanier(); track l.offre.id) {
+            <li>
+              <span class="vignette" [style.background-image]="l.offre.image ? 'url(' + l.offre.image + ')' : null"></span>
+              <span class="textes">
+                <strong>{{ l.offre.titre }}</strong>
+                <small>{{ l.offre.prix | number: '1.0-0' }} FCFA</small>
+              </span>
+              <div class="compteur">
+                <button type="button" (click)="ajouter(l.offre, -1)" aria-label="Retirer un">−</button>
+                <b>{{ l.quantite }}</b>
+                <button type="button" (click)="ajouter(l.offre)" aria-label="Ajouter un">+</button>
+              </div>
+            </li>
+          } @empty {
+            <li class="vide">Votre panier est vide.</li>
+          }
+        </ul>
+        <footer>
+          <p class="total"><span>Sous-total</span><strong>{{ sousTotal() | number: '1.0-0' }} FCFA</strong></p>
+          <button class="principal" type="button" [disabled]="!nombreArticles() || !v.ouverte" (click)="passerCommande()">
+            {{ v.ouverte ? 'Commander' : 'Ferme pour le moment' }}
+          </button>
+        </footer>
+      </aside>
+    }
+
+    <!-- Commande : coordonnees, remise et paiement. -->
+    @if (commande()) {
+      <div class="voile-fenetre" (click)="commande.set(false)"></div>
+      <section class="fenetre" role="dialog" aria-label="Finaliser la commande">
+        <header>
+          <h2>Finaliser la commande</h2>
+          <button type="button" class="fermer" (click)="commande.set(false)" aria-label="Fermer">×</button>
+        </header>
+        <form (ngSubmit)="envoyerCommande()">
+          @if (erreur()) { <p class="erreur">{{ erreur() }}</p> }
+          <fieldset>
+            <legend>Vos coordonnees</legend>
+            <input name="nom" [(ngModel)]="coordonnees.nom" placeholder="Nom et prenom *" autocomplete="name" required />
+            <input name="telephone" type="tel" [(ngModel)]="coordonnees.telephone" placeholder="Telephone *"
+                   autocomplete="tel" required />
+            <input name="email" type="email" [(ngModel)]="coordonnees.email" placeholder="Email (facultatif)" autocomplete="email" />
+          </fieldset>
+
+          <fieldset>
+            <legend>Remise</legend>
+            <div class="choix">
+              @if (v.retraitActif) {
+                <label [class.actif]="modeRemise() === 'RETRAIT'">
+                  <input type="radio" name="remise" [checked]="modeRemise() === 'RETRAIT'" (change)="modeRemise.set('RETRAIT')" />
+                  <span><strong>Retrait en boutique</strong><small>Gratuit</small></span>
+                </label>
+              }
+              @if (v.livraisonActive) {
+                <label [class.actif]="modeRemise() === 'LIVRAISON'">
+                  <input type="radio" name="remise" [checked]="modeRemise() === 'LIVRAISON'" (change)="modeRemise.set('LIVRAISON')" />
+                  <span><strong>Livraison</strong>
+                    <small>{{ v.fraisLivraison ? (v.fraisLivraison | number: '1.0-0') + ' FCFA' : 'Offerte' }}</small></span>
+                </label>
+              }
+            </div>
+            @if (modeRemise() === 'LIVRAISON') {
+              <input name="adresse" [(ngModel)]="coordonnees.adresse" placeholder="Adresse de livraison (quartier, repere) *"
+                     autocomplete="street-address" />
+            }
+          </fieldset>
+
+          <fieldset>
+            <legend>Paiement</legend>
+            <div class="choix">
+              @if (v.paiementRemise) {
+                <label [class.actif]="modePaiement() === 'A_LA_REMISE'">
+                  <input type="radio" name="paiement" [checked]="modePaiement() === 'A_LA_REMISE'" (change)="modePaiement.set('A_LA_REMISE')" />
+                  <span><strong>A la remise</strong><small>{{ modeRemise() === 'LIVRAISON' ? 'A la livraison' : 'Au retrait' }}</small></span>
+                </label>
+              }
+              @if (v.paiementMobileMoney) {
+                <label [class.actif]="modePaiement() === 'MOBILE_MONEY'">
+                  <input type="radio" name="paiement" [checked]="modePaiement() === 'MOBILE_MONEY'" (change)="modePaiement.set('MOBILE_MONEY')" />
+                  <span><strong>Mobile money</strong><small>Maintenant, en ligne</small></span>
+                </label>
+              }
+            </div>
+          </fieldset>
+
+          <textarea name="note" rows="2" [(ngModel)]="note" placeholder="Une precision pour la boutique ? (facultatif)"></textarea>
+
+          <div class="recap">
+            <p><span>Sous-total</span><span>{{ sousTotal() | number: '1.0-0' }} FCFA</span></p>
+            @if (frais()) { <p><span>Livraison</span><span>{{ frais() | number: '1.0-0' }} FCFA</span></p> }
+            <p class="total"><span>Total</span><strong>{{ sousTotal() + frais() | number: '1.0-0' }} FCFA</strong></p>
+          </div>
+          <button class="principal" type="submit" [disabled]="envoi()">
+            {{ envoi() ? 'Envoi...' : (modePaiement() === 'MOBILE_MONEY' ? 'Commander et payer' : 'Envoyer la commande') }}
+          </button>
+        </form>
+      </section>
+    }
+
+    <!-- Demande de location d'un vehicule. -->
+    @if (location(); as o) {
+      <div class="voile-fenetre" (click)="location.set(null)"></div>
+      <section class="fenetre" role="dialog" [attr.aria-label]="'Reserver ' + o.titre">
+        <header>
+          <h2>Reserver : {{ o.titre }}</h2>
+          <button type="button" class="fermer" (click)="location.set(null)" aria-label="Fermer">×</button>
+        </header>
+        <form (ngSubmit)="envoyerLocation()">
+          @if (erreur()) { <p class="erreur">{{ erreur() }}</p> }
+          <fieldset>
+            <legend>Periode</legend>
+            <div class="deux">
+              <label>Du<input name="debut" type="date" [min]="aujourdhui" [(ngModel)]="dateDebut" /></label>
+              <label>Au<input name="fin" type="date" [min]="dateDebut || aujourdhui" [(ngModel)]="dateFin" /></label>
+            </div>
+            <div class="deux">
+              <input name="depart" [(ngModel)]="lieuDepart" placeholder="Lieu de depart" />
+              <input name="destination" [(ngModel)]="destination" placeholder="Destination" />
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Vos coordonnees</legend>
+            <input name="nom" [(ngModel)]="coordonnees.nom" placeholder="Nom et prenom *" autocomplete="name" />
+            <input name="telephone" type="tel" [(ngModel)]="coordonnees.telephone" placeholder="Telephone *" autocomplete="tel" />
+            <input name="email" type="email" [(ngModel)]="coordonnees.email" placeholder="Email (facultatif)" />
+          </fieldset>
+          <textarea name="message" rows="2" [(ngModel)]="message" placeholder="Avec chauffeur ? Une precision ? (facultatif)"></textarea>
+          <div class="recap">
+            <p><span>{{ joursLocation() }} jour(s) × {{ o.prix | number: '1.0-0' }} FCFA</span></p>
+            <p class="total"><span>Estimation</span><strong>{{ joursLocation() * o.prix | number: '1.0-0' }} FCFA</strong></p>
+            @if (o.caution) { <p><span>Caution</span><span>{{ o.caution | number: '1.0-0' }} FCFA</span></p> }
+            <small>La boutique confirme la disponibilite et vous recontacte. Rien n'est a payer maintenant.</small>
+          </div>
+          <button class="principal" type="submit" [disabled]="envoi()">{{ envoi() ? 'Envoi...' : 'Envoyer la demande' }}</button>
+        </form>
+      </section>
+    }
+  }
+  @if (galerie(); as g) {
+    <!-- Visionneuse : photo principale et photos supplementaires du produit. -->
+    <div class="visionneuse" role="dialog" aria-modal="true" [attr.aria-label]="'Photos de ' + g.titre"
+         (click)="galerie.set(null)">
+      <div class="cadre" (click)="$event.stopPropagation()">
+        <header>
+          <strong>{{ g.titre }}</strong>
+          <span>{{ photoGalerie() + 1 }} / {{ g.photos.length }}</span>
+          <button type="button" class="fermer" aria-label="Fermer" (click)="galerie.set(null)">✕</button>
+        </header>
+        <div class="scene">
+          @if (g.photos.length > 1) {
+            <button type="button" class="fleche gauche" aria-label="Photo precedente" (click)="defilerGalerie(-1)">‹</button>
+          }
+          <img [src]="g.photos[photoGalerie()]" [alt]="g.titre" />
+          @if (g.photos.length > 1) {
+            <button type="button" class="fleche droite" aria-label="Photo suivante" (click)="defilerGalerie(1)">›</button>
+          }
+        </div>
+        @if (g.photos.length > 1) {
+          <div class="miniatures">
+            @for (p of g.photos; track $index; let i = $index) {
+              <button type="button" [class.active]="i === photoGalerie()" [style.background-image]="'url(' + p + ')'"
+                      [attr.aria-label]="'Photo ' + (i + 1)" (click)="photoGalerie.set(i)"></button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

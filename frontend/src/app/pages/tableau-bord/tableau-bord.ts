@@ -1,4 +1,6 @@
+import { FormsModule } from '@angular/forms';
 import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { AuthService } from '../../core/auth/auth.service';
 import { Component, LOCALE_ID, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
@@ -22,7 +24,7 @@ import { grosMontant } from '../../shared/montant';
 
 @Component({
   selector: 'app-tableau-bord',
-  imports: [RouterLink, DecimalPipe, NgTemplateOutlet],
+  imports: [FormsModule, RouterLink, DecimalPipe, NgTemplateOutlet],
   templateUrl: './tableau-bord.html',
   styleUrl: './tableau-bord.scss'
 })
@@ -36,6 +38,8 @@ export class TableauBord implements OnInit {
 
   readonly indicateurs = signal<TableauBordParc | null>(null);
   readonly finances = signal<TableauBordFinances | null>(null);
+  /** Gestion de parc avec Marketplace : le chiffre d'affaires se detaille, en ligne et en agence. */
+  readonly avecEnLigne = inject(AuthService).aModule('MARKETPLACE');
   readonly evolution = signal<EvolutionMensuelle[]>([]);
   readonly depensesParCategorie = signal<LigneCategorieDepense[]>([]);
   /** Recettes, depenses et kilometres de chaque camion sur le mois en cours. */

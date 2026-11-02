@@ -33,7 +33,9 @@ public final class RecetteDto {
             @Size(max = 180) String lieuDepart,
             @Size(max = 180) String destination,
             @Size(max = 255) String marchandise,
-            @PositiveOrZero Long kilometres) {
+            @PositiveOrZero Long kilometres,
+            /** Demande de location en ligne acceptee que cette recette conclut (canal « en ligne »). */
+            Long demandeEnLigneId) {
     }
 
     /**
@@ -56,7 +58,17 @@ public final class RecetteDto {
             @NotNull LocalDate dateRecette,
             ModePaiement modePaiement,
             @Size(max = 80) String reference,
-            String observations) {
+            String observations,
+            /** Demande de location en ligne acceptee que cette recette conclut (canal « en ligne »). */
+            Long demandeEnLigneId) {
+    }
+
+    /** Recette enregistree en agence pour conclure une demande de location en ligne. */
+    public record RecetteDepuisDemande(Long recetteId, Long demandeId, Long camionId) {
+    }
+
+    /** Engagement du vehicule qui chevauche la periode d'une recette (location, mission, transport...). */
+    public record Occupation(String reference, LocalDate debut, LocalDate fin, String message) {
     }
 
     public record Reponse(
@@ -86,7 +98,9 @@ public final class RecetteDto {
             String lieuDepart,
             String destination,
             String marchandise,
-            Long kilometres) {
+            Long kilometres,
+            /** Recette d'un contrat ne dans la boutique en ligne. */
+            boolean enLigne) {
 
         public static Reponse de(Recette r) {
             return new Reponse(
@@ -104,7 +118,8 @@ public final class RecetteDto {
                     r.getDateRecette(), r.getModePaiement(), r.getReference(),
                     r.getJustificatif(), r.getObservations(),
                     r.getDateDebut(), r.getDateFin(), r.getLieuDepart(), r.getDestination(),
-                    r.getMarchandise(), r.getKilometres());
+                    r.getMarchandise(), r.getKilometres(),
+                    r.isEnLigne() || (r.getLocation() != null && r.getLocation().isEnLigne()));
         }
     }
 

@@ -7,11 +7,12 @@ import { AffectationService } from '../../core/services/affectation.service';
 import { CamionService } from '../../core/services/camion.service';
 import { ChauffeurService } from '../../core/services/chauffeur.service';
 import { Modale } from '../../shared/modale';
+import { ChauffeurEnregistre, FormulaireChauffeur } from '../../shared/formulaire-chauffeur';
 import { VALIDATION_FORMULAIRE, messageChampsManquants } from '../../shared/validation-formulaire';
 
 @Component({
   selector: 'app-affectations',
-  imports: [FormsModule, ReactiveFormsModule, SelectRecherche, Modale, VALIDATION_FORMULAIRE],
+  imports: [FormsModule, ReactiveFormsModule, SelectRecherche, Modale, VALIDATION_FORMULAIRE, FormulaireChauffeur],
   templateUrl: './affectations.html'
 })
 export class Affectations implements OnInit {
@@ -53,18 +54,6 @@ export class Affectations implements OnInit {
   private pageCourante = 0;
 
   readonly peutGerer = this.auth.peutGererParc();
-
-  /** Creation rapide : seuls les champs indispensables sont demandes. */
-  readonly formChauffeur = this.fb.nonNullable.group({
-    matricule: ['', [Validators.required]],
-    nom: ['', [Validators.required]],
-    prenom: ['', [Validators.required]],
-    telephone: ['', [Validators.required]],
-    categoriesPermis: [''],
-    permisExpiration: [null as string | null],
-    garantNom: [''],
-    garantTelephone: ['']
-  });
 
   readonly formulaire = this.fb.nonNullable.group({
     camionId: [null as number | null, [Validators.required]],
@@ -131,25 +120,17 @@ export class Affectations implements OnInit {
   }
 
   /**
-   * Cree le chauffeur puis le selectionne dans l'affectation en cours de saisie :
-   * l'utilisateur n'a pas a quitter l'ecran pour enregistrer un nouvel arrivant.
+   * Chauffeur cree depuis l'affectation : il rejoint la liste et se trouve
+   * selectionne, sans quitter l'ecran.
    */
-  creerChauffeur(): void {
-    if (this.formChauffeur.invalid) {
-      this.formChauffeur.markAllAsTouched();
-      return;
-    }
-    this.erreur.set(null);
-    this.chauffeurService.creer(this.formChauffeur.getRawValue() as never).subscribe({
-      next: (chauffeur) => {
-        this.chauffeurs.update((liste) => [...liste, chauffeur]);
-        this.formulaire.controls.chauffeurId.setValue(chauffeur.id);
-        this.formChauffeur.reset();
-        this.creationChauffeurVisible.set(false);
-        this.succes.set('Chauffeur ' + chauffeur.nomComplet + ' cree et selectionne.');
-      },
-      error: (erreur) => this.erreur.set(erreur.error?.message ?? 'Creation du chauffeur impossible.')
-    });
+  chauffeurCree({ chauffeur, echecsPieces }: ChauffeurEnregistre): void {
+    this.chauffeurs.update((liste) => [...liste.filter((c) => c.id !== chauffeur.id), chauffeur]);
+    this.formulaire.controls.chauffeurId.setValue(chauffeur.id);
+    this.creationChauffeurVisible.set(false);
+    this.succes.set(echecsPieces
+      ? `Chauffeur ${chauffeur.nomComplet} cree et selectionne, mais ${echecsPieces} piece(s) `
+        + 'n\'ont pas pu etre envoyee(s) : reprenez-les depuis sa fiche.'
+      : `Chauffeur ${chauffeur.nomComplet} cree et selectionne.`);
   }
 
   affecter(): void {

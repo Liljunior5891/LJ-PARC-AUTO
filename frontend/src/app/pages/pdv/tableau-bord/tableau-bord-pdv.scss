@@ -92,3 +92,15 @@
     border-color: var(--couleur-danger);
   }
 }
+
+/* Marketplace : chiffre d'affaires en ligne et au comptoir, sous le total. */
+.repartition-ventes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+  margin-top: 0.15rem;
+
+  b {
+    font-weight: 800;
+  }
+}

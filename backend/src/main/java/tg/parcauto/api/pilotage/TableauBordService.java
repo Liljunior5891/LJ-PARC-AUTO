@@ -35,6 +35,8 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class TableauBordService {
 
+    private final tg.parcauto.api.finance.recette.RecetteRepository recettesEnLigne;
+
     private final CamionService camionService;
     private final CamionRepository camionRepository;
     private final ChauffeurService chauffeurService;
@@ -75,6 +77,7 @@ public class TableauBordService {
     public TableauBordDto.Finances finances(LocalDate debut, LocalDate fin) {
         var rentabilite = rentabiliteService.global(debut, fin);
         var creances = factureService.creances();
+        java.math.BigDecimal enLigne = recettesEnLigne.totalEnLigneSurPeriode(debut, fin);
         return new TableauBordDto.Finances(
                 debut, fin,
                 rentabilite.totalRecettes(),
@@ -86,7 +89,8 @@ public class TableauBordService {
                 creances.nombreFacturesImpayees(),
                 creances.nombreEnRetard(),
                 rentabilite.recetteMoyenneParCamion(),
-                rentabilite.depenseMoyenneParCamion());
+                rentabilite.depenseMoyenneParCamion(),
+                enLigne, rentabilite.totalRecettes().subtract(enLigne));
     }
 
     /**
@@ -151,7 +155,7 @@ public class TableauBordService {
                 camion.getTypeReference() == null ? null : camion.getTypeReference().getDessin(),
                 camion.getStatut(), camion.getStatut().getLibelle(),
                 chauffeurId, chauffeurNom, clientNom, activite, localisation,
-                camion.getKilometrageActuel());
+                camion.getKilometrageActuel(), camion.getPhotoUrl());
     }
 
     private String trajet(String depart, String destination) {
