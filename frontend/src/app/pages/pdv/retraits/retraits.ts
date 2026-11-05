@@ -3,13 +3,15 @@ import { Component, ElementRef, OnDestroy, OnInit, computed, effect, inject, sig
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
-import { BonRetrait, ConflitHorsLigne, DisponibiliteLieu, LigneRetrait } from '../../../core/models/lieux';
+import { BonRetrait, ConflitHorsLigne, DisponibiliteLieu, LigneRetrait, StatutBonRetrait } from '../../../core/models/lieux';
 import { BonLivraison } from '../../../core/models/materiaux';
 import { LieuxService } from '../../../core/services/lieux.service';
 import { MateriauxService } from '../../../core/services/materiaux.service';
 import { RetraitsHorsLigneService } from '../../../core/services/retraits-hors-ligne.service';
 import { LecteurDouchette, normaliserNumeroBon } from '../../../shared/code-barres';
 import { Modale } from '../../../shared/modale';
+import { Page } from '../../../core/models/models';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 /** Lecteur natif des navigateurs mobiles recents ; absent ailleurs : la saisie du numero reste possible. */
 declare const BarcodeDetector: {
@@ -23,7 +25,7 @@ declare const BarcodeDetector: {
  */
 @Component({
   selector: 'app-retraits-pdv',
-  imports: [FormsModule, DatePipe, DecimalPipe, Modale],
+  imports: [FormsModule, DatePipe, DecimalPipe, Modale, SuiteListe],
   templateUrl: './retraits.html',
   styleUrl: './retraits.scss',
   host: { '(document:keydown)': 'captureDouchette($event)' }
@@ -36,8 +38,11 @@ export class RetraitsPdv implements OnInit, OnDestroy {
   readonly gerant = inject(AuthService).aRole('ADMIN', 'GERANT');
 
   readonly etat = this.service.etat;
-  readonly bons = signal<BonRetrait[]>([]);
-  readonly tous = signal(false);
+  readonly pageBons = signal<Page<BonRetrait> | null>(null);
+  readonly bons = computed(() => this.pageBons()?.content ?? []);
+  private readonly suite = new SuiteDePages();
+  /** Par defaut, tous les bons : ceux a servir viennent en premier. */
+  readonly statut = signal<StatutBonRetrait | ''>('');
   readonly lieuFiltre = signal<number | null>(null);
   readonly conflits = signal<ConflitHorsLigne[]>([]);
   readonly erreur = signal<string | null>(null);
@@ -135,8 +140,8 @@ export class RetraitsPdv implements OnInit, OnDestroy {
     if (!this.horsLigne.enLigne()) {
       return;
     }
-    this.service.retraits({ q: this.motif().trim(), lieuId: this.lieuFiltre(), tous: this.tous() }).subscribe({
-      next: (p) => this.bons.set(p.content),
+    this.service.retraits({ q: this.motif().trim(), lieuId: this.lieuFiltre(), statut: this.statut(), page: this.suite.numero() }).subscribe({
+      next: (p) => this.pageBons.set(cumulerPage(this.pageBons(), p)),
       error: (e) => {
         if (e?.status === 0) {
           this.horsLigne.enLigne.set(false);
@@ -147,9 +152,17 @@ export class RetraitsPdv implements OnInit, OnDestroy {
     });
   }
 
+  /** Bas de la liste atteint : la page suivante rejoint les bons deja affiches. */
+  suivante(): void {
+    if (this.suite.demander(this.pageBons())) {
+      this.charger();
+    }
+  }
+
   rechercher(valeur: string): void {
-    this.saisie = valeur;
-    this.motif.set(valeur);
+    const texte = normaliserNumeroBon(valeur);
+    this.saisie = texte;
+    this.motif.set(texte);
     clearTimeout(this.minuterieRecherche);
     this.minuterieRecherche = setTimeout(() => this.charger(), 250);
   }

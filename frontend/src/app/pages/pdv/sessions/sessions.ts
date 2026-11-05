@@ -5,12 +5,13 @@ import { Page } from '../../../core/models/models';
 import { CaissePdv, SessionCaisse } from '../../../core/models/pdv';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PdvService } from '../../../core/services/pdv.service';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 
 /** Historique d'une caisse : ses sessions ; un clic ouvre le detail (ventes, mouvements d'especes, billettage, rapport PDF). */
 @Component({
   selector: 'app-sessions-pdv',
-  imports: [DecimalPipe, DatePipe, RouterLink],
+  imports: [SuiteListe, DecimalPipe, DatePipe, RouterLink],
   templateUrl: './sessions.html',
   styles: [`
     .retour { display: inline-block; margin-bottom: 0.25rem; color: var(--couleur-primaire); font-weight: 600; text-decoration: none; }
@@ -30,7 +31,7 @@ export class SessionsPdv implements OnInit {
   readonly caisse = signal<CaissePdv | null>(null);
   readonly page = signal<Page<SessionCaisse> | null>(null);
   readonly erreur = signal<string | null>(null);
-  private numeroPage = 0;
+  private readonly suite = new SuiteDePages();
 
   private caisseId = 0;
 
@@ -44,14 +45,16 @@ export class SessionsPdv implements OnInit {
   }
 
   charger(): void {
-    this.service.sessions(this.numeroPage, this.caisseId).subscribe({
-      next: (p) => this.page.set(p),
+    this.service.sessions(this.suite.numero(), this.caisseId).subscribe({
+      next: (p) => this.page.set(cumulerPage(this.page(), p)),
       error: () => this.erreur.set('Chargement des caisses impossible.')
     });
   }
 
-  changerPage(sens: number): void {
-    this.numeroPage += sens;
-    this.charger();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
+    }
   }
 }

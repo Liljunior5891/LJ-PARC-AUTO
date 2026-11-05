@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, computed, inject, output, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ProduitCourt, Transfert } from '../../../core/models/lieux';
@@ -15,18 +15,20 @@ interface LigneSaisie {
   code: string;
   unite?: string | null;
   image?: string | null;
-  /** Inconnu quand le lieu de depart n'est pas un des lieux de l'utilisateur. */
+  /** Connu du gerant seulement : le magasinier ne voit pas le stock des autres lieux. */
   disponible: number | null;
   quantite: number | null;
 }
 
-/** Produit propose : avec son disponible seulement si l'utilisateur voit le lieu de depart. */
+/** Produit propose, avec son disponible au depart pour le gerant. */
 type ProduitPropose = ProduitCourt & { disponible: number | null };
 
 /**
- * Saisie d'un transfert, au format de la commande fournisseur : les deux lieux,
- * puis les produits ajoutes un a un par une recherche, avec le disponible du
- * lieu de depart et la quantite a deplacer.
+ * Saisie d'un transfert, au format de la commande fournisseur.
+ * <p>
+ * Le gerant choisit les deux lieux et voit le disponible au depart. Le magasinier fait
+ * une simple demande : le lieu d'arrivee parmi les siens et les produits voulus. C'est
+ * le gerant qui choisira d'ou part la marchandise, en validant.
  */
 @Component({
   selector: 'app-formulaire-transfert',
@@ -34,7 +36,7 @@ type ProduitPropose = ProduitCourt & { disponible: number | null };
   templateUrl: './formulaire-transfert.html',
   styleUrls: ['../stock/formulaire-commande.scss', './formulaire-transfert.scss']
 })
-export class FormulaireTransfert {
+export class FormulaireTransfert implements OnInit {
   private readonly service = inject(LieuxService);
   readonly gerant = inject(AuthService).aRole('ADMIN', 'GERANT');
   readonly etat = this.service.etat;
@@ -45,14 +47,19 @@ export class FormulaireTransfert {
   readonly sourceId = signal<number | null>(null);
   readonly destinationId = signal<number | null>(null);
   readonly catalogue = signal<ProduitPropose[]>([]);
-  /** Le stock d'un lieu qui n'est pas le sien reste masque : le gerant verifie a la validation. */
-  readonly departVisible = computed(() =>
-    (this.etat()?.mesLieux ?? []).some((l) => l.id === this.sourceId()));
   readonly lignes = signal<LigneSaisie[]>([]);
   readonly recherche = signal('');
   readonly erreur = signal<string | null>(null);
   readonly envoi = signal(false);
   note = '';
+
+  /** Lieux d'arrivee : tous sauf le depart pour le gerant, les siens pour le magasinier. */
+  readonly destinations = computed(() => {
+    const etat = this.etat();
+    return this.gerant
+      ? (etat?.lieux ?? []).filter((l) => l.id !== this.sourceId())
+      : etat?.mesLieux ?? [];
+  });
 
   readonly suggestions = computed(() => {
     const motif = normaliserCodeBarres(this.recherche()).toLowerCase();
@@ -67,8 +74,32 @@ export class FormulaireTransfert {
 
   readonly totalUnites = computed(() => this.lignes().reduce((s, l) => s + (l.quantite ?? 0), 0));
   readonly valide = computed(() =>
-    !!this.sourceId() && !!this.destinationId() && this.lignes().length > 0 && this.lignes().every((l) => (l.quantite ?? 0) > 0));
+    (!this.gerant || !!this.sourceId()) && !!this.destinationId()
+    && this.lignes().length > 0 && this.lignes().every((l) => (l.quantite ?? 0) > 0));
 
+  constructor() {
+    // Un magasinier affecte a un seul lieu n'a rien a choisir.
+    effect(() => {
+      const lieux = this.destinations();
+      if (!this.gerant && lieux.length === 1 && this.destinationId() !== lieux[0].id) {
+        this.destinationId.set(lieux[0].id);
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    if (!this.etat()) {
+      this.service.chargerEtat();
+    }
+    if (!this.gerant) {
+      this.service.produits().subscribe({
+        next: (produits) => this.catalogue.set(produits.map((p) => ({ ...p, disponible: null }))),
+        error: (e) => this.erreur.set(e?.error?.message ?? 'Lecture des produits impossible.')
+      });
+    }
+  }
+
+  /** Gerant : le catalogue et le disponible suivent le lieu de depart. */
   choisirSource(id: number | null): void {
     this.sourceId.set(id);
     if (id === this.destinationId()) {
@@ -79,20 +110,9 @@ export class FormulaireTransfert {
     if (!id) {
       return;
     }
-    if (!this.departVisible()) {
-      this.service.produits().subscribe({
-        next: (produits) => {
-          this.catalogue.set(produits.map((p) => ({ ...p, disponible: null })));
-          this.lignes.update((liste) => liste.map((l) => ({ ...l, disponible: null })));
-        },
-        error: (e) => this.erreur.set(e?.error?.message ?? 'Lecture des produits impossible.')
-      });
-      return;
-    }
     this.service.stock(id, '', 0, 1000).subscribe({
       next: (p) => {
         this.catalogue.set(p.content);
-        // Les produits deja choisis restent : leur disponible suit le nouveau lieu de depart.
         this.lignes.update((liste) => liste.map((l) => ({
           ...l, disponible: p.content.find((s) => s.articleId === l.articleId)?.disponible ?? 0
         })));
@@ -129,10 +149,9 @@ export class FormulaireTransfert {
   }
 
   enregistrer(): void {
-    const source = this.sourceId();
     const destination = this.destinationId();
-    if (!source || !destination) {
-      this.erreur.set('Choisissez le lieu de depart et le lieu d\'arrivee.');
+    if (!destination || (this.gerant && !this.sourceId())) {
+      this.erreur.set(this.gerant ? 'Choisissez le lieu de depart et le lieu d\'arrivee.' : 'Choisissez le lieu d\'arrivee.');
       return;
     }
     if (!this.valide()) {
@@ -142,7 +161,7 @@ export class FormulaireTransfert {
     this.envoi.set(true);
     this.erreur.set(null);
     this.service.demanderTransfert({
-      sourceId: source,
+      sourceId: this.gerant ? this.sourceId() : null,
       destinationId: destination,
       note: this.note.trim() || null,
       lignes: this.lignes().map((l) => ({ articleId: l.articleId, quantite: l.quantite as number }))

@@ -21,6 +21,7 @@ import { Modale } from '../../../shared/modale';
 import { normaliserCodeBarres } from '../../../shared/code-barres';
 import { FenetreCategorie } from '../../../shared/fenetre-categorie';
 import { GaleriePhotos } from '../../../shared/galerie-photos';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 /** Valeurs du formulaire d'article, nombres compris ; null pour un champ vide. */
 interface FormulaireArticle {
@@ -51,7 +52,7 @@ const VIDE: FormulaireArticle = {
  */
 @Component({
   selector: 'app-articles-pdv',
-  imports: [FormsModule, DecimalPipe, RouterLink, Modale, ExportPdv, ImportPdv, GaleriePhotos, FenetreCategorie],
+  imports: [SuiteListe, FormsModule, DecimalPipe, RouterLink, Modale, ExportPdv, ImportPdv, GaleriePhotos, FenetreCategorie],
   templateUrl: './articles.html',
   styleUrl: './articles.scss'
 })
@@ -77,7 +78,7 @@ export class ArticlesPdv implements OnInit {
   categorieId: number | null = null;
   filtreStock = false;
   masquerArchives = true;
-  private numeroPage = 0;
+  private readonly suite = new SuiteDePages();
 
   // Fiche article
   readonly edition = signal<ArticlePdv | 'nouveau' | null>(null);
@@ -162,13 +163,14 @@ export class ArticlesPdv implements OnInit {
   }
 
   filtrer(): void {
-    this.numeroPage = 0;
     this.charger();
   }
 
-  changerPage(sens: number): void {
-    this.numeroPage += sens;
-    this.charger();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
+    }
   }
 
   charger(): void {
@@ -179,10 +181,10 @@ export class ArticlesPdv implements OnInit {
         actif: this.masquerArchives ? true : undefined,
         stockBas: this.filtreStock,
         enLigne: this.filtreEnLigne === '' ? undefined : this.filtreEnLigne === 'oui',
-        page: this.numeroPage
+        page: this.suite.numero()
       })
       .subscribe({
-        next: (page) => this.page.set(page),
+        next: (page) => this.page.set(cumulerPage(this.page(), page)),
         error: () => this.erreur.set('Chargement des articles impossible.')
       });
   }

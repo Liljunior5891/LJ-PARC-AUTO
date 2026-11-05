@@ -27,17 +27,23 @@ export function normaliserCodeBarres(valeur: string): string {
   return [...v].map((c) => AZERTY[c] ?? c).join('');
 }
 
+/** Forme d'un numero de bon de retrait : BR-2026-0001. */
+const NUMERO_BON = /^BR-\d{4}-\d+$/;
+
 /**
- * Numero de bon lu a la douchette. Reglee en QWERTY sur un poste AZERTY, elle ecrit
- * « BR)é0é^)à... » : les chiffres et le tiret sont remis en place. Un numero saisi
- * normalement, qui n'a aucun de ces caracteres, reste tel quel.
+ * Numero de bon lu a la douchette. Reglee en QWERTY sur un poste AZERTY, elle remplace
+ * le tiret par « ° » ou « ) », et parfois les chiffres par la rangee « é"'(... ». Le numero
+ * est remis en place. Tout autre texte (un nom de client, une saisie en cours) reste tel quel.
  */
 export function normaliserNumeroBon(valeur: string): string {
   const v = valeur.trim();
-  if (![...v].some((c) => c === ')' || (c in AZERTY && c !== '-'))) {
-    return v;
-  }
-  return [...v].map((c) => (c === ')' ? '-' : AZERTY[c] ?? c)).join('').toUpperCase();
+  // Le tiret n'est un chiffre que si les autres chiffres sont eux aussi deformes.
+  const chiffresDeformes = [...v].some((c) => c in AZERTY && c !== '-');
+  const candidat = [...v]
+    .map((c) => (c === ')' || c === '°' ? '-' : chiffresDeformes ? AZERTY[c] ?? c : c))
+    .join('')
+    .toUpperCase();
+  return NUMERO_BON.test(candidat) ? candidat : v;
 }
 
 /**

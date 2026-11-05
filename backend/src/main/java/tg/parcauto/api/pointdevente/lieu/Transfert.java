@@ -36,8 +36,9 @@ public class Transfert extends BaseEntity {
     @Column(nullable = false, length = 40)
     private String numero;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "source_id", nullable = false)
+    /** Lieu de depart ; vide tant que le gerant n'a pas valide la demande d'un magasinier. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_id")
     private LieuStock source;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

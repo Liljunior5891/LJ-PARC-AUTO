@@ -18,10 +18,11 @@ import { LivraisonService } from '../../core/services/livraison.service';
 import { MissionService } from '../../core/services/mission.service';
 import { Modale } from '../../shared/modale';
 import { VALIDATION_FORMULAIRE, messageChampsManquants } from '../../shared/validation-formulaire';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
 
 @Component({
   selector: 'app-livraisons',
-  imports: [FormsModule, ReactiveFormsModule, DecimalPipe, DatePipe, Modale, VALIDATION_FORMULAIRE],
+  imports: [SuiteListe, FormsModule, ReactiveFormsModule, DecimalPipe, DatePipe, Modale, VALIDATION_FORMULAIRE],
   templateUrl: './livraisons.html'
 })
 export class Livraisons implements OnInit {
@@ -48,7 +49,7 @@ export class Livraisons implements OnInit {
 
   recherche = '';
   statut: StatutLivraison | '' = '';
-  private pageCourante = 0;
+  private readonly suite = new SuiteDePages();
 
   statutConfirmation: StatutLivraison = 'LIVREE';
   signatureNom = '';
@@ -95,10 +96,10 @@ export class Livraisons implements OnInit {
   charger(): void {
     this.chargement.set(true);
     this.service
-      .lister({ q: this.recherche, statut: this.statut, page: this.pageCourante })
+      .lister({ q: this.recherche, statut: this.statut, page: this.suite.numero() })
       .subscribe({
         next: (page) => {
-          this.page.set(page);
+          this.page.set(cumulerPage(this.page(), page));
           this.chargement.set(false);
           this.erreur.set(null);
         },
@@ -110,21 +111,14 @@ export class Livraisons implements OnInit {
   }
 
   filtrer(): void {
-    this.pageCourante = 0;
     this.charger();
   }
 
-  changerPage(delta: number): void {
-    const page = this.page();
-    if (!page) {
-      return;
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
     }
-    const cible = page.number + delta;
-    if (cible < 0 || cible >= page.totalPages) {
-      return;
-    }
-    this.pageCourante = cible;
-    this.charger();
   }
 
   basculerFormulaire(): void {

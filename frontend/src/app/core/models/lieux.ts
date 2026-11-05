@@ -166,8 +166,9 @@ export interface LigneTransfert {
 export interface Transfert {
   id: number;
   numero: string;
-  sourceId: number;
-  sourceNom: string;
+  /** Vides tant que le gerant n'a pas choisi le lieu de depart. */
+  sourceId?: number | null;
+  sourceNom?: string | null;
   destinationId: number;
   destinationNom: string;
   statut: StatutTransfert;

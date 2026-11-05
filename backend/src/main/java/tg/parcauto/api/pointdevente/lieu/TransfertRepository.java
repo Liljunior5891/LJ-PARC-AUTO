@@ -12,16 +12,14 @@ import java.util.List;
 public interface TransfertRepository extends JpaRepository<Transfert, Long> {
 
     @Query(value = """
-            select t from Transfert t join fetch t.source join fetch t.destination
-            where (t.source.id in :lieux or t.destination.id in :lieux)
-              and (:encours = false or t.statut in ('DEMANDE', 'VALIDE', 'EXPEDIE', 'ECART'))
+            select t from Transfert t left join fetch t.source join fetch t.destination
+            where (t.source.id in :lieux or t.destination.id in :lieux) and t.statut in :statuts
             order by t.demandeLe desc, t.id desc
             """, countQuery = """
             select count(t) from Transfert t
-            where (t.source.id in :lieux or t.destination.id in :lieux)
-              and (:encours = false or t.statut in ('DEMANDE', 'VALIDE', 'EXPEDIE', 'ECART'))
+            where (t.source.id in :lieux or t.destination.id in :lieux) and t.statut in :statuts
             """)
-    Page<Transfert> pour(@Param("lieux") Collection<Long> lieux, @Param("encours") boolean encours, Pageable pageable);
+    Page<Transfert> pour(@Param("lieux") Collection<Long> lieux, @Param("statuts") Collection<Transfert.Statut> statuts, Pageable pageable);
 
     /** Transferts qui engagent encore un lieu : il ne peut pas etre ferme. */
     @Query("""
@@ -30,6 +28,6 @@ public interface TransfertRepository extends JpaRepository<Transfert, Long> {
             """)
     long enCoursDuLieu(@Param("lieu") Long lieu);
 
-    @Query("select t from Transfert t join fetch t.source join fetch t.destination where t.statut in :statuts order by t.demandeLe")
+    @Query("select t from Transfert t left join fetch t.source join fetch t.destination where t.statut in :statuts order by t.demandeLe")
     List<Transfert> parStatuts(@Param("statuts") Collection<Transfert.Statut> statuts);
 }

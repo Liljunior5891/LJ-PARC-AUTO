@@ -236,7 +236,7 @@ export class Shell {
       id: 'administration', libelle: 'Administration',
       entrees: [
         { libelle: 'Rapports PDF', route: '/rapports', description: 'Etats a imprimer ou a envoyer', module: 'GESTION_PARC' },
-        { libelle: 'Modules', route: '/modules', description: 'Applications activees pour l\'entreprise' },
+        { libelle: 'Modules', route: '/modules', description: 'Applications activees pour l\'entreprise', roles: ['ADMIN'] },
         // Point de vente + Marketplace : la boutique se regle ici ; ventes et produits en ligne sont dans le point de vente.
         { libelle: 'Ma boutique', route: '/marketplace/boutique', description: 'Boutique en ligne : vitrine, livraison, paiement et lien', module: 'MARKETPLACE', avecUnDesModules: ['POINT_DE_VENTE', 'GESTION_PARC'], roles: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Utilisateurs', route: '/utilisateurs', description: 'Comptes et profils d\'acces', roles: ['ADMIN'] },

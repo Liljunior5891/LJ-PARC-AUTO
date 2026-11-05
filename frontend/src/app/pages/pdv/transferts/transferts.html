@@ -4,25 +4,32 @@
     <p class="sous-titre">Deplacez la marchandise entre vos magasins et vos entrepots.</p>
   </div>
   <div class="actions-entete">
-    <label class="case">
-      <input type="checkbox" [ngModel]="enCours()" (ngModelChange)="enCours.set($event); charger()" />
-      En cours seulement
-    </label>
-    <button class="bouton" type="button" (click)="nouvelle.set(true)">+ Nouveau transfert</button>
+    <button class="bouton" type="button" (click)="nouvelle.set(true)">{{ gerant ? '+ Nouveau transfert' : '+ Demander un transfert' }}</button>
+  </div>
+</div>
+
+<div class="carte filtre-transferts">
+  <div class="champ">
+    <label for="filtre-statut">Afficher</label>
+    <select id="filtre-statut" data-recherche="jamais" [ngModel]="filtre()" (ngModelChange)="filtre.set($event); charger()">
+      <option value="">Tous les transferts</option>
+      <option value="EN_COURS">En cours</option>
+      @for (s of statuts; track s) { <option [value]="s">{{ libelles[s] }}</option> }
+    </select>
   </div>
 </div>
 
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 
-<div class="liste">
+<div class="liste liste-defilante">
   @for (t of transferts(); track t.id) {
     <article class="carte transfert">
       <header>
         <div>
           <strong>{{ t.numero }}</strong>
           <span class="etiquette" [class.alerte]="t.statut === 'ECART'" [class.fini]="t.statut === 'RECU'">{{ libelles[t.statut] }}</span>
-          <div class="trajet">{{ t.sourceNom }} → {{ t.destinationNom }}</div>
+          <div class="trajet">{{ t.sourceNom || 'Depart a choisir' }} → {{ t.destinationNom }}</div>
           <small>Demande par {{ t.demandePar }} le {{ t.demandeLe | date: 'dd/MM/yyyy' }}
             @if (t.transporteur) { · transporteur {{ t.transporteur }} }</small>
         </div>
@@ -43,7 +50,7 @@
       </ul>
       @if (t.note) { <small>{{ t.note }}</small> }
       <footer>
-        @if (gerant && t.statut === 'DEMANDE') { <button class="bouton" type="button" (click)="valider(t)">Valider</button> }
+        @if (gerant && t.statut === 'DEMANDE') { <button class="bouton" type="button" (click)="ouvrirAction('validation', t)">Valider</button> }
         @if (peutExpedier(t)) { <button class="bouton" type="button" (click)="ouvrirAction('expedition', t)">Expedier</button> }
         @if (peutRecevoir(t)) { <button class="bouton succes" type="button" (click)="ouvrirAction('reception', t)">Receptionner</button> }
         @if (gerant && t.statut === 'ECART') { <button class="bouton" type="button" (click)="ouvrirAction('ecart', t)">Traiter l'ecart</button> }
@@ -54,20 +61,46 @@
       </footer>
     </article>
   } @empty {
-    <div class="carte aucun">Aucun transfert {{ enCours() ? 'en cours' : '' }}.</div>
+    <div class="carte aucun">Aucun transfert.</div>
   }
 </div>
+@if (pageTransferts(); as p) { <app-suite-liste [page]="p" (suite)="suivante()" /> }
 
 @if (nouvelle()) {
   <app-formulaire-transfert (enregistre)="transfertEnregistre($event)" (ferme)="nouvelle.set(false)" />
 }
 
 @if (action(); as a) {
-  <app-modale [titre]="(a.type === 'expedition' ? 'Expedier ' : a.type === 'reception' ? 'Receptionner ' : 'Ecart de ') + a.transfert.numero"
-              [sousTitre]="a.transfert.sourceNom + ' → ' + a.transfert.destinationNom" largeur="680px"
+  <app-modale [titre]="(a.type === 'validation' ? 'Valider ' : a.type === 'expedition' ? 'Expedier ' : a.type === 'reception' ? 'Receptionner ' : 'Ecart de ') + a.transfert.numero"
+              [sousTitre]="'Vers ' + a.transfert.destinationNom + (a.transfert.demandePar ? ' · demande par ' + a.transfert.demandePar : '')" largeur="760px"
               [erreur]="erreurFenetre()" (ferme)="action.set(null)">
     <form (ngSubmit)="confirmerAction()">
-      @if (a.type === 'ecart') {
+      @if (a.type === 'validation') {
+        <div class="champ">
+          <label for="depart">Lieu de depart *</label>
+          <select id="depart" name="depart" [ngModel]="departValidation()" (ngModelChange)="departValidation.set($event)">
+            <option [ngValue]="null">Choisir...</option>
+            @for (l of departsPossibles(a.transfert); track l.id) { <option [ngValue]="l.id">{{ l.nom }}</option> }
+          </select>
+        </div>
+        <div class="tableau-conteneur" style="margin-top: 10px">
+          <table class="tableau">
+            <thead><tr><th>Produit</th><th class="numerique">Demande</th><th class="numerique">Disponible au depart</th></tr></thead>
+            <tbody>
+              @for (l of a.transfert.lignes; track l.id) {
+                <tr>
+                  <td>{{ l.nom }} <small>{{ l.unite || '' }}</small></td>
+                  <td class="numerique">{{ l.quantite | number: '1.0-3' }}</td>
+                  <td class="numerique" [class.resultat-negatif]="departValidation() && dispoDepart(l.articleId) < l.quantite">
+                    {{ departValidation() ? (dispoDepart(l.articleId) | number: '1.0-3') : '—' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="aide">Rien ne bouge encore : le stock sort du lieu de depart a l'expedition.</p>
+      } @else if (a.type === 'ecart') {
         <ul class="ecarts">
           @for (l of a.transfert.lignes; track l.id) {
             @if (l.ecart > 0) { <li><strong>{{ l.ecart | number: '1.0-3' }}</strong> {{ l.unite || '' }} · {{ l.nom }}</li> }
@@ -114,7 +147,7 @@
       }
       <div class="actions-formulaire">
         <button class="bouton secondaire annuler" type="button" (click)="action.set(null)">Annuler</button>
-        <button class="bouton" type="submit">Confirmer</button>
+        <button class="bouton" type="submit" [disabled]="a.type === 'validation' && !departValidation()">{{ a.type === 'validation' ? 'Valider le transfert' : 'Confirmer' }}</button>
       </div>
     </form>
   </app-modale>

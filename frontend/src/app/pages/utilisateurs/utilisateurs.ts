@@ -11,6 +11,7 @@ import {
 import { UtilisateurService } from '../../core/services/utilisateur.service';
 import { Modale } from '../../shared/modale';
 import { messageChampsManquants } from '../../shared/validation-formulaire';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
 
 /**
  * Gestion des comptes (chapitre 40), reservee a l'administrateur.
@@ -21,7 +22,7 @@ import { messageChampsManquants } from '../../shared/validation-formulaire';
  */
 @Component({
   selector: 'app-utilisateurs',
-  imports: [FormsModule, DatePipe, Modale],
+  imports: [SuiteListe, FormsModule, DatePipe, Modale],
   templateUrl: './utilisateurs.html',
   styleUrl: './utilisateurs.scss'
 })
@@ -49,7 +50,7 @@ export class Utilisateurs implements OnInit {
   recherche = '';
   filtreRole: Role | '' = '';
   filtreActif: 'true' | 'false' | '' = '';
-  private pageCourante = 0;
+  private readonly suite = new SuiteDePages();
 
   /** Champs du formulaire de compte. */
   email = '';
@@ -75,11 +76,11 @@ export class Utilisateurs implements OnInit {
         q: this.recherche || undefined,
         role: this.filtreRole || undefined,
         actif: this.filtreActif === '' ? undefined : this.filtreActif === 'true',
-        page: this.pageCourante
+        page: this.suite.numero()
       })
       .subscribe({
         next: (page) => {
-          this.page.set(page);
+          this.page.set(cumulerPage(this.page(), page));
           this.chargement.set(false);
           this.erreur.set(null);
         },
@@ -91,21 +92,14 @@ export class Utilisateurs implements OnInit {
   }
 
   filtrer(): void {
-    this.pageCourante = 0;
     this.charger();
   }
 
-  changerPage(delta: number): void {
-    const page = this.page();
-    if (!page) {
-      return;
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
     }
-    const cible = page.number + delta;
-    if (cible < 0 || cible >= page.totalPages) {
-      return;
-    }
-    this.pageCourante = cible;
-    this.charger();
   }
 
   // ------------------------------------------------------------------

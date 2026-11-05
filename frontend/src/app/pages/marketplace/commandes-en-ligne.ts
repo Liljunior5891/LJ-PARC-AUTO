@@ -6,6 +6,7 @@ import { CommandeEnLigne, ETAPES_COMMANDE, ResumeMarketplace, StatutCommandeEnLi
 import { Page } from '../../core/models/models';
 import { MarketplaceService } from '../../core/services/marketplace.service';
 import { Modale } from '../../shared/modale';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
 
 /** Les nouvelles commandes arrivent sans prevenir : la liste se rafraichit seule. */
 const RAFRAICHISSEMENT_MS = 30_000;
@@ -16,7 +17,7 @@ const RAFRAICHISSEMENT_MS = 30_000;
  */
 @Component({
   selector: 'app-commandes-en-ligne',
-  imports: [FormsModule, DecimalPipe, DatePipe, LowerCasePipe, Modale, RouterLink],
+  imports: [SuiteListe, FormsModule, DecimalPipe, DatePipe, LowerCasePipe, Modale, RouterLink],
   templateUrl: './commandes-en-ligne.html',
   styleUrl: './marketplace.scss'
 })
@@ -30,7 +31,7 @@ export class CommandesEnLigne implements OnInit, OnDestroy {
   readonly chargement = signal(true);
   readonly erreur = signal<string | null>(null);
   readonly filtre = signal<'en-cours' | 'terminees' | 'toutes'>('en-cours');
-  private numeroPage = 0;
+  private readonly suite = new SuiteDePages();
 
   readonly detail = signal<CommandeEnLigne | null>(null);
   readonly annulation = signal(false);
@@ -52,9 +53,13 @@ export class CommandesEnLigne implements OnInit, OnDestroy {
       this.chargement.set(true);
     }
     this.service.resume().subscribe({ next: (r) => this.resume.set(r) });
-    this.service.commandes(this.filtre(), this.numeroPage).subscribe({
+    // Le rafraichissement automatique ne ramene pas en haut celui qui fait defiler la liste.
+    if (silencieux && (this.page()?.number ?? 0) > 0) {
+      return;
+    }
+    this.service.commandes(this.filtre(), this.suite.numero()).subscribe({
       next: (page) => {
-        this.page.set(page);
+        this.page.set(cumulerPage(this.page(), page));
         this.chargement.set(false);
         // La fenetre ouverte suit les changements faits ailleurs.
         const ouverte = this.detail();
@@ -74,13 +79,14 @@ export class CommandesEnLigne implements OnInit, OnDestroy {
 
   changerFiltre(filtre: 'en-cours' | 'terminees' | 'toutes'): void {
     this.filtre.set(filtre);
-    this.numeroPage = 0;
     this.charger();
   }
 
-  changerPage(delta: number): void {
-    this.numeroPage = Math.max(0, this.numeroPage + delta);
-    this.charger();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
+    }
   }
 
   ouvrir(commande: CommandeEnLigne): void {

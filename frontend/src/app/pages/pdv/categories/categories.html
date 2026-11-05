@@ -70,13 +70,7 @@
     </table>
   </div>
 
-  @if (totalPages() > 1) {
-    <div class="pagination">
-      <button class="bouton secondaire petit" type="button" [disabled]="pageCourante() === 0" (click)="numeroPage.set(pageCourante() - 1)">Precedent</button>
-      <span>Page {{ pageCourante() + 1 }} / {{ totalPages() }}</span>
-      <button class="bouton secondaire petit" type="button" [disabled]="pageCourante() >= totalPages() - 1" (click)="numeroPage.set(pageCourante() + 1)">Suivant</button>
-    </div>
-  }
+  <app-suite-liste [page]="etatListe()" (suite)="numeroPage.set(numeroPage() + 1)" />
 </div>
 
 @if (edition(); as e) {

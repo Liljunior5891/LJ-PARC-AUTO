@@ -70,14 +70,19 @@
         </select>
       </div>
     }
-    <label class="case">
-      <input type="checkbox" [ngModel]="tous()" (ngModelChange)="tous.set($event); charger()" />
-      Voir aussi les bons servis
-    </label>
+    <div class="champ filtre-statut">
+      <label for="statut">Afficher</label>
+      <select id="statut" data-recherche="jamais" [ngModel]="statut()" (ngModelChange)="statut.set($event); charger()">
+        <option value="">Tous les bons</option>
+        <option value="A_SERVIR">A servir</option>
+        <option value="SERVI">Servis</option>
+        <option value="ANNULE">Annules ou remplaces</option>
+      </select>
+    </div>
   }
 </div>
 
-<div class="liste-bons">
+<div class="liste-bons liste-defilante">
   @for (b of affiches(); track b.id) {
     <article class="carte bon" [class.ancien]="b.ancien">
       <header>
@@ -108,9 +113,12 @@
       </footer>
     </article>
   } @empty {
-    <div class="carte aucun">Aucun bon a servir.</div>
+    <div class="carte aucun">Aucun bon a afficher.</div>
   }
 </div>
+@if (pageBons(); as p) {
+  @if (horsLigne.enLigne()) { <app-suite-liste [page]="p" (suite)="suivante()" /> }
+}
 
 @if (bonOuvert(); as b) {
   <app-modale [titre]="'Servir ' + b.numero" [sousTitre]="b.lieuNom + (b.clientNom ? ' · ' + b.clientNom : '')" largeur="680px"

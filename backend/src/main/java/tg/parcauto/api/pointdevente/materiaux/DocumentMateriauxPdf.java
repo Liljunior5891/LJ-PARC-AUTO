@@ -406,7 +406,7 @@ public class DocumentMateriauxPdf {
         if (t.getTransporteur() != null) {
             references.add(new String[]{"Transporteur :", t.getTransporteur()});
         }
-        references.add(new String[]{"Départ :", t.getSource().getNom()});
+        references.add(new String[]{"Départ :", t.getSource() == null ? "À choisir par le gérant" : t.getSource().getNom()});
         enTete(document, "BON DE TRANSFERT", new Destinataire(t.getDestination().getNom(), t.getDestination().getTelephone(),
                 t.getDestination().getAdresse(), null, null), "DESTINATION :", references);
 

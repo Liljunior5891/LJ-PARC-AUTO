@@ -10,6 +10,7 @@ import { MateriauxService } from '../../../core/services/materiaux.service';
 import { SocieteService } from '../../../core/services/societe.service';
 import { Modale } from '../../../shared/modale';
 import { imprimerTicket } from '../../../shared/ticket-pdv';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 /** Date du jour au format des champs de saisie (aaaa-mm-jj), dans le fuseau du poste. */
 function aujourdHui(): string {
@@ -20,7 +21,7 @@ function aujourdHui(): string {
 /** Historique des ventes, par periode ou par session de caisse : consultation, reimpression et annulation. */
 @Component({
   selector: 'app-ventes-pdv',
-  imports: [FormsModule, DecimalPipe, DatePipe, Modale],
+  imports: [SuiteListe, FormsModule, DecimalPipe, DatePipe, Modale],
   templateUrl: './ventes.html'
 })
 export class VentesPdv implements OnInit {
@@ -44,7 +45,7 @@ export class VentesPdv implements OnInit {
   sessionId: number | null = null;
   /** Sessions recentes de toutes les caisses, pour le filtre (gerant et administrateur). */
   readonly sessions = signal<SessionCaisse[]>([]);
-  private numeroPage = 0;
+  private readonly suite = new SuiteDePages();
 
   readonly detail = signal<Ticket | null>(null);
   readonly annulation = signal(false);
@@ -76,25 +77,24 @@ export class VentesPdv implements OnInit {
 
   choisirSession(id: number | null): void {
     this.sessionId = id;
-    this.numeroPage = 0;
     this.charger();
   }
 
   filtrer(): void {
     this.sessionId = null;
-    this.numeroPage = 0;
     this.charger();
   }
 
   choisirCanal(canal: '' | 'en-ligne' | 'comptoir'): void {
     this.canal = canal;
-    this.numeroPage = 0;
     this.charger();
   }
 
-  changerPage(sens: number): void {
-    this.numeroPage += sens;
-    this.charger();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
+    }
   }
 
   charger(): void {
@@ -108,10 +108,10 @@ export class VentesPdv implements OnInit {
         fin: fin.toISOString(),
         sessionId: this.sessionId ?? undefined,
         enLigne: this.canal === '' ? undefined : this.canal === 'en-ligne',
-        page: this.numeroPage
+        page: this.suite.numero()
       })
       .subscribe({
-        next: (p) => this.page.set(p),
+        next: (p) => this.page.set(cumulerPage(this.page(), p)),
         error: () => this.erreur.set('Chargement des ventes impossible.')
       });
   }

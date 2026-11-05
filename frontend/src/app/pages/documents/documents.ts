@@ -17,10 +17,11 @@ import { DocumentService } from '../../core/services/document.service';
 import { Modale } from '../../shared/modale';
 import { OperationService } from '../../core/operation/operation.service';
 import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
 
 @Component({
   selector: 'app-documents',
-  imports: [FormsModule, ReactiveFormsModule, Modale, VALIDATION_FORMULAIRE],
+  imports: [SuiteListe, FormsModule, ReactiveFormsModule, Modale, VALIDATION_FORMULAIRE],
   templateUrl: './documents.html'
 })
 export class Documents implements OnInit {
@@ -43,7 +44,7 @@ export class Documents implements OnInit {
   filtreProprietaire: ProprietaireDocument | '' = '';
   filtreType: TypeDocument | '' = '';
   fichier: File | null = null;
-  private pageCourante = 0;
+  private readonly suite = new SuiteDePages();
 
   readonly peutGerer = this.auth.peutGererParc();
 
@@ -76,11 +77,11 @@ export class Documents implements OnInit {
       .lister({
         proprietaireType: this.filtreProprietaire,
         type: this.filtreType,
-        page: this.pageCourante
+        page: this.suite.numero()
       })
       .subscribe({
         next: (page) => {
-          this.page.set(page);
+          this.page.set(cumulerPage(this.page(), page));
           this.chargement.set(false);
         },
         error: () => {
@@ -91,21 +92,14 @@ export class Documents implements OnInit {
   }
 
   filtrer(): void {
-    this.pageCourante = 0;
     this.charger();
   }
 
-  changerPage(delta: number): void {
-    const page = this.page();
-    if (!page) {
-      return;
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
     }
-    const cible = page.number + delta;
-    if (cible < 0 || cible >= page.totalPages) {
-      return;
-    }
-    this.pageCourante = cible;
-    this.charger();
   }
 
   basculerFormulaire(): void {

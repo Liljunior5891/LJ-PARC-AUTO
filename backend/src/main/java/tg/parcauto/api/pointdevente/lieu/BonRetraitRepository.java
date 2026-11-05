@@ -22,7 +22,7 @@ public interface BonRetraitRepository extends JpaRepository<BonRetrait, Long> {
             where b.lieu.id in :lieux and b.statut in :statuts
               and (:q = '' or lower(b.numero) like concat('%', :q, '%') or lower(v.numero) like concat('%', :q, '%')
                    or lower(coalesce(v.clientNom, '')) like concat('%', :q, '%'))
-            order by b.dateEmission
+            order by case when b.statut = 'A_SERVIR' then 0 else 1 end, b.dateEmission
             """, countQuery = """
             select count(b) from BonRetrait b join b.vente v
             where b.lieu.id in :lieux and b.statut in :statuts

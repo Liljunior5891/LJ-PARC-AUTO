@@ -18,10 +18,11 @@ import { MissionService } from '../../core/services/mission.service';
 import { Modale } from '../../shared/modale';
 import { OperationService } from '../../core/operation/operation.service';
 import { messageChampsManquants } from '../../shared/validation-formulaire';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
 
 @Component({
   selector: 'app-factures',
-  imports: [FormsModule, DecimalPipe, Modale],
+  imports: [SuiteListe, FormsModule, DecimalPipe, Modale],
   templateUrl: './factures.html'
 })
 export class Factures implements OnInit {
@@ -52,7 +53,7 @@ export class Factures implements OnInit {
   readonly avecEnLigne = this.auth.aModule('MARKETPLACE');
   canal: '' | 'en-ligne' | 'agence' = '';
 
-  private pageCourante = 0;
+  private readonly suite = new SuiteDePages();
 
   /** Source retenue pour la generation : contrat de location ou mission terminee. */
   sourceGeneration: 'contrat' | 'mission' = 'contrat';
@@ -79,10 +80,10 @@ export class Factures implements OnInit {
   charger(): void {
     this.chargement.set(true);
     this.service
-      .lister({ q: this.recherche, statut: this.statut, page: this.pageCourante, enLigne: this.canal === '' ? undefined : this.canal === 'en-ligne', })
+      .lister({ q: this.recherche, statut: this.statut, page: this.suite.numero(), enLigne: this.canal === '' ? undefined : this.canal === 'en-ligne', })
       .subscribe({
         next: (page) => {
-          this.page.set(page);
+          this.page.set(cumulerPage(this.page(), page));
           this.chargement.set(false);
           this.erreur.set(null);
         },
@@ -97,21 +98,14 @@ export class Factures implements OnInit {
   }
 
   filtrer(): void {
-    this.pageCourante = 0;
     this.charger();
   }
 
-  changerPage(delta: number): void {
-    const page = this.page();
-    if (!page) {
-      return;
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
     }
-    const cible = page.number + delta;
-    if (cible < 0 || cible >= page.totalPages) {
-      return;
-    }
-    this.pageCourante = cible;
-    this.charger();
   }
 
   ouvrir(facture: Facture): void {

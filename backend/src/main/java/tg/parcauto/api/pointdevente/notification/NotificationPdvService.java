@@ -117,8 +117,9 @@ public class NotificationPdvService {
             for (Transfert t : transferts.parStatuts(List.of(Transfert.Statut.DEMANDE, Transfert.Statut.ECART))) {
                 boolean ecart = t.getStatut() == Transfert.Statut.ECART;
                 sortie.add(new Evenement("transfert-" + t.getStatut() + "-" + t.getId(), Type.TRANSFERT,
-                        ecart ? "Ecart sur un transfert" : "Transfert a valider",
-                        t.getNumero() + " · " + t.getSource().getNom() + " vers " + t.getDestination().getNom(),
+                        ecart ? "Ecart sur un transfert" : t.getSource() == null ? "Demande de transfert a traiter" : "Transfert a valider",
+                        t.getNumero() + " · " + (t.getSource() == null ? "depart a choisir" : t.getSource().getNom())
+                                + " vers " + t.getDestination().getNom(),
                         "/pdv/transferts", ecart ? t.getRecuLe() : t.getDemandeLe()));
             }
             for (RemiseHorsLigne r : remises.findByStatutOrderByFaiteLeDesc(RemiseHorsLigne.Statut.CONFLIT)) {

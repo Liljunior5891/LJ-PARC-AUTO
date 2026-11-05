@@ -16,6 +16,7 @@ import tg.parcauto.api.common.NumerotationService;
 import tg.parcauto.api.common.ResourceNotFoundException;
 import tg.parcauto.api.pointdevente.catalogue.Article;
 import tg.parcauto.api.pointdevente.catalogue.ArticleRepository;
+import tg.parcauto.api.pointdevente.personnel.PersonnelService;
 import tg.parcauto.api.pointdevente.stock.StockService;
 import tg.parcauto.api.security.UtilisateurPrincipal;
 
@@ -38,6 +39,9 @@ import java.util.stream.Collectors;
 @Transactional
 public class TransfertService {
 
+    private static final Set<Transfert.Statut> EN_COURS = Set.of(Transfert.Statut.DEMANDE, Transfert.Statut.VALIDE,
+            Transfert.Statut.EXPEDIE, Transfert.Statut.ECART);
+
     private final TransfertRepository repository;
     private final ArticleRepository articleRepository;
     private final LieuStockService lieux;
@@ -47,7 +51,8 @@ public class TransfertService {
     public record LigneDemande(@NotNull Long articleId, @NotNull @Positive BigDecimal quantite) {
     }
 
-    public record Demande(@NotNull Long sourceId, @NotNull Long destinationId, @Size(max = 255) String note,
+    /** Le lieu de depart est choisi par le gerant ; il n'est pas retenu d'un magasinier. */
+    public record Demande(Long sourceId, @NotNull Long destinationId, @Size(max = 255) String note,
                           @NotEmpty @Size(max = 200) List<@Valid LigneDemande> lignes) {
     }
 
@@ -63,6 +68,10 @@ public class TransfertService {
     }
 
     public record Annulation(@Size(max = 255) String motif) {
+    }
+
+    /** Lieu de depart retenu par le gerant ; vide, celui deja indique sur le transfert. */
+    public record Validation(Long sourceId) {
     }
 
     public record DecisionEcart(@NotNull LigneTransfert.DecisionEcart decision, @Size(max = 255) String motif) {
@@ -83,7 +92,9 @@ public class TransfertService {
                           String validePar, Instant expedieLe, String expediePar, String transporteur, Instant recuLe,
                           String recuPar, Instant annuleLe, String annulePar, String motif, List<Ligne> lignes) {
         static Reponse de(Transfert t) {
-            return new Reponse(t.getId(), t.getNumero(), t.getSource().getId(), t.getSource().getNom(), t.getDestination().getId(),
+            LieuStock source = t.getSource();
+            return new Reponse(t.getId(), t.getNumero(), source == null ? null : source.getId(),
+                    source == null ? null : source.getNom(), t.getDestination().getId(),
                     t.getDestination().getNom(), t.getStatut(), t.getNote(), t.getDemandeLe(), t.getDemandePar(), t.getValideLe(),
                     t.getValidePar(), t.getExpedieLe(), t.getExpediePar(), t.getTransporteur(), t.getRecuLe(), t.getRecuPar(),
                     t.getAnnuleLe(), t.getAnnulePar(), t.getMotif(), t.getLignes().stream().map(Ligne::de).toList());
@@ -91,15 +102,16 @@ public class TransfertService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Reponse> lister(boolean enCours, UtilisateurPrincipal u, Pageable pageable) {
+    public Page<Reponse> lister(Transfert.Statut statut, boolean enCours, UtilisateurPrincipal u, Pageable pageable) {
         List<Long> permis = lieux.idsAccessibles(u);
-        return permis.isEmpty() ? Page.empty(pageable) : repository.pour(permis, enCours, pageable).map(Reponse::de);
+        Set<Transfert.Statut> statuts = statut != null ? Set.of(statut) : enCours ? EN_COURS : Set.of(Transfert.Statut.values());
+        return permis.isEmpty() ? Page.empty(pageable) : repository.pour(permis, statuts, pageable).map(Reponse::de);
     }
 
     @Transactional(readOnly = true)
     public Reponse detail(Long id, UtilisateurPrincipal u) {
         Transfert t = charger(id);
-        if (!lieux.accede(u, t.getSource()) && !lieux.accede(u, t.getDestination())) {
+        if ((t.getSource() == null || !lieux.accede(u, t.getSource())) && !lieux.accede(u, t.getDestination())) {
             throw new BusinessException("Ce transfert ne concerne pas vos lieux");
         }
         return Reponse.de(t);
@@ -111,16 +123,16 @@ public class TransfertService {
     }
 
     public Reponse demander(Demande demande, UtilisateurPrincipal auteur) {
-        LieuStock source = lieux.demande(demande.sourceId());
         LieuStock destination = lieux.demande(demande.destinationId());
-        if (source == null || destination == null) {
+        if (destination == null) {
             throw new BusinessException("Enregistrez d'abord un entrepot pour transferer du stock");
         }
-        if (source.getId().equals(destination.getId())) {
-            throw new BusinessException("Le lieu de depart et le lieu d'arrivee sont identiques");
-        }
-        if (!lieux.accede(auteur, source) && !lieux.accede(auteur, destination)) {
-            throw new BusinessException("Ce transfert ne concerne pas vos lieux");
+        // Le magasinier demande pour un de ses lieux ; seul le gerant decide d'ou part la marchandise.
+        LieuStock source = null;
+        if (PersonnelService.gestionnaire(auteur)) {
+            source = lieuDeDepart(demande.sourceId(), destination);
+        } else if (!lieux.accede(auteur, destination)) {
+            throw new BusinessException("Le lieu " + destination.getNom() + " ne vous est pas affecte");
         }
         Transfert t = new Transfert();
         t.setNumero(numerotation.prochainNumero("TR"));
@@ -147,10 +159,13 @@ public class TransfertService {
         return Reponse.de(repository.save(t));
     }
 
-    /** Validation par le gerant : rien ne bouge encore, le stock est verifie au depart. */
-    public Reponse valider(Long id, UtilisateurPrincipal auteur) {
+    /** Validation par le gerant, qui fixe le lieu de depart : rien ne bouge encore, le stock est verifie a l'expedition. */
+    public Reponse valider(Long id, Long sourceId, UtilisateurPrincipal auteur) {
         Transfert t = charger(id);
         exigerStatut(t, Transfert.Statut.DEMANDE, "n'attend pas de validation");
+        if (sourceId != null || t.getSource() == null) {
+            t.setSource(lieuDeDepart(sourceId, t.getDestination()));
+        }
         t.setStatut(Transfert.Statut.VALIDE);
         t.setValideLe(Instant.now());
         t.setValidePar(auteur.getNomComplet());
@@ -173,8 +188,8 @@ public class TransfertService {
     /** La marchandise quitte le lieu de depart : ce qui est reserve a des clients ne peut pas partir. */
     public Reponse expedier(Long id, Expedition expedition, UtilisateurPrincipal auteur) {
         Transfert t = charger(id);
-        lieux.exigerAcces(auteur, t.getSource());
         exigerStatut(t, Transfert.Statut.VALIDE, "doit d'abord etre valide par le gerant");
+        lieux.exigerAcces(auteur, t.getSource());
         Map<Long, LigneSaisie> saisies = parLigne(expedition == null ? null : expedition.lignes());
         boolean parti = false;
         for (LigneTransfert l : t.getLignes()) {
@@ -246,6 +261,17 @@ public class TransfertService {
         t.setMotif(vide(decision.motif()));
         t.setStatut(Transfert.Statut.RECU);
         return Reponse.de(t);
+    }
+
+    private LieuStock lieuDeDepart(Long sourceId, LieuStock destination) {
+        LieuStock source = sourceId == null ? null : lieux.demande(sourceId);
+        if (source == null) {
+            throw new BusinessException("Choisissez le lieu de depart");
+        }
+        if (source.getId().equals(destination.getId())) {
+            throw new BusinessException("Le lieu de depart et le lieu d'arrivee sont identiques");
+        }
+        return source;
     }
 
     private static void exigerStatut(Transfert t, Transfert.Statut attendu, String message) {

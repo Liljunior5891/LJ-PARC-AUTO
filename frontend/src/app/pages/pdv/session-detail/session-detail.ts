@@ -8,6 +8,7 @@ import { SocieteService } from '../../../core/services/societe.service';
 import { Modale } from '../../../shared/modale';
 import { COUPURES_FCFA, FermetureSession, MouvementSession, telechargerRapportSession } from '../../../shared/session-caisse';
 import { imprimerTicket } from '../../../shared/ticket-pdv';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 type Onglet = 'commandes' | 'produits' | 'mouvements' | 'billettage';
 
@@ -18,7 +19,7 @@ type Onglet = 'commandes' | 'produits' | 'mouvements' | 'billettage';
  */
 @Component({
   selector: 'app-session-detail-pdv',
-  imports: [DatePipe, DecimalPipe, RouterLink, Modale, FermetureSession, MouvementSession],
+  imports: [SuiteListe, DatePipe, DecimalPipe, RouterLink, Modale, FermetureSession, MouvementSession],
   templateUrl: './session-detail.html',
   styleUrl: './session-detail.scss'
 })
@@ -35,7 +36,7 @@ export class SessionDetailPdv implements OnInit {
   readonly erreur = signal<string | null>(null);
   readonly aFermer = signal<SessionCaisse | null>(null);
   readonly mouvement = signal<SessionCaisse | null>(null);
-  private numeroPage = 0;
+  private readonly suite = new SuiteDePages();
   private sessionId = 0;
 
   readonly totalProduits = computed(() => this.produits().reduce((s, p) => s + p.total, 0));
@@ -61,9 +62,11 @@ export class SessionDetailPdv implements OnInit {
     this.service.ventesParProduit(this.sessionId).subscribe({ next: (p) => this.produits.set(p) });
   }
 
-  changerPage(sens: number): void {
-    this.numeroPage += sens;
-    this.chargerVentes();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.ventes())) {
+      this.chargerVentes();
+    }
   }
 
   ouvrirTicket(vente: VenteResume): void {
@@ -99,8 +102,8 @@ export class SessionDetailPdv implements OnInit {
   }
 
   private chargerVentes(): void {
-    this.service.ventes({ sessionId: this.sessionId, page: this.numeroPage }).subscribe({
-      next: (p) => this.ventes.set(p),
+    this.service.ventes({ sessionId: this.sessionId, page: this.suite.numero() }).subscribe({
+      next: (p) => this.ventes.set(cumulerPage(this.ventes(), p)),
       error: () => this.erreur.set('Chargement des ventes impossible.')
     });
   }

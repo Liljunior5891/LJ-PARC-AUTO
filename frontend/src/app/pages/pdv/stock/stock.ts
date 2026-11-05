@@ -18,6 +18,7 @@ import { LieuxService } from '../../../core/services/lieux.service';
 import { PdvService } from '../../../core/services/pdv.service';
 import { Modale } from '../../../shared/modale';
 import { FormulaireCommande } from './formulaire-commande';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 /**
  * Reapprovisionnement du point de vente : les commandes passees aux
@@ -27,7 +28,7 @@ import { FormulaireCommande } from './formulaire-commande';
  */
 @Component({
   selector: 'app-stock-pdv',
-  imports: [FormsModule, DecimalPipe, DatePipe, RouterLink, Modale, FormulaireCommande],
+  imports: [SuiteListe, FormsModule, DecimalPipe, DatePipe, RouterLink, Modale, FormulaireCommande],
   templateUrl: './stock.html',
   styleUrl: './stock.scss'
 })
@@ -45,7 +46,7 @@ export class StockPdv implements OnInit {
   readonly libellesStatut = LIBELLES_STATUT_COMMANDE_FOURNISSEUR;
   readonly commandes = signal<Page<CommandeFournisseurResume> | null>(null);
   readonly filtreStatut = signal<StatutCommandeFournisseur | null>(null);
-  private pageCommandes = 0;
+  private readonly suiteCommandes = new SuiteDePages();
   /** Formulaire de nouvelle commande, eventuellement prerempli des produits sous leur seuil. */
   readonly nouvelleCommande = signal<ArticlePdv[] | null>(null);
 
@@ -58,7 +59,7 @@ export class StockPdv implements OnInit {
   readonly erreur = signal<string | null>(null);
 
   articleFiltre: number | null = null;
-  private numeroPage = 0;
+  private readonly suite = new SuiteDePages();
 
   readonly saisie = signal(false);
   articleId: number | null = null;
@@ -100,8 +101,8 @@ export class StockPdv implements OnInit {
   }
 
   charger(): void {
-    this.service.mouvements(this.articleFiltre ?? undefined, this.numeroPage).subscribe({
-      next: (p) => this.mouvements.set(p),
+    this.service.mouvements(this.articleFiltre ?? undefined, this.suite.numero()).subscribe({
+      next: (p) => this.mouvements.set(cumulerPage(this.mouvements(), p)),
       error: () => this.erreur.set('Chargement des mouvements impossible.')
     });
   }
@@ -109,21 +110,22 @@ export class StockPdv implements OnInit {
   // ------------------------------------------------------------ commandes
 
   chargerCommandes(): void {
-    this.service.commandesFournisseurs(this.filtreStatut(), this.pageCommandes).subscribe({
-      next: (p) => this.commandes.set(p),
+    this.service.commandesFournisseurs(this.filtreStatut(), this.suiteCommandes.numero()).subscribe({
+      next: (p) => this.commandes.set(cumulerPage(this.commandes(), p)),
       error: () => this.erreur.set('Chargement des commandes impossible.')
     });
   }
 
   filtrerCommandes(statut: StatutCommandeFournisseur | null): void {
     this.filtreStatut.set(statut);
-    this.pageCommandes = 0;
     this.chargerCommandes();
   }
 
-  changerPageCommandes(sens: number): void {
-    this.pageCommandes += sens;
-    this.chargerCommandes();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPageCommandes(): void {
+    if (this.suiteCommandes.demander(this.commandes())) {
+      this.chargerCommandes();
+    }
   }
 
   ouvrirCommande(c: CommandeFournisseurResume): void {
@@ -138,13 +140,14 @@ export class StockPdv implements OnInit {
   // ------------------------------------------------------------ mouvements
 
   filtrer(): void {
-    this.numeroPage = 0;
     this.charger();
   }
 
-  changerPage(sens: number): void {
-    this.numeroPage += sens;
-    this.charger();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.mouvements())) {
+      this.charger();
+    }
   }
 
   ouvrirSaisie(article?: ArticlePdv, type: TypeMouvementStock = 'ENTREE'): void {

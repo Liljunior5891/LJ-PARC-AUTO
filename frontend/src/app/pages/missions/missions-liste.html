@@ -111,15 +111,7 @@
 
   @if (page(); as p) {
     @if (p.totalPages > 1) {
-      <div class="pagination">
-        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">
-          Precedent
-        </button>
-        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
-        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">
-          Suivant
-        </button>
-      </div>
+      <app-suite-liste [page]="p" (suite)="changerPage()" />
     }
   }
 </div>

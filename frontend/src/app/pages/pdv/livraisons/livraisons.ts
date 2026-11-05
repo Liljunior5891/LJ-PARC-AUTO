@@ -9,6 +9,7 @@ import { MODES_PAIEMENT_PDV, ModePaiementPdv } from '../../../core/models/pdv';
 import { MateriauxService } from '../../../core/services/materiaux.service';
 import { SessionTravailService } from '../../../core/services/session-travail.service';
 import { Modale } from '../../../shared/modale';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 /**
  * Reste a livrer : les commandes payees ou a credit dont le client n'a pas encore
@@ -18,7 +19,7 @@ import { Modale } from '../../../shared/modale';
  */
 @Component({
   selector: 'app-livraisons-pdv',
-  imports: [FormsModule, DecimalPipe, DatePipe, Modale],
+  imports: [SuiteListe, FormsModule, DecimalPipe, DatePipe, Modale],
   templateUrl: './livraisons.html'
 })
 export class LivraisonsPdv implements OnInit {
@@ -42,7 +43,7 @@ export class LivraisonsPdv implements OnInit {
   recherche = '';
   /** Arrive du compte d'un client : seules ses commandes sont listees. */
   readonly clientId = signal<number | null>(null);
-  private numeroPage = 0;
+  private readonly suite = new SuiteDePages();
 
   // Remise
   readonly remise = signal<VenteALivrer | null>(null);
@@ -102,10 +103,10 @@ export class LivraisonsPdv implements OnInit {
 
   charger(): void {
     this.chargement.set(true);
-    const filtre = { q: this.recherche.trim() || undefined, clientId: this.clientId(), page: this.numeroPage };
+    const filtre = { q: this.recherche.trim() || undefined, clientId: this.clientId(), page: this.suite.numero() };
     (this.vue() === 'reste' ? this.service.resteALivrer(filtre) : this.service.historiqueLivraisons(filtre)).subscribe({
       next: (p) => {
-        this.page.set(p);
+        this.page.set(cumulerPage(this.page(), p));
         this.chargement.set(false);
         this.erreur.set(null);
       },
@@ -122,7 +123,6 @@ export class LivraisonsPdv implements OnInit {
   }
 
   filtrer(): void {
-    this.numeroPage = 0;
     this.charger();
   }
 
@@ -131,9 +131,11 @@ export class LivraisonsPdv implements OnInit {
     this.filtrer();
   }
 
-  changerPage(sens: number): void {
-    this.numeroPage += sens;
-    this.charger();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
+    }
   }
 
   /** Par defaut, le client prend tout ce qui reste ; on baisse si besoin. */

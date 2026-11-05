@@ -6,6 +6,7 @@ import { Page } from '../../../core/models/models';
 import { Devis, StatutDevis } from '../../../core/models/materiaux';
 import { MateriauxService } from '../../../core/services/materiaux.service';
 import { Modale } from '../../../shared/modale';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 /**
  * Devis (pro forma) de la quincaillerie. Ils s'etablissent depuis la caisse
@@ -15,7 +16,7 @@ import { Modale } from '../../../shared/modale';
  */
 @Component({
   selector: 'app-devis-pdv',
-  imports: [FormsModule, DecimalPipe, DatePipe, Modale],
+  imports: [SuiteListe, FormsModule, DecimalPipe, DatePipe, Modale],
   templateUrl: './devis.html'
 })
 export class DevisPdv implements OnInit {
@@ -30,27 +31,28 @@ export class DevisPdv implements OnInit {
   recherche = '';
   nouvelleValidite = '';
   readonly prolongation = signal(false);
-  private numeroPage = 0;
+  private readonly suite = new SuiteDePages();
 
   ngOnInit(): void {
     this.charger();
   }
 
   charger(): void {
-    this.service.devis({ q: this.recherche.trim() || undefined, statut: this.statut, page: this.numeroPage }).subscribe({
-      next: (p) => this.page.set(p),
+    this.service.devis({ q: this.recherche.trim() || undefined, statut: this.statut, page: this.suite.numero() }).subscribe({
+      next: (p) => this.page.set(cumulerPage(this.page(), p)),
       error: (e) => this.erreur.set(e?.error?.message ?? 'Devis illisibles.')
     });
   }
 
   filtrer(): void {
-    this.numeroPage = 0;
     this.charger();
   }
 
-  changerPage(sens: number): void {
-    this.numeroPage += sens;
-    this.charger();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
+    }
   }
 
   ouvrir(d: Devis): void {

@@ -4,6 +4,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { CategoriePdv } from '../../../core/models/pdv';
 import { PdvService } from '../../../core/services/pdv.service';
 import { FenetreCategorie } from '../../../shared/fenetre-categorie';
+import { SuiteListe } from '../../../shared/suite-liste';
 
 const PAR_PAGE = 20;
 
@@ -14,7 +15,7 @@ const PAR_PAGE = 20;
  */
 @Component({
   selector: 'app-categories-pdv',
-  imports: [FormsModule, FenetreCategorie],
+  imports: [FormsModule, FenetreCategorie, SuiteListe],
   templateUrl: './categories.html',
   styleUrl: './categories.scss'
 })
@@ -37,13 +38,14 @@ export class CategoriesPdv implements OnInit {
     return this.categories().filter((c) =>
       (!this.masquerInactives() || c.actif) && (!terme || c.nom.toLowerCase().includes(terme)));
   });
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtrees().length / PAR_PAGE)));
-  readonly affichees = computed(() => {
-    // Un filtre ou un masquage peut raccourcir la liste sous la page courante.
-    const debut = Math.min(this.numeroPage(), this.totalPages() - 1) * PAR_PAGE;
-    return this.filtrees().slice(debut, debut + PAR_PAGE);
-  });
-  readonly pageCourante = computed(() => Math.min(this.numeroPage(), this.totalPages() - 1));
+  /** Lignes affichees : elles s'allongent au defilement. */
+  readonly affichees = computed(() => this.filtrees().slice(0, (this.numeroPage() + 1) * PAR_PAGE));
+  readonly etatListe = computed(() => ({
+    last: this.affichees().length >= this.filtrees().length,
+    content: this.affichees(),
+    totalElements: this.filtrees().length,
+    number: this.numeroPage()
+  }));
 
   // Fenetre d'ajout et de modification
   readonly edition = signal<CategoriePdv | 'nouvelle' | null>(null);

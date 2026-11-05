@@ -7,6 +7,7 @@ import { OperationService } from '../../../core/operation/operation.service';
 import { MateriauxService } from '../../../core/services/materiaux.service';
 import { CompteClientPdv } from '../../../shared/compte-client-pdv';
 import { FormulaireClientPdv } from '../../../shared/formulaire-client-pdv';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 /**
  * Clients du point de vente : le tableau de la gestion de parc, complete par ce
@@ -15,7 +16,7 @@ import { FormulaireClientPdv } from '../../../shared/formulaire-client-pdv';
  */
 @Component({
   selector: 'app-clients-pdv',
-  imports: [FormsModule, DecimalPipe, FormulaireClientPdv, CompteClientPdv],
+  imports: [SuiteListe, FormsModule, DecimalPipe, FormulaireClientPdv, CompteClientPdv],
   templateUrl: './clients.html'
 })
 export class ClientsPdv implements OnInit {
@@ -33,7 +34,7 @@ export class ClientsPdv implements OnInit {
   /** Seulement les clients qui doivent de l'argent. */
   debiteurs = false;
   masquerArchives = true;
-  private numeroPage = 0;
+  private readonly suite = new SuiteDePages();
 
   /** Fiche ouverte en modification (null : creation, undefined : fermee). */
   readonly fiche = signal<ClientPdv | null | undefined>(undefined);
@@ -60,11 +61,11 @@ export class ClientsPdv implements OnInit {
         type: this.type,
         actif: this.masquerArchives ? true : undefined,
         debiteurs: this.debiteurs,
-        page: this.numeroPage
+        page: this.suite.numero()
       })
       .subscribe({
         next: (p) => {
-          this.page.set(p);
+          this.page.set(cumulerPage(this.page(), p));
           this.chargement.set(false);
           this.erreur.set(null);
         },
@@ -76,13 +77,14 @@ export class ClientsPdv implements OnInit {
   }
 
   filtrer(): void {
-    this.numeroPage = 0;
     this.charger();
   }
 
-  changerPage(sens: number): void {
-    this.numeroPage += sens;
-    this.charger();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
+    }
   }
 
   enregistre(client: ClientPdv): void {

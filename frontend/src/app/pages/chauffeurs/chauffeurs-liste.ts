@@ -7,10 +7,11 @@ import { ChauffeurService } from '../../core/services/chauffeur.service';
 import { Modale } from '../../shared/modale';
 import { ChauffeurFiche } from '../chauffeurs/chauffeur-fiche';
 import { OperationService } from '../../core/operation/operation.service';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
 
 @Component({
   selector: 'app-chauffeurs-liste',
-  imports: [FormsModule, RouterLink, Modale, ChauffeurFiche],
+  imports: [SuiteListe, FormsModule, RouterLink, Modale, ChauffeurFiche],
   templateUrl: './chauffeurs-liste.html'
 })
 export class ChauffeursListe implements OnInit {
@@ -29,7 +30,7 @@ export class ChauffeursListe implements OnInit {
   recherche = '';
   statut: StatutChauffeur | '' = '';
   masquerArchives = true;
-  private pageCourante = 0;
+  private readonly suite = new SuiteDePages();
 
   readonly peutGerer = this.auth.peutGererParc();
 
@@ -56,11 +57,11 @@ export class ChauffeursListe implements OnInit {
         q: this.recherche,
         statut: this.statut,
         actif: this.masquerArchives ? true : undefined,
-        page: this.pageCourante
+        page: this.suite.numero()
       })
       .subscribe({
         next: (page) => {
-          this.page.set(page);
+          this.page.set(cumulerPage(this.page(), page));
           this.chargement.set(false);
           this.erreur.set(null);
         },
@@ -72,21 +73,14 @@ export class ChauffeursListe implements OnInit {
   }
 
   filtrer(): void {
-    this.pageCourante = 0;
     this.charger();
   }
 
-  changerPage(delta: number): void {
-    const page = this.page();
-    if (!page) {
-      return;
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
     }
-    const cible = page.number + delta;
-    if (cible < 0 || cible >= page.totalPages) {
-      return;
-    }
-    this.pageCourante = cible;
-    this.charger();
   }
 
   async archiver(chauffeur: Chauffeur): Promise<void> {

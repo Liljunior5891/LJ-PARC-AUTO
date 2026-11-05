@@ -1,21 +1,22 @@
-<app-modale titre="Nouveau transfert" sousTitre="Deplacement de marchandise entre deux lieux" largeur="1240px" [grande]="true"
-            [erreur]="erreur()" (ferme)="ferme.emit()">
+<app-modale [titre]="gerant ? 'Nouveau transfert' : 'Demande de transfert'"
+            [sousTitre]="gerant ? 'Deplacement de marchandise entre deux lieux' : 'Le gerant choisira d\'ou part la marchandise'"
+            largeur="1240px" [grande]="true" [erreur]="erreur()" (ferme)="ferme.emit()">
   <form (ngSubmit)="enregistrer()">
     <div class="grille-formulaire">
-      <div class="champ">
-        <label for="source">Lieu de depart *</label>
-        <select id="source" name="source" [ngModel]="sourceId()" (ngModelChange)="choisirSource($event)">
-          <option [ngValue]="null">Choisir...</option>
-          @for (l of etat()?.lieux ?? []; track l.id) { <option [ngValue]="l.id">{{ l.nom }}</option> }
-        </select>
-      </div>
+      @if (gerant) {
+        <div class="champ">
+          <label for="source">Lieu de depart *</label>
+          <select id="source" name="source" [ngModel]="sourceId()" (ngModelChange)="choisirSource($event)">
+            <option [ngValue]="null">Choisir...</option>
+            @for (l of etat()?.lieux ?? []; track l.id) { <option [ngValue]="l.id">{{ l.nom }}</option> }
+          </select>
+        </div>
+      }
       <div class="champ">
         <label for="destination">Lieu d'arrivee *</label>
         <select id="destination" name="destination" [ngModel]="destinationId()" (ngModelChange)="destinationId.set($event)">
-          <option [ngValue]="null">Choisir...</option>
-          @for (l of etat()?.lieux ?? []; track l.id) {
-            @if (l.id !== sourceId()) { <option [ngValue]="l.id">{{ l.nom }}</option> }
-          }
+          @if (destinations().length !== 1 || gerant) { <option [ngValue]="null">Choisir...</option> }
+          @for (l of destinations(); track l.id) { <option [ngValue]="l.id">{{ l.nom }}</option> }
         </select>
       </div>
       <div class="champ">
@@ -24,11 +25,11 @@
       </div>
     </div>
 
-    <h3 class="titre-produits">Produits a transferer</h3>
-    <div class="ajout-produit" [class.inactif]="!sourceId()">
+    <h3 class="titre-produits">{{ gerant ? 'Produits a transferer' : 'Produits demandes' }}</h3>
+    <div class="ajout-produit" [class.inactif]="gerant && !sourceId()">
       <span aria-hidden="true">⌕</span>
-      <input type="search" name="recherche" autocomplete="off" [disabled]="!sourceId()"
-             [placeholder]="sourceId() ? 'Ajouter un produit : nom ou code...' : 'Choisissez d\'abord le lieu de depart'"
+      <input type="search" name="recherche" autocomplete="off" [disabled]="gerant && !sourceId()"
+             [placeholder]="gerant && !sourceId() ? 'Choisissez d\'abord le lieu de depart' : 'Ajouter un produit : nom ou code...'"
              [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" (keydown.enter)="$event.preventDefault(); valider()"
              aria-label="Rechercher un produit a ajouter" />
       @if (suggestions().length > 0) {
@@ -51,7 +52,7 @@
           <tr>
             <th class="colonne-photo"></th>
             <th>Produit</th>
-            <th class="numerique">Disponible au depart</th>
+            @if (gerant) { <th class="numerique">Disponible au depart</th> }
             <th class="numerique">Quantite *</th>
             <th></th>
           </tr>
@@ -65,23 +66,25 @@
                 </div>
               </td>
               <td><strong>{{ l.nom }}</strong><br /><small>{{ l.code }}{{ l.unite ? ' · ' + l.unite : '' }}</small></td>
-              <td class="numerique">
-                @if (l.disponible === null) { <small>Verifie par le gerant</small> } @else { {{ l.disponible | number: '1.0-3' }} }
-                @if (depasse(l)) { <br /><small class="alerte-depasse">Pas assez aujourd'hui : verifie a l'expedition</small> }
-              </td>
+              @if (gerant) {
+                <td class="numerique">
+                  {{ l.disponible | number: '1.0-3' }}
+                  @if (depasse(l)) { <br /><small class="alerte-depasse">Pas assez aujourd'hui : verifie a l'expedition</small> }
+                </td>
+              }
               <td class="numerique">
                 <app-champ-quantite [valeur]="l.quantite" (valeurChange)="modifier(l, $event)" [libelle]="'Quantite de ' + l.nom" />
               </td>
               <td><button type="button" class="retirer" [attr.aria-label]="'Retirer ' + l.nom" (click)="retirer(l)">×</button></td>
             </tr>
           } @empty {
-            <tr><td colspan="5" class="vide">Recherchez un produit ci-dessus pour l'ajouter au transfert.</td></tr>
+            <tr><td [attr.colspan]="gerant ? 5 : 4" class="vide">Recherchez un produit ci-dessus pour l'ajouter.</td></tr>
           }
         </tbody>
         @if (lignes().length > 0) {
           <tfoot>
             <tr>
-              <td colspan="3">{{ lignes().length }} produit(s)</td>
+              <td [attr.colspan]="gerant ? 3 : 2">{{ lignes().length }} produit(s)</td>
               <td class="numerique"><strong>{{ totalUnites() | number: '1.0-3' }}</strong></td>
               <td></td>
             </tr>
@@ -92,7 +95,7 @@
 
     <p class="aide">{{ gerant
       ? 'Rien ne bouge encore : une fois valide, le transfert sort du stock du lieu de depart a son expedition.'
-      : 'Votre demande part au gerant : le stock ne bouge qu\'a l\'expedition du transfert valide.' }}</p>
+      : 'Votre demande part au gerant, qui choisit le lieu de depart et la valide.' }}</p>
 
     <div class="actions-formulaire">
       <button class="bouton secondaire annuler" type="button" (click)="ferme.emit()">Annuler</button>

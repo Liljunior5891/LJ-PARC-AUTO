@@ -136,7 +136,13 @@ export class AuthService {
       return '/plateforme';
     }
     const module = (['GESTION_PARC', 'POINT_DE_VENTE'] as CodeModule[]).find((m) => this.peutUtiliser(m));
-    return module ? this.accueilModule(module) : '/modules';
+    if (module) {
+      return this.accueilModule(module);
+    }
+    if (this.aRole('ADMIN')) {
+      return '/modules';
+    }
+    return this.peutUtiliser('MARKETPLACE') ? '/marketplace/commandes' : '/mon-compte';
   }
 
   /** Nom change depuis « Mon compte » : la barre du haut suit sans reconnexion. */

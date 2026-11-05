@@ -16,6 +16,8 @@ import {
   RemiseDifferee,
   RemiseRetrait,
   ResultatSynchro,
+  StatutBonRetrait,
+  StatutTransfert,
   Transfert
 } from '../models/lieux';
 import { BonLivraison } from '../models/materiaux';
@@ -81,8 +83,11 @@ export class LieuxService {
 
   // ---------------------------------------------------------- bons de retrait
 
-  retraits(filtre: { q?: string; lieuId?: number | null; tous?: boolean; page?: number }): Observable<Page<BonRetrait>> {
-    let params = new HttpParams().set('page', filtre.page ?? 0).set('size', 30).set('tous', !!filtre.tous);
+  retraits(filtre: { q?: string; lieuId?: number | null; statut?: StatutBonRetrait | ''; page?: number }): Observable<Page<BonRetrait>> {
+    let params = new HttpParams().set('page', filtre.page ?? 0).set('size', 30);
+    if (filtre.statut) {
+      params = params.set('statut', filtre.statut);
+    }
     if (filtre.q) {
       params = params.set('q', filtre.q);
     }
@@ -136,18 +141,23 @@ export class LieuxService {
 
   // --------------------------------------------------------------- transferts
 
-  transferts(enCours: boolean, page = 0): Observable<Page<Transfert>> {
-    return this.http.get<Page<Transfert>>(`${this.base}/transferts`, {
-      params: new HttpParams().set('page', page).set('size', 30).set('enCours', enCours)
-    });
+  /** Filtre : un statut, EN_COURS, ou vide pour tout voir. */
+  transferts(filtre: StatutTransfert | 'EN_COURS' | '', page = 0): Observable<Page<Transfert>> {
+    let params = new HttpParams().set('page', page).set('size', 30);
+    if (filtre === 'EN_COURS') {
+      params = params.set('enCours', true);
+    } else if (filtre) {
+      params = params.set('statut', filtre);
+    }
+    return this.http.get<Page<Transfert>>(`${this.base}/transferts`, { params });
   }
 
-  demanderTransfert(r: { sourceId: number; destinationId: number; note?: string | null; lignes: { articleId: number; quantite: number }[] }): Observable<Transfert> {
+  demanderTransfert(r: { sourceId?: number | null; destinationId: number; note?: string | null; lignes: { articleId: number; quantite: number }[] }): Observable<Transfert> {
     return this.http.post<Transfert>(`${this.base}/transferts`, r, { context: new HttpContext().set(SANS_SUIVI, true) });
   }
 
-  validerTransfert(id: number): Observable<Transfert> {
-    return this.http.post<Transfert>(`${this.base}/transferts/${id}/validation`, null, { context: new HttpContext().set(SANS_SUIVI, true) });
+  validerTransfert(id: number, sourceId: number | null): Observable<Transfert> {
+    return this.http.post<Transfert>(`${this.base}/transferts/${id}/validation`, { sourceId }, { context: new HttpContext().set(SANS_SUIVI, true) });
   }
 
   annulerTransfert(id: number, motif: string): Observable<Transfert> {

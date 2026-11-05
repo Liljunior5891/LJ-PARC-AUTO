@@ -585,15 +585,6 @@ table.tableau {
   }
 }
 
-.pagination {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 1rem;
-  color: var(--couleur-texte-doux);
-}
-
 .alerte-permis {
   color: var(--couleur-danger);
   font-weight: 600;

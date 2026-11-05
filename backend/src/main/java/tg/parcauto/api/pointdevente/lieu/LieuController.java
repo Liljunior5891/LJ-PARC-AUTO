@@ -120,12 +120,12 @@ public class LieuController {
 
     @GetMapping("/retraits")
     @PreAuthorize(Autorisations.PDV_MAGASIN)
-    @Operation(summary = "Bons de retrait des lieux de l'utilisateur, les plus anciens d'abord")
+    @Operation(summary = "Bons de retrait des lieux de l'utilisateur : ceux a servir d'abord, tous les statuts sauf filtre")
     public Page<RetraitService.Bon> retraits(@RequestParam(required = false) String q, @RequestParam(required = false) Long lieuId,
-                                             @RequestParam(defaultValue = "false") boolean tous,
+                                             @RequestParam(required = false) BonRetrait.Statut statut,
                                              @PageableDefault(size = 30) Pageable pageable,
                                              @AuthenticationPrincipal UtilisateurPrincipal principal) {
-        return retraits.rechercher(q, lieuId, tous, principal, pageable);
+        return retraits.rechercher(q, lieuId, statut, principal, pageable);
     }
 
     @GetMapping("/retraits/numero/{numero}")
@@ -208,10 +208,11 @@ public class LieuController {
     @GetMapping("/transferts")
     @PreAuthorize(Autorisations.PDV_MAGASIN)
     @Operation(summary = "Transferts qui concernent les lieux de l'utilisateur")
-    public Page<TransfertService.Reponse> transferts(@RequestParam(defaultValue = "false") boolean enCours,
+    public Page<TransfertService.Reponse> transferts(@RequestParam(required = false) Transfert.Statut statut,
+                                                     @RequestParam(defaultValue = "false") boolean enCours,
                                                      @PageableDefault(size = 30) Pageable pageable,
                                                      @AuthenticationPrincipal UtilisateurPrincipal principal) {
-        return transferts.lister(enCours, principal, pageable);
+        return transferts.lister(statut, enCours, principal, pageable);
     }
 
     @GetMapping("/transferts/{id}")
@@ -224,7 +225,7 @@ public class LieuController {
     @PostMapping("/transferts")
     @PreAuthorize(Autorisations.PDV_MAGASIN)
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Demande un transfert entre deux lieux")
+    @Operation(summary = "Gerant : cree un transfert. Magasinier : demande de la marchandise pour un de ses lieux")
     public TransfertService.Reponse demander(@Valid @RequestBody TransfertService.Demande r,
                                              @AuthenticationPrincipal UtilisateurPrincipal principal) {
         return transferts.demander(r, principal);
@@ -232,9 +233,10 @@ public class LieuController {
 
     @PostMapping("/transferts/{id}/validation")
     @PreAuthorize(Autorisations.PDV_GESTION)
-    @Operation(summary = "Valide un transfert (gerant)")
-    public TransfertService.Reponse valider(@PathVariable Long id, @AuthenticationPrincipal UtilisateurPrincipal principal) {
-        return transferts.valider(id, principal);
+    @Operation(summary = "Valide un transfert et fixe son lieu de depart (gerant)")
+    public TransfertService.Reponse valider(@PathVariable Long id, @RequestBody(required = false) TransfertService.Validation r,
+                                            @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return transferts.valider(id, r == null ? null : r.sourceId(), principal);
     }
 
     @PostMapping("/transferts/{id}/annulation")

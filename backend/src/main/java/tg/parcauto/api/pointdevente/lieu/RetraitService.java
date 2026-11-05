@@ -93,13 +93,13 @@ public class RetraitService {
     // -------------------------------------------------------------- consultation
 
     @Transactional(readOnly = true)
-    public Page<Bon> rechercher(String q, Long lieuId, boolean tous, UtilisateurPrincipal u, Pageable pageable) {
+    public Page<Bon> rechercher(String q, Long lieuId, BonRetrait.Statut statut, UtilisateurPrincipal u, Pageable pageable) {
         List<Long> permis = lieux.idsAccessibles(u);
         List<Long> demandes = lieuId == null ? permis : permis.stream().filter(lieuId::equals).toList();
         if (demandes.isEmpty()) {
             return Page.empty(pageable);
         }
-        Set<BonRetrait.Statut> statuts = tous ? Set.of(BonRetrait.Statut.values()) : Set.of(BonRetrait.Statut.A_SERVIR);
+        Set<BonRetrait.Statut> statuts = statut == null ? Set.of(BonRetrait.Statut.values()) : Set.of(statut);
         return repository.recherche(demandes, statuts, q == null ? "" : q.trim().toLowerCase(), pageable).map(this::versDto);
     }
 

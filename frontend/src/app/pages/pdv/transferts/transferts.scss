@@ -1,6 +1,7 @@
-.case { display: flex; gap: 8px; align-items: center; font-weight: 400; }
+.filtre-transferts { max-width: 340px; margin-bottom: 14px; }
 
 .liste {
+  align-content: start;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 12px;

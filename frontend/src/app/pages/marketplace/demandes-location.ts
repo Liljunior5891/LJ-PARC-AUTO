@@ -6,6 +6,7 @@ import { DemandeLocationEnLigne, StatutDemandeLocation } from '../../core/models
 import { Page } from '../../core/models/models';
 import { MarketplaceService } from '../../core/services/marketplace.service';
 import { Modale } from '../../shared/modale';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
 
 /** Reponse en cours de saisie : acceptation (contrat) ou refus. */
 interface Reponse {
@@ -24,7 +25,7 @@ interface Reponse {
  */
 @Component({
   selector: 'app-demandes-location',
-  imports: [FormsModule, DecimalPipe, DatePipe, LowerCasePipe, RouterLink, Modale],
+  imports: [SuiteListe, FormsModule, DecimalPipe, DatePipe, LowerCasePipe, RouterLink, Modale],
   templateUrl: './demandes-location.html',
   styleUrl: './marketplace.scss'
 })
@@ -37,7 +38,7 @@ export class DemandesLocation implements OnInit {
   readonly succes = signal<string | null>(null);
   /** Toutes les demandes par defaut, chacune avec son statut ; le filtre restreint a un statut. */
   readonly filtre = signal<StatutDemandeLocation | ''>('');
-  private numeroPage = 0;
+  private readonly suite = new SuiteDePages();
 
   readonly reponse = signal<Reponse | null>(null);
   /** Demande acceptee dont le client se desiste. */
@@ -51,9 +52,9 @@ export class DemandesLocation implements OnInit {
 
   charger(): void {
     this.chargement.set(true);
-    this.service.demandes(this.filtre(), this.numeroPage).subscribe({
+    this.service.demandes(this.filtre(), this.suite.numero()).subscribe({
       next: (page) => {
-        this.page.set(page);
+        this.page.set(cumulerPage(this.page(), page));
         this.chargement.set(false);
       },
       error: () => {
@@ -65,13 +66,14 @@ export class DemandesLocation implements OnInit {
 
   changerFiltre(statut: StatutDemandeLocation | ''): void {
     this.filtre.set(statut);
-    this.numeroPage = 0;
     this.charger();
   }
 
-  changerPage(delta: number): void {
-    this.numeroPage = Math.max(0, this.numeroPage + delta);
-    this.charger();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
+    }
   }
 
   repondre(demande: DemandeLocationEnLigne, accepter: boolean): void {

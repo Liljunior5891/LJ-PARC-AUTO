@@ -439,7 +439,7 @@ export const routes: Routes = [
       {
         path: 'modules',
         loadComponent: () => import('./pages/modules/modules').then((m) => m.Modules),
-        canActivate: [entrepriseGuard],
+        canActivate: [entrepriseGuard, roleGuard('ADMIN')],
         title: 'Modules — LJ SaaS'
       },
       {

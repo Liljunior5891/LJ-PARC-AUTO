@@ -15,10 +15,11 @@ import { DepenseService } from '../../core/services/depense.service';
 import { FormulaireDepense } from '../../shared/formulaire-depense';
 import { Modale } from '../../shared/modale';
 import { OperationService } from '../../core/operation/operation.service';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
 
 @Component({
   selector: 'app-depenses',
-  imports: [FormsModule, DecimalPipe, Modale, FormulaireDepense],
+  imports: [SuiteListe, FormsModule, DecimalPipe, Modale, FormulaireDepense],
   templateUrl: './depenses.html'
 })
 export class Depenses implements OnInit {
@@ -47,7 +48,7 @@ export class Depenses implements OnInit {
   camionId?: number;
   debut = this.premierJourDuMois();
   fin = this.aujourdhui();
-  private pageCourante = 0;
+  private readonly suite = new SuiteDePages();
 
   readonly peutGerer = this.auth.peutGererParc();
 
@@ -79,11 +80,11 @@ export class Depenses implements OnInit {
         camionId: this.camionId,
         debut: this.debut,
         fin: this.fin,
-        page: this.pageCourante
+        page: this.suite.numero()
       })
       .subscribe({
         next: (page) => {
-          this.page.set(page);
+          this.page.set(cumulerPage(this.page(), page));
           this.chargement.set(false);
           this.erreur.set(null);
         },
@@ -98,21 +99,14 @@ export class Depenses implements OnInit {
   }
 
   filtrer(): void {
-    this.pageCourante = 0;
     this.charger();
   }
 
-  changerPage(delta: number): void {
-    const page = this.page();
-    if (!page) {
-      return;
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
     }
-    const cible = page.number + delta;
-    if (cible < 0 || cible >= page.totalPages) {
-      return;
-    }
-    this.pageCourante = cible;
-    this.charger();
   }
 
   basculerFormulaire(): void {

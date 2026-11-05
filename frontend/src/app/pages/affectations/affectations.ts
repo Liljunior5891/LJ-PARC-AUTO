@@ -9,10 +9,11 @@ import { ChauffeurService } from '../../core/services/chauffeur.service';
 import { Modale } from '../../shared/modale';
 import { ChauffeurEnregistre, FormulaireChauffeur } from '../../shared/formulaire-chauffeur';
 import { VALIDATION_FORMULAIRE, messageChampsManquants } from '../../shared/validation-formulaire';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
 
 @Component({
   selector: 'app-affectations',
-  imports: [FormsModule, ReactiveFormsModule, SelectRecherche, Modale, VALIDATION_FORMULAIRE, FormulaireChauffeur],
+  imports: [SuiteListe, FormsModule, ReactiveFormsModule, SelectRecherche, Modale, VALIDATION_FORMULAIRE, FormulaireChauffeur],
   templateUrl: './affectations.html'
 })
 export class Affectations implements OnInit {
@@ -51,7 +52,7 @@ export class Affectations implements OnInit {
   );
 
   filtreEnCours: 'tous' | 'ouvertes' | 'closes' = 'ouvertes';
-  private pageCourante = 0;
+  private readonly suite = new SuiteDePages();
 
   readonly peutGerer = this.auth.peutGererParc();
 
@@ -78,9 +79,9 @@ export class Affectations implements OnInit {
     this.chargement.set(true);
     const enCours =
       this.filtreEnCours === 'tous' ? undefined : this.filtreEnCours === 'ouvertes';
-    this.service.lister({ enCours, page: this.pageCourante }).subscribe({
+    this.service.lister({ enCours, page: this.suite.numero() }).subscribe({
       next: (page) => {
-        this.page.set(page);
+        this.page.set(cumulerPage(this.page(), page));
         this.chargement.set(false);
       },
       error: () => {
@@ -91,21 +92,14 @@ export class Affectations implements OnInit {
   }
 
   filtrer(): void {
-    this.pageCourante = 0;
     this.charger();
   }
 
-  changerPage(delta: number): void {
-    const page = this.page();
-    if (!page) {
-      return;
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
     }
-    const cible = page.number + delta;
-    if (cible < 0 || cible >= page.totalPages) {
-      return;
-    }
-    this.pageCourante = cible;
-    this.charger();
   }
 
   basculerFormulaire(): void {

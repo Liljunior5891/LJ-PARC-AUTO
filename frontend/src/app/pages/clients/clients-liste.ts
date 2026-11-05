@@ -8,10 +8,11 @@ import { ClientService } from '../../core/services/client.service';
 import { Modale } from '../../shared/modale';
 import { ClientFiche } from '../clients/client-fiche';
 import { OperationService } from '../../core/operation/operation.service';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
 
 @Component({
   selector: 'app-clients-liste',
-  imports: [FormsModule, RouterLink, Modale, ClientFiche],
+  imports: [SuiteListe, FormsModule, RouterLink, Modale, ClientFiche],
   templateUrl: './clients-liste.html'
 })
 export class ClientsListe implements OnInit {
@@ -30,7 +31,7 @@ export class ClientsListe implements OnInit {
   recherche = '';
   type: TypeClient | '' = '';
   masquerArchives = true;
-  private pageCourante = 0;
+  private readonly suite = new SuiteDePages();
 
   readonly peutGerer = this.auth.peutGererParc();
 
@@ -57,11 +58,11 @@ export class ClientsListe implements OnInit {
         q: this.recherche,
         type: this.type,
         actif: this.masquerArchives ? true : undefined,
-        page: this.pageCourante
+        page: this.suite.numero()
       })
       .subscribe({
         next: (page) => {
-          this.page.set(page);
+          this.page.set(cumulerPage(this.page(), page));
           this.chargement.set(false);
           this.erreur.set(null);
         },
@@ -73,21 +74,14 @@ export class ClientsListe implements OnInit {
   }
 
   filtrer(): void {
-    this.pageCourante = 0;
     this.charger();
   }
 
-  changerPage(delta: number): void {
-    const page = this.page();
-    if (!page) {
-      return;
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  changerPage(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
     }
-    const cible = page.number + delta;
-    if (cible < 0 || cible >= page.totalPages) {
-      return;
-    }
-    this.pageCourante = cible;
-    this.charger();
   }
 
   async archiver(client: ClientParc): Promise<void> {

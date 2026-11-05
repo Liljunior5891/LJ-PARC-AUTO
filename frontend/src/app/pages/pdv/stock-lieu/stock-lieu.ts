@@ -6,11 +6,12 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { LigneStockLieu } from '../../../core/models/lieux';
 import { Page } from '../../../core/models/models';
 import { LieuxService } from '../../../core/services/lieux.service';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 /** Stock d'un lieu, en quantites : le magasinier voit ses lieux, le gerant les regle tous. */
 @Component({
   selector: 'app-stock-lieu-pdv',
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, SuiteListe],
   styles: `
     .filtres-lieu {
       display: grid;
@@ -111,12 +112,8 @@ import { LieuxService } from '../../../core/services/lieux.service';
         </tbody>
       </table>
     </div>
-    @if ((page()?.totalPages ?? 0) > 1) {
-      <div class="pagination">
-        <button class="bouton secondaire" type="button" [disabled]="numero() === 0" (click)="aller(-1)">Precedent</button>
-        <span>Page {{ numero() + 1 }} / {{ page()?.totalPages }}</span>
-        <button class="bouton secondaire" type="button" [disabled]="numero() + 1 >= (page()?.totalPages ?? 0)" (click)="aller(1)">Suivant</button>
-      </div>
+    @if (page(); as p) {
+      <app-suite-liste [page]="p" (suite)="suivante()" />
     }
   `
 })
@@ -128,7 +125,7 @@ export class StockLieuPdv implements OnInit {
   readonly lieuId = signal<number | null>(null);
   readonly lieux = computed(() => this.service.etat()?.mesLieux ?? []);
   readonly page = signal<Page<LigneStockLieu> | null>(null);
-  readonly numero = signal(0);
+  private readonly suite = new SuiteDePages();
   readonly erreur = signal<string | null>(null);
   q = '';
   private minuterie?: ReturnType<typeof setTimeout>;
@@ -152,21 +149,19 @@ export class StockLieuPdv implements OnInit {
 
   changerLieu(id: number): void {
     this.lieuId.set(id);
-    this.numero.set(0);
     this.charger();
   }
 
   rechercher(): void {
     clearTimeout(this.minuterie);
-    this.minuterie = setTimeout(() => {
-      this.numero.set(0);
-      this.charger();
-    }, 250);
+    this.minuterie = setTimeout(() => this.charger(), 250);
   }
 
-  aller(sens: number): void {
-    this.numero.update((n) => n + sens);
-    this.charger();
+  /** Bas de la liste atteint : la page suivante rejoint les lignes deja affichees. */
+  suivante(): void {
+    if (this.suite.demander(this.page())) {
+      this.charger();
+    }
   }
 
   seuil(s: LigneStockLieu, valeur: string): void {
@@ -182,8 +177,8 @@ export class StockLieuPdv implements OnInit {
   private charger(): void {
     const lieu = this.lieuId();
     if (lieu) {
-      this.service.stock(lieu, this.q.trim(), this.numero()).subscribe({
-        next: (p) => this.page.set(p),
+      this.service.stock(lieu, this.q.trim(), this.suite.numero()).subscribe({
+        next: (p) => this.page.set(cumulerPage(this.page(), p)),
         error: (e) => this.erreur.set(e?.error?.message ?? 'Chargement du stock impossible.')
       });
     }

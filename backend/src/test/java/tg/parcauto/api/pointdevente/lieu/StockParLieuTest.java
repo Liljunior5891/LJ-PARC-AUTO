@@ -44,6 +44,7 @@ class StockParLieuTest {
     @Mock TransfertRepository transferts;
     @Mock NumerotationService numerotation;
     @Mock UtilisateurPrincipal auteur;
+    @Mock UtilisateurPrincipal magasinier;
 
     private final Map<Long, StockLieu> lignes = new HashMap<>();
     private final List<MouvementStock> traces = new ArrayList<>();
@@ -81,6 +82,11 @@ class StockParLieuTest {
         when(numerotation.prochainNumero("TR")).thenReturn("TR-1");
         when(transferts.save(any())).thenAnswer(i -> i.getArgument(0));
         when(auteur.getNomComplet()).thenReturn("Gerant");
+        org.mockito.Mockito.doReturn(List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_GERANT")))
+                .when(auteur).getAuthorities();
+        when(magasinier.getNomComplet()).thenReturn("Magasinier");
+        org.mockito.Mockito.doReturn(List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_MAGASINIER")))
+                .when(magasinier).getAuthorities();
     }
 
     private static LieuStock lieu(Long id, String nom, LieuStock.Type type) {
@@ -119,7 +125,7 @@ class StockParLieuTest {
             l.setId(i++);
         }
         when(transferts.findById(70L)).thenReturn(Optional.of(t));
-        service.valider(70L, auteur);
+        service.valider(70L, null, auteur);
         return t;
     }
 
@@ -265,6 +271,60 @@ class StockParLieuTest {
         assertThat(de(depot).getStock()).isEqualByComparingTo("250");
         assertThat(de(agoe).getStock()).isEqualByComparingTo("250");
         assertThat(ciment.getStockActuel()).isEqualByComparingTo("500");
+    }
+
+    private Transfert demandeDuMagasinier() {
+        service.demander(new TransfertService.Demande(2L, 1L, null,
+                List.of(new TransfertService.LigneDemande(10L, new BigDecimal("50")))), magasinier);
+        Transfert[] capture = new Transfert[1];
+        org.mockito.Mockito.verify(transferts).save(org.mockito.ArgumentMatchers.argThat(t -> {
+            capture[0] = t;
+            return true;
+        }));
+        capture[0].setId(71L);
+        when(transferts.findById(71L)).thenReturn(Optional.of(capture[0]));
+        return capture[0];
+    }
+
+    @Test
+    void unMagasinierNeChoisitPasLeLieuDeDepart() {
+        Transfert t = demandeDuMagasinier();
+
+        assertThat(t.getSource()).isNull();
+        assertThat(t.getDestination()).isEqualTo(agoe);
+        assertThat(t.getStatut()).isEqualTo(Transfert.Statut.DEMANDE);
+    }
+
+    @Test
+    void unMagasinierNeDemandeQuePourSesLieux() {
+        when(lieux.accede(magasinier, agoe)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.demander(new TransfertService.Demande(null, 1L, null,
+                List.of(new TransfertService.LigneDemande(10L, BigDecimal.ONE))), magasinier))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("pas affecte");
+    }
+
+    @Test
+    void leGerantChoisitLeDepartEnValidant() {
+        Transfert t = demandeDuMagasinier();
+
+        assertThatThrownBy(() -> service.valider(71L, null, auteur))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("lieu de depart");
+        assertThatThrownBy(() -> service.valider(71L, 1L, auteur))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("identiques");
+
+        service.valider(71L, 2L, auteur);
+
+        assertThat(t.getSource()).isEqualTo(depot);
+        assertThat(t.getStatut()).isEqualTo(Transfert.Statut.VALIDE);
+    }
+
+    @Test
+    void uneDemandeSansDepartNeSExpediePas() {
+        demandeDuMagasinier();
+
+        assertThatThrownBy(() -> service.expedier(71L, null, auteur))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("valide");
     }
 
     @Test

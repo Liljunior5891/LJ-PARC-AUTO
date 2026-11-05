@@ -34,7 +34,8 @@ public class ModuleController {
     }
 
     @GetMapping
-    @Operation(summary = "Catalogue des modules et etat d'activation pour l'entreprise")
+    @PreAuthorize(Autorisations.ADMINISTRATION)
+    @Operation(summary = "Catalogue des modules et etat d'activation pour l'entreprise (administrateur)")
     public List<ModuleService.ModuleCatalogue> catalogue() {
         return service.catalogue(ContexteEntreprise.exiger());
     }
