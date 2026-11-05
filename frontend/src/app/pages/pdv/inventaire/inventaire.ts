@@ -8,6 +8,7 @@ import { PdvService } from '../../../core/services/pdv.service';
 import { ChampQuantite } from '../../../shared/champ-quantite';
 import { ExportPdv } from '../../../shared/export-pdv';
 import { ImportPdv, messageImport } from '../../../shared/import-pdv';
+import { normaliserCodeBarres } from '../../../shared/code-barres';
 
 /**
  * Feuille d'inventaire : pour chaque produit suivi en stock, la quantite
@@ -41,7 +42,7 @@ export class InventairePdv implements OnInit {
   motif = `Inventaire du ${new Date().toLocaleDateString('fr-FR')}`;
 
   readonly lignes = computed(() => {
-    const motif = this.recherche().trim().toLowerCase();
+    const motif = normaliserCodeBarres(this.recherche()).toLowerCase();
     const categorie = this.categorie();
     const comptes = this.comptes();
     return this.articles().filter((a) =>

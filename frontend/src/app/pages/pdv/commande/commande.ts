@@ -25,6 +25,7 @@ import { SessionTravailService } from '../../../core/services/session-travail.se
 import { BandeauSession } from '../../../shared/bandeau-session';
 import { BoutonEspeces } from '../../../shared/bouton-especes';
 import { Modale } from '../../../shared/modale';
+import { FinDeSaisie, LecteurDouchette, normaliserCodeBarres } from '../../../shared/code-barres';
 import { imprimerAddition, imprimerTicket } from '../../../shared/ticket-pdv';
 
 /** Consignes proposees en un geste pour la cuisine ou le bar. */
@@ -51,7 +52,7 @@ const RAFRAICHISSEMENT_MS = 8000;
  */
 @Component({
   selector: 'app-commande-pdv',
-  host: { '(document:keydown.escape)': 'tiroir.set(false)' },
+  host: { '(document:keydown.escape)': 'tiroir.set(false)', '(document:keydown)': 'captureDouchette($event)' },
   imports: [DecimalPipe, FormsModule, RouterLink, Modale, BandeauSession, BoutonEspeces],
   templateUrl: './commande.html',
   styleUrl: './commande.scss'
@@ -138,12 +139,13 @@ export class CommandePdv implements OnInit {
   private id = 0;
 
   readonly articlesAffiches = computed(() => {
-    const motif = this.recherche().trim().toLowerCase();
+    const motif = normaliserCodeBarres(this.recherche()).toLowerCase();
     const categorie = this.categorieChoisie();
     return this.articles().filter(
       (a) =>
         (categorie === null || a.categorieId === categorie) &&
-        (!motif || a.nom.toLowerCase().includes(motif) || a.code.toLowerCase().includes(motif))
+        (!motif || a.nom.toLowerCase().includes(motif) || a.code.toLowerCase().includes(motif) ||
+          (a.codeBarres ?? '').includes(motif))
     );
   });
 
@@ -238,7 +240,11 @@ export class CommandePdv implements OnInit {
         this.chargerEnCours();
       }
     }, RAFRAICHISSEMENT_MS);
-    this.destroyRef.onDestroy(() => clearInterval(minuterie));
+    this.destroyRef.onDestroy(() => {
+      clearInterval(minuterie);
+      this.finDeSaisie.arreter();
+      this.douchette.arreter();
+    });
   }
 
   depuis(date?: string): string {
@@ -409,11 +415,53 @@ export class CommandePdv implements OnInit {
       });
   }
 
+  /** Douchette sans Entree : le code complet dans la recherche passe a la commande. */
+  private readonly finDeSaisie = new FinDeSaisie(() => this.ajouterSiCodeComplet());
+  /** Lectures faites alors que le focus n'est pas dans la recherche. */
+  private readonly douchette = new LecteurDouchette((code, parEntree) => {
+    this.recherche.set(code);
+    if (parEntree) {
+      this.valider();
+    } else {
+      this.ajouterSiCodeComplet();
+    }
+  });
+
+  captureDouchette(e: KeyboardEvent): void {
+    const fenetreOuverte = this.tiroir() || this.paiement() || this.reglages() ||
+      this.ligneNote() !== null || this.transfert() !== null;
+    this.douchette.touche(e, !fenetreOuverte);
+  }
+
+  saisir(valeur: string): void {
+    this.recherche.set(valeur);
+    this.finDeSaisie.relancer();
+  }
+
+  /** Ajoute l'article dont le code-barres est exactement dans la recherche. */
+  private ajouterSiCodeComplet(): boolean {
+    const valeur = normaliserCodeBarres(this.recherche());
+    const article = valeur.length >= 4 ? this.articles().find((a) => a.codeBarres === valeur) : undefined;
+    if (!article) {
+      return false;
+    }
+    this.ajouter(article);
+    this.recherche.set('');
+    return true;
+  }
+
+  /** Entree dans la recherche : un code-barres exact, ou le seul article filtre. */
   valider(): void {
+    this.finDeSaisie.arreter();
+    if (this.ajouterSiCodeComplet()) {
+      return;
+    }
     const filtres = this.articlesAffiches();
     if (filtres.length === 1) {
       this.ajouter(filtres[0]);
       this.recherche.set('');
+    } else if (filtres.length === 0 && normaliserCodeBarres(this.recherche()).length >= 4) {
+      this.erreur.set(`Aucun article pour « ${normaliserCodeBarres(this.recherche())} »`);
     }
   }
 

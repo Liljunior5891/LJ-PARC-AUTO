@@ -69,7 +69,10 @@ public final class CatalogueDto {
             boolean stockBas,
             boolean actif,
             String image,
-            String categorieIcone) {
+            String categorieIcone,
+            /** Vendu mais pas encore remis au client ; le disponible en est deduit. */
+            BigDecimal stockReserve,
+            BigDecimal stockDisponible) {
 
         public static ArticleReponse de(Article a) {
             Categorie c = a.getCategorie();
@@ -78,7 +81,7 @@ public final class CatalogueDto {
                     c == null ? null : c.getId(), c == null ? null : c.getNom(), c == null ? null : c.getCouleur(),
                     a.getPrixVente(), a.getPrixAchat(), a.getUnite(), a.isSuiviStock(),
                     a.getStockActuel(), a.getSeuilAlerte(), a.stockBas(), a.isActif(),
-                    a.getImage(), c == null ? null : c.getIcone());
+                    a.getImage(), c == null ? null : c.getIcone(), a.getStockReserve(), a.stockDisponible());
         }
     }
 }

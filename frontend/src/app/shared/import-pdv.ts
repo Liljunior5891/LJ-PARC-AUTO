@@ -43,8 +43,8 @@ import { Modale } from './modale';
             <strong>Telechargez le modele</strong>
             <small>Il reprend vos donnees actuelles : modifiez-le dans votre tableur.</small>
             <div class="boutons-modele">
-              <button class="bouton secondaire petit" type="button" (click)="telechargerModele('xlsx')">⤓ Modele Excel</button>
-              <button class="bouton secondaire petit" type="button" (click)="telechargerModele('csv')">⤓ Modele CSV</button>
+              <button class="bouton secondaire petit info" type="button" (click)="telechargerModele('xlsx')">⤓ Modele Excel</button>
+              <button class="bouton secondaire petit info" type="button" (click)="telechargerModele('csv')">⤓ Modele CSV</button>
             </div>
           </div>
         </div>
@@ -96,7 +96,7 @@ import { Modale } from './modale';
           <button class="bouton secondaire" type="button" [disabled]="!fichier() || envoi()" (click)="importer(true)">
             {{ envoi() ? 'Verification...' : 'Verifier le fichier' }}
           </button>
-          <button class="bouton" type="button" [disabled]="!bilan() || bilan()!.erreurs.length > 0 || envoi()"
+          <button class="bouton info" type="button" [disabled]="!bilan() || bilan()!.erreurs.length > 0 || envoi()"
                   (click)="importer(false)">
             Importer
           </button>

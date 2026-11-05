@@ -37,6 +37,9 @@ import { Component, OnDestroy, OnInit, input, output } from '@angular/core';
   styleUrl: './modale.scss'
 })
 export class Modale implements OnInit, OnDestroy {
+  /** Fenetres ouvertes : fermer celle du dessus ne rend pas le defilement a la page. */
+  private static ouvertes = 0;
+
   readonly titre = input.required<string>();
   readonly sousTitre = input<string>();
   /** Largeur maximale de la fenetre. */
@@ -49,10 +52,14 @@ export class Modale implements OnInit, OnDestroy {
 
   /** La page ne defile plus sous la fenetre. */
   ngOnInit(): void {
+    Modale.ouvertes++;
     document.body.classList.add('modale-ouverte');
   }
 
   ngOnDestroy(): void {
-    document.body.classList.remove('modale-ouverte');
+    Modale.ouvertes--;
+    if (Modale.ouvertes === 0) {
+      document.body.classList.remove('modale-ouverte');
+    }
   }
 }

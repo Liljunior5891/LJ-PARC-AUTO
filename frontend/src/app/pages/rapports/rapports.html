@@ -104,7 +104,7 @@
             {{ edition() ? 'Edition en cours...'
                : apercu() ? "Actualiser l'apercu" : "Afficher l'apercu" }}
           </button>
-          <button class="bouton secondaire" type="button" [disabled]="edition()"
+          <button class="bouton secondaire info" type="button" [disabled]="edition()"
                   (click)="telecharger()">
             Telecharger le PDF
           </button>
@@ -120,10 +120,10 @@
               <p class="sous-titre">{{ a.nomFichier }} · {{ poids(a.taille) }}</p>
             </div>
             <div class="actions-apercu">
-              <button class="bouton secondaire petit" type="button" (click)="ouvrirDansUnOnglet()">
+              <button class="bouton secondaire petit succes" type="button" (click)="ouvrirDansUnOnglet()">
                 Ouvrir en plein ecran
               </button>
-              <button class="bouton petit" type="button" (click)="telecharger()">
+              <button class="bouton petit info" type="button" (click)="telecharger()">
                 Telecharger
               </button>
             </div>

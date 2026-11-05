@@ -75,7 +75,11 @@
               <td><span class="canal" [class.en-ligne]="v.enLigne">{{ v.enLigne ? '🌐 En ligne' : 'Comptoir' }}</span></td>
             }
             <td>{{ v.modePaiementLibelle }}</td>
-            <td class="numerique"><strong>{{ v.total | number: '1.0-0' }} F</strong></td>
+            <td class="numerique"><strong>{{ v.total | number: '1.0-0' }} F</strong>
+              @if ((v.resteDu ?? 0) > 0 && v.statut === 'VALIDEE') {
+                <br /><small style="color: #96660a">reste du {{ v.resteDu | number: '1.0-0' }} F</small>
+              }
+            </td>
             <td>
               <span class="etiquette" [class.disponible]="v.statut === 'VALIDEE'" [class.immobilise]="v.statut === 'ANNULEE'">
                 {{ v.statut === 'VALIDEE' ? 'Validee' : 'Annulee' }}
@@ -142,6 +146,13 @@
       @if (t.referencePaiement) {
         <div style="display: flex; justify-content: space-between"><dt>Reference</dt><dd>{{ t.referencePaiement }}</dd></div>
       }
+      @if ((t.montantPaye ?? t.total) < t.total && t.statut === 'VALIDEE') {
+        <div style="display: flex; justify-content: space-between"><dt>Paye a la vente</dt><dd>{{ t.montantPaye | number: '1.0-0' }} F</dd></div>
+        <div style="display: flex; justify-content: space-between; color: #96660a">
+          <dt>Reste du{{ t.echeance ? ' (echeance ' + (t.echeance | date: 'dd/MM/yyyy') + ')' : '' }}</dt>
+          <dd><strong>{{ t.resteDu | number: '1.0-0' }} F</strong></dd>
+        </div>
+      }
     </dl>
 
     @if (annulation()) {
@@ -152,12 +163,15 @@
     }
 
     <div class="actions-formulaire">
-      <button class="bouton secondaire" type="button" (click)="imprimer(t)">Reimprimer</button>
+      <button class="bouton secondaire info" type="button" (click)="imprimer(t)">Reimprimer</button>
+      @if (factureA4()) {
+        <button class="bouton secondaire info" type="button" (click)="facture(t)">Facture A4</button>
+      }
       @if (peutAnnuler && t.statut === 'VALIDEE') {
         @if (annulation()) {
           <button class="bouton danger" type="button" (click)="annuler(t)">Confirmer l'annulation</button>
         } @else {
-          <button class="bouton secondaire" type="button" (click)="annulation.set(true)">Annuler la commande</button>
+          <button class="bouton secondaire danger" type="button" (click)="annulation.set(true)">Annuler la commande</button>
         }
       }
     </div>

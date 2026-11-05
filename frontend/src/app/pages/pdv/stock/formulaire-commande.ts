@@ -5,6 +5,7 @@ import { ArticlePdv, CommandeFournisseurDetail } from '../../../core/models/pdv'
 import { PdvService } from '../../../core/services/pdv.service';
 import { ChampQuantite } from '../../../shared/champ-quantite';
 import { Modale } from '../../../shared/modale';
+import { normaliserCodeBarres } from '../../../shared/code-barres';
 
 /** Produit sur la commande en cours de saisie. */
 interface LigneSaisie {
@@ -47,7 +48,7 @@ export class FormulaireCommande implements OnInit {
   note = '';
 
   readonly suggestions = computed(() => {
-    const motif = this.recherche().trim().toLowerCase();
+    const motif = normaliserCodeBarres(this.recherche()).toLowerCase();
     if (!motif) {
       return [];
     }
@@ -94,7 +95,7 @@ export class FormulaireCommande implements OnInit {
   /** Entree dans la recherche : le seul produit trouve, ou un code-barres exact. */
   valider(): void {
     const s = this.suggestions();
-    const exact = s.find((a) => a.codeBarres === this.recherche().trim());
+    const exact = s.find((a) => a.codeBarres === normaliserCodeBarres(this.recherche()));
     if (exact || s.length === 1) {
       this.ajouter(exact ?? s[0]);
     }
@@ -145,11 +146,11 @@ export class FormulaireCommande implements OnInit {
   /** Quantite proposee : de quoi remonter au double du seuil d'alerte, a defaut une unite. */
   private nouvelleLigne(article: ArticlePdv): LigneSaisie {
     const seuil = article.seuilAlerte ?? 0;
-    const manque = Math.ceil(seuil * 2 - article.stockActuel);
+    const manque = Math.ceil(seuil * 2 - article.stockDisponible);
     return { article, quantite: article.suiviStock && manque > 0 ? manque : 1, coutUnitaire: article.prixAchat ?? null };
   }
 
   private articleMinimal(id: number, nom: string, code: string): ArticlePdv {
-    return { id, nom, code, prixVente: 0, suiviStock: true, stockActuel: 0, stockBas: false, actif: false };
+    return { id, nom, code, prixVente: 0, suiviStock: true, stockActuel: 0, stockReserve: 0, stockDisponible: 0, stockBas: false, actif: false };
   }
 }

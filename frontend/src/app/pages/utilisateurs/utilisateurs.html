@@ -160,11 +160,11 @@
             </td>
             <td>{{ utilisateur.creeLe | date: 'dd/MM/yyyy' }}</td>
             <td class="actions-ligne">
-              <button class="bouton secondaire petit" type="button"
+              <button class="bouton secondaire petit info" type="button"
                       (click)="ouvrirEdition(utilisateur)">
                 Modifier
               </button>
-              <button class="bouton secondaire petit" type="button"
+              <button class="bouton secondaire petit info" type="button"
                       (click)="ouvrirReinitialisation(utilisateur)">
                 Mot de passe
               </button>
@@ -230,7 +230,7 @@
     <div class="actions-formulaire">
       <button class="bouton" type="button" [disabled]="enregistrement()" (click)="enregistrerPin()">Enregistrer</button>
       @if (cible.pinDefini) {
-        <button class="bouton secondaire" type="button" [disabled]="enregistrement()" (click)="effacerPin()"
+        <button class="bouton secondaire danger" type="button" [disabled]="enregistrement()" (click)="effacerPin()"
                 title="La personne creera un nouveau code a sa prochaine ouverture de caisse">Effacer le code</button>
       }
       <button class="bouton secondaire annuler" type="button" (click)="pinCible.set(null)">Annuler</button>

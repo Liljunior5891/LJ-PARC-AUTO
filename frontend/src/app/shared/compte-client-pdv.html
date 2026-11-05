@@ -1,0 +1,174 @@
+@let c = compte();
+<app-modale [titre]="c ? c.client.nom : 'Compte client'"
+            [sousTitre]="c ? c.client.typeLibelle + ' · ' + c.client.code + (c.client.telephone ? ' · ' + c.client.telephone : '') : ''"
+            largeur="760px" [erreur]="erreur()" (ferme)="ferme.emit()">
+  @if (succes()) {
+    <div class="message succes">{{ succes() }}</div>
+  }
+  @if (c) {
+    <div class="situation">
+      <div class="indic" [class.alerte]="c.client.encours > 0">
+        <small>Doit</small>
+        <strong>{{ c.client.encours | number: '1.0-0' }} F</strong>
+      </div>
+      <div class="indic" [class.danger]="c.client.encoursEchu > 0">
+        <small>En retard</small>
+        <strong>{{ c.client.encoursEchu | number: '1.0-0' }} F</strong>
+      </div>
+      <div class="indic">
+        <small>Plafond</small>
+        <strong>{{ c.client.plafondRetenu === null || c.client.plafondRetenu === undefined ? 'Sans limite' : (c.client.plafondRetenu | number: '1.0-0') + ' F' }}</strong>
+      </div>
+      <div class="indic">
+        <small>Credit disponible</small>
+        <strong>{{ c.client.creditDisponible === null || c.client.creditDisponible === undefined ? '—' : (c.client.creditDisponible | number: '1.0-0') + ' F' }}</strong>
+      </div>
+    </div>
+
+    @if (versement()) {
+      <form class="carte versement" (ngSubmit)="encaisser()">
+        <h3>Encaisser un versement{{ venteId ? ' sur une vente' : '' }}</h3>
+        @if (!session() && (ouvertes()?.length ?? 0) > 1) {
+          <div class="champ">
+            <label for="v-session">Caisse</label>
+            <select id="v-session" name="session" [ngModel]="null" (ngModelChange)="choisirSession($event)">
+              <option [ngValue]="null" disabled>Choisissez la caisse</option>
+              @for (s of ouvertes() ?? []; track s.id) { <option [ngValue]="s.id">{{ s.caisseNom }} · {{ s.numero }}</option> }
+            </select>
+          </div>
+        } @else if (!session()) {
+          <div class="message avertissement">Aucune caisse ouverte : un gerant doit ouvrir une session avant d'encaisser.</div>
+        }
+        <div class="moyens">
+          @for (m of modes; track m.valeur) {
+            <button type="button" class="moyen" [class.actif]="mode() === m.valeur" (click)="mode.set(m.valeur)">
+              <span aria-hidden="true">{{ m.icone }}</span> {{ m.libelle }}
+            </button>
+          }
+        </div>
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label for="v-montant">Montant verse (F)</label>
+            <input id="v-montant" name="montant" type="number" min="1" step="any" required
+                   [ngModel]="montant()" (ngModelChange)="montant.set($event); recu.set($event)" />
+          </div>
+          @if (mode() === 'ESPECES') {
+            <div class="champ">
+              <label for="v-recu">Billets remis (F)</label>
+              <input id="v-recu" name="recu" type="number" min="0" step="any" [ngModel]="recu()" (ngModelChange)="recu.set($event)" />
+              @if (monnaie() > 0) { <small>Monnaie a rendre : <strong>{{ monnaie() | number: '1.0-0' }} F</strong></small> }
+            </div>
+          } @else {
+            <div class="champ">
+              <label for="v-ref">Reference (facultatif)</label>
+              <input id="v-ref" name="reference" maxlength="80" [(ngModel)]="reference" placeholder="Ex. ID mobile money" />
+            </div>
+          }
+        </div>
+        <div class="actions-formulaire">
+          <button class="bouton secondaire annuler" type="button" (click)="versement.set(false)">Retour</button>
+          <button class="bouton" type="submit" [disabled]="enCours() || !session() || !(montant() ?? 0)">
+            {{ enCours() ? 'Enregistrement...' : 'Encaisser ' + ((montant() ?? 0) | number: '1.0-0') + ' F' }}
+          </button>
+        </div>
+      </form>
+    } @else if (c.client.encours > 0) {
+      <div class="actions-formulaire" style="margin-top: 0">
+        <button class="bouton succes" type="button" (click)="ouvrirVersement()">Encaisser un versement</button>
+      </div>
+    }
+
+    <h3>Ventes a regler</h3>
+    <div class="tableau-conteneur liste-modale">
+      <table class="tableau">
+        <thead>
+          <tr><th>Vente</th><th>Date</th><th class="numerique">Total</th><th class="numerique">Reste du</th><th>Echeance</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (v of c.dues; track v.id) {
+            <tr>
+              <td><strong>{{ v.numero }}</strong></td>
+              <td>{{ v.dateVente | date: 'dd/MM/yyyy' }}</td>
+              <td class="numerique">{{ v.total | number: '1.0-0' }}</td>
+              <td class="numerique"><strong>{{ v.resteDu | number: '1.0-0' }}</strong></td>
+              <td>
+                @if (v.echeance) {
+                  <span class="etiquette" [class.immobilise]="v.enRetard" [class.disponible]="!v.enRetard">
+                    {{ v.echeance | date: 'dd/MM/yyyy' }}{{ v.enRetard ? ' · en retard' : '' }}
+                  </span>
+                }
+              </td>
+              <td>
+                @if (!versement()) {
+                  <button class="bouton secondaire petit succes" type="button" (click)="ouvrirVersement(v.id, v.resteDu)">Regler</button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="vide-ligne">Rien a regler : le client est a jour.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (c.aLivrer.length) {
+      <h3>Reste a livrer</h3>
+      <div class="tableau-conteneur liste-modale">
+        <table class="tableau">
+          <thead><tr><th>Commande</th><th>Date</th><th>Articles</th></tr></thead>
+          <tbody>
+            @for (v of c.aLivrer; track v.venteId) {
+              <tr>
+                <td><strong>{{ v.numero }}</strong></td>
+                <td>{{ v.dateVente | date: 'dd/MM/yyyy' }}</td>
+                <td>
+                  @for (l of v.lignes; track l.ligneId) {
+                    <div><strong>{{ l.reste | number: '1.0-3' }}</strong> {{ l.unite || '' }} · {{ l.libelle }}</div>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="actions-formulaire" style="margin-top: 0.5rem">
+        <a class="bouton secondaire petit succes" routerLink="/pdv/livraisons" [queryParams]="{ client: c.client.id }" (click)="ferme.emit()">Remettre au client</a>
+      </div>
+    }
+
+    <h3>Versements</h3>
+    <div class="tableau-conteneur liste-modale">
+      <table class="tableau">
+        <thead>
+          <tr><th>Recu</th><th>Date</th><th>Sur</th><th>Mode</th><th class="numerique">Montant</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (g of versements(); track g.numero) {
+            <tr [style.opacity]="g.statut === 'ANNULE' ? 0.55 : 1">
+              <td><strong>{{ g.numero }}</strong><br /><small>{{ g.caissier }}</small></td>
+              <td>{{ g.date | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td><small>{{ g.ventes.join(', ') }}</small></td>
+              <td>{{ g.mode }}</td>
+              <td class="numerique">{{ g.montant | number: '1.0-0' }}{{ g.statut === 'ANNULE' ? ' (annule)' : '' }}</td>
+              <td class="actions-ligne">
+                <button class="bouton secondaire petit info" type="button" (click)="reimprimer(g.numero)">Recu</button>
+                @if (estGestionnaire && g.statut === 'VALIDE') {
+                  @if (aAnnuler() === g.numero) {
+                    <input [(ngModel)]="motif" placeholder="Motif" aria-label="Motif de l'annulation" />
+                    <button class="bouton danger petit" type="button" (click)="annuler(g.numero)">Confirmer</button>
+                  } @else {
+                    <button class="bouton secondaire petit annuler" type="button" (click)="aAnnuler.set(g.numero); motif = ''">Annuler</button>
+                  }
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="vide-ligne">Aucun versement.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else if (!erreur()) {
+    <p class="vide">Chargement...</p>
+  }
+</app-modale>

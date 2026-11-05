@@ -137,7 +137,7 @@
         </div>
       </div>
       <div class="actions-formulaire">
-        <button class="bouton" type="button" (click)="realiser(e)">Valider la realisation</button>
+        <button class="bouton succes" type="button" (click)="realiser(e)">Valider la realisation</button>
         <button class="bouton secondaire annuler" type="button" (click)="realisationEnCours.set(null)">
           Annuler
         </button>
@@ -185,7 +185,7 @@
                       Atelier
                     </button>
                   }
-                  <button class="bouton petit" type="button" (click)="ouvrirRealisation(entretien)">
+                  <button class="bouton petit succes" type="button" (click)="ouvrirRealisation(entretien)">
                     Realiser
                   </button>
                 }
@@ -398,7 +398,7 @@
                       Prendre en charge
                     </button>
                   }
-                  <button class="bouton petit" type="button" (click)="traiter(incident, 'RESOLU')">
+                  <button class="bouton petit succes" type="button" (click)="traiter(incident, 'RESOLU')">
                     Resoudre
                   </button>
                 }

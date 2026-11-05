@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tg.parcauto.api.common.BusinessException;
 import tg.parcauto.api.common.NumerotationService;
+import tg.parcauto.api.pointdevente.materiaux.ReglementClientRepository;
 import tg.parcauto.api.pointdevente.restauration.Commande;
 import tg.parcauto.api.pointdevente.restauration.CommandeRepository;
 import tg.parcauto.api.pointdevente.vente.ModePaiementPdv;
@@ -39,6 +40,7 @@ class CaisseServiceTest {
     private MouvementCaisseRepository mouvements;
     private VenteRepository ventes;
     private CommandeRepository commandes;
+    private ReglementClientRepository reglementsClients;
     private SessionCaisse session;
     private final List<MouvementCaisse> mouvementsEnregistres = new ArrayList<>();
 
@@ -48,8 +50,10 @@ class CaisseServiceTest {
         mouvements = mock(MouvementCaisseRepository.class);
         ventes = mock(VenteRepository.class);
         commandes = mock(CommandeRepository.class);
-        service = new CaisseService(sessions, mouvements, ventes, commandes, mock(NumerotationService.class),
-                mock(GestionCaisseService.class), mock(SessionTravailService.class));
+        reglementsClients = mock(ReglementClientRepository.class);
+        service = new CaisseService(sessions, mouvements, ventes, reglementsClients, commandes, mock(NumerotationService.class),
+                mock(GestionCaisseService.class), mock(SessionTravailService.class),
+                mock(tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository.class));
 
         Caisse caisse = new Caisse();
         caisse.setId(3L);
@@ -90,6 +94,20 @@ class CaisseServiceTest {
         assertThat(controle.especesAttendues()).isEqualByComparingTo("16000");
         assertThat(controle.montantCompte()).isEqualByComparingTo("15000");
         assertThat(controle.ecart()).isEqualByComparingTo("-1000");
+    }
+
+    @Test
+    void lesReglementsDeClientsEnEspecesSontAttendusDansLeTiroir() {
+        // Quincaillerie : un client a credit verse 4 000 F en especes et 1 000 F par mobile money.
+        List<Object[]> reglements = new ArrayList<>();
+        reglements.add(new Object[]{ModePaiementPdv.ESPECES, BigDecimal.valueOf(4000), 1L});
+        reglements.add(new Object[]{ModePaiementPdv.MOBILE_MONEY, BigDecimal.valueOf(1000), 1L});
+        when(reglementsClients.totauxSession(10L)).thenReturn(reglements);
+
+        // 5 000 de fond + 12 000 de ventes + 4 000 de reglement en especes.
+        CaisseService.Controle controle = service.controler(10L, comptage(10000, 2, 1000, 1));
+        assertThat(controle.especesAttendues()).isEqualByComparingTo("21000");
+        assertThat(controle.ecart()).isEqualByComparingTo("0");
     }
 
     @Test

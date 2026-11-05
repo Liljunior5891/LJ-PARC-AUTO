@@ -86,10 +86,10 @@
             <td><span [class]="classeStatut(mission.statut)">{{ mission.statutLibelle }}</span></td>
             <td>
               @if (peutPiloter && mission.statut === 'PLANIFIEE') {
-                <button class="bouton petit" type="button" (click)="demarrer(mission)">Demarrer</button>
+                <button class="bouton petit succes" type="button" (click)="demarrer(mission)">Demarrer</button>
               }
               @if (peutPiloter && mission.statut === 'EN_COURS') {
-                <button class="bouton petit" type="button" (click)="ouvrirCloture(mission)">Cloturer</button>
+                <button class="bouton petit attention" type="button" (click)="ouvrirCloture(mission)">Cloturer</button>
               }
               @if (peutGerer && mission.statut !== 'TERMINEE' && mission.statut !== 'ANNULEE') {
                 <button class="bouton danger petit" type="button" (click)="annuler(mission)">Annuler</button>
@@ -149,7 +149,7 @@
         </div>
       </div>
       <div class="actions-formulaire">
-        <button class="bouton" type="button" (click)="cloturer(m)">Valider la cloture</button>
+        <button class="bouton succes" type="button" (click)="cloturer(m)">Valider la cloture</button>
         <button class="bouton secondaire annuler" type="button" (click)="clotureEnCours.set(null)">Annuler</button>
       </div>
     </div>

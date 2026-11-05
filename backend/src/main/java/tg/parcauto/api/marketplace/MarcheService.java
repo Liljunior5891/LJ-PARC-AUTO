@@ -89,7 +89,7 @@ public class MarcheService {
                         left join pdv_article a on o.type = 'ARTICLE' and a.id = o.article_id
                         left join camion c on o.type = 'VEHICULE' and c.id = o.camion_id
                         where b.publiee
-                          and (o.type <> 'ARTICLE' or (a.actif and (not a.suivi_stock or a.stock_actuel > 0)))
+                          and (o.type <> 'ARTICLE' or (a.actif and (not a.suivi_stock or a.stock_actuel - a.stock_reserve > 0)))
                           and (o.type <> 'VEHICULE' or (c.actif and c.statut not in ('VENDU', 'HORS_SERVICE', 'ACCIDENTE')))
                           and (o.type <> 'LIBRE' or o.stock is null or o.stock > 0)
                         """)

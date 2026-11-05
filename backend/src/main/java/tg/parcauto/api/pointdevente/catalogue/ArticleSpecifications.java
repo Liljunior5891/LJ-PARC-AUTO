@@ -43,7 +43,8 @@ public final class ArticleSpecifications {
             if (Boolean.TRUE.equals(stockBas)) {
                 predicats.add(cb.isTrue(racine.get("suiviStock")));
                 predicats.add(cb.isNotNull(racine.get("seuilAlerte")));
-                predicats.add(cb.lessThanOrEqualTo(racine.get("stockActuel"), racine.get("seuilAlerte")));
+                predicats.add(cb.lessThanOrEqualTo(cb.diff(racine.<java.math.BigDecimal>get("stockActuel"),
+                        racine.<java.math.BigDecimal>get("stockReserve")), racine.<java.math.BigDecimal>get("seuilAlerte")));
             }
             if (SpecificationUtils.renseigne(q)) {
                 String motif = SpecificationUtils.motif(q);

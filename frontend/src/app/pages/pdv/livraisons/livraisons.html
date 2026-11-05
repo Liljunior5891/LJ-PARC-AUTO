@@ -1,0 +1,321 @@
+<div class="entete-page">
+  <div>
+    <h1>Reste a livrer</h1>
+    <p class="sous-titre">
+      @if (vue() === 'reste') {
+        {{ page()?.totalElements ?? 0 }} commande(s) dont le client n'a pas encore tout emporte. La marchandise reste reservee jusqu'a sa remise.
+      } @else {
+        {{ page()?.totalElements ?? 0 }} commande(s) avec des bons de livraison ou des avoirs.
+      }
+    </p>
+  </div>
+</div>
+
+@if (succes()) {
+  <div class="message succes">
+    {{ succes() }}
+    @if (dernierBon(); as bon) {
+      <button class="bouton secondaire petit info" type="button" style="margin-left: 0.5rem" (click)="imprimer(bon)">Imprimer le bon</button>
+    }
+    @if (dernierSolde(); as s) {
+      <button class="bouton secondaire petit info" type="button" style="margin-left: 0.5rem" (click)="imprimerSolde(s)">Imprimer l'avoir</button>
+    }
+  </div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="recherche">Recherche</label>
+      <input id="recherche" type="search" placeholder="Client ou numero de commande..."
+             [(ngModel)]="recherche" (keyup.enter)="filtrer()" (search)="filtrer()" />
+    </div>
+    <div class="champ">
+      <label for="vue">Afficher</label>
+      <select id="vue" [ngModel]="vue()" (ngModelChange)="changerVue($event)">
+        <option value="reste">Reste a livrer</option>
+        <option value="historique">Toutes les commandes avec documents</option>
+      </select>
+    </div>
+    @if (clientId()) {
+      <div class="champ" style="justify-content: flex-end">
+        <button class="bouton secondaire" type="button" (click)="tousLesClients()">Voir tous les clients</button>
+      </div>
+    }
+  </div>
+
+  @if (erreur()) {
+    <div class="message erreur" style="margin-top: 1rem">{{ erreur() }}</div>
+  }
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Commande</th>
+          <th>Client</th>
+          <th>Reste a livrer</th>
+          <th class="numerique">Reste a payer</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (v of page()?.content ?? []; track v.venteId) {
+          <tr>
+            <td><strong>{{ v.numero }}</strong><br /><small>{{ v.dateVente | date: 'dd/MM/yyyy' }}</small></td>
+            <td>
+              {{ v.clientNom || '—' }}
+              @if (v.clientTelephone) { <br /><small>{{ v.clientTelephone }}</small> }
+            </td>
+            <td>
+              @for (l of v.lignes; track l.ligneId) {
+                <div><strong>{{ l.reste | number: '1.0-3' }}</strong> {{ l.unite || '' }} · {{ l.libelle }}
+                  <small>(sur {{ l.quantite | number: '1.0-3' }})</small></div>
+              } @empty {
+                @if (v.statut === 'ANNULEE') { <span class="resultat-negatif">Commande annulee</span> } @else { Tout est regle }
+              }
+            </td>
+            <td class="numerique">
+              @if (v.resteDu > 0) { <strong class="resultat-negatif">{{ v.resteDu | number: '1.0-0' }} F</strong> } @else { Paye }
+            </td>
+            <td style="white-space: nowrap; text-align: right">
+              <button class="bouton secondaire petit info" type="button" (click)="ouvrirBons(v)">Documents</button>
+              @if (v.lignes.length) {
+                @if (estGestionnaire) {
+                  <button class="bouton petit attention" type="button" (click)="ouvrirSolde(v)">Solder</button>
+                }
+                <button class="bouton petit succes" type="button" (click)="ouvrirRemise(v)">Remettre</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="5">
+              <div class="message vide">{{ chargement() ? 'Chargement...' : 'Rien a livrer : tous les clients ont tout emporte.' }}</div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">Precedent</button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">Suivant</button>
+      </div>
+    }
+  }
+</div>
+
+<!-- Remise au client -->
+@if (remise(); as v) {
+  <app-modale [titre]="'Remettre au client'" [sousTitre]="v.numero + ' · ' + (v.clientNom || '')" largeur="680px"
+              [erreur]="erreurRemise()" (ferme)="remise.set(null)">
+    <form (ngSubmit)="remettre()">
+      @if (v.resteDu > 0) {
+        <div class="message avertissement">Attention : ce client doit encore {{ v.resteDu | number: '1.0-0' }} F sur cette commande.</div>
+      }
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead>
+            <tr><th>Article</th><th class="numerique">Commande</th><th class="numerique">Deja remis</th><th class="numerique">Reste</th><th class="numerique">En magasin</th><th class="numerique">Remis maintenant</th></tr>
+          </thead>
+          <tbody>
+            @for (l of v.lignes; track l.ligneId) {
+              <tr>
+                <td><strong>{{ l.libelle }}</strong>@if (l.unite) { <small> / {{ l.unite }}</small> }</td>
+                <td class="numerique">{{ l.quantite | number: '1.0-3' }}</td>
+                <td class="numerique">{{ l.quantiteLivree | number: '1.0-3' }}</td>
+                <td class="numerique">{{ l.reste | number: '1.0-3' }}</td>
+                <td class="numerique" title="Stock en magasin, dans l'unite de base du produit">
+                  <span [class.resultat-negatif]="l.enMagasin < l.reste">{{ l.enMagasin | number: '1.0-3' }}</span>
+                </td>
+                <td class="numerique">
+                  <input type="number" min="0" [max]="l.reste" step="any" style="width: 90px; text-align: right"
+                         [name]="'q-' + l.ligneId" [attr.aria-label]="'Quantite remise de ' + l.libelle"
+                         [ngModel]="quantites()[l.ligneId]" (ngModelChange)="changerQuantite(l.ligneId, $event)" />
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="grille-formulaire" style="margin-top: 1rem">
+        <div class="champ">
+          <label for="recu-par">Recu par</label>
+          <input id="recu-par" name="recuPar" maxlength="150" [(ngModel)]="recuPar" placeholder="Client, chauffeur, chef de chantier..." />
+        </div>
+        <div class="champ">
+          <label for="note-bon">Note sur le bon</label>
+          <input id="note-bon" name="note" maxlength="255" [(ngModel)]="note" placeholder="Ex. camion immatricule TG 1234 AB" />
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="remise.set(null)">Annuler</button>
+        <button class="bouton succes" type="submit" [disabled]="enCours() || !remiseValide()">
+          {{ enCours() ? 'Enregistrement...' : 'Valider la remise' }}
+        </button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+<!-- Solde du reste : le client renonce a ce qu'il n'a pas emporte -->
+@if (solde(); as v) {
+  <app-modale titre="Solder le reste" [sousTitre]="v.numero + ' · ' + (v.clientNom || '')" largeur="680px"
+              [erreur]="erreurSolde()" (ferme)="solde.set(null)">
+    <form (ngSubmit)="solder()">
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead>
+            <tr><th>Article</th><th class="numerique">Reste</th><th class="numerique">Le client renonce a</th><th class="numerique">Valeur</th></tr>
+          </thead>
+          <tbody>
+            @for (l of v.lignes; track l.ligneId) {
+              <tr>
+                <td><strong>{{ l.libelle }}</strong>@if (l.unite) { <small> / {{ l.unite }}</small> }</td>
+                <td class="numerique">{{ l.reste | number: '1.0-3' }}</td>
+                <td class="numerique">
+                  <input type="number" min="0" [max]="l.reste" step="any" style="width: 90px; text-align: right"
+                         [name]="'s-' + l.ligneId" [attr.aria-label]="'Quantite abandonnee de ' + l.libelle"
+                         [ngModel]="quantitesSolde()[l.ligneId]" (ngModelChange)="changerQuantiteSolde(l.ligneId, $event)" />
+                </td>
+                <td class="numerique">{{ (quantitesSolde()[l.ligneId] ?? 0) * l.valeurUnitaire | number: '1.0-0' }} F</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="message avertissement" style="margin-top: 1rem">
+        Valeur : <strong>{{ valeurSolde() | number: '1.0-0' }} F</strong>
+        @if (deduitSolde() > 0) { · retires de ce que le client doit : <strong>{{ deduitSolde() | number: '1.0-0' }} F</strong> }
+        @if (rembourseSolde() > 0) { · <strong>a lui rendre : {{ rembourseSolde() | number: '1.0-0' }} F</strong> }
+      </div>
+
+      <div class="grille-formulaire" style="margin-top: 1rem">
+        <div class="champ champ-pleine">
+          <label for="motif-solde">Motif *</label>
+          <input id="motif-solde" name="motifSolde" maxlength="255" required
+                 [ngModel]="motifSolde()" (ngModelChange)="motifSolde.set($event)" placeholder="Ex. chantier arrete, produit plus necessaire" />
+        </div>
+        @if (rembourseSolde() > 0) {
+          <div class="champ">
+            <label for="mode-solde">Rembourser par</label>
+            <select id="mode-solde" name="modeSolde" [ngModel]="modeSolde()" (ngModelChange)="modeSolde.set($event)">
+              @for (m of modes; track m.valeur) { <option [ngValue]="m.valeur">{{ m.libelle }}</option> }
+            </select>
+          </div>
+          @if (modeSolde() !== 'ESPECES') {
+            <div class="champ">
+              <label for="ref-solde">Reference (facultatif)</label>
+              <input id="ref-solde" name="refSolde" maxlength="80" [(ngModel)]="referenceSolde" placeholder="Ex. ID mobile money" />
+            </div>
+          }
+          @if (!session() && (ouvertes()?.length ?? 0) > 1) {
+            <div class="champ">
+              <label for="session-solde">Caisse</label>
+              <select id="session-solde" name="sessionSolde" [ngModel]="null" (ngModelChange)="choisirSession($event)">
+                <option [ngValue]="null" disabled>Choisissez la caisse</option>
+                @for (s of ouvertes() ?? []; track s.id) { <option [ngValue]="s.id">{{ s.caisseNom }} · {{ s.numero }}</option> }
+              </select>
+            </div>
+          } @else if (!session()) {
+            <div class="message avertissement champ-pleine">Aucune caisse ouverte : ouvrez une session pour rembourser le client.</div>
+          }
+        }
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="solde.set(null)">Annuler</button>
+        <button class="bouton attention" type="submit" [disabled]="enCours() || !soldeValide()">
+          {{ enCours() ? 'Enregistrement...' : 'Solder le reste' }}
+        </button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+<!-- Bons de livraison et avoirs d'une commande -->
+@if (venteDesBons(); as v) {
+  <app-modale titre="Documents de la commande" [sousTitre]="v.numero + ' · ' + (v.clientNom || '')" largeur="760px"
+              [erreur]="erreurDocuments()" (ferme)="venteDesBons.set(null)">
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead><tr><th>Bon</th><th>Remis</th><th>Par / recu par</th><th></th></tr></thead>
+        <tbody>
+          @for (b of bons(); track b.id) {
+            <tr [style.opacity]="b.statut === 'ANNULE' ? 0.55 : 1">
+              <td>
+                <strong>{{ b.numero }}</strong><br /><small>{{ b.dateBon | date: 'dd/MM/yyyy HH:mm' }}</small>
+                @if (b.statut === 'ANNULE') { <br /><small class="resultat-negatif">Annule{{ b.motifAnnulation ? ' : ' + b.motifAnnulation : '' }}</small> }
+              </td>
+              <td>
+                @for (l of b.lignes; track $index) {
+                  <div>{{ l.quantite | number: '1.0-3' }} {{ l.unite || '' }} · {{ l.libelle }}</div>
+                }
+              </td>
+              <td>{{ b.remisPar }}@if (b.recuPar) { <br /><small>{{ b.recuPar }}</small> }</td>
+              <td style="white-space: nowrap; text-align: right">
+                <button class="bouton secondaire petit info" type="button" (click)="imprimer(b)">Imprimer</button>
+                @if (estGestionnaire && b.statut === 'VALIDE') {
+                  @if (bonAAnnuler() === b.id) {
+                    <input [(ngModel)]="motifAnnulation" placeholder="Motif" aria-label="Motif de l'annulation" style="width: 110px; margin: 0 0.3rem" />
+                    <button class="bouton danger petit" type="button" (click)="annulerBon(b)">Confirmer</button>
+                  } @else {
+                    <button class="bouton secondaire petit annuler" type="button" (click)="bonAAnnuler.set(b.id); motifAnnulation = ''">Annuler</button>
+                  }
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4"><div class="message vide">Aucune remise pour cette commande.</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (soldes().length) {
+      <div class="tableau-conteneur" style="margin-top: 1rem">
+        <table class="tableau">
+          <thead><tr><th>Avoir</th><th>Abandonne</th><th class="numerique">Valeur</th><th></th></tr></thead>
+          <tbody>
+            @for (s of soldes(); track s.id) {
+              <tr [style.opacity]="s.statut === 'ANNULE' ? 0.55 : 1">
+                <td>
+                  <strong>{{ s.numero }}</strong><br /><small>{{ s.dateSolde | date: 'dd/MM/yyyy HH:mm' }} · {{ s.auteurNom }}</small>
+                  @if (s.statut === 'ANNULE') { <br /><small class="resultat-negatif">Annule{{ s.motifAnnulation ? ' : ' + s.motifAnnulation : '' }}</small> }
+                </td>
+                <td>
+                  @for (l of s.lignes; track $index) {
+                    <div>{{ l.quantite | number: '1.0-3' }} {{ l.unite || '' }} · {{ l.libelle }}</div>
+                  }
+                  <small>{{ s.motif }}</small>
+                </td>
+                <td class="numerique">
+                  <strong>{{ s.montant | number: '1.0-0' }} F</strong>
+                  @if (s.montantRembourse > 0) { <br /><small>dont {{ s.montantRembourse | number: '1.0-0' }} F rendus ({{ s.modeRemboursementLibelle }})</small> }
+                </td>
+                <td style="white-space: nowrap; text-align: right">
+                  <button class="bouton secondaire petit info" type="button" (click)="imprimerSolde(s)">Imprimer</button>
+                  @if (estGestionnaire && s.statut === 'VALIDE' && s.sessionOuverte) {
+                    @if (soldeAAnnuler() === s.id) {
+                      <input [(ngModel)]="motifAnnulation" placeholder="Motif" aria-label="Motif de l'annulation du solde" style="width: 110px; margin: 0 0.3rem" />
+                      <button class="bouton danger petit" type="button" (click)="annulerSolde(s)">Confirmer</button>
+                    } @else {
+                      <button class="bouton secondaire petit annuler" type="button" (click)="soldeAAnnuler.set(s.id); motifAnnulation = ''">Annuler</button>
+                    }
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <div class="actions-formulaire">
+      <button class="bouton secondaire" type="button" (click)="venteDesBons.set(null)">Fermer</button>
+    </div>
+  </app-modale>
+}

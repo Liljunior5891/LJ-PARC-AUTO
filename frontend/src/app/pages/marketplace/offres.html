@@ -80,7 +80,7 @@
               <input type="checkbox" [checked]="o.publiee" (change)="basculerPublication(o)" />
               <span>{{ o.publiee ? 'En ligne' : 'Masquee' }}</span>
             </label>
-            <button class="bouton secondaire petit" type="button" (click)="modifier(o)">Modifier</button>
+            <button class="bouton secondaire petit info" type="button" (click)="modifier(o)">Modifier</button>
             <button class="bouton danger petit" type="button" (click)="retirer(o)" title="Retirer de la boutique">✕</button>
           </div>
         </article>
@@ -121,7 +121,7 @@
     </div>
     <div class="actions-formulaire">
       <button class="bouton secondaire annuler" type="button" (click)="choixArticles.set(false)">Annuler</button>
-      <button class="bouton" type="button" [disabled]="!articlesCoches().size" (click)="publierArticles()">
+      <button class="bouton succes" type="button" [disabled]="!articlesCoches().size" (click)="publierArticles()">
         Publier {{ articlesCoches().size || '' }} article(s)
       </button>
     </div>
@@ -206,7 +206,7 @@
                 <input type="file" accept="image/*" hidden (change)="choisirImage($event)" />
               </label>
               @if (e.requete.image) {
-                <button class="bouton secondaire petit" type="button" (click)="retirerImage()">Retirer</button>
+                <button class="bouton secondaire petit danger" type="button" (click)="retirerImage()">Retirer</button>
               }
               @if (e.requete.type !== 'LIBRE') {
                 <small>Sans photo propre, celle {{ e.requete.type === 'ARTICLE' ? 'de l\'article' : 'du vehicule' }} est affichee.</small>

@@ -1,0 +1,85 @@
+<div class="entete-page">
+  <div>
+    <h1>Categories</h1>
+    <p class="sous-titre">
+      {{ restauration ? 'Elles organisent la carte et envoient chaque article en cuisine ou au bar.' : 'Elles organisent les boutons de l\'ecran de caisse.' }}
+    </p>
+  </div>
+  <button class="bouton" type="button" (click)="ouvrir()">+ Ajouter une categorie</button>
+</div>
+
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="recherche">Recherche</label>
+      <input id="recherche" type="search" placeholder="Nom de la categorie..."
+             [ngModel]="recherche()" (ngModelChange)="chercher($event)" />
+    </div>
+    <div class="champ">
+      <label for="etat">Affichage</label>
+      <select id="etat" [ngModel]="masquerInactives()" (ngModelChange)="filtrerInactives($event)">
+        <option [ngValue]="true">Categories visibles en caisse</option>
+        <option [ngValue]="false">Toutes, masquees comprises</option>
+      </select>
+    </div>
+  </div>
+
+  @if (erreur()) {
+    <div class="message erreur" style="margin-top: 1rem">{{ erreur() }}</div>
+  }
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th aria-label="Icone"></th>
+          <th>Categorie</th>
+          @if (restauration) { <th>Preparee</th> }
+          <th>Caisse</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of affichees(); track c.id) {
+          <tr [style.opacity]="c.actif ? 1 : 0.55">
+            <td class="cellule-icone">
+              <span class="pastille-icone" [style.--teinte]="c.couleur || '#8a94a0'" aria-hidden="true">{{ c.icone || '📦' }}</span>
+            </td>
+            <td><span class="etiquette" [style.background]="c.couleur" style="color: #fff">{{ c.nom }}</span></td>
+            @if (restauration) { <td>{{ c.posteLibelle }}</td> }
+            <td>{{ c.actif ? 'Visible' : 'Masquee' }}</td>
+            <td style="white-space: nowrap; text-align: right">
+              <button class="bouton secondaire petit info" type="button" (click)="ouvrir(c)">Modifier</button>
+              <button class="bouton secondaire petit" type="button" (click)="basculer(c)">{{ c.actif ? 'Masquer' : 'Afficher' }}</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td [attr.colspan]="restauration ? 5 : 4">
+              <div class="message vide">
+                {{ chargement() ? 'Chargement...' : 'Aucune categorie. Ajoutez la premiere avec le bouton ci-dessus.' }}
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (totalPages() > 1) {
+    <div class="pagination">
+      <button class="bouton secondaire petit" type="button" [disabled]="pageCourante() === 0" (click)="numeroPage.set(pageCourante() - 1)">Precedent</button>
+      <span>Page {{ pageCourante() + 1 }} / {{ totalPages() }}</span>
+      <button class="bouton secondaire petit" type="button" [disabled]="pageCourante() >= totalPages() - 1" (click)="numeroPage.set(pageCourante() + 1)">Suivant</button>
+    </div>
+  }
+</div>
+
+@if (edition(); as e) {
+  <app-fenetre-categorie [categorie]="e === 'nouvelle' ? null : e" [ordre]="categories().length"
+                         (enregistre)="enregistre($event)" (ferme)="edition.set(null)" />
+}

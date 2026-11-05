@@ -244,36 +244,51 @@ body.modale-ouverte {
   }
 }
 
-/* Bouton d'annulation : rouge leger, pour le distinguer de la validation sans alarmer. */
-.bouton.secondaire.annuler,
-.bouton.annuler {
-  border-color: #f3c4c0;
-  background: #fdeeed;
-  color: #b42318;
-
-  &:hover:not(:disabled) {
-    border-color: #eba59f;
-    background: #fbdcd9;
-    color: #9a1c13;
-  }
-}
-
 /* --------------------------- Boutons ----------------------------- */
+/*
+ * Tous les boutons sont des aplats clairs, teintes selon ce qu'ils font ; le
+ * texte fonce garde la lecture confortable. Chaque ton fixe ses variables :
+ *   .bouton           bleu    action principale (ajouter, enregistrer)
+ *   .secondaire       ardoise navigation et actions courantes (retour, fermer)
+ *   .info             ciel    consulter ou modifier (voir, modifier, imprimer)
+ *   .succes           vert    valider, encaisser, accepter
+ *   .attention        ambre   action a peser (fermer la caisse, suspendre)
+ *   .danger, .annuler rouge   annuler, archiver, retirer, refuser
+ */
 .bouton {
+  --ton-fond: #dcebfb;
+  --ton-fond-survol: #c9dff7;
+  --ton-texte: #0f4c81;
+  --ton-bordure: #bcd6f2;
+
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   padding: 0.55rem 1rem;
-  border: 1px solid transparent;
+  border: 1px solid var(--ton-bordure);
   border-radius: 8px;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-  background: var(--couleur-primaire);
-  color: #fff;
+  background: var(--ton-fond);
+  color: var(--ton-texte);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
 
   &:hover:not(:disabled) {
-    background: var(--couleur-primaire-clair);
+    background: var(--ton-fond-survol);
+    color: var(--ton-texte);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px color-mix(in srgb, var(--ton-texte) 14%, transparent);
+  }
+
+  &:active:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ton-texte);
+    outline-offset: 1px;
   }
 
   &:disabled {
@@ -282,26 +297,59 @@ body.modale-ouverte {
   }
 
   &.secondaire {
-    background: #fff;
-    color: var(--couleur-texte);
-    border-color: var(--couleur-bordure);
-
-    &:hover:not(:disabled) {
-      background: #eef2f7;
-    }
+    --ton-fond: #f1f4f8;
+    --ton-fond-survol: #e4e9f0;
+    --ton-texte: #36465a;
+    --ton-bordure: #dbe1e9;
   }
 
-  &.danger {
-    background: var(--couleur-danger);
+  &.info {
+    --ton-fond: #e4f4fb;
+    --ton-fond-survol: #d2ecf8;
+    --ton-texte: #0b5f82;
+    --ton-bordure: #c4e4f3;
+  }
 
-    &:hover:not(:disabled) {
-      background: #a52020;
-    }
+  &.succes {
+    --ton-fond: #e0f5e9;
+    --ton-fond-survol: #cdeedb;
+    --ton-texte: #17693a;
+    --ton-bordure: #bde6cd;
+  }
+
+  &.attention {
+    --ton-fond: #fdf1da;
+    --ton-fond-survol: #fbe7c0;
+    --ton-texte: #8a5a06;
+    --ton-bordure: #f6dfb0;
+  }
+
+  &.danger,
+  &.annuler {
+    --ton-fond: #fdeeed;
+    --ton-fond-survol: #fbdcd9;
+    --ton-texte: #b42318;
+    --ton-bordure: #f3c4c0;
   }
 
   &.petit {
     padding: 0.3rem 0.6rem;
     font-size: 0.8rem;
+  }
+}
+
+/* Dans une ligne de tableau, les boutons voisins ne se touchent pas. */
+table.tableau .bouton + .bouton {
+  margin-left: 0.3rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bouton {
+    transition: none;
+
+    &:hover:not(:disabled) {
+      transform: none;
+    }
   }
 }
 

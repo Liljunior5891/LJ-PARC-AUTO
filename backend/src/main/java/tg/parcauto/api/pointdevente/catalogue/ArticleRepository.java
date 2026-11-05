@@ -22,8 +22,8 @@ public interface ArticleRepository extends JpaRepository<Article, Long>, JpaSpec
     @Query("""
             select a from Article a left join fetch a.categorie
             where a.actif = true and a.suiviStock = true
-              and a.seuilAlerte is not null and a.stockActuel <= a.seuilAlerte
-            order by a.stockActuel
+              and a.seuilAlerte is not null and a.stockActuel - a.stockReserve <= a.seuilAlerte
+            order by a.stockActuel - a.stockReserve
             """)
     List<Article> enStockBas();
 
@@ -31,6 +31,6 @@ public interface ArticleRepository extends JpaRepository<Article, Long>, JpaSpec
 
     /** Produits suivis en stock et epuises. */
     @org.springframework.data.jpa.repository.Query("select count(a) from Article a "
-            + "where a.actif = true and a.suiviStock = true and a.stockActuel <= 0")
+            + "where a.actif = true and a.suiviStock = true and a.stockActuel - a.stockReserve <= 0")
     long enRupture();
 }

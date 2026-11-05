@@ -1,4 +1,4 @@
-<div class="formulaire-client" [class.compact]="compact()" [formGroup]="formulaire"
+<div class="formulaire-client fiche-serree" [class.compact]="compact()" [formGroup]="formulaire"
      (keydown.enter)="surEntree($event)">
   @if (erreur()) {
     <div class="message erreur">{{ erreur() }}</div>
@@ -8,11 +8,10 @@
   <div class="types-client" role="radiogroup" aria-label="Type de client">
     @for (t of types; track t.valeur) {
       <button type="button" class="tuile-type" role="radio" [class.actif]="type() === t.valeur"
-              [attr.aria-checked]="type() === t.valeur" (click)="choisirType(t.valeur)">
+              [attr.aria-checked]="type() === t.valeur" [title]="t.description" (click)="choisirType(t.valeur)">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="t.icone" /></svg>
         <span>
           <strong>{{ t.libelle }}</strong>
-          <small>{{ t.description }}</small>
         </span>
       </button>
     }
@@ -61,19 +60,19 @@
       }
       @if (profil().organismeTutelle) {
         <div class="champ">
-          <label for="fc-tutelle">Ministere / organisme de tutelle</label>
+          <label for="fc-tutelle" title="Ministere ou organisme de tutelle">Tutelle</label>
           <input id="fc-tutelle" formControlName="organismeTutelle" />
         </div>
       }
       @if (profil().numeroAgrement) {
         <div class="champ">
-          <label for="fc-agrement">N° d'agrement / accord de siege</label>
+          <label for="fc-agrement" title="N° d'agrement ou d'accord de siege">N° d'agrement</label>
           <input id="fc-agrement" formControlName="numeroAgrement" />
         </div>
       }
       @if (profil().identifiantFiscal) {
         <div class="champ">
-          <label for="fc-nif">NIF (identifiant fiscal)</label>
+          <label for="fc-nif" title="Identifiant fiscal">NIF</label>
           <input id="fc-nif" formControlName="identifiantFiscal" />
         </div>
       }
@@ -84,7 +83,7 @@
         </div>
       }
     }
-    @if (!compact()) {
+    @if (!compact() && !source.codeAutomatique) {
       <div class="champ">
         <label for="fc-code">Code</label>
         <input id="fc-code" formControlName="code" placeholder="Genere automatiquement" />
@@ -137,7 +136,10 @@
   }
 
   <!-- Pieces justificatives : les types proposes dependent du type de client. -->
-  <h3>Pieces justificatives</h3>
+  <div class="titre-pieces">
+    <h3>Pieces justificatives</h3>
+    <button class="bouton secondaire petit" type="button" (click)="ajouterPiece()">+ Ajouter une piece</button>
+  </div>
   @if (documents().length) {
     <ul class="pieces-enregistrees">
       @for (d of documents(); track d.id) {
@@ -152,7 +154,7 @@
             </small>
           </span>
           @if (d.fichierDisponible) {
-            <button class="bouton secondaire petit" type="button" (click)="telecharger(d)">Voir</button>
+            <button class="bouton secondaire petit info" type="button" (click)="telecharger(d)">Voir</button>
           }
         </li>
       }
@@ -194,20 +196,19 @@
       </div>
     }
   </div>
-  <button class="bouton secondaire petit ajouter-piece" type="button" (click)="ajouterPiece()">
-    + Ajouter une piece
-  </button>
 
   @if (!compact()) {
     <h3>Conditions commerciales</h3>
     <div class="grille-formulaire">
       <div class="champ">
-        <label for="fc-delai">Delai de paiement (jours)</label>
-        <input id="fc-delai" type="number" min="0" formControlName="delaiPaiementJours" />
+        <label for="fc-delai" title="Delai de paiement, en jours">Delai (jours)</label>
+        <input id="fc-delai" type="number" min="0" formControlName="delaiPaiementJours"
+               [placeholder]="source.aideDelai ? 'Par defaut' : ''" [title]="source.aideDelai ?? ''" />
       </div>
       <div class="champ">
-        <label for="fc-plafond">Plafond de credit (FCFA)</label>
-        <input id="fc-plafond" type="number" min="0" formControlName="plafondCredit" />
+        <label for="fc-plafond" title="Plafond de credit, en FCFA">Plafond (FCFA)</label>
+        <input id="fc-plafond" type="number" min="0" formControlName="plafondCredit"
+               [placeholder]="source.aidePlafond ? 'Par defaut' : ''" [title]="source.aidePlafond ?? ''" />
       </div>
       <div class="champ">
         <label for="fc-actif">Fiche active</label>
@@ -218,11 +219,11 @@
       </div>
       <div class="champ champ-large">
         <label for="fc-conditions">Conditions particulieres</label>
-        <textarea id="fc-conditions" formControlName="conditionsCommerciales"></textarea>
+        <textarea id="fc-conditions" rows="1" formControlName="conditionsCommerciales"></textarea>
       </div>
       <div class="champ champ-large">
         <label for="fc-observations">Observations</label>
-        <textarea id="fc-observations" formControlName="observations"></textarea>
+        <textarea id="fc-observations" rows="1" formControlName="observations"></textarea>
       </div>
     </div>
   }
@@ -234,7 +235,7 @@
       @for (c of doublons(); track c.id) {
         <div class="doublon">
           <span>{{ c.raisonSociale }} <small>· {{ c.code }} · {{ c.telephone }} · {{ c.typeLibelle }}</small></span>
-          <button class="bouton petit" type="button" [disabled]="enregistrement()" (click)="utiliserExistant(c)">Utiliser ce client</button>
+          <button class="bouton petit succes" type="button" [disabled]="enregistrement()" (click)="utiliserExistant(c)">Utiliser ce client</button>
         </div>
       }
       <button class="lien" type="button" (click)="creerQuandMeme()">Ce n'est pas la meme personne : creer une nouvelle fiche</button>

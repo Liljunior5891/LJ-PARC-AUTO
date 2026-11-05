@@ -98,7 +98,8 @@ const RESSOURCES: Record<string, Ressource> = {
   caisses: { nom: 'caisse', le: 'la ', un: 'une ' },
   ecrans: { nom: 'ecran de preparation', le: "l'", un: 'un ' },
   offres: { nom: 'offre', le: "l'", un: 'une ' },
-  boutique: { nom: 'boutique en ligne', le: 'la ', un: 'une ' }
+  boutique: { nom: 'boutique en ligne', le: 'la ', un: 'une ' },
+  soldes: { nom: 'solde du reste', le: 'le ', un: 'un ' }
 };
 
 /** Actions designees par le dernier segment de l'adresse. */
@@ -140,6 +141,9 @@ const ACTIONS: Record<string, (r: Ressource) => DemandeConfirmation> = {
   reglages: () => ({ titre: 'Enregistrer les reglages de la commande par code QR ?', libelleAction: 'Enregistrer' }),
   refus: () => ({ titre: 'Refuser la commande du client ?', message: 'Les articles demandes depuis la table seront retires.',
     libelleAction: 'Refuser', danger: true }),
+  soldes: () => ({ titre: 'Solder le reste de cette commande ?',
+    message: 'La vente est corrigee, la marchandise redevient disponible et le surplus eventuel est rembourse au client.',
+    libelleAction: 'Solder', danger: true }),
   variante: () => ({ titre: "Changer le type d'activite ?",
     message: "Les ecrans du module s'adaptent a votre metier ; vos donnees sont conservees.", libelleAction: 'Changer' })
 };

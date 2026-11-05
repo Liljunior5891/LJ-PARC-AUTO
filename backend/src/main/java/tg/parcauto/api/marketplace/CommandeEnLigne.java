@@ -96,6 +96,13 @@ public class CommandeEnLigne extends BaseEntity {
     @Column(name = "client_nom", nullable = false, length = 150)
     private String clientNom;
 
+    /** Nom de famille saisi dans la boutique (vide pour les commandes anterieures a V32). */
+    @Column(name = "client_nom_famille", length = 100)
+    private String clientNomFamille;
+
+    @Column(name = "client_prenoms", length = 100)
+    private String clientPrenoms;
+
     @Column(name = "client_telephone", nullable = false, length = 40)
     private String clientTelephone;
 

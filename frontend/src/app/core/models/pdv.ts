@@ -27,6 +27,43 @@ export const ICONES_CATEGORIES = [
   '🛒', '🧴', '🧼', '🍬', '🥫', '🧂', '📦', '🔌'
 ];
 
+/** Unites de mesure proposees sur la fiche article ; la valeur est celle imprimee sur les documents (20 caracteres au plus). */
+export const UNITES_MESURE: { valeur: string; libelle: string }[] = [
+  { valeur: 'piece', libelle: 'Piece' },
+  { valeur: 'unite', libelle: 'Unite' },
+  { valeur: 'lot', libelle: 'Lot' },
+  { valeur: 'paire', libelle: 'Paire' },
+  { valeur: 'douzaine', libelle: 'Douzaine' },
+  { valeur: 'kg', libelle: 'Kilogramme (kg)' },
+  { valeur: 'g', libelle: 'Gramme (g)' },
+  { valeur: 'tonne', libelle: 'Tonne (t)' },
+  { valeur: 'litre', libelle: 'Litre (L)' },
+  { valeur: 'cl', libelle: 'Centilitre (cl)' },
+  { valeur: 'ml', libelle: 'Millilitre (ml)' },
+  { valeur: 'm', libelle: 'Metre (m)' },
+  { valeur: 'cm', libelle: 'Centimetre (cm)' },
+  { valeur: 'mm', libelle: 'Millimetre (mm)' },
+  { valeur: 'm2', libelle: 'Metre carre (m²)' },
+  { valeur: 'm3', libelle: 'Metre cube (m³)' },
+  { valeur: 'sac', libelle: 'Sac' },
+  { valeur: 'carton', libelle: 'Carton' },
+  { valeur: 'boite', libelle: 'Boite' },
+  { valeur: 'paquet', libelle: 'Paquet' },
+  { valeur: 'bouteille', libelle: 'Bouteille' },
+  { valeur: 'bidon', libelle: 'Bidon' },
+  { valeur: 'seau', libelle: 'Seau' },
+  { valeur: 'rouleau', libelle: 'Rouleau' },
+  { valeur: 'botte', libelle: 'Botte' },
+  { valeur: 'barre', libelle: 'Barre' },
+  { valeur: 'feuille', libelle: 'Feuille' },
+  { valeur: 'plat', libelle: 'Plat' },
+  { valeur: 'portion', libelle: 'Portion' },
+  { valeur: 'verre', libelle: 'Verre' },
+  { valeur: 'heure', libelle: 'Heure' },
+  { valeur: 'jour', libelle: 'Jour' },
+  { valeur: 'forfait', libelle: 'Forfait' }
+];
+
 export interface CategorieRequete {
   nom: string;
   couleur?: string | null;
@@ -48,7 +85,12 @@ export interface ArticlePdv {
   prixAchat?: number;
   unite?: string;
   suiviStock: boolean;
+  /** Stock en magasin. */
   stockActuel: number;
+  /** Vendu mais pas encore remis au client (quincaillerie). */
+  stockReserve: number;
+  /** Ce qui peut encore etre vendu : le stock moins le reserve. */
+  stockDisponible: number;
   seuilAlerte?: number;
   stockBas: boolean;
   actif: boolean;
@@ -275,12 +317,21 @@ export interface SessionCaisse {
   billettageFermeture: CoupureSession[];
   /** Commandes de table encore a regler, qui empechent la fermeture. */
   commandesEnCours: number;
+  /** Quincaillerie : part des ventes laissee a credit, et reglements de clients recus (compris dans parMode). */
+  creditAccorde?: number;
+  reglementsRecus?: number;
+  /** Rendu a des clients qui ont solde leur reste, deja deduit de parMode. */
+  remboursements?: number;
 }
 
 export interface LigneEncaissement {
   articleId: number;
   quantite: number;
   remise?: number;
+  /** Conditionnement vendu (tonne, botte, carton) ; absent pour l'unite de base. */
+  conditionnementId?: number | null;
+  /** Quincaillerie : ce que le client emporte maintenant ; absent : toute la ligne. */
+  quantiteLivree?: number | null;
 }
 
 export interface Encaissement {
@@ -294,6 +345,10 @@ export interface Encaissement {
   sessionId?: number | null;
   /** Commande de la boutique en ligne reglee par ce ticket (caisse boutique). */
   commandeEnLigneId?: number | null;
+  /** Quincaillerie : compte client, et vente a credit avec son acompte. */
+  clientId?: number | null;
+  credit?: boolean;
+  acompte?: number | null;
 }
 
 export interface LigneTicket {
@@ -303,6 +358,9 @@ export interface LigneTicket {
   quantite: number;
   remise: number;
   total: number;
+  conditionnementId?: number | null;
+  /** Remis au client jusqu'ici ; le reste est a livrer. */
+  quantiteLivree?: number;
 }
 
 export type StatutVente = 'VALIDEE' | 'ANNULEE';
@@ -330,6 +388,12 @@ export interface Ticket {
   /** Addition d'une table : la commande et la table servies. */
   commandeId?: number;
   tableNom?: string;
+  /** Quincaillerie : compte client, paye a la vente, reste du et echeance. */
+  clientId?: number | null;
+  montantPaye?: number;
+  resteDu?: number;
+  echeance?: string | null;
+  devisId?: number | null;
 }
 
 export interface VenteResume {
@@ -346,6 +410,9 @@ export interface VenteResume {
   tableNom?: string;
   /** Vendue en ligne (Marketplace) plutot qu'au comptoir. */
   enLigne?: boolean;
+  /** Reste du par le client sur une vente a credit. */
+  resteDu?: number;
+  echeance?: string | null;
 }
 
 export interface TableauBordPdv {

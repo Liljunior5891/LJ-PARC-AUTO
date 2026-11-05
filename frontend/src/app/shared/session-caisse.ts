@@ -167,8 +167,8 @@ export class OuvertureSession {
           </dl>
         </div>
         <div class="actions-formulaire">
-          <button class="bouton secondaire" type="button" (click)="telecharger(s)">⤓ Rapport de caisse (PDF)</button>
-          <button class="bouton" type="button" (click)="ferme.emit()">Terminer</button>
+          <button class="bouton secondaire info" type="button" (click)="telecharger(s)">⤓ Rapport de caisse (PDF)</button>
+          <button class="bouton succes" type="button" (click)="ferme.emit()">Terminer</button>
         </div>
       } @else {
         @if (session().commandesEnCours > 0) {

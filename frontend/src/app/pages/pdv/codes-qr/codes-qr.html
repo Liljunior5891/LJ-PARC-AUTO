@@ -4,7 +4,7 @@
     <p class="sous-titre">Vos clients scannent le code pose sur leur table, consultent la carte et commandent depuis leur telephone.</p>
   </div>
   <div class="actions-entete">
-    <button class="bouton" type="button" [disabled]="codes().length === 0" (click)="imprimer()">Imprimer tous les codes</button>
+    <button class="bouton info" type="button" [disabled]="codes().length === 0" (click)="imprimer()">Imprimer tous les codes</button>
   </div>
 </div>
 
@@ -63,7 +63,7 @@
     <section class="salle">
       <div class="titre-salle">
         <h2>{{ groupe.salle }}</h2>
-        <button class="bouton secondaire petit" type="button" (click)="imprimer(groupe.codes)">Imprimer cette salle</button>
+        <button class="bouton secondaire petit info" type="button" (click)="imprimer(groupe.codes)">Imprimer cette salle</button>
       </div>
       <div class="grille-codes">
         @for (c of groupe.codes; track c.table.id) {
@@ -71,7 +71,7 @@
             <img [src]="c.image" [alt]="'Code QR de la table ' + c.table.nom" />
             <strong>Table {{ c.table.nom }}</strong>
             <a class="lien" [href]="lien(c.table)" target="_blank" rel="noopener">Ouvrir la carte ↗</a>
-            <button class="bouton secondaire petit" type="button" (click)="renouveler(c)"
+            <button class="bouton secondaire petit attention" type="button" (click)="renouveler(c)"
                     title="A faire si le code a ete photographie ou diffuse : l'ancien cesse de fonctionner">Renouveler</button>
           </article>
         }

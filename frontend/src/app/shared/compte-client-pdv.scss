@@ -1,0 +1,96 @@
+/* Compte d'un client de la quincaillerie : situation, versement, ventes dues, historique. */
+
+.situation {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+
+  .indic {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 10px;
+    background: var(--couleur-surface);
+
+    small {
+      color: var(--couleur-texte-doux);
+      font-size: 0.75rem;
+    }
+
+    strong {
+      font-size: 1.05rem;
+    }
+
+    &.alerte strong {
+      color: #96660a;
+    }
+
+    &.danger strong {
+      color: var(--couleur-danger);
+    }
+  }
+}
+
+h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.versement {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-bottom: 0.5rem;
+
+  h3 {
+    margin: 0;
+  }
+
+  .moyens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .moyen {
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 999px;
+    background: var(--couleur-surface);
+    font: inherit;
+    cursor: pointer;
+
+    &.actif {
+      border-color: #1e9e4a;
+      background: #e3f5ea;
+      color: #157a37;
+      font-weight: 600;
+    }
+  }
+}
+
+.actions-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: flex-end;
+  align-items: center;
+
+  input {
+    max-width: 140px;
+  }
+}
+
+.vide-ligne {
+  text-align: center;
+  color: var(--couleur-texte-doux);
+}
+
+@media (max-width: 640px) {
+  .situation {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

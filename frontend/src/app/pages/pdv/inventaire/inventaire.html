@@ -5,7 +5,7 @@
   </div>
   <div class="actions-entete">
     <app-export-pdv type="STOCK" title="Etat du stock" />
-    <button class="bouton secondaire" type="button" (click)="importOuvert.set(true)">⇪ Importer un comptage</button>
+    <button class="bouton secondaire info" type="button" (click)="importOuvert.set(true)">⇪ Importer un comptage</button>
     <a class="bouton secondaire" routerLink="/pdv/stock">Reapprovisionnement</a>
   </div>
 </div>
@@ -101,7 +101,7 @@
     }
   </div>
   <input class="motif champ-ligne" [(ngModel)]="motif" maxlength="255" aria-label="Libelle de l'inventaire" />
-  <button class="bouton secondaire" type="button" [disabled]="nombreComptes() === 0" (click)="vider()">Effacer</button>
+  <button class="bouton secondaire danger" type="button" [disabled]="nombreComptes() === 0" (click)="vider()">Effacer</button>
   <button class="bouton" type="button" [disabled]="nombreComptes() === 0 || envoi()" (click)="valider()">
     {{ envoi() ? 'Validation...' : "Valider l'inventaire" }}
   </button>

@@ -59,6 +59,10 @@ public class Article extends BaseEntity {
     @Column(name = "stock_actuel", nullable = false, precision = 14, scale = 3)
     private BigDecimal stockActuel = BigDecimal.ZERO;
 
+    /** Vendu mais pas encore remis au client : encore en magasin, mais plus disponible a la vente. */
+    @Column(name = "stock_reserve", nullable = false, precision = 14, scale = 3)
+    private BigDecimal stockReserve = BigDecimal.ZERO;
+
     @Column(name = "seuil_alerte", precision = 14, scale = 3)
     private BigDecimal seuilAlerte;
 
@@ -74,6 +78,12 @@ public class Article extends BaseEntity {
      * un produit en rupture a depasse ce stade, il est compte comme rupture.
      */
     public boolean stockBas() {
-        return suiviStock && seuilAlerte != null && stockActuel.signum() > 0 && stockActuel.compareTo(seuilAlerte) <= 0;
+        return suiviStock && seuilAlerte != null && stockDisponible().signum() > 0
+                && stockDisponible().compareTo(seuilAlerte) <= 0;
+    }
+
+    /** Ce qui peut encore etre vendu : le stock en magasin, moins ce qui est deja vendu et a remettre. */
+    public BigDecimal stockDisponible() {
+        return stockActuel.subtract(stockReserve);
     }
 }

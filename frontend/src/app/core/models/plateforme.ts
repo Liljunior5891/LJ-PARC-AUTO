@@ -24,14 +24,65 @@ export interface VarianteModule {
 /** Icone de chaque type d'activite dans les ecrans de choix. */
 export const ICONES_VARIANTES: Record<string, string> = {
   BOUTIQUE: '🛍️',
-  RESTAURATION: '🍽️'
+  RESTAURATION: '🍽️',
+  MATERIAUX: '🧱'
 };
 
-/** Presentation des modules dans l'interface : icone et page d'entree. */
-export const PRESENTATION_MODULES: Record<CodeModule, { icone: string; accueil: string }> = {
-  GESTION_PARC: { icone: '🚛', accueil: '/tableau-bord' },
-  POINT_DE_VENTE: { icone: '🧾', accueil: '/pdv/tableau-bord' },
-  MARKETPLACE: { icone: '🛒', accueil: '/marketplace/commandes' }
+/** Presentation des modules dans l'interface : icone, page d'entree et fonctionnalites. */
+export const PRESENTATION_MODULES: Record<CodeModule, { icone: string; accueil: string; fonctionnalites: string[] }> = {
+  GESTION_PARC: {
+    icone: '🚛',
+    accueil: '/tableau-bord',
+    fonctionnalites: [
+      'Tableau de bord, indicateurs de direction et rentabilite par vehicule',
+      'Parc de vehicules, affectations et documents avec echeances',
+      'Maintenance : entretiens, pannes et atelier',
+      'Carte GPS : positions et trajets du jour',
+      'Chauffeurs, clients, contrats de location, missions et livraisons',
+      'Recettes, depenses et carburant rattaches a chaque vehicule',
+      'Facturation et reglements, rapports PDF'
+    ]
+  },
+  POINT_DE_VENTE: {
+    icone: '🧾',
+    accueil: '/pdv/tableau-bord',
+    fonctionnalites: [
+      'Caisse, ouverture et fermeture de session, mouvements d\'especes',
+      'Produits, categories, photos et codes-barres',
+      'Stock : receptions, sorties, pertes, commandes fournisseurs et inventaire',
+      'Historique des ventes, reimpression et annulations',
+      'Tableau de bord : chiffre du jour, marge et meilleures ventes',
+      'Rapports, exports et imports (Excel, PDF, CSV)'
+    ]
+  },
+  MARKETPLACE: {
+    icone: '🛒',
+    accueil: '/marketplace/commandes',
+    fonctionnalites: [
+      'Boutique en ligne : vitrine, livraison, paiement et lien a partager',
+      'Place de marche commune aux entreprises',
+      'Publication de produits et de vehicules a louer',
+      'Commandes payees au retrait, a la livraison ou par mobile money',
+      'Demandes de location a accepter ou refuser',
+      'Achat sans compte, avec un lien de suivi pour le client'
+    ]
+  }
+};
+
+/** Ce qu'ajoute chaque type d'activite aux fonctionnalites du module. */
+export const FONCTIONNALITES_VARIANTES: Record<string, string[]> = {
+  BOUTIQUE: ['Caisse rapide au comptoir : douchette, panier et recu'],
+  RESTAURATION: [
+    'Plan de salle, commandes par table et additions',
+    'Ecrans de preparation en cuisine et au bar',
+    'Commande des clients par code QR depuis leur table'
+  ],
+  MATERIAUX: [
+    'Comptes clients, pieces justificatives, vente a credit et acomptes',
+    'Devis et facture A4 avec TVA',
+    'Vente sous plusieurs unites : sac, tonne, botte, carton',
+    'Reglages du credit par l\'administrateur'
+  ]
 };
 
 /**

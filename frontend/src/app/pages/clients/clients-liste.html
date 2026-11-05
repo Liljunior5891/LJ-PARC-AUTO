@@ -14,7 +14,7 @@
 
 <!-- Creation dans une fenetre : la fiche complete reste accessible ensuite depuis la liste. -->
 @if (creation()) {
-  <app-modale titre="Nouveau client" largeur="960px" (ferme)="creation.set(false)">
+  <app-modale titre="Nouveau client" largeur="1180px" (ferme)="creation.set(false)">
     <app-client-fiche [enModale]="true" (cree)="creationTerminee()" (annule)="creation.set(false)" />
   </app-modale>
 }
@@ -81,7 +81,7 @@
             </td>
             <td>
               @if (peutGerer) {
-                <a class="bouton secondaire petit" [routerLink]="['/clients', client.id]">Modifier</a>
+                <a class="bouton secondaire petit info" [routerLink]="['/clients', client.id]">Modifier</a>
                 <button class="bouton danger petit" type="button" (click)="archiver(client)">Archiver</button>
               }
             </td>

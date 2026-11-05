@@ -67,7 +67,7 @@ export function reduirePhotoVehicule(fichier: File): Promise<string> {
             <input type="file" accept="image/*" hidden (change)="choisir($event)" />
           </label>
           @if (photo()) {
-            <button class="bouton secondaire petit" type="button" (click)="photo.set(null)">Retirer</button>
+            <button class="bouton secondaire petit danger" type="button" (click)="photo.set(null)">Retirer</button>
           }
         </div>
       </div>

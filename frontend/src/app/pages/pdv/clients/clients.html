@@ -1,0 +1,124 @@
+<div class="entete-page">
+  <div>
+    <h1>Clients</h1>
+    <p class="sous-titre">{{ page()?.totalElements ?? 0 }} client(s) enregistre(s)</p>
+  </div>
+  <button class="bouton" type="button" (click)="fiche.set(null)">+ Nouveau client</button>
+</div>
+
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="recherche">Recherche</label>
+      <input id="recherche" type="search" placeholder="Raison sociale, code, contact, telephone..."
+             [(ngModel)]="recherche" (keyup.enter)="filtrer()" (search)="filtrer()" />
+    </div>
+    <div class="champ">
+      <label for="type">Type</label>
+      <select id="type" [(ngModel)]="type" (change)="filtrer()">
+        <option value="">Tous les types</option>
+        @for (t of types; track t.valeur) {
+          <option [value]="t.valeur">{{ t.libelle }}</option>
+        }
+      </select>
+    </div>
+    <div class="champ">
+      <label for="situation">Situation</label>
+      <select id="situation" [(ngModel)]="debiteurs" (change)="filtrer()">
+        <option [ngValue]="false">Tous les clients</option>
+        <option [ngValue]="true">Doivent de l'argent</option>
+      </select>
+    </div>
+    <div class="champ">
+      <label for="archives">Archives</label>
+      <select id="archives" [(ngModel)]="masquerArchives" (change)="filtrer()">
+        <option [ngValue]="true">Masquer les clients archives</option>
+        <option [ngValue]="false">Afficher tous les clients</option>
+      </select>
+    </div>
+  </div>
+
+  @if (erreur()) {
+    <div class="message erreur" style="margin-top: 1rem">{{ erreur() }}</div>
+  }
+
+  @if (debiteurs && (page()?.content?.length ?? 0) > 0) {
+    <p style="margin: 1rem 0 0">
+      Total du : <strong>{{ totaux().du | number: '1.0-0' }} F</strong>
+      @if (totaux().retard > 0) { · dont <strong style="color: var(--couleur-danger)">{{ totaux().retard | number: '1.0-0' }} F en retard</strong> }
+    </p>
+  }
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Raison sociale</th>
+          <th>Type</th>
+          <th>Telephone</th>
+          <th>Contact</th>
+          <th>Ville</th>
+          <th class="numerique">Delai paiement</th>
+          <th class="numerique">Doit</th>
+          <th class="numerique">En retard</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of page()?.content ?? []; track c.id) {
+          <tr [style.opacity]="c.actif ? 1 : 0.55">
+            <td>{{ c.code }}</td>
+            <td><strong>{{ c.nom }}</strong></td>
+            <td>{{ c.typeLibelle }}</td>
+            <td>{{ c.telephone || '—' }}</td>
+            <td>{{ c.personneContact || '—' }}</td>
+            <td>{{ c.ville || '—' }}</td>
+            <td class="numerique">{{ c.delaiPaiementJours ? c.delaiPaiementJours + ' j' : '—' }}</td>
+            <td class="numerique"><strong>{{ c.encours | number: '1.0-0' }}</strong></td>
+            <td class="numerique" [style.color]="c.encoursEchu > 0 ? 'var(--couleur-danger)' : null">
+              {{ c.encoursEchu > 0 ? (c.encoursEchu | number: '1.0-0') : '—' }}
+            </td>
+            <td style="white-space: nowrap; text-align: right">
+              <button class="bouton secondaire petit info" type="button" (click)="compteOuvert.set(c.id)">Compte</button>
+              <button class="bouton secondaire petit info" type="button" (click)="fiche.set(c)">Modifier</button>
+              @if (c.actif) {
+                <button class="bouton danger petit" type="button" (click)="archiver(c)">Archiver</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="10">
+              <div class="message vide">
+                {{ chargement() ? 'Chargement...' : (debiteurs ? 'Aucun client ne doit d\'argent.' : 'Aucun client ne correspond a ces criteres.') }}
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">Precedent</button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">Suivant</button>
+      </div>
+    }
+  }
+</div>
+
+@if (fiche() !== undefined) {
+  <app-formulaire-client-pdv [client]="fiche() ?? null" (enregistre)="enregistre($event)" (ferme)="fiche.set(undefined)" />
+}
+
+@if (compteOuvert(); as id) {
+  <app-compte-client-pdv [clientId]="id" (ferme)="compteOuvert.set(null)" (modifie)="charger()" />
+}

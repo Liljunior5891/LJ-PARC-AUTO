@@ -1,0 +1,130 @@
+<div class="entete-page">
+  <div>
+    <h1>Devis</h1>
+    <p class="sous-titre">Pro forma remis aux clients. Pour en etablir un, composez le panier a la caisse puis « Enregistrer en devis ».</p>
+  </div>
+  <div class="actions-entete">
+    <button class="bouton" type="button" (click)="nouveau()">+ Nouveau devis</button>
+  </div>
+</div>
+
+@if (erreur() && !detail()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="carte">
+  <form class="grille-formulaire" (ngSubmit)="filtrer()">
+    <div class="champ">
+      <label for="statut">Statut</label>
+      <select id="statut" name="statut" [(ngModel)]="statut" (ngModelChange)="filtrer()">
+        <option value="EN_COURS">En cours (dont expires)</option>
+        <option value="CONVERTI">Transformes en vente</option>
+        <option value="ANNULE">Annules</option>
+        <option value="">Tous</option>
+      </select>
+    </div>
+    <div class="champ">
+      <label for="q">Rechercher</label>
+      <input id="q" name="q" type="search" [(ngModel)]="recherche" placeholder="Numero ou client" (search)="filtrer()" />
+    </div>
+  </form>
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Devis</th>
+          <th>Client</th>
+          <th>Date</th>
+          <th>Valable jusqu'au</th>
+          <th class="numerique">Total</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of page()?.content ?? []; track d.id) {
+          <tr style="cursor: pointer" (click)="ouvrir(d)">
+            <td><strong>{{ d.numero }}</strong><br /><small>{{ d.vendeurNom }}</small></td>
+            <td>{{ d.clientNom }}@if (d.clientTelephone) { <br /><small>{{ d.clientTelephone }}</small> }</td>
+            <td>{{ d.dateDevis | date: 'dd/MM/yyyy' }}</td>
+            <td>{{ d.valableJusqu | date: 'dd/MM/yyyy' }}</td>
+            <td class="numerique"><strong>{{ d.total | number: '1.0-0' }} F</strong></td>
+            <td><span [class]="'etiquette ' + classeStatut(d)">{{ d.statutLibelle }}</span></td>
+          </tr>
+        } @empty {
+          <tr><td colspan="6" style="text-align: center; color: var(--couleur-texte-doux)">Aucun devis.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <div class="pagination">
+        <button class="bouton secondaire petit" type="button" [disabled]="p.first" (click)="changerPage(-1)">Precedent</button>
+        <span>Page {{ p.number + 1 }} / {{ p.totalPages }}</span>
+        <button class="bouton secondaire petit" type="button" [disabled]="p.last" (click)="changerPage(1)">Suivant</button>
+      </div>
+    }
+  }
+</div>
+
+@if (detail(); as d) {
+  <app-modale [titre]="'Devis ' + d.numero"
+              [sousTitre]="d.clientNom + ' · ' + (d.dateDevis | date: 'dd/MM/yyyy') + ' · valable jusqu\'au ' + (d.valableJusqu | date: 'dd/MM/yyyy')"
+              largeur="680px" [erreur]="erreur()" (ferme)="detail.set(null)">
+    @if (d.expire) {
+      <div class="message avertissement">Ce devis a expire : prolongez-le pour l'encaisser a ses prix, ou refaites-le aux prix du jour.</div>
+    }
+    <div class="tableau-conteneur liste-modale">
+      <table class="tableau">
+        <thead>
+          <tr><th>Produit</th><th class="numerique">Qte</th><th>Unite</th><th class="numerique">P.U.</th><th class="numerique">Total</th></tr>
+        </thead>
+        <tbody>
+          @for (l of d.lignes; track l.id) {
+            <tr>
+              <td>{{ l.libelle }}</td>
+              <td class="numerique">{{ l.quantite | number: '1.0-3' }}</td>
+              <td>{{ l.unite || '' }}</td>
+              <td class="numerique">{{ l.prixUnitaire | number: '1.0-0' }}</td>
+              <td class="numerique">{{ l.total | number: '1.0-0' }}@if (l.remise > 0) { <br /><small>-{{ l.remise | number: '1.0-0' }}</small> }</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <dl style="margin: 1rem 0 0">
+      @if (d.remise > 0) {
+        <div style="display: flex; justify-content: space-between"><dt>Remise</dt><dd>-{{ d.remise | number: '1.0-0' }} F</dd></div>
+      }
+      <div style="display: flex; justify-content: space-between; font-size: 1.2rem">
+        <dt>Total</dt><dd><strong>{{ d.total | number: '1.0-0' }} F</strong></dd>
+      </div>
+    </dl>
+    @if (d.note) { <p><small>{{ d.note }}</small></p> }
+
+    @if (prolongation()) {
+      <div class="champ" style="margin-top: 1rem">
+        <label for="validite">Nouvelle date de validite</label>
+        <input id="validite" type="date" [(ngModel)]="nouvelleValidite" />
+      </div>
+    }
+
+    <div class="actions-formulaire">
+      <button class="bouton secondaire info" type="button" (click)="imprimer(d)">Imprimer (PDF)</button>
+      @if (d.statut === 'EN_COURS') {
+        <button class="bouton secondaire danger" type="button" (click)="annuler(d)">Annuler le devis</button>
+        @if (prolongation()) {
+          <button class="bouton attention" type="button" (click)="prolonger(d)">Prolonger</button>
+        } @else {
+          <button class="bouton secondaire attention" type="button" (click)="ouvrirProlongation(d)">Prolonger</button>
+          <button class="bouton succes" type="button" (click)="enCaisse(d)">Ouvrir en caisse</button>
+        }
+      }
+    </div>
+  </app-modale>
+}

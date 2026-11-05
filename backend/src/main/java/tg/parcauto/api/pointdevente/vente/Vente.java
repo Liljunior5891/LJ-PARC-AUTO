@@ -102,6 +102,31 @@ public class Vente extends BaseEntity {
     @Column(name = "table_nom", length = 80)
     private String tableNom;
 
+    /** Compte client (quincaillerie et materiaux) ; nul pour un client de passage. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id")
+    private tg.parcauto.api.pointdevente.materiaux.ClientPdv client;
+
+    /**
+     * Paye a l'encaissement, dans le mode de paiement du ticket : le total pour
+     * une vente comptant, l'acompte (eventuellement nul) pour une vente a credit.
+     * C'est ce montant qui entre dans la caisse de la session.
+     */
+    @Column(name = "montant_paye", nullable = false, precision = 16, scale = 2)
+    private BigDecimal montantPaye = BigDecimal.ZERO;
+
+    /** Reste du par le client, diminue par ses reglements. */
+    @Column(name = "reste_du", nullable = false, precision = 16, scale = 2)
+    private BigDecimal resteDu = BigDecimal.ZERO;
+
+    /** Date limite de paiement d'une vente a credit. */
+    @Column(name = "echeance")
+    private java.time.LocalDate echeance;
+
+    /** Devis accepte dont la vente est issue. */
+    @Column(name = "devis_id")
+    private Long devisId;
+
     @OneToMany(mappedBy = "vente", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id")
     private List<LigneVente> lignes = new ArrayList<>();

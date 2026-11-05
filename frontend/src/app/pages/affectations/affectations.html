@@ -75,7 +75,7 @@
     }
 
     <div class="actions-formulaire">
-      <button class="bouton" type="submit">Affecter</button>
+      <button class="bouton succes" type="submit">Affecter</button>
       <button class="bouton secondaire annuler" type="button" (click)="basculerFormulaire()">Annuler</button>
     </div>
   </form>
@@ -123,7 +123,7 @@
             </td>
             <td>
               @if (peutGerer && affectation.enCours) {
-                <button class="bouton secondaire petit" type="button" (click)="ouvrirCloture(affectation)">
+                <button class="bouton secondaire petit attention" type="button" (click)="ouvrirCloture(affectation)">
                   Cloturer
                 </button>
               }
@@ -169,7 +169,7 @@
         </div>
       </div>
       <div class="actions-formulaire">
-        <button class="bouton" type="button" (click)="cloturer(a)">Valider la cloture</button>
+        <button class="bouton succes" type="button" (click)="cloturer(a)">Valider la cloture</button>
         <button class="bouton secondaire annuler" type="button" (click)="annulerCloture()">Annuler</button>
       </div>
     </div>

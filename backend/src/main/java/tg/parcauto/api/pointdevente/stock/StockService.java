@@ -125,10 +125,65 @@ public class StockService {
 
     /**
      * Applique un mouvement a un article. Une sortie ne peut pas rendre le stock
-     * negatif : la caisse refuse de vendre ce qui n'existe pas en rayon.
+     * negatif : la caisse refuse de vendre ce qui n'existe pas en rayon. Une vente
+     * ou une sortie ne peut pas non plus entamer ce qui est reserve pour un client ;
+     * une perte ou un inventaire constatent une realite et restent possibles.
      */
     public MouvementStock appliquer(Article article, TypeMouvementStock type, BigDecimal quantite,
                                     BigDecimal coutUnitaire, String motif, Long venteId) {
+        if ((type == TypeMouvementStock.VENTE || type == TypeMouvementStock.SORTIE)
+                && article.stockDisponible().compareTo(quantite) < 0
+                && article.getStockReserve().signum() > 0) {
+            throw new BusinessException(insuffisant(article));
+        }
+        return ecrire(article, type, quantite, coutUnitaire, motif, venteId);
+    }
+
+    /** Vente non remise tout de suite : la marchandise reste en magasin, reservee au client. */
+    public void reserver(Article article, BigDecimal quantite) {
+        if (article.stockDisponible().compareTo(quantite) < 0) {
+            throw new BusinessException(insuffisant(article));
+        }
+        article.setStockReserve(article.getStockReserve().add(quantite));
+    }
+
+    /**
+     * Vente sur arrivage (reglage de l'administrateur) ou solde annule : la reservation
+     * peut depasser le stock. Le disponible devient negatif et la remise attendra la reception.
+     */
+    public void reserverSansLimite(Article article, BigDecimal quantite) {
+        article.setStockReserve(article.getStockReserve().add(quantite));
+    }
+
+    /** La vente est annulee : ce qui etait reserve redevient disponible. */
+    public void liberer(Article article, BigDecimal quantite) {
+        article.setStockReserve(article.getStockReserve().subtract(quantite).max(BigDecimal.ZERO));
+    }
+
+    /** Remise au client de marchandise reservee : le stock sort, la reservation diminue d'autant. */
+    public MouvementStock livrer(Article article, BigDecimal quantite, String motif, Long venteId) {
+        MouvementStock mouvement = ecrire(article, TypeMouvementStock.VENTE, quantite, null, motif, venteId);
+        liberer(article, quantite);
+        return mouvement;
+    }
+
+    /** Remise annulee : la marchandise revient en magasin et redevient reservee au client. */
+    public MouvementStock annulerLivraison(Article article, BigDecimal quantite, String motif, Long venteId) {
+        MouvementStock mouvement = ecrire(article, TypeMouvementStock.RETOUR, quantite, null, motif, venteId);
+        article.setStockReserve(article.getStockReserve().add(quantite));
+        return mouvement;
+    }
+
+    private static String insuffisant(Article article) {
+        return "Stock insuffisant pour " + article.getNom() + " : "
+                + article.stockDisponible().max(BigDecimal.ZERO).stripTrailingZeros().toPlainString() + " disponible(s)"
+                + (article.getStockReserve().signum() > 0
+                        ? ", " + article.getStockReserve().stripTrailingZeros().toPlainString() + " reserve(s) pour des clients"
+                        : "");
+    }
+
+    private MouvementStock ecrire(Article article, TypeMouvementStock type, BigDecimal quantite,
+                                  BigDecimal coutUnitaire, String motif, Long venteId) {
         BigDecimal avant = article.getStockActuel();
         BigDecimal apres = type == TypeMouvementStock.INVENTAIRE
                 ? quantite

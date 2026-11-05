@@ -333,10 +333,15 @@
           @if (erreur()) { <p class="erreur">{{ erreur() }}</p> }
           <fieldset>
             <legend>Vos coordonnees</legend>
-            <input name="nom" [(ngModel)]="coordonnees.nom" placeholder="Nom et prenom *" autocomplete="name" required />
-            <input name="telephone" type="tel" [(ngModel)]="coordonnees.telephone" placeholder="Telephone *"
-                   autocomplete="tel" required />
-            <input name="email" type="email" [(ngModel)]="coordonnees.email" placeholder="Email (facultatif)" autocomplete="email" />
+            <div class="deux">
+              <input name="nom" [(ngModel)]="coordonnees.nom" placeholder="Nom *" autocomplete="family-name" required />
+              <input name="prenoms" [(ngModel)]="coordonnees.prenoms" placeholder="Prenoms *" autocomplete="given-name" required />
+            </div>
+            <div class="deux">
+              <input name="telephone" type="tel" [(ngModel)]="coordonnees.telephone" placeholder="Telephone *"
+                     autocomplete="tel" required />
+              <input name="email" type="email" [(ngModel)]="coordonnees.email" placeholder="Email (facultatif)" autocomplete="email" />
+            </div>
           </fieldset>
 
           <fieldset>
@@ -417,9 +422,14 @@
           </fieldset>
           <fieldset>
             <legend>Vos coordonnees</legend>
-            <input name="nom" [(ngModel)]="coordonnees.nom" placeholder="Nom et prenom *" autocomplete="name" />
-            <input name="telephone" type="tel" [(ngModel)]="coordonnees.telephone" placeholder="Telephone *" autocomplete="tel" />
-            <input name="email" type="email" [(ngModel)]="coordonnees.email" placeholder="Email (facultatif)" />
+            <div class="deux">
+              <input name="nom" [(ngModel)]="coordonnees.nom" placeholder="Nom *" autocomplete="family-name" />
+              <input name="prenoms" [(ngModel)]="coordonnees.prenoms" placeholder="Prenoms *" autocomplete="given-name" />
+            </div>
+            <div class="deux">
+              <input name="telephone" type="tel" [(ngModel)]="coordonnees.telephone" placeholder="Telephone *" autocomplete="tel" />
+              <input name="email" type="email" [(ngModel)]="coordonnees.email" placeholder="Email (facultatif)" />
+            </div>
           </fieldset>
           <textarea name="message" rows="2" [(ngModel)]="message" placeholder="Avec chauffeur ? Une precision ? (facultatif)"></textarea>
           <div class="recap">

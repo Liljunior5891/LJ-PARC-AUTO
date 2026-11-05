@@ -73,7 +73,7 @@
             </td>
             <td class="numerique">{{ c.total | number: '1.0-0' }} FCFA</td>
             <td><span class="mkt-statut statut-{{ c.statut | lowercase }}">{{ c.statutLibelle }}</span></td>
-            <td><button class="bouton secondaire petit" type="button">Ouvrir</button></td>
+            <td><button class="bouton secondaire petit succes" type="button">Ouvrir</button></td>
           </tr>
         } @empty {
           <tr>
@@ -169,7 +169,7 @@
         puis encaissement. Son etat ici suit celui de la caisse.
       </p>
       <div class="actions-formulaire">
-        <a class="bouton" [routerLink]="['/pdv/commandes', c.pdvCommandeId]">Ouvrir a la caisse</a>
+        <a class="bouton succes" [routerLink]="['/pdv/commandes', c.pdvCommandeId]">Ouvrir a la caisse</a>
       </div>
     } @else if (c.statut !== 'LIVREE' && c.statut !== 'ANNULEE') {
       @if (c.enCaisse) {
@@ -178,7 +178,7 @@
       <div class="actions-formulaire">
         <button class="bouton danger" type="button" (click)="annulation.set(true)">Annuler la commande</button>
         @if (c.statutPaiement !== 'PAYEE') {
-          <button class="bouton secondaire" type="button" [disabled]="action()" (click)="marquerPayee(c)">Marquer payee</button>
+          <button class="bouton secondaire succes" type="button" [disabled]="action()" (click)="marquerPayee(c)">Marquer payee</button>
         }
         @for (e of etapes[c.statut]; track e.statut) {
           @if ((e.statut !== 'EN_LIVRAISON' || c.modeRemise === 'LIVRAISON') && !(c.enCaisse && e.statut === 'LIVREE')) {

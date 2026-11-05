@@ -57,6 +57,14 @@ export class AuthService {
     return this.aModule('POINT_DE_VENTE') && this.variante('POINT_DE_VENTE') === 'RESTAURATION';
   }
 
+  /**
+   * Point de vente d'une quincaillerie ou d'un depot de materiaux : la caisse de
+   * la boutique, plus les comptes clients, le credit, les devis et les conditionnements.
+   */
+  estMateriaux(): boolean {
+    return this.aModule('POINT_DE_VENTE') && this.variante('POINT_DE_VENTE') === 'MATERIAUX';
+  }
+
   aModule(module: CodeModule): boolean {
     return this.utilisateurSignal()?.modules.includes(module) ?? false;
   }

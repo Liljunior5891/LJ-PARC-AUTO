@@ -153,7 +153,7 @@
       }
     </div>
     <div class="actions-formulaire">
-      <button class="bouton" type="button" (click)="confirmer()">Valider</button>
+      <button class="bouton succes" type="button" (click)="confirmer()">Valider</button>
       <button class="bouton secondaire annuler" type="button" (click)="confirmationEnCours.set(null)">Annuler</button>
     </div>
   </div>
@@ -232,7 +232,7 @@
             <td><span [class]="classeStatut(livraison.statut)">{{ livraison.statutLibelle }}</span></td>
             <td>
               @if (peutConfirmer && (livraison.statut === 'PLANIFIEE' || livraison.statut === 'EN_COURS')) {
-                <button class="bouton petit" type="button" (click)="ouvrirConfirmation(livraison)">
+                <button class="bouton petit succes" type="button" (click)="ouvrirConfirmation(livraison)">
                   Confirmer
                 </button>
               }

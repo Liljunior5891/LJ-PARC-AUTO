@@ -174,12 +174,12 @@ export class StockPdv implements OnInit {
           this.saisie.set(false);
           this.succes.set(`${m.typeLibelle} enregistree : ${m.articleNom}, stock ${m.stockApres}.`);
           this.articles.update((liste) =>
-            liste.map((a) => (a.id === m.articleId ? { ...a, stockActuel: m.stockApres } : a))
+            liste.map((a) => (a.id === m.articleId ? { ...a, stockActuel: m.stockApres, stockDisponible: m.stockApres - a.stockReserve } : a))
           );
           this.alertes.update((liste) =>
             liste
-              .map((a) => (a.id === m.articleId ? { ...a, stockActuel: m.stockApres } : a))
-              .filter((a) => a.seuilAlerte == null || a.stockActuel <= a.seuilAlerte)
+              .map((a) => (a.id === m.articleId ? { ...a, stockActuel: m.stockApres, stockDisponible: m.stockApres - a.stockReserve } : a))
+              .filter((a) => a.seuilAlerte == null || a.stockDisponible <= a.seuilAlerte)
           );
           this.charger();
         },

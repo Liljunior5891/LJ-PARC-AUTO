@@ -258,7 +258,7 @@ export interface AffectationRequete {
   observations?: string;
 }
 
-export type ProprietaireDocument = 'CAMION' | 'CHAUFFEUR' | 'CLIENT';
+export type ProprietaireDocument = 'CAMION' | 'CHAUFFEUR' | 'CLIENT' | 'CLIENT_PDV';
 
 export type TypeDocument =
   | 'CARTE_GRISE'

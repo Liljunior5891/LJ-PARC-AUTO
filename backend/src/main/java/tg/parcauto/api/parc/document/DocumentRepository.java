@@ -14,6 +14,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long>,
     @Query("""
             select d from Document d
             where d.archive = false and d.dateExpiration is not null and d.dateExpiration <= :limite
+              and d.proprietaireType <> tg.parcauto.api.parc.document.ProprietaireDocument.CLIENT_PDV
             order by d.dateExpiration asc
             """)
     List<Document> expirantAvant(@Param("limite") LocalDate limite);

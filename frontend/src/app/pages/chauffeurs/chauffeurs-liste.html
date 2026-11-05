@@ -85,7 +85,7 @@
             <td><span [class]="classeStatut(chauffeur.statut)">{{ chauffeur.statutLibelle }}</span></td>
             <td>
               @if (peutGerer) {
-                <a class="bouton secondaire petit" [routerLink]="['/chauffeurs', chauffeur.id]">Modifier</a>
+                <a class="bouton secondaire petit info" [routerLink]="['/chauffeurs', chauffeur.id]">Modifier</a>
                 <button class="bouton danger petit" type="button" (click)="archiver(chauffeur)">Archiver</button>
               }
             </td>

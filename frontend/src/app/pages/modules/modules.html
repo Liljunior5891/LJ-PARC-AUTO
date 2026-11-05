@@ -26,43 +26,77 @@
     <article class="carte module" [class.actif]="module.actif" [class.indisponible]="!module.disponible">
       <div class="tete">
         <span class="icone" aria-hidden="true">{{ presentation[module.code].icone }}</span>
+        <h2>{{ module.libelle }}</h2>
         @if (module.actif) {
           <span class="etat actif">Active</span>
         } @else if (!module.disponible) {
-          <span class="etat bientot">Bientot disponible</span>
+          <span class="etat bientot">Bientot</span>
         }
       </div>
-      <h2>{{ module.libelle }}</h2>
-      <p>{{ module.description }}</p>
+      <p class="description">{{ module.description }}</p>
       @if (module.actif && libelleVariante(module); as type) {
-        <p class="variante">
-          <span aria-hidden="true">{{ icones[module.variante!] }}</span>
-          Type d'activite : <strong>{{ type }}</strong>
+        <div class="variante">
+          <span class="type" [title]="'Type d\'activite : ' + type">
+            <span aria-hidden="true">{{ icones[module.variante!] }}</span> {{ type }}
+          </span>
           @if (estAdmin) {
-            <button class="lien" type="button" (click)="demanderVariante(module, false)">Changer</button>
+            <button class="changer" type="button" title="Changer le type d'activite" (click)="demanderVariante(module, false)">
+              <span aria-hidden="true">⇄</span> Changer
+            </button>
           }
-        </p>
+        </div>
       }
 
       <div class="actions">
         @if (module.actif) {
-          <button class="bouton" type="button" (click)="ouvrir(module)">Ouvrir</button>
-          @if (estAdmin) {
-            <button class="bouton secondaire" type="button" [disabled]="enCours() !== null"
-                    (click)="desactiver(module)"
-                    title="Le module disparait du menu ; ses donnees sont conservees">
-              {{ enCours() === module.code ? 'Desactivation...' : 'Desactiver' }}
-            </button>
-          }
+          <button class="bouton succes petit" type="button" (click)="ouvrir(module)">Ouvrir</button>
         } @else if (module.disponible && estAdmin) {
-          <button class="bouton" type="button" [disabled]="enCours() !== null" (click)="activer(module)">
+          <button class="bouton petit" type="button" [disabled]="enCours() !== null" (click)="activer(module)">
             {{ enCours() === module.code ? 'Activation...' : 'Activer' }}
+          </button>
+        }
+        <button class="bouton info petit" type="button" (click)="detail.set(module)">Details</button>
+        @if (module.actif && estAdmin) {
+          <button class="bouton secondaire petit" type="button" [disabled]="enCours() !== null"
+                  (click)="desactiver(module)"
+                  title="Le module disparait du menu ; ses donnees sont conservees">
+            {{ enCours() === module.code ? 'Desactivation...' : 'Desactiver' }}
           </button>
         }
       </div>
     </article>
   }
 </div>
+
+<!-- Tout ce que fait un module -->
+@if (detail(); as m) {
+  <app-modale [titre]="presentation[m.code].icone + ' ' + m.libelle" [sousTitre]="m.actif ? 'Module active' : 'Module non active'"
+              largeur="640px" (ferme)="detail.set(null)">
+    <p class="detail-description">{{ m.description }}</p>
+    <h3 class="detail-titre">Fonctionnalites</h3>
+    <ul class="detail-liste">
+      @for (f of presentation[m.code].fonctionnalites; track f) {
+        <li>{{ f }}</li>
+      }
+    </ul>
+    @for (v of m.variantes; track v.code) {
+      @if (!m.actif || v.code === m.variante) {
+        <h3 class="detail-titre">
+          <span aria-hidden="true">{{ icones[v.code] }}</span> {{ v.libelle }}
+          @if (v.code === m.variante) { <small>votre activite</small> }
+        </h3>
+        <ul class="detail-liste">
+          @for (f of fonctionnalitesVariantes[v.code]; track f) {
+            <li>{{ f }}</li>
+          }
+        </ul>
+      }
+    }
+    <div class="actions-formulaire">
+      <button class="bouton secondaire" type="button" (click)="detail.set(null)">Fermer</button>
+    </div>
+  </app-modale>
+}
 
 <!-- Type d'activite d'un module qui se decline -->
 @if (choix(); as c) {

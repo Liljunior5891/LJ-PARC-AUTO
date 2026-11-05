@@ -124,7 +124,9 @@ public class CommandeEnLigneService {
         commande.setNumero(numerotation.prochainNumero("CMD"));
         commande.setJeton(ClientEnLigneService.nouveauJeton());
         commande.setDateCommande(Instant.now());
-        commande.setClientNom(d.nom().trim());
+        commande.setClientNom(MarketplaceDto.nomComplet(d.nom(), d.prenoms()));
+        commande.setClientNomFamille(d.nom().trim());
+        commande.setClientPrenoms(MarketplaceDto.prenoms(d.prenoms()));
         commande.setClientTelephone(d.telephone().trim());
         commande.setClientEmail(vide(d.email()));
         commande.setModeRemise(d.modeRemise());
@@ -166,7 +168,7 @@ public class CommandeEnLigneService {
         commande.setFraisLivraison(frais);
         commande.setTotal(sousTotal.add(frais));
 
-        Client client = clientEnLigne.trouverOuCreer(d.nom(), d.telephone(), d.email());
+        Client client = clientEnLigne.trouverOuCreer(d.nom(), d.prenoms(), d.telephone(), d.email());
         commande.setClientId(client.getId());
 
         String urlPaiement = null;
@@ -390,9 +392,9 @@ public class CommandeEnLigneService {
             ligne.setArticleId(article.getId());
             if (enCaisse) {
                 // Le stock sortira avec le point de vente (envoi en cuisine ou encaissement) : on verifie seulement.
-                if (article.isSuiviStock() && article.getStockActuel().compareTo(BigDecimal.valueOf(quantite)) < 0) {
+                if (article.isSuiviStock() && article.stockDisponible().compareTo(BigDecimal.valueOf(quantite)) < 0) {
                     throw new BusinessException("Stock insuffisant pour " + offre.getTitre() + " : "
-                            + article.getStockActuel().stripTrailingZeros().toPlainString() + " disponible(s)");
+                            + article.stockDisponible().max(BigDecimal.ZERO).stripTrailingZeros().toPlainString() + " disponible(s)");
                 }
             } else if (article.isSuiviStock()) {
                 stockService.appliquer(article, TypeMouvementStock.VENTE, BigDecimal.valueOf(quantite),

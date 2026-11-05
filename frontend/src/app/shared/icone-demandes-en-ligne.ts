@@ -57,7 +57,7 @@ const RAFRAICHISSEMENT_MS = 30_000;
           }
         </ul>
         <footer>
-          <button class="bouton petit" type="button" (click)="ouvrirEcran()">Voir et repondre</button>
+          <button class="bouton petit info" type="button" (click)="ouvrirEcran()">Voir et repondre</button>
         </footer>
       </section>
     }

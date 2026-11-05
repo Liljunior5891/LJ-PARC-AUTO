@@ -596,6 +596,11 @@ fieldset {
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
 
+  /* Un champ ne force pas sa colonne a s'elargir sur un ecran etroit. */
+  > * {
+    min-width: 0;
+  }
+
   label {
     display: flex;
     flex-direction: column;

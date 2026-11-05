@@ -17,7 +17,7 @@
         <button class="bouton secondaire" type="button" (click)="mouvement.set(s)">± Especes</button>
         <button class="bouton danger" type="button" (click)="fermer(s)">■ Fermer la session</button>
       }
-      <button class="bouton" type="button" (click)="telecharger(s)">⤓ Rapport PDF</button>
+      <button class="bouton info" type="button" (click)="telecharger(s)">⤓ Rapport PDF</button>
     </div>
   </div>
 
@@ -35,6 +35,12 @@
         <span class="libelle">Chiffre d'affaires</span>
         <strong>{{ s.chiffreAffaires | number: '1.0-0' }}<em> F</em></strong>
         <small>{{ s.nombreVentes }} vente(s) · {{ s.ventesAnnulees }} annulee(s)</small>
+        @if ((s.creditAccorde ?? 0) > 0 || (s.reglementsRecus ?? 0) > 0) {
+          <small>dont {{ s.creditAccorde ?? 0 | number: '1.0-0' }} F a credit · {{ s.reglementsRecus ?? 0 | number: '1.0-0' }} F de reglements clients recus</small>
+        }
+        @if ((s.remboursements ?? 0) > 0) {
+          <small>{{ s.remboursements | number: '1.0-0' }} F rembourses a des clients</small>
+        }
       </span>
     </div>
     <div class="carte-apercu bleu">
@@ -233,7 +239,7 @@
         <p class="message erreur">Annulee par {{ t.annuleePar }} : {{ t.motifAnnulation }}</p>
       }
       <div class="actions-formulaire">
-        <button class="bouton secondaire" type="button" (click)="imprimer(t)">Imprimer le recu</button>
+        <button class="bouton secondaire info" type="button" (click)="imprimer(t)">Imprimer le recu</button>
         <button class="bouton" type="button" (click)="ticket.set(null)">Fermer</button>
       </div>
     </app-modale>

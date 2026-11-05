@@ -143,6 +143,9 @@ export interface CommandeEnLigne {
   enCaisse: boolean;
   /** Restaurant : commande de salle qui la porte jusqu'aux ecrans de preparation. */
   pdvCommandeId?: number;
+  /** Nom de famille et prenoms saisis separement ; absents pour les commandes anterieures. */
+  clientNomFamille?: string;
+  clientPrenoms?: string;
 }
 
 export interface DemandeLocationEnLigne {
@@ -173,6 +176,9 @@ export interface DemandeLocationEnLigne {
   /** Recette enregistree en agence qui conclut la demande. */
   recetteId?: number;
   recetteNumero?: string;
+  /** Nom de famille et prenoms saisis separement ; absents pour les demandes anterieures. */
+  clientNomFamille?: string;
+  clientPrenoms?: string;
   caution?: number | null;
 }
 
@@ -249,7 +255,9 @@ export interface Vitrine {
 }
 
 export interface DemandeCommande {
+  /** Nom de famille. */
   nom: string;
+  prenoms: string;
   telephone: string;
   email?: string;
   modeRemise: ModeRemise;
@@ -261,7 +269,9 @@ export interface DemandeCommande {
 
 export interface DemandeLocationPublique {
   offreId: number;
+  /** Nom de famille. */
   nom: string;
+  prenoms: string;
   telephone: string;
   email?: string;
   dateDebut: string;

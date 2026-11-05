@@ -39,13 +39,60 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
 
     Page<Vente> findBySessionIdOrderByDateVenteDesc(Long sessionId, Pageable pageable);
 
-    /** [mode, total, nombre] des ventes validees d'une session. */
+    /** Ventes validees dont il reste a remettre, les plus anciennes d'abord ; {@code clientId} nul : tous. */
     @Query("""
-            select v.modePaiement, coalesce(sum(v.total), 0), count(v) from Vente v
+            select distinct v from Vente v join v.lignes l
+            where v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
+              and l.quantiteLivree < l.quantite
+              and (:clientId is null or v.client.id = :clientId)
+              and (:q = '' or lower(v.numero) like concat('%', :q, '%')
+                   or lower(coalesce(v.clientNom, '')) like concat('%', :q, '%'))
+            order by v.dateVente
+            """)
+    Page<Vente> aLivrer(@Param("q") String q, @Param("clientId") Long clientId, Pageable pageable);
+
+    /** Ventes qui ont un bon de livraison ou un solde, les plus recentes d'abord : leurs documents restent accessibles. */
+    @Query("""
+            select v from Vente v
+            where (exists (select b.id from tg.parcauto.api.pointdevente.materiaux.BonLivraison b where b.vente = v)
+                   or exists (select s.id from tg.parcauto.api.pointdevente.materiaux.SoldeReste s where s.vente = v))
+              and (:clientId is null or v.client.id = :clientId)
+              and (:q = '' or lower(v.numero) like concat('%', :q, '%')
+                   or lower(coalesce(v.clientNom, '')) like concat('%', :q, '%'))
+            order by v.dateVente desc
+            """)
+    Page<Vente> avecDocuments(@Param("q") String q, @Param("clientId") Long clientId, Pageable pageable);
+
+    /**
+     * [mode, encaisse, nombre] des ventes validees d'une session : ce qui est
+     * entre dans la caisse a la vente (le total, ou l'acompte d'une vente a credit).
+     */
+    @Query("""
+            select v.modePaiement, coalesce(sum(v.montantPaye), 0), count(v) from Vente v
             where v.session.id = :sessionId and v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
             group by v.modePaiement
             """)
     List<Object[]> totauxSession(@Param("sessionId") Long sessionId);
+
+    /** [chiffre d'affaires, credit accorde] des ventes validees d'une session. */
+    @Query("""
+            select coalesce(sum(v.total), 0),
+                   coalesce(sum(case when v.total > v.montantPaye then v.total - v.montantPaye else 0 end), 0) from Vente v
+            where v.session.id = :sessionId and v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
+            """)
+    List<Object[]> chiffreSession(@Param("sessionId") Long sessionId);
+
+    /** Ventes validees encore dues par un client, de la plus ancienne a la plus recente. */
+    @Query("""
+            select v from Vente v
+            where v.client.id = :clientId and v.resteDu > 0
+              and v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
+            order by v.dateVente, v.id
+            """)
+    List<Vente> duesDuClient(@Param("clientId") Long clientId);
+
+    /** Ventes d'un client, les plus recentes d'abord. */
+    Page<Vente> findByClientIdOrderByDateVenteDesc(Long clientId, Pageable pageable);
 
     @Query("""
             select count(v) from Vente v
@@ -136,9 +183,9 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
             """)
     List<Object[]> ventesParCategorie(@Param("debut") Instant debut, @Param("fin") Instant fin);
 
-    /** [code, produit, categorie, quantite, chiffre d'affaires, cout d'achat] par produit vendu. */
+    /** [code, produit, categorie, quantite (unite de base), chiffre d'affaires, cout d'achat] par produit vendu. */
     @Query("""
-            select a.code, a.nom, c.nom, sum(l.quantite), sum(l.total),
+            select a.code, a.nom, c.nom, sum(l.quantiteBase), sum(l.total),
                    coalesce(sum(l.quantite * coalesce(l.prixAchat, 0)), 0)
             from LigneVente l join l.article a left join a.categorie c
             where l.vente.dateVente >= :debut and l.vente.dateVente < :fin
@@ -150,7 +197,7 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
 
     /** [categorie, quantite, chiffre d'affaires, cout d'achat] par categorie. */
     @Query("""
-            select c.nom, sum(l.quantite), sum(l.total), coalesce(sum(l.quantite * coalesce(l.prixAchat, 0)), 0)
+            select c.nom, sum(l.quantiteBase), sum(l.total), coalesce(sum(l.quantite * coalesce(l.prixAchat, 0)), 0)
             from LigneVente l left join l.article a left join a.categorie c
             where l.vente.dateVente >= :debut and l.vente.dateVente < :fin
               and l.vente.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE

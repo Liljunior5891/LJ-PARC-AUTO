@@ -64,7 +64,7 @@ const RAFRAICHISSEMENT_MS = 20000;
       <app-modale titre="Ouvrir une caisse" sousTitre="Choisissez la caisse a ouvrir" largeur="440px" (ferme)="choixCaisse.set(null)">
         <div class="caisses-fermees">
           @for (c of caisses; track c.id) {
-            <button type="button" class="bouton secondaire" (click)="choixCaisse.set(null); aOuvrir.set(c)">🧾 {{ c.nom }}</button>
+            <button type="button" class="bouton secondaire info" (click)="choixCaisse.set(null); aOuvrir.set(c)">🧾 {{ c.nom }}</button>
           } @empty {
             <p>Toutes les caisses actives sont deja ouvertes.</p>
           }

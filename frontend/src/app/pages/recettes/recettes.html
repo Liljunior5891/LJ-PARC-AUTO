@@ -19,7 +19,7 @@
   <div class="message succes bandeau-contrat">
     <span>{{ succes() }}</span>
     @if (recetteAImprimer(); as r) {
-      <button class="bouton petit" type="button" (click)="imprimerContrat(r)">🖨 Imprimer le contrat</button>
+      <button class="bouton petit info" type="button" (click)="imprimerContrat(r)">🖨 Imprimer le contrat</button>
     }
   </div>
 }
@@ -34,7 +34,7 @@
       </p>
     </div>
     <div class="actions-proposition">
-      <button class="bouton" type="button" (click)="telechargerFacture(r)">
+      <button class="bouton info" type="button" (click)="telechargerFacture(r)">
         Telecharger le PDF
       </button>
       <button class="bouton secondaire" type="button" (click)="fermerProposition()">Fermer</button>
@@ -153,7 +153,7 @@
             </td>
             <td class="numerique"><strong>{{ recette.montant | number }}</strong></td>
             <td style="white-space: nowrap">
-              <button class="bouton secondaire petit" type="button" (click)="imprimerContrat(recette)"
+              <button class="bouton secondaire petit info" type="button" (click)="imprimerContrat(recette)"
                       [title]="'Contrat ' + recette.typeLibelle.toLowerCase() + ' a imprimer'">Contrat</button>
               @if (peutGerer && !recette.factureNumero) {
                 <button class="bouton danger petit" type="button" (click)="supprimer(recette)">

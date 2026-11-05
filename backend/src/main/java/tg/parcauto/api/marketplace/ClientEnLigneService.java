@@ -12,7 +12,7 @@ import java.security.SecureRandom;
 import java.util.HexFormat;
 
 /**
- * L'acheteur en ligne n'a pas de compte : son nom et son telephone suffisent.
+ * L'acheteur en ligne n'a pas de compte : son nom, ses prenoms et son telephone suffisent.
  * Il devient une fiche client de l'entreprise, retrouvee par son numero a la
  * commande suivante. Sert aussi a tirer les jetons des liens de suivi.
  */
@@ -27,13 +27,15 @@ public class ClientEnLigneService {
     private final NumerotationService numerotation;
 
     /** Fiche client de l'acheteur : celle qui porte deja ce telephone, sinon une nouvelle. */
-    public Client trouverOuCreer(String nom, String telephone, String email) {
+    public Client trouverOuCreer(String nom, String prenoms, String telephone, String email) {
         String numero = telephone.trim();
         return clientRepository.findFirstByTelephoneOrderByIdAsc(numero).orElseGet(() -> {
             Client client = new Client();
             client.setCode(numerotation.prochainNumero("CLI"));
             client.setType(TypeClient.PARTICULIER);
-            client.setRaisonSociale(nom.trim());
+            client.setRaisonSociale(MarketplaceDto.nomComplet(nom, prenoms));
+            client.setNom(nom.trim());
+            client.setPrenoms(MarketplaceDto.prenoms(prenoms));
             client.setTelephone(numero);
             client.setEmail(email == null || email.isBlank() ? null : email.trim());
             client.setObservations("Client cree par une commande en ligne (Marketplace).");

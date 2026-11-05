@@ -297,6 +297,11 @@ export const routes: Routes = [
                 title: 'Produits — LJ SaaS'
               },
               {
+                path: 'categories',
+                loadComponent: () => import('./pages/pdv/categories/categories').then((m) => m.CategoriesPdv),
+                title: 'Categories — LJ SaaS'
+              },
+              {
                 path: 'stock/commandes/:id',
                 loadComponent: () => import('./pages/pdv/stock/commande-fournisseur').then((m) => m.CommandeFournisseurPdv),
                 title: 'Commande fournisseur — LJ SaaS'
@@ -332,6 +337,38 @@ export const routes: Routes = [
                 title: 'Session de caisse — LJ SaaS'
               },
               { path: 'sessions', pathMatch: 'full', redirectTo: 'caisses' }
+            ]
+          },
+          {
+            // Quincaillerie et materiaux : comptes clients, credit, devis et reglages.
+            path: '',
+            canActivate: [varianteGuard('POINT_DE_VENTE', 'MATERIAUX')],
+            children: [
+              {
+                path: 'clients',
+                canActivate: [roleGuard('ADMIN', 'GERANT')],
+                loadComponent: () => import('./pages/pdv/clients/clients').then((m) => m.ClientsPdv),
+                title: 'Comptes clients — LJ SaaS'
+              },
+              {
+                path: 'livraisons',
+                canActivate: [roleGuard('ADMIN', 'GERANT', 'CAISSIER')],
+                loadComponent: () => import('./pages/pdv/livraisons/livraisons').then((m) => m.LivraisonsPdv),
+                title: 'Reste a livrer — LJ SaaS'
+              },
+              {
+                path: 'devis',
+                canActivate: [roleGuard('ADMIN', 'GERANT')],
+                loadComponent: () => import('./pages/pdv/devis/devis').then((m) => m.DevisPdv),
+                title: 'Devis — LJ SaaS'
+              },
+              {
+                path: 'reglages-materiaux',
+                canActivate: [roleGuard('ADMIN')],
+                loadComponent: () =>
+                  import('./pages/pdv/reglages-materiaux/reglages-materiaux').then((m) => m.ReglagesMateriauxPdv),
+                title: 'Reglages de la quincaillerie — LJ SaaS'
+              }
             ]
           },
           { path: '', pathMatch: 'full', redirectTo: 'caisse' }

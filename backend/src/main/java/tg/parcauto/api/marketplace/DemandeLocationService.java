@@ -74,7 +74,9 @@ public class DemandeLocationService {
         demande.setDateDemande(Instant.now());
         demande.setOffreId(offre.getId());
         demande.setCamionId(offre.getCamionId());
-        demande.setClientNom(d.nom().trim());
+        demande.setClientNom(MarketplaceDto.nomComplet(d.nom(), d.prenoms()));
+        demande.setClientNomFamille(d.nom().trim());
+        demande.setClientPrenoms(MarketplaceDto.prenoms(d.prenoms()));
         demande.setClientTelephone(d.telephone().trim());
         demande.setClientEmail(vide(d.email()));
         demande.setDateDebut(d.dateDebut());
@@ -205,7 +207,8 @@ public class DemandeLocationService {
                 d.getStatut(), d.getStatut().getLibelle(), d.getMotifRefus(), d.getLocationId(), contrat,
                 d.getDateDemande(), d.getRecetteId(),
                 d.getRecetteId() == null ? null : recetteRepository.findById(d.getRecetteId()).map(r -> r.getNumero()).orElse(null),
-                d.getOffreId() == null ? null : offreRepository.findById(d.getOffreId()).map(Offre::getCaution).orElse(null));
+                d.getOffreId() == null ? null : offreRepository.findById(d.getOffreId()).map(Offre::getCaution).orElse(null),
+                d.getClientNomFamille(), d.getClientPrenoms());
     }
 
     private DemandeLocation parJeton(String jeton) {

@@ -150,8 +150,13 @@ public final class MarketplaceDto {
     public record LigneDemande(@NotNull Long offreId, @Min(1) @Max(999) int quantite) {
     }
 
+    /**
+     * {@code nom} : nom de famille ; {@code prenoms} : prenoms, saisis a part
+     * (facultatifs pour l'API, demandes par la boutique).
+     */
     public record DemandeCommande(
-            @NotBlank @Size(max = 150) String nom,
+            @NotBlank @Size(max = 100) String nom,
+            @Size(max = 100) String prenoms,
             @NotBlank @Size(max = 40) String telephone,
             @Email @Size(max = 150) String email,
             @NotNull CommandeEnLigne.ModeRemise modeRemise,
@@ -175,7 +180,9 @@ public final class MarketplaceDto {
             /** Traitee par la caisse du point de vente (acceptation, preparation, encaissement). */
             boolean enCaisse,
             /** Restaurant : commande de salle qui la porte. */
-            Long pdvCommandeId) {
+            Long pdvCommandeId,
+            /** Nom de famille et prenoms saisis separement ; vides pour les commandes anterieures. */
+            String clientNomFamille, String clientPrenoms) {
 
         public static CommandeReponse de(CommandeEnLigne c) {
             return new CommandeReponse(c.getId(), c.getNumero(), c.getJeton(), c.getClientId(), c.getClientNom(),
@@ -185,7 +192,7 @@ public final class MarketplaceDto {
                     c.getFraisLivraison(), c.getTotal(), c.getNote(), c.getMotifAnnulation(), c.getDateCommande(),
                     c.getLignes().stream().map(l -> new LigneReponse(l.getOffreId(), l.getArticleId(), l.getLibelle(),
                             l.getPrixUnitaire(), l.getQuantite(), l.getTotal())).toList(),
-                    c.isEnCaisse(), c.getPdvCommandeId());
+                    c.isEnCaisse(), c.getPdvCommandeId(), c.getClientNomFamille(), c.getClientPrenoms());
         }
     }
 
@@ -196,7 +203,8 @@ public final class MarketplaceDto {
 
     public record DemandeLocationPublique(
             @NotNull Long offreId,
-            @NotBlank @Size(max = 150) String nom,
+            @NotBlank @Size(max = 100) String nom,
+            @Size(max = 100) String prenoms,
             @NotBlank @Size(max = 40) String telephone,
             @Email @Size(max = 150) String email,
             @NotNull LocalDate dateDebut,
@@ -215,7 +223,24 @@ public final class MarketplaceDto {
             /** Recette enregistree en agence qui conclut la demande. */
             Long recetteId, String recetteNumero,
             /** Caution demandee pour le vehicule (offre en ligne). */
-            BigDecimal caution) {
+            BigDecimal caution,
+            /** Nom de famille et prenoms saisis separement ; vides pour les demandes anterieures. */
+            String clientNomFamille, String clientPrenoms) {
+    }
+
+    /** Nom affiche de l'acheteur, « Prenoms NOM » comme les fiches client des particuliers. */
+    public static String nomComplet(String nom, String prenoms) {
+        String p = prenoms == null ? "" : prenoms.trim();
+        return (p + " " + nom.trim().toUpperCase()).trim();
+    }
+
+    private static String vide(String valeur) {
+        return valeur == null || valeur.isBlank() ? null : valeur.trim();
+    }
+
+    /** Prenoms nettoyes (vide = absent). */
+    public static String prenoms(String prenoms) {
+        return vide(prenoms);
     }
 
     /** Acceptation : le tarif peut etre ajuste et un chauffeur designe avant de creer le contrat. */

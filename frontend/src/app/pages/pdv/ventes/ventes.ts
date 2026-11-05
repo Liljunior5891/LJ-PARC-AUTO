@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { Page } from '../../../core/models/models';
 import { SessionCaisse, Ticket, VenteResume } from '../../../core/models/pdv';
 import { PdvService } from '../../../core/services/pdv.service';
+import { MateriauxService } from '../../../core/services/materiaux.service';
 import { SocieteService } from '../../../core/services/societe.service';
 import { Modale } from '../../../shared/modale';
 import { imprimerTicket } from '../../../shared/ticket-pdv';
@@ -49,7 +50,22 @@ export class VentesPdv implements OnInit {
   readonly annulation = signal(false);
   motif = '';
 
+  /** Quincaillerie : facture A4 des ventes, si l'administrateur l'a activee. */
+  private readonly materiauxService = inject(MateriauxService);
+  readonly materiaux = this.auth.estMateriaux();
+  readonly factureA4 = signal(false);
+
+  facture(t: Ticket): void {
+    this.materiauxService.facturePdf(t.id).subscribe({
+      next: (pdf) => this.materiauxService.ouvrirPdf(pdf),
+      error: () => this.erreur.set('Facture indisponible.')
+    });
+  }
+
   ngOnInit(): void {
+    if (this.materiaux) {
+      this.materiauxService.reglages().subscribe({ next: (r) => this.factureA4.set(r.factureA4) });
+    }
     const session = this.route.snapshot.queryParamMap.get('session');
     this.sessionId = session ? Number(session) : null;
     if (this.peutAnnuler) {

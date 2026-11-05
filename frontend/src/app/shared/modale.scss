@@ -152,15 +152,11 @@
       }
 
       &.bouton:not(.secondaire):not(:disabled) {
-        box-shadow: 0 6px 16px color-mix(in srgb, var(--couleur-primaire) 28%, transparent);
+        box-shadow: 0 3px 10px color-mix(in srgb, var(--ton-texte) 14%, transparent);
       }
 
       &.bouton-vert:not(:disabled) {
         box-shadow: 0 6px 16px rgba(30, 158, 74, 0.28);
-      }
-
-      &.danger:not(:disabled) {
-        box-shadow: 0 6px 16px color-mix(in srgb, var(--couleur-danger) 28%, transparent);
       }
     }
   }

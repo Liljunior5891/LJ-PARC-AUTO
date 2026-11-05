@@ -43,7 +43,7 @@
               <p>{{ alerte.message }}</p>
               <small>{{ alerte.horodatage | date: 'dd/MM HH:mm' }}</small>
             </div>
-            <button class="bouton secondaire petit" type="button" (click)="traiter(alerte)">Traiter</button>
+            <button class="bouton secondaire petit info" type="button" (click)="traiter(alerte)">Traiter</button>
           </li>
         } @empty {
           <li class="vide">Aucune alerte en attente.</li>

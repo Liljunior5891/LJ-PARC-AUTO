@@ -70,12 +70,12 @@
             </td>
             <td class="actions-ligne">
               @if (d.statut === 'NOUVELLE') {
-                <button class="bouton petit" type="button" (click)="repondre(d, true)">Accepter</button>
-                <button class="bouton secondaire petit" type="button" (click)="repondre(d, false)">Refuser</button>
+                <button class="bouton petit succes" type="button" (click)="repondre(d, true)">Accepter</button>
+                <button class="bouton secondaire petit danger" type="button" (click)="repondre(d, false)">Refuser</button>
               } @else if (d.statut === 'ACCEPTEE') {
                 <!-- Le client se presente en agence : on enregistre sa recette, avec sa fiche client. -->
                 <a class="bouton petit" routerLink="/recettes" [queryParams]="{ demande: d.id }">Enregistrer la recette</a>
-                <button class="bouton secondaire petit" type="button" (click)="annulation.set(d)">Annuler</button>
+                <button class="bouton secondaire petit annuler" type="button" (click)="annulation.set(d)">Annuler</button>
               } @else if (d.recetteNumero) {
                 <span class="etiquette">Recette {{ d.recetteNumero }}</span>
               } @else if (d.locationNumero) {

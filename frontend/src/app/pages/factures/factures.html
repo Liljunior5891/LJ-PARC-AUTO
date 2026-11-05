@@ -110,7 +110,7 @@
       </div>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
         @if (peutGerer && f.statut === 'BROUILLON') {
-          <button class="bouton" type="button" (click)="emettre(f)">Emettre</button>
+          <button class="bouton succes" type="button" (click)="emettre(f)">Emettre</button>
           <button class="bouton danger" type="button" (click)="annuler(f)">Annuler</button>
         }
         @if (peutGerer && f.resteAPayer > 0 && f.statut !== 'BROUILLON' && f.statut !== 'ANNULEE') {
@@ -202,7 +202,7 @@
         </div>
       </div>
       <div class="actions-formulaire">
-        <button class="bouton" type="button" (click)="payer(f)">Valider le reglement</button>
+        <button class="bouton succes" type="button" (click)="payer(f)">Valider le reglement</button>
         <button class="bouton secondaire annuler" type="button" (click)="paiementVisible.set(false)">
           Annuler
         </button>
@@ -306,10 +306,10 @@
             <td class="numerique"><strong>{{ facture.resteAPayer | number }}</strong></td>
             <td><span [class]="classeStatut(facture.statut)">{{ facture.statutLibelle }}</span></td>
             <td>
-              <button class="bouton secondaire petit" type="button" (click)="ouvrir(facture)">
+              <button class="bouton secondaire petit succes" type="button" (click)="ouvrir(facture)">
                 Ouvrir
               </button>
-              <button class="bouton secondaire petit" type="button"
+              <button class="bouton secondaire petit info" type="button"
                       [disabled]="telechargement()" (click)="telechargerPdf(facture)">
                 PDF
               </button>

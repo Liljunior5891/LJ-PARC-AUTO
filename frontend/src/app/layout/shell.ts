@@ -25,8 +25,8 @@ interface EntreeMenu {
   roles?: Role[];
   /** Module dont depend l'entree ; absent, elle fait partie du socle commun. */
   module?: CodeModule;
-  /** Type d'activite du point de vente exige (les tables n'existent qu'en restauration). */
-  variante?: string;
+  /** Type(s) d'activite du point de vente exige(s) (les tables n'existent qu'en restauration). */
+  variante?: string | string[];
   /** Masquee si l'entreprise a l'un de ces modules (ses ecrans y sont deja integres). */
   sansModules?: CodeModule[];
   /** Visible seulement si l'entreprise a aussi tous ces modules. */
@@ -163,20 +163,31 @@ export class Shell {
       entrees: [
         { libelle: 'Plan de salle', route: '/pdv/salle', description: 'Tables, commandes et additions', roles: ['CAISSIER', 'SERVEUR'], variante: 'RESTAURATION' },
         { libelle: 'Ecran de preparation', route: '/pdv/cuisine', description: 'Bons a preparer, en cours et prets', roles: ['PREPARATEUR'], variante: 'RESTAURATION' },
-        { libelle: 'Caisse', route: '/pdv/caisse', description: 'Ouvrir la caisse et encaisser au comptoir', roles: ['CAISSIER', 'SERVEUR'], variante: 'BOUTIQUE' },
+        { libelle: 'Caisse', route: '/pdv/caisse', description: 'Ouvrir la caisse et encaisser au comptoir', roles: ['CAISSIER', 'SERVEUR'], variante: ['BOUTIQUE', 'MATERIAUX'] },
         { libelle: 'Caisse', route: '/pdv/comptoir', description: 'Vente au comptoir, ouverture et fermeture de caisse', roles: ['CAISSIER', 'SERVEUR'], variante: 'RESTAURATION' },
         { libelle: 'Tableau de bord', route: '/pdv/tableau-bord', description: 'Chiffre du jour, marge et meilleures ventes', roles: ['ADMIN', 'GERANT'] },
         { libelle: 'Ventes', route: '/pdv/ventes', description: 'Commandes, reimpression et annulations', roles: ['ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR'] },
+        { libelle: 'Reste a livrer', route: '/pdv/livraisons', description: 'Commandes a remettre et bons de livraison', roles: ['CAISSIER'], variante: 'MATERIAUX' },
+        {
+          // Quincaillerie et materiaux : comptes clients, credit et devis.
+          libelle: 'Clients', description: 'Comptes clients, credit et devis', roles: ['ADMIN', 'GERANT'], variante: 'MATERIAUX',
+          enfants: [
+            { libelle: 'Clients', route: '/pdv/clients', description: 'Fiches, pieces, encours et reglements' },
+            { libelle: 'Reste a livrer', route: '/pdv/livraisons', description: 'Commandes a remettre et bons de livraison' },
+            { libelle: 'Devis', route: '/pdv/devis', description: 'Pro forma, validite et transformation en vente' }
+          ]
+        },
         {
           libelle: 'Stock', description: 'Produits, reapprovisionnement, inventaire', roles: ['ADMIN', 'GERANT'],
           enfants: [
-            { libelle: 'Produits', route: '/pdv/articles', description: 'Catalogue, prix, photos et categories' },
+            { libelle: 'Produits', route: '/pdv/articles', description: 'Catalogue, prix et photos' },
+            { libelle: 'Categories', route: '/pdv/categories', description: 'Familles de produits de la caisse' },
             { libelle: 'Reapprovisionnement', route: '/pdv/stock', description: 'Receptions, sorties et pertes' },
             { libelle: 'Inventaire', route: '/pdv/inventaire', description: 'Compter le stock et corriger les ecarts' }
           ]
         },
         {
-          libelle: 'Caisse', description: 'Caisses et vente au comptoir', roles: ['ADMIN', 'GERANT'], variante: 'BOUTIQUE',
+          libelle: 'Caisse', description: 'Caisses et vente au comptoir', roles: ['ADMIN', 'GERANT'], variante: ['BOUTIQUE', 'MATERIAUX'],
           enfants: [
             { libelle: 'Caisses', route: '/pdv/caisses', description: 'Caisses, affectations et historique' },
             { libelle: 'Vente au comptoir', route: '/pdv/caisse', description: 'Encaisser a la caisse' }
@@ -191,7 +202,8 @@ export class Shell {
             { libelle: 'Codes QR', route: '/pdv/codes-qr', description: 'Commande des clients depuis leur table', variante: 'RESTAURATION' }
           ]
         },
-        { libelle: 'Rapports', route: '/pdv/rapports', description: 'Statistiques, exports et imports', roles: ['ADMIN', 'GERANT'] }
+        { libelle: 'Rapports', route: '/pdv/rapports', description: 'Statistiques, exports et imports', roles: ['ADMIN', 'GERANT'] },
+        { libelle: 'Reglages', route: '/pdv/reglages-materiaux', description: 'Credit, devis, facture A4 et conditionnements', roles: ['ADMIN'], variante: 'MATERIAUX' }
       ]
     },
     {
@@ -236,14 +248,15 @@ export class Shell {
     if (this.estSuperAdmin) {
       return this.menuPlateforme;
     }
-    const autorise = (e: { roles?: Role[]; module?: CodeModule; variante?: string; sansModules?: CodeModule[];
+    const varianteCourante = this.auth.variante('POINT_DE_VENTE') ?? '';
+    const autorise = (e: { roles?: Role[]; module?: CodeModule; variante?: string | string[]; sansModules?: CodeModule[];
                            avecModules?: CodeModule[]; avecUnDesModules?: CodeModule[] }) =>
       (!e.roles || this.auth.aRole(...e.roles)) &&
       (!e.sansModules || !e.sansModules.some((m) => this.auth.aModule(m))) &&
       (!e.avecModules || e.avecModules.every((m) => this.auth.aModule(m))) &&
       (!e.avecUnDesModules || e.avecUnDesModules.some((m) => this.auth.aModule(m))) &&
       (!e.module || this.auth.peutUtiliser(e.module)) &&
-      (!e.variante || this.auth.variante('POINT_DE_VENTE') === e.variante);
+      (!e.variante || (Array.isArray(e.variante) ? e.variante.includes(varianteCourante) : e.variante === varianteCourante));
     const filtrer = (entrees: EntreeMenu[]): EntreeMenu[] =>
       entrees
         .filter(autorise)

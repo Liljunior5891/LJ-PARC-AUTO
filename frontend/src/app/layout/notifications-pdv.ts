@@ -28,7 +28,7 @@ const APPARENCES: Record<NotificationPdv['type'], { icone: string; couleur: stri
             <strong>Etre prevenu en arriere-plan</strong>
             <span>Recevez les commandes, bons et plats prets meme quand cet onglet n'est pas affiche.</span>
             <span class="choix">
-              <button type="button" class="bouton petit" (click)="service.demanderPermissionSysteme()">Activer</button>
+              <button type="button" class="bouton petit succes" (click)="service.demanderPermissionSysteme()">Activer</button>
               <button type="button" class="bouton secondaire petit" (click)="service.repousserProposition()">Plus tard</button>
             </span>
           </div>

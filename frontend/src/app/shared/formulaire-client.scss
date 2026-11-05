@@ -233,3 +233,193 @@
     cursor: pointer;
   }
 }
+
+/*
+ * Fiche client resserree : elle tient dans la fenetre sans defiler, types sur
+ * une seule ligne et champs etroits. La fiche chauffeur, qui partage cette
+ * feuille, garde ses dimensions.
+ */
+.fiche-serree {
+  h3,
+  &.compact h3 {
+    margin: 0.55rem 0 0.2rem;
+    font-size: 0.68rem;
+  }
+
+  .grille-formulaire {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.4rem 0.6rem;
+  }
+
+  .champ-large {
+    grid-column: span 2;
+  }
+
+  .champ {
+    gap: 0.1rem;
+
+    label {
+      overflow: hidden;
+      font-size: 0.66rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    input,
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      height: 32px;
+      min-height: 32px;
+      padding: 0.25rem 0.55rem;
+      font-size: 0.85rem;
+    }
+  }
+
+  ::ng-deep .select2-container--default .select2-selection--single {
+    min-height: 32px;
+
+    .select2-selection__rendered {
+      padding: 0.25rem 1.6rem 0.25rem 0.55rem;
+      font-size: 0.85rem;
+      line-height: 1.3;
+    }
+  }
+
+  .types-client {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 0.4rem;
+  }
+
+  .tuile-type {
+    gap: 0.4rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9px;
+
+    svg {
+      width: 24px;
+      height: 24px;
+      padding: 3px;
+      border-radius: 7px;
+    }
+
+    strong {
+      font-size: 0.78rem;
+      line-height: 1.15;
+    }
+  }
+
+  .titre-pieces {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 0.45rem 0 0.2rem;
+
+    h3 {
+      margin: 0;
+    }
+
+    .bouton {
+      padding: 0.1rem 0.5rem;
+      font-size: 0.72rem;
+    }
+  }
+
+  .pieces-enregistrees {
+    margin-bottom: 0.3rem;
+
+    li {
+      padding: 0.2rem 0.5rem;
+    }
+  }
+
+  .pieces {
+    gap: 0.3rem;
+  }
+
+  /* Une piece sur une seule ligne : type, numero, expiration, puis le fichier. */
+  .piece {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.6rem;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  .champs-piece {
+    flex: 3 1 0;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.6rem;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .depot-piece {
+    flex: 2 1 0;
+    gap: 0.35rem;
+    min-width: 0;
+
+    ::ng-deep .piece-jointe {
+      gap: 0.4rem;
+      min-height: 32px;
+      padding: 0.1rem 0.25rem 0.1rem 0.55rem;
+      border-radius: 8px;
+
+      .icone,
+      .textes strong {
+        display: none;
+      }
+
+      .textes small {
+        font-size: 0.7rem;
+      }
+
+      .bouton {
+        padding: 0.1rem 0.5rem;
+        font-size: 0.72rem;
+      }
+    }
+  }
+
+  .retirer {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    font-size: 0.7rem;
+  }
+
+  .doublons {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  /* Pied de fenetre plus bas : deux classes pour passer devant la regle de la fenetre. */
+  > .actions-formulaire.actions-formulaire {
+    margin-top: 0.6rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.55rem;
+
+    .bouton {
+      min-width: 120px;
+      padding: 0.4rem 1.2rem;
+    }
+  }
+}
+
+@media (max-width: 760px) {
+  .fiche-serree {
+    .types-client {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .piece {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+}

@@ -5,10 +5,15 @@
       <label class="recherche">
         <span aria-hidden="true">⌕</span>
         <input #saisie type="search" placeholder="Scanner un code-barres ou rechercher un produit..." autocomplete="off"
-               [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" (keydown.enter)="valider()"
+               [ngModel]="recherche()" (ngModelChange)="saisir($event)" (keydown.enter)="valider()"
                aria-label="Code-barres ou nom du produit" />
       </label>
       <app-bouton-especes />
+      @if (materiaux && reglages()?.devisActif) {
+        <button type="button" class="bouton-en-ligne" (click)="ouvrirDevis()" title="Devis en cours : les charger pour les modifier ou les encaisser">
+          📄 Devis
+        </button>
+      }
       @if (marketplace) {
         <button type="button" class="bouton-en-ligne" [class.alerte]="nouvellesEnLigne() > 0"
                 (click)="chargerEnLigne(); fenetreEnLigne.set(true)" title="Commandes passees dans la boutique en ligne">
@@ -38,7 +43,7 @@
     <div class="plats">
       @for (a of articlesAffiches(); track a.id) {
         @let pris = dansLePanier().get(a.id);
-        @let epuise = a.suiviStock && a.stockActuel <= 0;
+        @let epuise = a.suiviStock && a.stockDisponible <= 0 && !surArrivagePermis();
         <article class="plat" [class.choisi]="!!pris" [class.epuise]="epuise">
           <button type="button" class="visuel" [disabled]="epuise" (click)="ajouter(a)" [attr.aria-label]="'Ajouter ' + a.nom">
             @if (a.image) {
@@ -51,14 +56,17 @@
             @if (epuise) {
               <span class="badge rupture">Epuise</span>
             } @else if (a.suiviStock && a.stockBas) {
-              <span class="badge">Plus que {{ a.stockActuel | number: '1.0-0' }}</span>
+              <span class="badge">Plus que {{ a.stockDisponible | number: '1.0-0' }}</span>
             }
           </button>
           <h3>{{ a.nom }}</h3>
+          @if (conditionnementsDe(a).length) {
+            <small class="unites-produit">{{ a.unite || 'unite' }} · {{ conditionnementsDe(a).length }} autre(s) unite(s)</small>
+          }
           <div class="prix-ligne">
-            <strong>{{ a.prixVente | number: '1.0-0' }} F</strong>
+            <strong>{{ a.prixVente | number: '1.0-0' }} F@if (a.unite) {<small> / {{ a.unite }}</small>}</strong>
             @if (a.suiviStock && !epuise && !a.stockBas) {
-              <small class="stock-produit">{{ a.stockActuel | number: '1.0-3' }} en stock</small>
+              <small class="stock-produit">{{ a.stockDisponible | number: '1.0-3' }} disponible(s)</small>
             } @else if (a.categorieNom) {
               <small class="pastille-cat" [style.--teinte]="a.categorieCouleur || '#1e9e4a'">{{ a.categorieNom }}</small>
             }
@@ -109,10 +117,66 @@
       </div>
     }
 
-    <label class="client-comptoir">
-      <span>Nom du client (facultatif)</span>
-      <input name="client" maxlength="80" [(ngModel)]="clientNom" placeholder="Ex. Mme Adjoa" />
-    </label>
+    @if (devisCharge(); as d) {
+      <div class="bandeau-en-ligne bandeau-devis">
+        <strong>📄 Devis {{ d.numero }}{{ devisModifie() ? ' (modifie)' : '' }}</strong>
+        <span>{{ d.clientNom }} · valable jusqu'au {{ d.valableJusqu | date: 'dd/MM/yyyy' }}
+          @if (devisModifie()) { · sera recalcule aux prix du jour }
+          <button type="button" class="lien-discret" (click)="quitterDevis()">Quitter le devis</button>
+        </span>
+      </div>
+    }
+
+    @if (materiaux) {
+      @if (client(); as c) {
+        <div class="client-choisi">
+          <div>
+            <strong>👤 {{ c.nom }}</strong>
+            <small>{{ c.typeLibelle }}{{ c.telephone ? ' · ' + c.telephone : '' }}</small>
+            @if (c.encours > 0) {
+              <small [class.retard]="c.encoursEchu > 0">
+                Doit {{ c.encours | number: '1.0-0' }} F{{ c.encoursEchu > 0 ? ' (dont ' + (c.encoursEchu | number: '1.0-0') + ' F en retard)' : '' }}
+              </small>
+            }
+            @if (c.creditDisponible !== null && c.creditDisponible !== undefined) {
+              <small>Credit disponible : {{ c.creditDisponible | number: '1.0-0' }} F</small>
+            }
+          </div>
+          <div class="actions-client">
+            <button type="button" class="bouton secondaire petit" (click)="compteOuvert.set({ id: c.id, versement: c.encours > 0 })">
+              {{ c.encours > 0 ? 'Versement' : 'Compte' }}
+            </button>
+            <button type="button" class="carre" (click)="retirerClient()" aria-label="Retirer le client" title="Retirer le client">✕</button>
+          </div>
+        </div>
+      } @else {
+        <div class="client-comptoir recherche-client">
+          <span>Client{{ reglages()?.clientObligatoire ? ' (obligatoire)' : ' (facultatif)' }}</span>
+          <div class="ligne-client">
+            <input name="rechercheClient" autocomplete="off" [ngModel]="rechercheClient()" (ngModelChange)="chercherClient($event); clientNom = $event"
+                   placeholder="Nom, telephone ou code du client" aria-label="Rechercher un client" />
+            <button type="button" class="bouton secondaire petit" (click)="nouveauClient.set(true)" title="Creer la fiche du client">+ Fiche</button>
+          </div>
+          @if (clientsTrouves().length) {
+            <ul class="suggestions-clients">
+              @for (c of clientsTrouves(); track c.id) {
+                <li>
+                  <button type="button" (click)="choisirClient(c)">
+                    <strong>{{ c.nom }}</strong>
+                    <small>{{ c.code }}{{ c.telephone ? ' · ' + c.telephone : '' }}{{ c.encours > 0 ? ' · doit ' + (c.encours | number: '1.0-0') + ' F' : '' }}</small>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    } @else {
+      <label class="client-comptoir">
+        <span>Nom du client (facultatif)</span>
+        <input name="client" maxlength="80" [(ngModel)]="clientNom" placeholder="Ex. Mme Adjoa" />
+      </label>
+    }
 
     @if (erreur() && !paiement()) {
       <div class="message erreur">{{ erreur() }}</div>
@@ -122,7 +186,7 @@
     }
 
     <div class="lignes">
-      @for (l of panier(); track l.article.id) {
+      @for (l of panier(); track l.article.id + ':' + (l.conditionnement?.id ?? 0)) {
         <div class="ligne">
           <span class="vignette" [style.--teinte]="l.article.categorieCouleur || '#1e9e4a'">
             @if (l.article.image) {
@@ -132,17 +196,17 @@
             }
           </span>
           <div class="texte">
-            <strong>{{ l.article.nom }}</strong>
-            <small>{{ l.article.prixVente | number: '1.0-0' }} F l'unite</small>
+            <strong>{{ l.article.nom }}{{ l.conditionnement ? ' (' + l.conditionnement.nom + ')' : '' }}</strong>
+            <small>{{ prixLigne(l) | number: '1.0-0' }} F / {{ libelleUnite(l) }}</small>
             <div class="compteur petit">
               <button type="button" [attr.aria-label]="'Retirer un ' + l.article.nom" (click)="changerQuantite(l, l.quantite - 1)">−</button>
               <input type="number" min="0" step="any" [ngModel]="l.quantite" (ngModelChange)="changerQuantite(l, $event)"
                      [attr.aria-label]="'Quantite ' + l.article.nom" />
-              <button type="button" [attr.aria-label]="'Ajouter un ' + l.article.nom" (click)="ajouter(l.article)">+</button>
+              <button type="button" [attr.aria-label]="'Ajouter un ' + l.article.nom" (click)="changerQuantite(l, l.quantite + 1)">+</button>
             </div>
           </div>
           <div class="droite">
-            <strong>{{ l.article.prixVente * l.quantite | number: '1.0-0' }} F</strong>
+            <strong>{{ prixLigne(l) * l.quantite | number: '1.0-0' }} F</strong>
             <button type="button" class="retirer" [attr.aria-label]="'Retirer ' + l.article.nom" (click)="retirer(l)">Retirer</button>
           </div>
         </div>
@@ -173,6 +237,12 @@
         </button>
       }
     </div>
+
+    @if (materiaux && reglages()?.devisActif && panier().length > 0 && !commandeEnLigne()) {
+      <button type="button" class="bouton secondaire bouton-devis" [disabled]="enregistrementDevis()" (click)="enregistrerDevis()">
+        📄 {{ devisCharge() ? 'Mettre a jour le devis ' + devisCharge()!.numero : 'Enregistrer en devis' }}
+      </button>
+    }
 
     @if (!session()) {
       <button type="button" class="bouton-vert principal" disabled>
@@ -225,10 +295,10 @@
             } @else {
               <button class="bouton danger petit" type="button" (click)="refusEnCours.set(c.id); motifRefus = ''">Refuser</button>
               @if (c.statut === 'NOUVELLE') {
-                <button class="bouton petit" type="button" (click)="avancerEnLigne(c, 'CONFIRMEE')">Accepter</button>
+                <button class="bouton petit succes" type="button" (click)="avancerEnLigne(c, 'CONFIRMEE')">Accepter</button>
               } @else {
                 @if (c.statut === 'CONFIRMEE') {
-                  <button class="bouton secondaire petit" type="button" (click)="avancerEnLigne(c, 'PRETE')">Prete</button>
+                  <button class="bouton secondaire petit succes" type="button" (click)="avancerEnLigne(c, 'PRETE')">Prete</button>
                 }
                 <button class="bouton-vert petit" type="button" (click)="encaisserEnLigne(c)">Encaisser et remettre</button>
               }
@@ -243,9 +313,66 @@
 }
 
 @if (paiement()) {
-  <app-modale titre="Encaissement" [sousTitre]="'Total a payer : ' + (total() | number: '1.0-0') + ' F'"
+  <app-modale titre="Encaissement" [sousTitre]="'Total : ' + (total() | number: '1.0-0') + ' F' + (credit() ? ' · a payer maintenant : ' + (aPayer() | number: '1.0-0') + ' F' : '') + (client() ? ' · ' + client()!.nom : '')"
               largeur="600px" [erreur]="erreur()" (ferme)="paiement.set(false)">
     <form class="paiement" (ngSubmit)="encaisser()">
+      @if (creditPossible()) {
+        <div class="choix-credit" role="radiogroup" aria-label="Comptant ou a credit">
+          <button type="button" [class.actif]="!credit()" (click)="basculerCredit(false)">Comptant</button>
+          <button type="button" [class.actif]="credit()" [disabled]="!client()" (click)="basculerCredit(true)">A credit / acompte</button>
+        </div>
+        @if (!client()) {
+          <small class="aide-credit">Pour vendre a credit, choisissez d'abord la fiche du client.</small>
+        }
+        @if (credit()) {
+          <div class="champ">
+            <label for="acompte">Acompte verse maintenant (F){{ (reglages()?.acompteMinimum ?? 0) > 0 ? ' · minimum ' + reglages()!.acompteMinimum + ' %' : '' }}</label>
+            <input id="acompte" name="acompte" type="number" min="0" step="any" class="grand"
+                   [ngModel]="acompte()" (ngModelChange)="changerAcompte($event)" />
+          </div>
+          <div class="monnaie">
+            Reste du par {{ client()?.nom }} : <strong>{{ total() - aPayer() | number: '1.0-0' }} F</strong>
+            · echeance dans {{ client()?.delaiPaiementJours ?? reglages()?.delaiPaiementJours }} jours
+          </div>
+        }
+      }
+      @if (livraisonPossible()) {
+        <div class="choix-credit" role="radiogroup" aria-label="Ce que le client emporte">
+          <button type="button" [class.actif]="!resteALivrer()" [disabled]="surVente()" (click)="basculerLivraison(false)">Il emporte tout</button>
+          <button type="button" [class.actif]="resteALivrer()" [disabled]="!client()" (click)="basculerLivraison(true)">Reste a livrer</button>
+        </div>
+        @if (!client()) {
+          <small class="aide-credit">Pour livrer plus tard, choisissez d'abord la fiche du client.</small>
+        }
+        @if (surVente()) {
+          <small class="aide-credit">Le panier depasse le stock disponible : le surplus sera livre a l'arrivage de la marchandise.</small>
+        }
+        @if (resteALivrer()) {
+          <div class="tableau-conteneur">
+            <table class="tableau">
+              <thead><tr><th>Article</th><th class="numerique">Vendu</th><th class="numerique">Emporte maintenant</th><th class="numerique">A livrer</th></tr></thead>
+              <tbody>
+                @for (l of lignesARemettre(); track l.article.id + ':' + (l.conditionnement?.id ?? 0)) {
+                  <tr>
+                    <td>{{ l.article.nom }} <small>/ {{ libelleUnite(l) }}</small></td>
+                    <td class="numerique">{{ l.quantite | number: '1.0-3' }}</td>
+                    <td class="numerique">
+                      <input type="number" min="0" [max]="maximumEmporte(l)" step="any" style="width: 80px; text-align: right"
+                             [name]="'emporte-' + l.article.id + '-' + (l.conditionnement?.id ?? 0)"
+                             [attr.aria-label]="'Quantite emportee de ' + l.article.nom"
+                             [ngModel]="emportes()[l.article.id + ':' + (l.conditionnement?.id ?? 0)]" (ngModelChange)="changerEmporte(l, $event)" />
+                    </td>
+                    <td class="numerique"><strong>{{ l.quantite - emporte(l) | number: '1.0-3' }}</strong></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          @if (!emportesValides()) {
+            <small class="aide-credit">Indiquez une quantite entre 0 et ce qui est disponible, avec au moins un reste a livrer.</small>
+          }
+        }
+      }
       <div class="moyens">
         @for (m of modes; track m.valeur) {
           <button type="button" class="moyen" [class.actif]="mode() === m.valeur" (click)="mode.set(m.valeur)">
@@ -266,11 +393,11 @@
             <button type="button" class="puce" (click)="montantRecu.set(b)">{{ b | number: '1.0-0' }}</button>
           }
         </div>
-        <div class="monnaie" [class.insuffisant]="(montantRecu() ?? 0) < total()">
-          @if ((montantRecu() ?? 0) >= total()) {
+        <div class="monnaie" [class.insuffisant]="(montantRecu() ?? 0) < aPayer()">
+          @if ((montantRecu() ?? 0) >= aPayer()) {
             Monnaie a rendre : <strong>{{ monnaie() | number: '1.0-0' }} F</strong>
           } @else {
-            Il manque <strong>{{ total() - (montantRecu() ?? 0) | number: '1.0-0' }} F</strong>
+            Il manque <strong>{{ aPayer() - (montantRecu() ?? 0) | number: '1.0-0' }} F</strong>
           }
         </div>
       } @else {
@@ -280,16 +407,18 @@
         </div>
       }
 
-      <div class="champ">
-        <label for="remise">Remise (F CFA)</label>
-        <input id="remise" name="remise" type="number" min="0" step="any" [ngModel]="remise()"
-               (ngModelChange)="remise.set($event); montantRecu.set(total())" />
-      </div>
+      @if (!devisCharge()) {
+        <div class="champ">
+          <label for="remise">Remise (F CFA)</label>
+          <input id="remise" name="remise" type="number" min="0" step="any" [ngModel]="remise()"
+                 (ngModelChange)="remise.set($event); montantRecu.set(aPayer())" />
+        </div>
+      }
 
       <div class="actions-formulaire">
         <button class="bouton secondaire annuler" type="button" (click)="paiement.set(false)">Retour</button>
         <button class="bouton-vert" type="submit" [disabled]="enCours() || !paiementPossible()">
-          {{ enCours() ? 'Enregistrement...' : 'Valider ' + (total() | number: '1.0-0') + ' F' }}
+          {{ enCours() ? 'Enregistrement...' : (credit() ? 'Valider a credit' : 'Valider ' + (total() | number: '1.0-0') + ' F') }}
         </button>
       </div>
     </form>
@@ -305,10 +434,83 @@
       <p>{{ t.modePaiementLibelle }}
         @if (t.monnaieRendue) { · monnaie rendue <strong>{{ t.monnaieRendue | number: '1.0-0' }} F</strong> }
       </p>
+      @if ((t.resteDu ?? 0) > 0) {
+        <p class="reste-du">Acompte {{ t.montantPaye | number: '1.0-0' }} F · reste du <strong>{{ t.resteDu | number: '1.0-0' }} F</strong>
+          @if (t.echeance) { avant le {{ t.echeance | date: 'dd/MM/yyyy' }} }
+        </p>
+      }
+      @if (resteDuTicket(t).length) {
+        <p class="reste-du">A livrer plus tard :
+          @for (l of resteDuTicket(t); track l.libelle) { <br /><strong>{{ l.reste | number: '1.0-3' }}</strong> · {{ l.libelle }} }
+        </p>
+      }
       <div class="actions-formulaire">
-        <button class="bouton secondaire" type="button" (click)="imprimer(t)">Imprimer le recu</button>
+        <button class="bouton secondaire info" type="button" (click)="imprimer(t)">Imprimer le recu</button>
+        @if (aUnBon(t)) {
+          <button class="bouton secondaire info" type="button" (click)="bonLivraison(t)">Bon de livraison</button>
+        }
+        @if (materiaux && reglages()?.factureA4) {
+          <button class="bouton secondaire info" type="button" (click)="facture(t)">Facture A4</button>
+        }
         <button class="bouton-vert" type="button" (click)="nouvelleVente()">Client suivant</button>
       </div>
     </div>
   </app-modale>
+}
+
+<!-- Quincaillerie : choix de l'unite de vente (sac, tonne, botte, carton) -->
+@if (choixUnite(); as a) {
+  <app-modale [titre]="a.nom" sousTitre="Choisissez l'unite de vente" largeur="460px" (ferme)="choixUnite.set(null)">
+    <div class="choix-unites">
+      <button type="button" class="unite" (click)="ajouterLigne(a, null)">
+        <strong>{{ a.unite || 'Unite' }}</strong>
+        <span>{{ a.prixVente | number: '1.0-0' }} F</span>
+      </button>
+      @for (c of conditionnementsDe(a); track c.id) {
+        <button type="button" class="unite" (click)="ajouterLigne(a, c)">
+          <strong>{{ c.nom }}</strong>
+          <small>{{ c.coefficient | number: '1.0-3' }} {{ a.unite || 'unites' }}</small>
+          <span>{{ c.prixVente | number: '1.0-0' }} F</span>
+        </button>
+      }
+    </div>
+    @if (a.suiviStock) {
+      <p class="aide-credit">Disponible : {{ a.stockDisponible | number: '1.0-3' }} {{ a.unite || '' }}</p>
+    }
+  </app-modale>
+}
+
+<!-- Quincaillerie : devis en cours -->
+@if (fenetreDevis()) {
+  <app-modale titre="Devis en cours" sousTitre="Charger un devis pour le modifier ou l'encaisser a ses prix"
+              largeur="680px" (ferme)="fenetreDevis.set(false)">
+    <ul class="liste-en-ligne">
+      @for (d of devisOuverts(); track d.id) {
+        <li>
+          <div class="entete-ligne">
+            <strong>{{ d.numero }} · {{ d.clientNom }}</strong>
+            <span class="statut">{{ d.expire ? 'Expire' : 'Valable au ' + (d.valableJusqu | date: 'dd/MM') }}</span>
+          </div>
+          <small>{{ d.dateDevis | date: 'dd/MM/yyyy' }} · {{ d.vendeurNom }}</small>
+          <div class="actions">
+            <strong class="montant">{{ d.total | number: '1.0-0' }} F</strong>
+            <button class="bouton petit" type="button" (click)="chargerDevis(d)">Charger</button>
+          </div>
+        </li>
+      } @empty {
+        <li class="vide">Aucun devis en cours.</li>
+      }
+    </ul>
+  </app-modale>
+}
+
+<!-- Quincaillerie : fiche client creee au comptoir -->
+@if (nouveauClient()) {
+  <app-formulaire-client-pdv [compact]="true" [nomPropose]="rechercheClient()" (enregistre)="clientCree($event)" (ferme)="nouveauClient.set(false)" />
+}
+
+<!-- Quincaillerie : compte du client et versements -->
+@if (compteOuvert(); as co) {
+  <app-compte-client-pdv [clientId]="co.id" [versementDirect]="co.versement"
+                         (ferme)="compteOuvert.set(null)" (modifie)="rafraichirClient()" />
 }

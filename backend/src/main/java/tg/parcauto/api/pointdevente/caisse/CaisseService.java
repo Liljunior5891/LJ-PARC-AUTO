@@ -53,10 +53,12 @@ public class CaisseService {
     private final SessionCaisseRepository repository;
     private final MouvementCaisseRepository mouvementRepository;
     private final VenteRepository venteRepository;
+    private final tg.parcauto.api.pointdevente.materiaux.ReglementClientRepository reglementRepository;
     private final CommandeRepository commandeRepository;
     private final NumerotationService numerotation;
     private final GestionCaisseService gestionCaisses;
     private final SessionTravailService sessionsTravail;
+    private final tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository soldeRepository;
 
     /** Quantite comptee d'une valeur de billet ou de piece. */
     public record LigneBillettage(@NotNull BigDecimal valeur, @NotNull @PositiveOrZero Integer quantite) {
@@ -103,7 +105,13 @@ public class CaisseService {
             BigDecimal chiffreAffaires, long nombreVentes, long ventesAnnulees,
             BigDecimal entrees, BigDecimal sorties, BigDecimal especesAttendues, List<TotalMode> parMode,
             List<MouvementDto> mouvements, List<CoupureDto> billettageOuverture, List<CoupureDto> billettageFermeture,
-            int commandesEnCours) {
+            int commandesEnCours,
+            /** Part des ventes de la session laissee a credit (quincaillerie et materiaux). */
+            BigDecimal creditAccorde,
+            /** Reglements de clients a credit encaisses sur la session, deja compris dans parMode. */
+            BigDecimal reglementsRecus,
+            /** Rendu a des clients qui ont solde leur reste, deja deduit de parMode. */
+            BigDecimal remboursements) {
     }
 
     // ------------------------------------------------------------ ouverture
@@ -269,11 +277,25 @@ public class CaisseService {
         return coupures.stream().map(Coupure::montant).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    /**
+     * Encaissements de la session par moyen de paiement : ce qui est entre a la
+     * vente (total, ou acompte d'une vente a credit) et les reglements de
+     * clients recus ensuite, moins ce qui a ete rembourse a des clients.
+     */
     private Map<ModePaiementPdv, TotalMode> totaux(Long sessionId) {
         Map<ModePaiementPdv, TotalMode> totaux = new EnumMap<>(ModePaiementPdv.class);
-        for (Object[] ligne : venteRepository.totauxSession(sessionId)) {
+        List<Object[]> lignes = new ArrayList<>(venteRepository.totauxSession(sessionId));
+        lignes.addAll(reglementRepository.totauxSession(sessionId));
+        for (Object[] r : soldeRepository.remboursementsSession(sessionId)) {
+            lignes.add(new Object[]{r[0], ((BigDecimal) r[1]).negate(), 0L});
+        }
+        for (Object[] ligne : lignes) {
             ModePaiementPdv mode = (ModePaiementPdv) ligne[0];
-            totaux.put(mode, new TotalMode(mode, mode.getLibelle(), (BigDecimal) ligne[1], (Long) ligne[2]));
+            TotalMode avant = totaux.get(mode);
+            BigDecimal total = (BigDecimal) ligne[1];
+            long nombre = (Long) ligne[2];
+            totaux.put(mode, avant == null ? new TotalMode(mode, mode.getLibelle(), total, nombre)
+                    : new TotalMode(mode, mode.getLibelle(), avant.total().add(total), avant.nombre() + nombre));
         }
         return totaux;
     }
@@ -292,8 +314,12 @@ public class CaisseService {
     private Reponse versDto(SessionCaisse s) {
         Map<ModePaiementPdv, TotalMode> totaux = totaux(s.getId());
         List<MouvementCaisse> mouvements = mouvements(s.getId());
-        BigDecimal chiffre = totaux.values().stream().map(TotalMode::total).reduce(BigDecimal.ZERO, BigDecimal::add);
-        long nombre = totaux.values().stream().mapToLong(TotalMode::nombre).sum();
+        List<Object[]> chiffres = venteRepository.chiffreSession(s.getId());
+        BigDecimal chiffre = chiffres.isEmpty() || chiffres.get(0)[0] == null ? BigDecimal.ZERO : (BigDecimal) chiffres.get(0)[0];
+        BigDecimal credit = chiffres.isEmpty() || chiffres.get(0)[1] == null ? BigDecimal.ZERO : (BigDecimal) chiffres.get(0)[1];
+        BigDecimal reglements = reglementRepository.totauxSession(s.getId()).stream()
+                .map(l -> (BigDecimal) l[1]).reduce(BigDecimal.ZERO, BigDecimal::add);
+        long nombre = venteRepository.totauxSession(s.getId()).stream().mapToLong(l -> (Long) l[2]).sum();
         BigDecimal entrees = somme(mouvements, MouvementCaisse.Type.ENTREE);
         BigDecimal sorties = somme(mouvements, MouvementCaisse.Type.SORTIE);
         return new Reponse(
@@ -307,7 +333,9 @@ public class CaisseService {
                 mouvements.stream().map(m -> new MouvementDto(m.getId(), m.getType(), m.getMontant(), m.getMotif(),
                         m.getAuteurNom(), m.getDateMouvement())).toList(),
                 billettage(s, Coupure.Moment.OUVERTURE), billettage(s, Coupure.Moment.FERMETURE),
-                s.ouverte() ? enCours(s).size() : 0);
+                s.ouverte() ? enCours(s).size() : 0, credit, reglements,
+                soldeRepository.remboursementsSession(s.getId()).stream()
+                        .map(l -> (BigDecimal) l[1]).reduce(BigDecimal.ZERO, BigDecimal::add));
     }
 
     private static List<CoupureDto> billettage(SessionCaisse s, Coupure.Moment moment) {

@@ -78,7 +78,10 @@
     <fieldset class="bloc-location">
       <legend>Nouveau client</legend>
       <app-formulaire-client [compact]="true" libelleEnregistrer="Creer et selectionner"
-                             [nomInitial]="demande()?.clientNom ?? null" [telephoneInitial]="demande()?.clientTelephone ?? null"
+                             [nomInitial]="demande()?.clientNom ?? null"
+                             [nomFamilleInitial]="demande()?.clientNomFamille ?? null"
+                             [prenomsInitial]="demande()?.clientPrenoms ?? null"
+                             [telephoneInitial]="demande()?.clientTelephone ?? null"
                              [emailInitial]="demande()?.clientEmail ?? null"
                              (enregistre)="clientCree($event)" (annule)="creationClient.set(false)" />
     </fieldset>

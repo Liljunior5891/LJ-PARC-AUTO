@@ -4,7 +4,7 @@
     <p class="sous-titre">Votre vitrine publique, et sa place sur la place de marche de la plateforme</p>
   </div>
   @if (lienPublic(); as lien) {
-    <a class="bouton secondaire" [href]="lien" target="_blank" rel="noopener">Voir ma boutique ↗</a>
+    <a class="bouton secondaire info" [href]="lien" target="_blank" rel="noopener">Voir ma boutique ↗</a>
   }
 </div>
 
@@ -76,7 +76,7 @@
                 <input type="file" accept="image/*" hidden (change)="choisirCouverture($event)" />
               </label>
               @if (b.couverture) {
-                <button class="bouton secondaire petit" type="button" (click)="retirerCouverture()">Retirer</button>
+                <button class="bouton secondaire petit danger" type="button" (click)="retirerCouverture()">Retirer</button>
               }
             </div>
           </div>
@@ -182,7 +182,7 @@
         </div>
         @if (codeQr(); as qr) {
           <img class="qr" [src]="qr" alt="Code QR de la boutique" />
-          <button class="bouton secondaire petit" type="button" (click)="telechargerQr()">Telecharger le code QR</button>
+          <button class="bouton secondaire petit info" type="button" (click)="telechargerQr()">Telecharger le code QR</button>
         }
         <p class="aide">A imprimer sur vos affiches, cartes de visite et sacs : vos clients commandent en le scannant.</p>
       } @else {

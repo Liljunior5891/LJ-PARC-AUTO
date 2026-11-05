@@ -38,10 +38,10 @@ const TAILLE_MAX = 15 * 1024 * 1024;
       </div>
       <div class="actions">
         @if (existant()?.fichierDisponible && !fichier()) {
-          <button class="bouton secondaire petit" type="button" (click)="telecharger.emit(existant()!)">Voir</button>
+          <button class="bouton secondaire petit info" type="button" (click)="telecharger.emit(existant()!)">Voir</button>
         }
         @if (fichier()) {
-          <button class="bouton secondaire petit" type="button" (click)="fichier.set(null)">Retirer</button>
+          <button class="bouton secondaire petit danger" type="button" (click)="fichier.set(null)">Retirer</button>
         }
         <label class="bouton petit">
           {{ fichier() || existant()?.fichierDisponible ? 'Remplacer' : 'Choisir' }}

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { CodeModule } from '../../core/models/models';
-import { ICONES_VARIANTES, ModuleCatalogue, PRESENTATION_MODULES } from '../../core/models/plateforme';
+import { FONCTIONNALITES_VARIANTES, ICONES_VARIANTES, ModuleCatalogue, PRESENTATION_MODULES } from '../../core/models/plateforme';
 import { PlateformeService } from '../../core/services/plateforme.service';
 import { Modale } from '../../shared/modale';
 
@@ -29,6 +29,7 @@ export class Modules implements OnInit {
 
   readonly presentation = PRESENTATION_MODULES;
   readonly icones = ICONES_VARIANTES;
+  readonly fonctionnalitesVariantes = FONCTIONNALITES_VARIANTES;
   readonly estAdmin = this.auth.estAdmin();
   readonly entreprise = this.auth.utilisateur()?.entrepriseNom;
 
@@ -40,6 +41,8 @@ export class Modules implements OnInit {
   /** Module dont on choisit le type d'activite, a l'activation ou pour en changer. */
   readonly choix = signal<{ module: ModuleCatalogue; activation: boolean } | null>(null);
   readonly varianteChoisie = signal<string | null>(null);
+  /** Module dont on consulte le detail des fonctionnalites. */
+  readonly detail = signal<ModuleCatalogue | null>(null);
 
   ngOnInit(): void {
     this.service.modules().subscribe({

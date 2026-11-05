@@ -458,7 +458,8 @@ export class FormulaireRecette implements OnInit {
 
   /** Client cree depuis la recette : il rejoint la liste et se trouve selectionne. */
   clientCree({ client, echecsPieces }: ClientEnregistre): void {
-    this.clients.update((liste) => [client, ...liste.filter((c) => c.id !== client.id)]);
+    // Dans la recette, le formulaire lit les clients du parc : la fiche en est une.
+    this.clients.update((liste) => [client as ClientParc, ...liste.filter((c) => c.id !== client.id)]);
     this.formulaire.patchValue({ clientId: client.id });
     this.creationClient.set(false);
     if (echecsPieces) {

@@ -45,10 +45,10 @@ const ICONES: Record<NotificationPdv['type'], string> = {
           </header>
           <div class="cartes">
             @for (a of alertes(); track a.id) {
-              <button type="button" class="carte-mini" [class.rupture]="a.stockActuel <= 0" (click)="commander(a.id)"
+              <button type="button" class="carte-mini" [class.rupture]="a.stockDisponible <= 0" (click)="commander(a.id)"
                       [title]="'Commander ' + a.nom">
                 <strong>{{ a.nom }}</strong>
-                <small>{{ a.stockActuel <= 0 ? 'Rupture' : 'Stock ' + (a.stockActuel | number: '1.0-3') }} · seuil {{ a.seuilAlerte | number: '1.0-3' }}</small>
+                <small>{{ a.stockDisponible <= 0 ? 'Rupture' : 'Disponible ' + (a.stockDisponible | number: '1.0-3') }} · seuil {{ a.seuilAlerte | number: '1.0-3' }}</small>
               </button>
             } @empty {
               <p class="vide">Aucun produit sous son seuil d'alerte.</p>

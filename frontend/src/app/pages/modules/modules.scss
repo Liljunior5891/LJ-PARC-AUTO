@@ -1,14 +1,15 @@
 .grille-modules {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 340px));
+  gap: 0.75rem;
 }
 
 .module {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  border-top: 4px solid var(--couleur-bordure);
+  gap: 0.45rem;
+  padding: 0.75rem 0.85rem;
+  border-top: 3px solid var(--couleur-bordure);
 
   &.actif {
     border-top-color: var(--couleur-succes);
@@ -17,34 +18,45 @@
   &.indisponible {
     opacity: 0.7;
   }
-
-  h2 {
-    margin: 0;
-    font-size: 1.15rem;
-  }
-
-  p {
-    flex: 1;
-    margin: 0;
-    color: var(--couleur-texte-doux);
-    line-height: 1.45;
-  }
 }
 
 .tete {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.5rem;
 
   .icone {
-    font-size: 2rem;
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+
+  h2 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.98rem;
   }
 }
 
+/* Deux lignes au plus : le bouton Details donne le reste. */
+.description {
+  display: -webkit-box;
+  flex: none;
+  margin: 0;
+  overflow: hidden;
+  color: var(--couleur-texte-doux);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
 .etat {
-  padding: 0.2rem 0.6rem;
+  flex: none;
+  padding: 0.1rem 0.5rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
 
   &.actif {
@@ -58,23 +70,80 @@
   }
 }
 
+/* Les boutons restent alignes au bas des cartes d'une meme ligne. */
 .actions {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: auto;
 }
 
+/* Type d'activite et son changement : une bande douce, d'un seul tenant. */
 .variante {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 0.4rem;
+  padding: 0.2rem 0.25rem 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #f1f6fc;
+  font-size: 0.76rem;
+
+  .type {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .changer {
+    flex: none;
+    padding: 0.15rem 0.6rem;
+    border: 1px solid #d3e3f5;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--couleur-primaire);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+
+    &:hover {
+      border-color: #b5d0ee;
+      background: #e6f0fa;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--couleur-primaire);
+      outline-offset: 1px;
+    }
+  }
+}
+
+.detail-description {
+  margin: 0 0 0.75rem;
+  color: var(--couleur-texte-doux);
+  line-height: 1.45;
+}
+
+.detail-titre {
+  margin: 0.75rem 0 0.35rem;
   font-size: 0.9rem;
 
-  .lien {
-    margin-left: auto;
+  small {
+    margin-left: 0.3rem;
+    color: var(--couleur-succes);
+    font-size: 0.72rem;
+    font-weight: 600;
   }
+}
+
+.detail-liste {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.55;
 }
 
 .choix-variantes {

@@ -2,11 +2,9 @@ import { Component, OnInit, computed, inject, input, output, signal } from '@ang
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
-import { ClientParc, ClientRequete, TYPES_CLIENT, TypeClient } from '../core/models/exploitation';
 import { DocumentParc, TYPES_DOCUMENT, TypeDocument } from '../core/models/models';
-import { ClientService } from '../core/services/client.service';
-import { DocumentService } from '../core/services/document.service';
 import { PieceJointe } from './piece-jointe';
+import { ClientFormulaire, RequeteFormulaire, SOURCE_CLIENTS, TypeFiche } from './source-clients';
 
 /** Ce que le formulaire demande selon le type de client. */
 interface ProfilClient {
@@ -30,7 +28,7 @@ interface ProfilClient {
   pieces: TypeDocument[];
 }
 
-export const PROFILS_CLIENT: Record<TypeClient, ProfilClient> = {
+export const PROFILS_CLIENT: Record<TypeFiche, ProfilClient> = {
   PARTICULIER: {
     description: 'Personne physique',
     icone: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6',
@@ -39,6 +37,14 @@ export const PROFILS_CLIENT: Record<TypeClient, ProfilClient> = {
     placeholderNom: 'Nom de famille',
     pieces: ['CARTE_IDENTITE', 'PASSEPORT', 'CARTE_ELECTEUR', 'PERMIS_CONDUIRE', 'CARTE_SEJOUR',
       'CARTE_CONSULAIRE', 'AUTRE']
+  },
+  ARTISAN: {
+    description: 'Macon, plombier, electricien...',
+    icone: 'M14.7 6.3a4 4 0 0 0-5.4 5l-6 6a1.5 1.5 0 0 0 2.1 2.1l6-6a4 4 0 0 0 5-5.4l-2.6 2.6-2.1-.6-.6-2.1z',
+    personne: true,
+    libelleNom: 'Nom',
+    placeholderNom: 'Nom de famille',
+    pieces: ['CARTE_IDENTITE', 'CARTE_OPERATEUR_ECONOMIQUE', 'PASSEPORT', 'CARTE_ELECTEUR', 'AUTRE']
   },
   ENTREPRISE: {
     description: 'Societe, commerce, entreprise individuelle',
@@ -77,9 +83,6 @@ export const PROFILS_CLIENT: Record<TypeClient, ProfilClient> = {
   }
 };
 
-/** Ordre des tuiles : le cas le plus courant en premier. */
-const ORDRE_TYPES: TypeClient[] = ['PARTICULIER', 'ENTREPRISE', 'ADMINISTRATION', 'ONG'];
-
 export const FORMES_JURIDIQUES = [
   'Entreprise individuelle', 'SARL', 'SARLU', 'SA', 'SAS', 'SNC', 'GIE', 'Cooperative', 'Autre'
 ];
@@ -99,7 +102,7 @@ interface PieceSaisie {
 
 /** Resultat remonte au parent : la fiche et le bilan de l'envoi des pieces. */
 export interface ClientEnregistre {
-  client: ClientParc;
+  client: ClientFormulaire;
   creation: boolean;
   echecsPieces: number;
 }
@@ -122,8 +125,8 @@ export interface ClientEnregistre {
 })
 export class FormulaireClient implements OnInit {
   private readonly fb = inject(FormBuilder);
-  private readonly service = inject(ClientService);
-  private readonly documentService = inject(DocumentService);
+  /** Clients du parc par defaut ; le point de vente fournit les siens. */
+  readonly source = inject(SOURCE_CLIENTS);
 
   /** Client a modifier ; absent pour une creation. */
   readonly clientId = input<number | null>(null);
@@ -132,21 +135,20 @@ export class FormulaireClient implements OnInit {
   readonly libelleEnregistrer = input('Enregistrer');
   /** Creation preremplie (client d'une demande en ligne qui se presente en agence). */
   readonly nomInitial = input<string | null>(null);
+  /** Nom de famille et prenoms deja separes par la boutique : prioritaires sur nomInitial. */
+  readonly nomFamilleInitial = input<string | null>(null);
+  readonly prenomsInitial = input<string | null>(null);
   readonly telephoneInitial = input<string | null>(null);
   readonly emailInitial = input<string | null>(null);
   readonly enregistre = output<ClientEnregistre>();
   readonly annule = output<void>();
 
-  readonly types = ORDRE_TYPES.map((valeur) => ({
-    valeur,
-    libelle: TYPES_CLIENT.find((t) => t.valeur === valeur)!.libelle,
-    ...PROFILS_CLIENT[valeur]
-  }));
+  readonly types = this.source.types.map((t) => ({ ...t, ...PROFILS_CLIENT[t.valeur] }));
   readonly formesJuridiques = FORMES_JURIDIQUES;
 
   readonly enregistrement = signal(false);
   /** Creation : clients deja enregistres avec ce telephone, a utiliser plutot que de creer un doublon. */
-  readonly doublons = signal<ClientParc[]>([]);
+  readonly doublons = signal<ClientFormulaire[]>([]);
   /** Creer quand meme (homonyme ou numero partage), apres avoir vu les fiches existantes. */
   private doublonsVus = false;
   readonly erreur = signal<string | null>(null);
@@ -156,7 +158,7 @@ export class FormulaireClient implements OnInit {
   private prochaineCle = 1;
 
   readonly formulaire = this.fb.nonNullable.group({
-    type: ['PARTICULIER' as TypeClient],
+    type: ['PARTICULIER' as TypeFiche],
     code: [''],
     raisonSociale: [''],
     nom: [''],
@@ -187,7 +189,7 @@ export class FormulaireClient implements OnInit {
   private readonly valeurs = toSignal(this.formulaire.valueChanges, {
     initialValue: this.formulaire.getRawValue()
   });
-  readonly type = computed(() => (this.valeurs().type ?? 'PARTICULIER') as TypeClient);
+  readonly type = computed(() => (this.valeurs().type ?? 'PARTICULIER') as TypeFiche);
   readonly profil = computed(() => PROFILS_CLIENT[this.type()]);
 
   /** Champs obligatoires restant a saisir, cites a cote du bouton. */
@@ -217,7 +219,7 @@ export class FormulaireClient implements OnInit {
       this.ajouterPiece();
       return;
     }
-    this.service.parId(id).subscribe({
+    this.source.parId(id).subscribe({
       next: (client) => {
         this.formulaire.patchValue(client as never);
         this.ajouterPiece();
@@ -227,17 +229,22 @@ export class FormulaireClient implements OnInit {
     this.chargerDocuments(id);
   }
 
-  /** Nom complet « Prenoms Nom » de la demande : le dernier mot devient le nom de famille. */
+  /**
+   * Preremplissage depuis une demande en ligne. Le nom et les prenoms arrivent
+   * separes ; une demande anterieure ne porte que le nom complet « Nom Prenoms »
+   * (premier mot = nom de famille).
+   */
   private preremplir(): void {
     const nom = (this.nomInitial() ?? '').trim();
-    if (!nom && !this.telephoneInitial()) {
+    const famille = (this.nomFamilleInitial() ?? '').trim();
+    if (!nom && !famille && !this.telephoneInitial()) {
       return;
     }
     const mots = nom.split(/\s+/).filter(Boolean);
     this.formulaire.patchValue({
       type: 'PARTICULIER',
-      nom: mots.length > 1 ? mots[mots.length - 1] : nom,
-      prenoms: mots.length > 1 ? mots.slice(0, -1).join(' ') : '',
+      nom: famille || (mots.length > 1 ? mots[0] : nom),
+      prenoms: famille ? (this.prenomsInitial() ?? '').trim() : (mots.length > 1 ? mots.slice(1).join(' ') : ''),
       raisonSociale: nom,
       telephone: this.telephoneInitial() ?? '',
       email: this.emailInitial() ?? ''
@@ -245,7 +252,7 @@ export class FormulaireClient implements OnInit {
   }
 
   /** Changer de type remplace les pieces proposees par celles du nouveau type. */
-  choisirType(type: TypeClient): void {
+  choisirType(type: TypeFiche): void {
     if (type === this.type()) {
       return;
     }
@@ -282,7 +289,7 @@ export class FormulaireClient implements OnInit {
   }
 
   telecharger(document: DocumentParc): void {
-    this.documentService.telecharger(document.id).subscribe({
+    this.source.telechargerDocument(document.id).subscribe({
       next: (blob) => {
         const url = URL.createObjectURL(blob);
         const lien = window.document.createElement('a');
@@ -317,7 +324,7 @@ export class FormulaireClient implements OnInit {
     const telephone = this.formulaire.controls.telephone.value.trim();
     if (id === null && telephone && !this.doublonsVus) {
       this.enregistrement.set(true);
-      this.service.parTelephone(telephone).subscribe({
+      this.source.parTelephone(telephone).subscribe({
         next: (existants) => {
           this.enregistrement.set(false);
           if (existants.length) {
@@ -339,7 +346,7 @@ export class FormulaireClient implements OnInit {
     this.erreur.set(null);
 
     const requete = this.versRequete();
-    const enregistrement = id === null ? this.service.creer(requete) : this.service.modifier(id, requete);
+    const enregistrement = id === null ? this.source.creer(requete) : this.source.modifier(id, requete);
 
     enregistrement
       .pipe(switchMap((client) => this.envoyerPieces(client.id).pipe(map((echecs) => ({ client, echecs })))))
@@ -362,7 +369,7 @@ export class FormulaireClient implements OnInit {
   }
 
   /** Le client existe deja : on le reprend (avec les pieces deposees) au lieu de creer un doublon. */
-  utiliserExistant(client: ClientParc): void {
+  utiliserExistant(client: ClientFormulaire): void {
     this.enregistrement.set(true);
     this.envoyerPieces(client.id).subscribe((echecs) => {
       this.enregistrement.set(false);
@@ -379,7 +386,7 @@ export class FormulaireClient implements OnInit {
   }
 
   /** N'envoie que les champs du type choisi : ceux d'un autre type sont effaces. */
-  private versRequete(): Partial<ClientRequete> {
+  private versRequete(): RequeteFormulaire {
     const v = this.formulaire.getRawValue();
     const p = this.profil();
     const garder = (actif: boolean | undefined, valeur: string) => (actif ? valeur.trim() : '');
@@ -421,11 +428,10 @@ export class FormulaireClient implements OnInit {
     }
     return forkJoin(
       aEnvoyer.map((piece) =>
-        this.documentService
-          .creer(
+        this.source
+          .ajouterDocument(
+            clientId,
             {
-              proprietaireType: 'CLIENT',
-              proprietaireId: clientId,
               type: piece.type,
               libelle: this.libelleType(piece.type),
               numero: piece.numero.trim() || undefined,
@@ -442,9 +448,7 @@ export class FormulaireClient implements OnInit {
   }
 
   private chargerDocuments(id: number): void {
-    this.documentService.lister({ proprietaireType: 'CLIENT', proprietaireId: id, size: 50 }).subscribe({
-      next: (page) => this.documents.set(page.content)
-    });
+    this.source.documents(id).subscribe({ next: (liste) => this.documents.set(liste) });
   }
 
   private nouvellePiece(type: TypeDocument): PieceSaisie {

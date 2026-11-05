@@ -70,7 +70,7 @@ public class OffreService {
                 .sorted(Comparator.comparing(a -> a.getNom().toLowerCase()))
                 .map(a -> new MarketplaceDto.SourceArticle(a.getId(), a.getCode(), a.getNom(),
                         a.getCategorie() == null ? null : a.getCategorie().getNom(), a.getPrixVente(), a.getImage(),
-                        a.isSuiviStock(), a.getStockActuel(), articlesPublies.contains(a.getId())))
+                        a.isSuiviStock(), a.stockDisponible(), articlesPublies.contains(a.getId())))
                 .toList();
         List<MarketplaceDto.SourceVehicule> vehicules = !parc ? List.of() : camionRepository.findAll().stream()
                 .filter(c -> c.isActif() && !HORS_LOCATION.contains(c.getStatut()))
@@ -410,7 +410,7 @@ public class OffreService {
         return switch (o.getType()) {
             case ARTICLE -> {
                 Article a = s.article(o);
-                yield a == null ? BigDecimal.ZERO : a.isSuiviStock() ? a.getStockActuel().max(BigDecimal.ZERO) : null;
+                yield a == null ? BigDecimal.ZERO : a.isSuiviStock() ? a.stockDisponible().max(BigDecimal.ZERO) : null;
             }
             case LIBRE -> o.getStock() == null ? null : BigDecimal.valueOf(Math.max(0, o.getStock()));
             case VEHICULE -> null;
@@ -421,7 +421,7 @@ public class OffreService {
         return switch (o.getType()) {
             case ARTICLE -> {
                 Article a = s.article(o);
-                yield a != null && a.isActif() && (!a.isSuiviStock() || a.getStockActuel().signum() > 0);
+                yield a != null && a.isActif() && (!a.isSuiviStock() || a.stockDisponible().signum() > 0);
             }
             case VEHICULE -> {
                 Camion c = s.camion(o);

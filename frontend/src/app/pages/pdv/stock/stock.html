@@ -6,7 +6,7 @@
   <div class="actions-entete">
     @if (onglet() === 'mouvements') {
       <a class="bouton secondaire" routerLink="/pdv/inventaire">Faire un inventaire</a>
-      <button class="bouton secondaire" type="button" (click)="ouvrirSaisie(undefined, 'SORTIE')">Sortie / perte</button>
+      <button class="bouton secondaire attention" type="button" (click)="ouvrirSaisie(undefined, 'SORTIE')">Sortie / perte</button>
     }
     <button class="bouton" type="button" (click)="nouvelleCommande.set([])">+ Nouvelle commande</button>
   </div>
@@ -30,7 +30,7 @@
     </div>
     <div class="cartes-alertes">
       @for (a of alertes(); track a.id) {
-        <article class="carte-alerte" [class.rupture]="a.stockActuel <= 0">
+        <article class="carte-alerte" [class.rupture]="a.stockDisponible <= 0">
           <span class="vignette-alerte" aria-hidden="true">
             @if (a.image) { <img [src]="a.image" alt="" /> } @else { {{ a.categorieIcone || '📦' }} }
           </span>
@@ -38,7 +38,7 @@
             <strong [title]="a.nom">{{ a.nom }}</strong>
             <small>{{ a.code }}</small>
             <span class="niveau">
-              {{ a.stockActuel <= 0 ? 'Rupture' : 'Stock ' + (a.stockActuel | number: '1.0-3') }}
+              {{ a.stockDisponible <= 0 ? 'Rupture' : 'Disponible ' + (a.stockDisponible | number: '1.0-3') }}
               <em>/ seuil {{ a.seuilAlerte | number: '1.0-3' }}</em>
             </span>
           </div>

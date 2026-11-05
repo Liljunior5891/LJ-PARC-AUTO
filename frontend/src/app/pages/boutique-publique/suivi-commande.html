@@ -21,7 +21,7 @@
         } @else if (c.statut === 'LIVREE') {
           <h1 class="faite">{{ c.modeRemise === 'LIVRAISON' ? 'Commande livree' : 'Commande retiree' }} — merci !</h1>
         } @else {
-          <h1>Merci {{ c.clientNom.split(' ')[0] }}, votre commande est {{ c.statut === 'NOUVELLE' ? 'bien recue' : c.statutLibelle.toLowerCase() }}</h1>
+          <h1>Merci {{ c.clientPrenoms || c.clientNom.split(' ')[0] }}, votre commande est {{ c.statut === 'NOUVELLE' ? 'bien recue' : c.statutLibelle.toLowerCase() }}</h1>
           @if (s.messageConfirmation && c.statut === 'NOUVELLE') { <p class="doux">{{ s.messageConfirmation }}</p> }
         }
 

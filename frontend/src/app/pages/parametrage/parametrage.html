@@ -38,7 +38,7 @@
                  [disabled]="televersement()" (change)="choisirLogo($event)" />
         </label>
         @if (logo()) {
-          <button class="bouton secondaire" type="button" (click)="retirerLogo()">Retirer</button>
+          <button class="bouton secondaire danger" type="button" (click)="retirerLogo()">Retirer</button>
         }
       </div>
     </div>

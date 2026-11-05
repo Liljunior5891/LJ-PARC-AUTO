@@ -12,6 +12,8 @@ import tg.parcauto.api.common.ResourceNotFoundException;
 import tg.parcauto.api.exploitation.client.ClientService;
 import tg.parcauto.api.parc.camion.CamionService;
 import tg.parcauto.api.parc.chauffeur.ChauffeurService;
+import tg.parcauto.api.pointdevente.materiaux.ClientPdv;
+import tg.parcauto.api.pointdevente.materiaux.ClientPdvRepository;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -26,6 +28,7 @@ public class DocumentService {
     private final CamionService camionService;
     private final ChauffeurService chauffeurService;
     private final ClientService clientService;
+    private final ClientPdvRepository clientPdvRepository;
 
     @Transactional(readOnly = true)
     public Page<DocumentDto.Reponse> rechercher(ProprietaireDocument proprietaireType, Long proprietaireId,
@@ -121,6 +124,8 @@ public class DocumentService {
             case CAMION -> camionService.charger(id);
             case CHAUFFEUR -> chauffeurService.charger(id);
             case CLIENT -> clientService.charger(id);
+            case CLIENT_PDV -> clientPdvRepository.findById(id)
+                    .orElseThrow(() -> ResourceNotFoundException.of("Client", id));
         }
     }
 
@@ -130,6 +135,8 @@ public class DocumentService {
                 case CAMION -> camionService.charger(d.getProprietaireId()).getImmatriculation();
                 case CHAUFFEUR -> chauffeurService.charger(d.getProprietaireId()).nomComplet();
                 case CLIENT -> clientService.charger(d.getProprietaireId()).getRaisonSociale();
+                case CLIENT_PDV -> clientPdvRepository.findById(d.getProprietaireId())
+                        .map(ClientPdv::getNom).orElse(null);
             };
         } catch (ResourceNotFoundException e) {
             return null;

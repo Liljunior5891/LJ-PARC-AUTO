@@ -1,4 +1,4 @@
-/* Photo de l'article et pictogrammes des categories. */
+/* Photo de l'article et autres unites de vente. */
 
 .photo-article {
   display: flex;
@@ -26,6 +26,62 @@
   }
 }
 
+/* Photo de l'article dans la liste des produits. */
+.cellule-photo {
+  width: 1%;
+  padding-right: 0;
+}
+
+/* Libelle de champ avec, a droite, un raccourci de creation. */
+.libelle-action {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ajout-rapide {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--couleur-primaire-clair);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.code-article {
+  color: var(--couleur-texte-doux);
+  font-size: 0.72rem;
+}
+
+.apercu-photo.vignette {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 1.3rem;
+}
+
+/* Unite, stock, stock initial et seuil : une ligne, partagee entre les champs affiches. */
+.ligne-stock {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+
+  /* Meme hauteur que les listes Select2 voisines. */
+  input {
+    box-sizing: border-box;
+    height: 38px;
+  }
+}
+
 .actions-photo {
   display: flex;
   flex-direction: column;
@@ -41,34 +97,73 @@
   }
 }
 
-.bouton-icone {
-  width: 44px;
-  height: 44px;
+/* Quincaillerie : autres unites de vente d'un produit. */
+.conditionnements {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem 1rem;
   border: 1px solid var(--couleur-bordure);
   border-radius: 10px;
-  background: var(--couleur-surface);
-  font-size: 1.4rem;
-  cursor: pointer;
 
-  &.petit {
-    width: 32px;
-    height: 32px;
-    margin-right: 0.4rem;
-    font-size: 1rem;
-    vertical-align: middle;
+  legend {
+    padding: 0 0.3rem;
+    font-weight: 600;
   }
 
-  &:hover {
-    border-color: var(--couleur-primaire);
+  .aide {
+    margin: 0;
+    color: var(--couleur-texte-doux);
+    font-size: 0.8rem;
+  }
+
+  .ligne-conditionnement {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) auto;
+    gap: 0.75rem;
+    align-items: end;
+
+    /* Toute la largeur de la colonne, et la hauteur du bouton de retrait. */
+    input {
+      box-sizing: border-box;
+      width: 100%;
+      height: 38px;
+    }
+  }
+
+  /* Bouton a la hauteur des champs, aligne sur leur saisie. */
+  .retirer {
+    height: 38px;
+    padding: 0 0.8rem;
+  }
+
+  > .bouton {
+    align-self: flex-start;
   }
 }
 
-.champ-icone {
-  flex: 0 0 auto;
+@media (min-width: 641px) {
+  /* Les colonnes se lisent sous les libelles de la premiere ligne ; ils restent lus par les lecteurs d'ecran. */
+  .ligne-conditionnement + .ligne-conditionnement label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
-.grille-icones {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
-  gap: 0.4rem;
+@media (max-width: 640px) {
+  .ligne-stock {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .conditionnements .ligne-conditionnement {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--couleur-bordure);
+  }
 }

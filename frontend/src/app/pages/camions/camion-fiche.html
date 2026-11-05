@@ -92,7 +92,7 @@
               </td>
               <td class="numerique"><strong>{{ recette.montant | number }}</strong></td>
               <td>
-                <button class="bouton secondaire petit" type="button" (click)="imprimerContrat(recette)">Contrat</button>
+                <button class="bouton secondaire petit info" type="button" (click)="imprimerContrat(recette)">Contrat</button>
               </td>
             </tr>
           } @empty {
@@ -181,7 +181,7 @@
   <div class="message succes bandeau-contrat">
     <span>{{ succes() }}</span>
     @if (recetteAImprimer(); as r) {
-      <button class="bouton petit" type="button" (click)="imprimerContrat(r)">🖨 Imprimer le contrat</button>
+      <button class="bouton petit info" type="button" (click)="imprimerContrat(r)">🖨 Imprimer le contrat</button>
     }
   </div>
 }

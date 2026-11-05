@@ -14,8 +14,8 @@
     @if (enCours()) {
       <div class="actions-entete">
         <button class="bouton danger" type="button" (click)="annuler()">Annuler la commande</button>
-        <button class="bouton secondaire" type="button" (click)="edition.set(true)">Modifier</button>
-        <button class="bouton" type="button" (click)="ouvrirReception()">Receptionner</button>
+        <button class="bouton secondaire info" type="button" (click)="edition.set(true)">Modifier</button>
+        <button class="bouton succes" type="button" (click)="ouvrirReception()">Receptionner</button>
       </div>
     }
   </div>
@@ -131,7 +131,7 @@
         <p class="total-reception">Valeur recue : <strong>{{ totalReception() | number: '1.0-0' }} F</strong></p>
         <div class="actions-formulaire">
           <button class="bouton secondaire annuler" type="button" (click)="reception.set(false)">Annuler</button>
-          <button class="bouton" type="submit">Valider la reception</button>
+          <button class="bouton succes" type="submit">Valider la reception</button>
         </div>
       </form>
     </app-modale>

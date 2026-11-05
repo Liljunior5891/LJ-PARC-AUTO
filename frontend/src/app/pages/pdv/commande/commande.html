@@ -9,7 +9,7 @@
         <label class="recherche">
           <span aria-hidden="true">⌕</span>
           <input type="search" placeholder="Rechercher un plat ou une boisson..." autocomplete="off"
-                 [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" (keydown.enter)="valider()"
+                 [ngModel]="recherche()" (ngModelChange)="saisir($event)" (keydown.enter)="valider()"
                  aria-label="Rechercher un article" />
         </label>
         <!-- Les autres commandes s'ouvrent dans un panneau : classees par urgence, avec recherche. -->
@@ -521,7 +521,7 @@
           <p>Reste a payer sur la table : <strong>{{ c.resume.resteAPayer | number: '1.0-0' }} F</strong></p>
         }
         <div class="actions-formulaire">
-          <button class="bouton secondaire" type="button" (click)="imprimerTicket(t)">Imprimer le recu</button>
+          <button class="bouton secondaire info" type="button" (click)="imprimerTicket(t)">Imprimer le recu</button>
           <button class="bouton-vert" type="button" (click)="fermerTicket()">
             {{ ouverte() ? 'Continuer' : 'Retour au plan' }}
           </button>

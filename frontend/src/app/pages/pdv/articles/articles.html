@@ -5,8 +5,8 @@
   </div>
   <div class="actions-entete">
     <app-export-pdv type="PRODUITS" />
-    <button class="bouton secondaire" type="button" (click)="importOuvert.set(true)">⇪ Importer</button>
-    <button class="bouton secondaire" type="button" (click)="gestionCategories.set(true)">Categories</button>
+    <button class="bouton secondaire info" type="button" (click)="importOuvert.set(true)">⇪ Importer</button>
+    <a class="bouton secondaire" routerLink="/pdv/categories">Categories</a>
     <button class="bouton" type="button" (click)="ouvrir()">+ Nouvel article</button>
   </div>
 </div>
@@ -65,7 +65,7 @@
     <table class="tableau">
       <thead>
         <tr>
-          <th>Code</th>
+          <th aria-label="Photo"></th>
           <th>Article</th>
           <th>Categorie</th>
           <th class="numerique">Prix de vente</th>
@@ -78,11 +78,19 @@
       <tbody>
         @for (a of page()?.content ?? []; track a.id) {
           <tr [style.opacity]="a.actif ? 1 : 0.55">
-            <td>
-              {{ a.code }}
-              @if (a.codeBarres) { <br /><small>{{ a.codeBarres }}</small> }
+            <td class="cellule-photo">
+              <div class="apercu-photo vignette" [style.--teinte]="a.categorieCouleur || '#8a94a0'">
+                @if (a.image) {
+                  <img [src]="a.image" [alt]="a.nom" loading="lazy" />
+                } @else {
+                  <span aria-hidden="true">{{ a.categorieIcone || '📷' }}</span>
+                }
+              </div>
             </td>
-            <td><strong>{{ a.nom }}</strong>@if (a.unite) { <small> / {{ a.unite }}</small> }</td>
+            <td>
+              <strong>{{ a.nom }}</strong>@if (a.unite) { <small> / {{ a.unite }}</small> }
+              <br /><small class="code-article">{{ a.code }}@if (a.codeBarres) { · {{ a.codeBarres }} }</small>
+            </td>
             <td>
               @if (a.categorieNom) {
                 <span class="etiquette" [style.background]="a.categorieCouleur" style="color: #fff">{{ a.categorieNom }}</span>
@@ -92,9 +100,12 @@
             <td class="numerique">{{ a.prixAchat != null ? (a.prixAchat | number: '1.0-0') + ' F' : '—' }}</td>
             <td class="numerique">
               @if (a.suiviStock) {
-                <span [class.resultat-negatif]="a.stockBas || a.stockActuel <= 0"><strong>{{ a.stockActuel | number: '1.0-3' }}</strong></span>
-                @if (a.stockActuel <= 0) {
-                  <br /><small class="resultat-negatif">rupture</small>
+                <span [class.resultat-negatif]="a.stockBas || a.stockDisponible <= 0"><strong>{{ a.stockActuel | number: '1.0-3' }}</strong></span>
+                @if (a.stockReserve > 0) {
+                  <br /><small>dont {{ a.stockReserve | number: '1.0-3' }} reserve(s) · {{ a.stockDisponible | number: '1.0-3' }} dispo.</small>
+                }
+                @if (a.stockDisponible <= 0) {
+                  <br /><small class="resultat-negatif">{{ a.stockActuel > 0 ? 'plus rien a vendre' : 'rupture' }}</small>
                 } @else if (a.stockBas) {
                   <br /><small class="resultat-negatif">sous le seuil ({{ a.seuilAlerte }})</small>
                 }
@@ -113,14 +124,14 @@
             }
             <td style="white-space: nowrap; text-align: right">
               @if (a.suiviStock) {
-                <a class="bouton secondaire petit" routerLink="/pdv/rapports"
+                <a class="bouton secondaire petit info" routerLink="/pdv/rapports"
                    [queryParams]="{ type: 'FICHE_STOCK', article: a.id }" title="Entrees, sorties et solde">Fiche de stock</a>
               }
-              <button class="bouton secondaire petit" type="button" (click)="ouvrir(a)">Modifier</button>
+              <button class="bouton secondaire petit info" type="button" (click)="ouvrir(a)">Modifier</button>
               @if (a.actif) {
-                <button class="bouton secondaire petit" type="button" (click)="archiver(a)">Archiver</button>
+                <button class="bouton secondaire petit danger" type="button" (click)="archiver(a)">Archiver</button>
               } @else {
-                <button class="bouton secondaire petit" type="button" (click)="reactiver(a)">Reactiver</button>
+                <button class="bouton secondaire petit succes" type="button" (click)="reactiver(a)">Reactiver</button>
               }
             </td>
           </tr>
@@ -146,7 +157,7 @@
 
 <!-- Fiche article -->
 @if (edition(); as e) {
-  <app-modale [titre]="e === 'nouveau' ? 'Nouvel article' : 'Modifier ' + e.nom" largeur="760px"
+  <app-modale [titre]="e === 'nouveau' ? 'Nouvel article' : 'Modifier ' + e.nom" [sousTitre]="e === 'nouveau' ? '' : 'Code ' + e.code" largeur="760px"
               [erreur]="erreurFormulaire()" (ferme)="edition.set(null)">
     <form (ngSubmit)="enregistrer()">
       <div class="photo-article">
@@ -164,7 +175,7 @@
             <label class="bouton secondaire petit" for="photo">{{ formulaire.image ? 'Changer la photo' : 'Ajouter une photo' }}</label>
             <input id="photo" type="file" accept="image/*" hidden (change)="choisirPhoto($event)" />
             @if (formulaire.image) {
-              <button class="bouton secondaire petit" type="button" (click)="retirerPhoto()">Retirer</button>
+              <button class="bouton secondaire petit danger" type="button" (click)="retirerPhoto()">Retirer</button>
             }
           </div>
         </div>
@@ -175,18 +186,16 @@
           <input id="nom" name="nom" [(ngModel)]="formulaire.nom" required />
         </div>
         <div class="champ">
-          <label for="cat">Categorie</label>
+          <div class="libelle-action">
+            <label for="cat">Categorie</label>
+            <button type="button" class="ajout-rapide" (click)="nouvelleCategorie.set(true)">+ Nouvelle</button>
+          </div>
           <select id="cat" name="cat" [(ngModel)]="formulaire.categorieId">
             <option [ngValue]="null">Sans categorie</option>
             @for (c of categories(); track c.id) {
               <option [ngValue]="c.id">{{ c.nom }}</option>
             }
           </select>
-        </div>
-        <div class="champ">
-          <label for="code">Code interne</label>
-          <input id="code" name="code" [(ngModel)]="formulaire.code" [disabled]="e !== 'nouveau'"
-                 placeholder="Genere automatiquement" />
         </div>
         <div class="champ">
           <label for="ean">Code-barres</label>
@@ -200,10 +209,6 @@
           <label for="pa">Cout d'achat (F)</label>
           <input id="pa" name="pa" type="number" min="0" step="any" [(ngModel)]="formulaire.prixAchat" />
         </div>
-        <div class="champ">
-          <label for="unite">Unite</label>
-          <input id="unite" name="unite" [(ngModel)]="formulaire.unite" placeholder="piece, kg, litre..." />
-        </div>
         @if (avecEnLigne) {
           <!-- Point de vente avec Marketplace seulement : vendu au comptoir, ou aussi dans la boutique en ligne. -->
           <div class="champ">
@@ -214,6 +219,18 @@
             </select>
           </div>
         }
+      </div>
+      <!-- Unite et stock sur une seule ligne, quel que soit le nombre de champs affiches. -->
+      <div class="ligne-stock">
+        <div class="champ">
+          <label for="unite">Unite</label>
+          <select id="unite" name="unite" [(ngModel)]="formulaire.unite">
+            <option [ngValue]="''">Non precisee</option>
+            @for (u of unites; track u.valeur) {
+              <option [ngValue]="u.valeur">{{ u.libelle }}</option>
+            }
+          </select>
+        </div>
         <div class="champ">
           <label for="suivi">Stock</label>
           <select id="suivi" name="suivi" [(ngModel)]="formulaire.suiviStock">
@@ -239,6 +256,38 @@
           <app-galerie-photos [(photos)]="photosEnLigne" />
         </div>
       }
+      @if (conditionnementsActifs()) {
+        <!-- Quincaillerie : autres unites de vente du produit (tonne, botte, carton). -->
+        <fieldset class="conditionnements">
+          <legend>Autres unites de vente</legend>
+          <p class="aide">
+            Le stock reste compte en <strong>{{ formulaire.unite || 'unite de base' }}</strong>.
+            Ex. ciment vendu au sac : « Tonne » = 20 sacs a 95 000 F.
+          </p>
+          @for (c of conditionnements; track $index) {
+            <div class="ligne-conditionnement">
+              <div class="champ">
+                <label [attr.for]="'cond-nom-' + $index">Nom</label>
+                <input [id]="'cond-nom-' + $index" [name]="'cond-nom-' + $index" maxlength="40" [(ngModel)]="c.nom" placeholder="Tonne, Botte..." />
+              </div>
+              <div class="champ">
+                <label [attr.for]="'cond-coef-' + $index">Nb de {{ formulaire.unite || 'unites' }}</label>
+                <input [id]="'cond-coef-' + $index" [name]="'cond-coef-' + $index" type="number" min="0" step="any" [(ngModel)]="c.coefficient" />
+              </div>
+              <div class="champ">
+                <label [attr.for]="'cond-prix-' + $index">Prix (F)</label>
+                <input [id]="'cond-prix-' + $index" [name]="'cond-prix-' + $index" type="number" min="0" step="any" [(ngModel)]="c.prixVente" />
+              </div>
+              <div class="champ">
+                <label [attr.for]="'cond-cb-' + $index">Code-barres</label>
+                <input [id]="'cond-cb-' + $index" [name]="'cond-cb-' + $index" maxlength="60" [(ngModel)]="c.codeBarres" placeholder="Scannez le produit" />
+              </div>
+              <button type="button" class="bouton secondaire retirer" (click)="retirerConditionnement($index)" aria-label="Retirer cette unite">✕</button>
+            </div>
+          }
+          <button type="button" class="bouton secondaire petit" (click)="ajouterConditionnement()">+ Ajouter une unite</button>
+        </fieldset>
+      }
       @if (e !== 'nouveau' && formulaire.suiviStock) {
         <p style="color: var(--couleur-texte-doux); margin: 0.75rem 0 0">
           Le stock ({{ e.stockActuel }}) se modifie depuis l'ecran Stock, pour garder la trace de chaque mouvement.
@@ -252,82 +301,9 @@
   </app-modale>
 }
 
-<!-- Categories -->
-@if (gestionCategories()) {
-  <app-modale titre="Categories" [sousTitre]="restauration ? 'Elles organisent la carte et envoient chaque article en cuisine ou au bar' : 'Elles organisent les boutons de l\'ecran de caisse'" largeur="560px"
-              [erreur]="erreurFormulaire()" (ferme)="gestionCategories.set(false)">
-    <form class="grille-formulaire" (ngSubmit)="ajouterCategorie()" style="align-items: end">
-      <div class="champ champ-icone">
-        <label>Icone</label>
-        <button type="button" class="bouton-icone" (click)="choixIcone.set('nouvelle')"
-                aria-label="Choisir l'icone de la categorie">{{ nouvelleCategorie.icone }}</button>
-      </div>
-      <div class="champ">
-        <label for="ncat">Nouvelle categorie</label>
-        <input id="ncat" name="ncat" [(ngModel)]="nouvelleCategorie.nom" placeholder="Ex. Boissons" />
-      </div>
-      <div class="champ">
-        <label for="ccat">Couleur</label>
-        <input id="ccat" name="ccat" type="color" [(ngModel)]="nouvelleCategorie.couleur" />
-      </div>
-      @if (restauration) {
-        <div class="champ">
-          <label for="pcat">Preparee</label>
-          <select id="pcat" name="pcat" [(ngModel)]="nouvelleCategorie.poste">
-            @for (p of postes; track p.valeur) {
-              <option [ngValue]="p.valeur">{{ p.icone }} {{ p.libelle }}</option>
-            }
-          </select>
-        </div>
-      }
-      <div class="champ">
-        <button class="bouton" type="submit">Ajouter</button>
-      </div>
-    </form>
-    <div class="tableau-conteneur" style="margin-top: 1rem">
-      <table class="tableau">
-        <tbody>
-          @for (c of categories(); track c.id) {
-            <tr [style.opacity]="c.actif ? 1 : 0.55">
-              <td>
-                <button type="button" class="bouton-icone petit" (click)="choixIcone.set(c)"
-                        [attr.aria-label]="'Changer l\u2019icone de ' + c.nom">{{ c.icone || '＋' }}</button>
-                <span class="etiquette" [style.background]="c.couleur" style="color: #fff">{{ c.nom }}</span>
-              </td>
-              @if (restauration) {
-                <td>
-                  <select [ngModel]="c.poste" (ngModelChange)="changerPoste(c, $event)"
-                          [attr.aria-label]="'Ecran de preparation de ' + c.nom">
-                    @for (p of postes; track p.valeur) {
-                      <option [ngValue]="p.valeur">{{ p.icone }} {{ p.libelle }}</option>
-                    }
-                  </select>
-                </td>
-              }
-              <td style="text-align: right">
-                <button class="bouton secondaire petit" type="button" (click)="basculerCategorie(c)">
-                  {{ c.actif ? 'Masquer' : 'Afficher' }}
-                </button>
-              </td>
-            </tr>
-          } @empty {
-            <tr><td>Aucune categorie pour l'instant.</td></tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </app-modale>
-}
-
-<!-- Pictogramme d'une categorie -->
-@if (choixIcone()) {
-  <app-modale titre="Choisir une icone" largeur="460px" (ferme)="choixIcone.set(null)">
-    <div class="grille-icones">
-      @for (i of icones; track i) {
-        <button type="button" class="bouton-icone" (click)="choisirIcone(i)">{{ i }}</button>
-      }
-    </div>
-  </app-modale>
+<!-- Categorie creee depuis la fiche du produit, qui reste ouverte dessous -->
+@if (nouvelleCategorie()) {
+  <app-fenetre-categorie [ordre]="categories().length" (enregistre)="categorieCreee($event)" (ferme)="nouvelleCategorie.set(false)" />
 }
 
 <!-- Import de la liste des produits -->

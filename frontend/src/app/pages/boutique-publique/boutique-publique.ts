@@ -15,7 +15,9 @@ import { IconeVitrine } from './icone-vitrine';
 
 /** Coordonnees du client, gardees d'une commande a l'autre sur cet appareil. */
 interface Coordonnees {
+  /** Nom de famille. */
   nom: string;
+  prenoms: string;
   telephone: string;
   email: string;
   adresse: string;
@@ -94,7 +96,7 @@ export class BoutiquePublique implements OnInit {
   readonly commande = signal(false);
   readonly modeRemise = signal<ModeRemise>('RETRAIT');
   readonly modePaiement = signal<ModePaiementEnLigne>('A_LA_REMISE');
-  coordonnees: Coordonnees = { nom: '', telephone: '', email: '', adresse: '' };
+  coordonnees: Coordonnees = { nom: '', prenoms: '', telephone: '', email: '', adresse: '' };
   note = '';
   readonly envoi = signal(false);
 
@@ -202,8 +204,8 @@ export class BoutiquePublique implements OnInit {
     if (!v || this.envoi()) {
       return;
     }
-    if (!this.coordonnees.nom.trim() || !this.coordonnees.telephone.trim()) {
-      this.erreur.set('Indiquez votre nom et votre telephone.');
+    if (!this.coordonnees.nom.trim() || !this.coordonnees.prenoms.trim() || !this.coordonnees.telephone.trim()) {
+      this.erreur.set('Indiquez votre nom, vos prenoms et votre telephone.');
       return;
     }
     if (this.modeRemise() === 'LIVRAISON' && !this.coordonnees.adresse.trim()) {
@@ -214,6 +216,7 @@ export class BoutiquePublique implements OnInit {
     this.erreur.set(null);
     this.service.commander(this.slug, {
       nom: this.coordonnees.nom.trim(),
+      prenoms: this.coordonnees.prenoms.trim(),
       telephone: this.coordonnees.telephone.trim(),
       email: this.coordonnees.email.trim() || undefined,
       modeRemise: this.modeRemise(),
@@ -255,8 +258,8 @@ export class BoutiquePublique implements OnInit {
     if (!offre || this.envoi()) {
       return;
     }
-    if (!this.coordonnees.nom.trim() || !this.coordonnees.telephone.trim()) {
-      this.erreur.set('Indiquez votre nom et votre telephone.');
+    if (!this.coordonnees.nom.trim() || !this.coordonnees.prenoms.trim() || !this.coordonnees.telephone.trim()) {
+      this.erreur.set('Indiquez votre nom, vos prenoms et votre telephone.');
       return;
     }
     if (this.joursLocation() < 1) {
@@ -268,6 +271,7 @@ export class BoutiquePublique implements OnInit {
     this.service.demanderLocation(this.slug, {
       offreId: offre.id,
       nom: this.coordonnees.nom.trim(),
+      prenoms: this.coordonnees.prenoms.trim(),
       telephone: this.coordonnees.telephone.trim(),
       email: this.coordonnees.email.trim() || undefined,
       dateDebut: this.dateDebut,

@@ -1,0 +1,167 @@
+<div class="entete-page">
+  <div>
+    <h1>Reglages de la quincaillerie</h1>
+    <p class="sous-titre">Ce que la caisse permet en vente a credit, en devis, en facture et en conditionnements.</p>
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+@if (formulaire(); as f) {
+  <form class="reglages" (ngSubmit)="enregistrer()">
+    <!-- ============================================================ credit -->
+    <section class="carte">
+      <h2>Vente a credit et acomptes</h2>
+      <label class="interrupteur">
+        <input type="checkbox" name="creditActif" [(ngModel)]="f.creditActif" />
+        <span>
+          <strong>Autoriser la vente a credit</strong>
+          <small>Le client emporte la marchandise et paie tout ou partie plus tard. Il faut une fiche client.</small>
+        </span>
+      </label>
+
+      <fieldset [disabled]="!f.creditActif">
+        <label class="interrupteur">
+          <input type="checkbox" name="creditCaissier" [(ngModel)]="f.creditCaissier" />
+          <span>
+            <strong>Le caissier peut vendre a credit</strong>
+            <small>Dans la limite du plafond du client. Decoche : gerant et administrateur seulement.</small>
+          </span>
+        </label>
+        <label class="interrupteur">
+          <input type="checkbox" name="bloquerSiRetard" [(ngModel)]="f.bloquerSiRetard" />
+          <span>
+            <strong>Bloquer les clients en retard</strong>
+            <small>Pas de nouveau credit tant qu'une echeance est depassee.</small>
+          </span>
+        </label>
+        <label class="interrupteur">
+          <input type="checkbox" name="depassementGerant" [(ngModel)]="f.depassementGerant" />
+          <span>
+            <strong>Le gerant peut passer outre</strong>
+            <small>Gerant et administrateur peuvent depasser le plafond ou servir un client en retard.</small>
+          </span>
+        </label>
+
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label for="plafond">Plafond de credit par defaut (F)</label>
+            <input id="plafond" name="plafond" type="number" min="0" step="1000" [(ngModel)]="f.plafondDefaut"
+                   placeholder="Vide = sans limite" />
+            <small class="aide">Pour les clients sans plafond propre. Un plafond a 0 sur une fiche interdit le credit.</small>
+          </div>
+          <div class="champ">
+            <label for="delai">Delai de paiement (jours)</label>
+            <input id="delai" name="delai" type="number" min="0" max="365" required [(ngModel)]="f.delaiPaiementJours" />
+            <small class="aide">Fixe l'echeance des ventes a credit, sauf delai propre au client.</small>
+          </div>
+          <div class="champ">
+            <label for="acompte">Acompte minimum (%)</label>
+            <input id="acompte" name="acompte" type="number" min="0" max="100" required [(ngModel)]="f.acompteMinimum" />
+            <small class="aide">0 : une vente peut etre entierement a credit.</small>
+          </div>
+        </div>
+      </fieldset>
+
+      <label class="interrupteur">
+        <input type="checkbox" name="clientObligatoire" [(ngModel)]="f.clientObligatoire" />
+        <span>
+          <strong>Fiche client obligatoire pour toute vente</strong>
+          <small>Chaque vente, meme comptant, doit etre rattachee a un client enregistre.</small>
+        </span>
+      </label>
+    </section>
+
+    <!-- ============================================================= devis -->
+    <section class="carte">
+      <h2>Devis (pro forma)</h2>
+      <label class="interrupteur">
+        <input type="checkbox" name="devisActif" [(ngModel)]="f.devisActif" />
+        <span>
+          <strong>Etablir des devis</strong>
+          <small>Le panier de la caisse s'enregistre en devis, imprime en A4, puis s'encaisse a ses prix.</small>
+        </span>
+      </label>
+      <fieldset [disabled]="!f.devisActif">
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label for="validite">Validite d'un devis (jours)</label>
+            <input id="validite" name="validite" type="number" min="1" max="365" required [(ngModel)]="f.devisValiditeJours" />
+          </div>
+        </div>
+        <div class="champ">
+          <label for="mentions">Conditions imprimees sur les devis</label>
+          <textarea id="mentions" name="mentions" rows="3" maxlength="500" [(ngModel)]="f.mentionsDevis"
+                    placeholder="Ex. Prix valables dans la limite des stocks. Livraison a la charge du client."></textarea>
+        </div>
+      </fieldset>
+    </section>
+
+    <!-- =========================================================== facture -->
+    <section class="carte">
+      <h2>Facture et TVA</h2>
+      <label class="interrupteur">
+        <input type="checkbox" name="factureA4" [(ngModel)]="f.factureA4" />
+        <span>
+          <strong>Facture A4</strong>
+          <small>Proposee apres chaque vente et depuis l'historique, avec les coordonnees et le NIF du client.</small>
+        </span>
+      </label>
+      <label class="interrupteur">
+        <input type="checkbox" name="tvaActive" [(ngModel)]="f.tvaActive" />
+        <span>
+          <strong>Detailler la TVA</strong>
+          <small>Les prix de la caisse sont TTC : la facture en extrait le HT et la TVA au taux du parametrage de la societe.
+            Decoche : « TVA non applicable ».</small>
+        </span>
+      </label>
+    </section>
+
+    <!-- ================================================== conditionnements -->
+    <section class="carte">
+      <h2>Conditionnements</h2>
+      <label class="interrupteur">
+        <input type="checkbox" name="conditionnements" [(ngModel)]="f.conditionnementsActifs" />
+        <span>
+          <strong>Vendre un produit sous plusieurs unites</strong>
+          <small>Ciment au sac ou a la tonne, fer a la barre ou a la botte, carreaux au m² ou au carton.
+            Le stock reste compte dans l'unite de base du produit.</small>
+        </span>
+      </label>
+    </section>
+
+    <!-- ======================================================== livraison -->
+    <section class="carte">
+      <h2>Livraison en plusieurs fois</h2>
+      <label class="interrupteur">
+        <input type="checkbox" name="livraisonDifferee" [(ngModel)]="f.livraisonDifferee" />
+        <span>
+          <strong>Le client peut emporter une partie et revenir chercher le reste</strong>
+          <small>Le stock sort a la remise et le reste lui est reserve. Chaque remise produit un bon de livraison a signer.
+            Decoche : les nouvelles ventes sont remises en une fois ; ce qui reste deja a livrer peut toujours etre remis.</small>
+        </span>
+      </label>
+      <fieldset [disabled]="!f.livraisonDifferee">
+        <label class="interrupteur">
+          <input type="checkbox" name="venteSurArrivage" [(ngModel)]="f.venteSurArrivage" />
+          <span>
+            <strong>Vendre plus que le stock disponible</strong>
+            <small>Le surplus reste a livrer a l'arrivage de la marchandise, pour un client a fiche. Le disponible peut alors
+              devenir negatif. Decoche : la caisse refuse de vendre au-dela du disponible.</small>
+          </span>
+        </label>
+      </fieldset>
+    </section>
+
+    <div class="actions-formulaire">
+      <button class="bouton" type="submit" [disabled]="enCours()">{{ enCours() ? 'Enregistrement...' : 'Enregistrer' }}</button>
+    </div>
+  </form>
+} @else if (!erreur()) {
+  <p class="vide">Chargement...</p>
+}
