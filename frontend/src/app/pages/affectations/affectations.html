@@ -18,7 +18,8 @@
 }
 
 @if (formulaireVisible()) {
-  <app-modale titre="Affecter un chauffeur a un vehicule" [erreur]="erreur()" (ferme)="basculerFormulaire()">
+  <app-modale titre="Affecter un chauffeur a un vehicule" [largeur]="creationChauffeurVisible() ? '1180px' : '880px'"
+              [erreur]="erreur()" (ferme)="basculerFormulaire()">
     <form [formGroup]="formulaire" (ngSubmit)="affecter()">
     <div class="grille-formulaire">
       <div class="champ">
@@ -45,23 +46,27 @@
           </button>
         </div>
       </div>
-      <div class="champ">
-        <label for="dateDebut">Date de debut <span class="requis">*</span></label>
-        <input id="dateDebut" type="date" formControlName="dateDebut" />
-      </div>
-      <div class="champ">
-        <label for="dateFin">Date de fin prevue</label>
-        <input id="dateFin" type="date" formControlName="dateFin" />
-      </div>
-      <div class="champ">
-        <label for="motif">Motif</label>
-        <input id="motif" formControlName="motif" placeholder="Mission, remplacement, contrat..." />
-      </div>
+      @if (!creationChauffeurVisible()) {
+        <div class="champ">
+          <label for="dateDebut">Date de debut <span class="requis">*</span></label>
+          <input id="dateDebut" type="date" formControlName="dateDebut" />
+        </div>
+        <div class="champ">
+          <label for="dateFin">Date de fin prevue</label>
+          <input id="dateFin" type="date" formControlName="dateFin" />
+        </div>
+        <div class="champ">
+          <label for="motif">Motif</label>
+          <input id="motif" formControlName="motif" placeholder="Mission, remplacement, contrat..." />
+        </div>
+      }
     </div>
-    <div class="champ" style="margin-top: 1rem">
-      <label for="observations">Observations</label>
-      <textarea id="observations" formControlName="observations"></textarea>
-    </div>
+    @if (!creationChauffeurVisible()) {
+      <div class="champ" style="margin-top: 1rem">
+        <label for="observations">Observations</label>
+        <textarea id="observations" formControlName="observations"></textarea>
+      </div>
+    }
     @if (creationChauffeurVisible()) {
       <!-- Creation d'un chauffeur sans quitter l'affectation : fiche courte adaptee a son type. -->
       <div class="bloc-creation">
@@ -74,10 +79,13 @@
       </div>
     }
 
-    <div class="actions-formulaire">
-      <button class="bouton succes" type="submit">Affecter</button>
-      <button class="bouton secondaire annuler" type="button" (click)="basculerFormulaire()">Annuler</button>
-    </div>
+    <!-- Pendant la creation, seule la fiche du chauffeur se valide : l'affectation reprend ensuite. -->
+    @if (!creationChauffeurVisible()) {
+      <div class="actions-formulaire">
+        <button class="bouton succes" type="submit">Affecter</button>
+        <button class="bouton secondaire annuler" type="button" (click)="basculerFormulaire()">Annuler</button>
+      </div>
+    }
   </form>
   </app-modale>
 }

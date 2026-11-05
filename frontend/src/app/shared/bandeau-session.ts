@@ -28,7 +28,7 @@ const RAFRAICHISSEMENT_MS = 20000;
         <span class="voyant"></span>
         <label>
           <span>Encaisser sur</span>
-          <select data-natif [ngModel]="null" (ngModelChange)="sessions.choisir($event)" aria-label="Caisse">
+          <select [ngModel]="null" (ngModelChange)="sessions.choisir($event)" aria-label="Caisse">
             <option [ngValue]="null" disabled>Choisir la caisse...</option>
             @for (s of sessions.ouvertes() ?? []; track s.id) {
               <option [ngValue]="s.id">{{ s.caisseNom }}</option>
@@ -91,6 +91,7 @@ const RAFRAICHISSEMENT_MS = 20000;
     .voyant { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: currentColor; }
     label { display: flex; flex: 1; align-items: center; gap: 0.5rem; }
     select { flex: 1; height: 32px; border: 1px solid currentColor; border-radius: 8px; background: #fff; font: inherit; }
+    label ::ng-deep .select2-container { flex: 1; min-width: 170px; }
     .lien-caisse {
       flex-shrink: 0; padding: 0.2rem 0.6rem; border: 1px solid currentColor; border-radius: 999px;
       background: none; color: inherit; font-size: 0.75rem; font-weight: 700; cursor: pointer;

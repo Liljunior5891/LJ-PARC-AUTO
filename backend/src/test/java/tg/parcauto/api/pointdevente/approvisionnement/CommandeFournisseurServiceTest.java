@@ -52,7 +52,7 @@ class CommandeFournisseurServiceTest {
             return c;
         });
         service = new CommandeFournisseurService(repository, articles,
-                new StockService(articles, mouvements), mock(NumerotationService.class));
+                new StockService(articles, mouvements, org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class)), org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class), mock(NumerotationService.class));
     }
 
     @Test

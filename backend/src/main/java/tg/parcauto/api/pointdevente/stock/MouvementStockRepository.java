@@ -7,6 +7,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MouvementStockRepository extends JpaRepository<MouvementStock, Long> {
 
+    /** Mouvements d'une vente, pour remettre chaque quantite la d'ou elle est sortie. */
+    java.util.List<MouvementStock> findByVenteId(Long venteId);
+
+    java.util.Optional<MouvementStock> findFirstByArticleIdAndMotifOrderByIdDesc(Long articleId, String motif);
+
     @EntityGraph(attributePaths = "article")
     Page<MouvementStock> findAllByOrderByDateMouvementDescIdDesc(Pageable pageable);
 

@@ -13,6 +13,7 @@ import { AlertesPdv } from './alertes-pdv';
 import { PanneauCompte } from './panneau-compte';
 import { activerDefilementTableaux } from '../shared/defilement-tableaux';
 import { CodeModule, Role } from '../core/models/models';
+import { LieuxService } from '../core/services/lieux.service';
 import { environment } from '../../environments/environment';
 
 interface EntreeMenu {
@@ -21,6 +22,8 @@ interface EntreeMenu {
   route?: string;
   /** Ligne d'explication affichee sous le libelle, dans le panneau de l'onglet. */
   description: string;
+  /** Visible seulement quand l'entreprise a un entrepot. */
+  avecLieux?: boolean;
   /** Profils autorises ; absent, l'entree est visible de tous. */
   roles?: Role[];
   /** Module dont depend l'entree ; absent, elle fait partie du socle commun. */
@@ -60,6 +63,7 @@ export class Shell {
   private readonly auth = inject(AuthService);
   private readonly societeService = inject(SocieteService);
   private readonly router = inject(Router);
+  private readonly lieux = inject(LieuxService);
 
   readonly nomPlateforme = environment.nomPlateforme;
   readonly estSuperAdmin = this.auth.estSuperAdmin();
@@ -73,7 +77,7 @@ export class Shell {
   readonly avecVerrou = this.estPoste && this.auth.aRole('CAISSIER', 'SERVEUR');
   /** Sons et messages du point de vente : commandes a valider, bons, plats prets, caisse ouverte. */
   readonly notificationsPdv = this.auth.peutUtiliser('POINT_DE_VENTE')
-    && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'PREPARATEUR');
+    && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'PREPARATEUR', 'MAGASINIER');
   readonly verrou = inject(VerrouService);
   readonly pleinEcran = signal(false);
 
@@ -168,6 +172,9 @@ export class Shell {
         { libelle: 'Tableau de bord', route: '/pdv/tableau-bord', description: 'Chiffre du jour, marge et meilleures ventes', roles: ['ADMIN', 'GERANT'] },
         { libelle: 'Ventes', route: '/pdv/ventes', description: 'Commandes, reimpression et annulations', roles: ['ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR'] },
         { libelle: 'Reste a livrer', route: '/pdv/livraisons', description: 'Commandes a remettre et bons de livraison', roles: ['CAISSIER'], variante: 'MATERIAUX' },
+        { libelle: 'Bons de retrait', route: '/pdv/retraits', description: 'Servir les bons presentes par les clients', roles: ['MAGASINIER'], variante: 'MATERIAUX' },
+        { libelle: 'Transferts', route: '/pdv/transferts', description: 'Expedier et receptionner la marchandise', roles: ['MAGASINIER'], variante: 'MATERIAUX' },
+        { libelle: 'Stock par lieu', route: '/pdv/stock-lieu', description: 'Ce qui est sur place et disponible', roles: ['MAGASINIER'], variante: 'MATERIAUX' },
         {
           // Quincaillerie et materiaux : comptes clients, credit et devis.
           libelle: 'Clients', description: 'Comptes clients, credit et devis', roles: ['ADMIN', 'GERANT'], variante: 'MATERIAUX',
@@ -184,6 +191,15 @@ export class Shell {
             { libelle: 'Categories', route: '/pdv/categories', description: 'Familles de produits de la caisse' },
             { libelle: 'Reapprovisionnement', route: '/pdv/stock', description: 'Receptions, sorties et pertes' },
             { libelle: 'Inventaire', route: '/pdv/inventaire', description: 'Compter le stock et corriger les ecarts' }
+          ]
+        },
+        {
+          libelle: 'Magasins', description: 'Magasins, entrepots, retraits et transferts', roles: ['ADMIN', 'GERANT'], variante: 'MATERIAUX',
+          enfants: [
+            { libelle: 'Magasins et entrepots', route: '/pdv/lieux', description: 'Lieux, personnel et valeur du stock' },
+            { libelle: 'Stock par lieu', route: '/pdv/stock-lieu', description: 'Ce qui est sur place et disponible', avecLieux: true },
+            { libelle: 'Bons de retrait', route: '/pdv/retraits', description: 'Bons a servir et non retires', avecLieux: true },
+            { libelle: 'Transferts', route: '/pdv/transferts', description: 'Marchandise entre les lieux', avecLieux: true }
           ]
         },
         {
@@ -248,9 +264,11 @@ export class Shell {
     if (this.estSuperAdmin) {
       return this.menuPlateforme;
     }
+    const lieuxActifs = this.lieux.actif();
     const varianteCourante = this.auth.variante('POINT_DE_VENTE') ?? '';
     const autorise = (e: { roles?: Role[]; module?: CodeModule; variante?: string | string[]; sansModules?: CodeModule[];
-                           avecModules?: CodeModule[]; avecUnDesModules?: CodeModule[] }) =>
+                           avecModules?: CodeModule[]; avecUnDesModules?: CodeModule[]; avecLieux?: boolean }) =>
+      (!e.avecLieux || lieuxActifs) &&
       (!e.roles || this.auth.aRole(...e.roles)) &&
       (!e.sansModules || !e.sansModules.some((m) => this.auth.aModule(m))) &&
       (!e.avecModules || e.avecModules.every((m) => this.auth.aModule(m))) &&
@@ -339,6 +357,10 @@ export class Shell {
   constructor() {
     // Tableaux de tous les ecrans : les lignes defilent dans la hauteur restante de la fenetre.
     const destroyRef = inject(DestroyRef);
+    // Les ecrans de retrait et de transfert n'apparaissent qu'avec un entrepot.
+    if (this.auth.estMateriaux() && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'MAGASINIER')) {
+      this.lieux.chargerEtat();
+    }
     if (this.avecVerrou) {
       this.surveillerInactivite(destroyRef);
     }

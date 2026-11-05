@@ -66,6 +66,11 @@ public class BonLivraison extends BaseEntity {
     @Column(name = "motif_annulation", length = 255)
     private String motifAnnulation;
 
+    /** Lieu d'ou la marchandise est sortie ; nul tant que l'entreprise n'a pas d'entrepot. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lieu_id")
+    private tg.parcauto.api.pointdevente.lieu.LieuStock lieu;
+
     @OneToMany(mappedBy = "bon", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<LigneBonLivraison> lignes = new ArrayList<>();
 

@@ -140,7 +140,7 @@
               {{ m.quantite > 0 ? '+' : '' }}{{ m.quantite | number: '1.0-3' }}
             </td>
             <td class="numerique">{{ m.stockApres | number: '1.0-3' }}</td>
-            <td>{{ m.motif || '—' }}</td>
+            <td>{{ m.motif || '—' }}@if (m.lieuNom) { <br /><small>{{ m.lieuNom }} : {{ m.stockLieuApres }} apres</small> }</td>
             <td><small>{{ m.auteur }}</small></td>
           </tr>
         } @empty {
@@ -201,6 +201,14 @@
             <label for="cout">Cout unitaire d'achat (F)</label>
             <input id="cout" name="cout" type="number" min="0" step="any" [(ngModel)]="coutUnitaire" />
             <small>Devient le cout de reference pour la marge</small>
+          </div>
+        }
+        @if (lieux().length) {
+          <div class="champ">
+            <label for="lieu">Lieu</label>
+            <select id="lieu" name="lieu" [(ngModel)]="lieuId">
+              @for (l of lieux(); track l.id) { <option [ngValue]="l.id">{{ l.nom }}</option> }
+            </select>
           </div>
         }
         <div class="champ" style="grid-column: 1 / -1">

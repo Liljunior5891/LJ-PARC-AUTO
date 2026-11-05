@@ -41,4 +41,9 @@ public class Caisse extends BaseEntity {
     @CollectionTable(name = "pdv_caisse_utilisateur", joinColumns = @JoinColumn(name = "caisse_id"))
     @Column(name = "utilisateur_id")
     private Set<Long> utilisateurIds = new HashSet<>();
+
+    /** Magasin d'ou vend la caisse ; nul tant que l'entreprise n'a pas d'entrepot. */
+    @jakarta.persistence.ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lieu_id")
+    private tg.parcauto.api.pointdevente.lieu.LieuStock lieu;
 }

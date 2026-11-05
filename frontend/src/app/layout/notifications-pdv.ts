@@ -9,7 +9,9 @@ const APPARENCES: Record<NotificationPdv['type'], { icone: string; couleur: stri
   PRET: { icone: '🔔', couleur: '#1f9d6b' },
   APPEL: { icone: '🙋', couleur: '#1f6fd1' },
   ADDITION: { icone: '🧾', couleur: '#d9452b' },
-  CAISSE: { icone: '💰', couleur: '#0f9aa8' }
+  CAISSE: { icone: '💰', couleur: '#0f9aa8' },
+  RETRAIT: { icone: '📦', couleur: '#1f6fd1' },
+  TRANSFERT: { icone: '🚚', couleur: '#7a4fd1' }
 };
 
 /**

@@ -55,4 +55,13 @@ public class MouvementStock extends BaseEntity {
     /** Vente a l'origine du mouvement, pour une vente ou son annulation. */
     @Column(name = "vente_id")
     private Long venteId;
+
+    /** Lieu du mouvement ; nul tant que l'entreprise n'a pas d'entrepot. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lieu_id")
+    private tg.parcauto.api.pointdevente.lieu.LieuStock lieu;
+
+    /** Stock du lieu apres le mouvement ; {@code stockApres} reste le total de l'entreprise. */
+    @Column(name = "stock_lieu_apres", precision = 14, scale = 3)
+    private BigDecimal stockLieuApres;
 }

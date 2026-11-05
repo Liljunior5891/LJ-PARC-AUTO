@@ -20,8 +20,10 @@ import { PieceJointe } from './piece-jointe';
 interface ProfilChauffeur {
   libelle: string;
   description: string;
-  /** Trace SVG (viewBox 24) de l'icone de la tuile. */
+  /** Trace SVG (viewBox 24) de l'icone du type. */
   icone: string;
+  /** Teinte de la fiche et de la pastille du type. */
+  couleur: string;
   /** Contrat, salaire et CNSS : salarie seulement. */
   salarie: boolean;
   /** Remuneration au tarif (journalier ou prestation). */
@@ -44,6 +46,7 @@ export const PROFILS_CHAUFFEUR: Record<TypeChauffeur, ProfilChauffeur> = {
   SALARIE: {
     libelle: 'Salarie',
     description: 'Employe sous contrat, CDI ou CDD',
+    couleur: '#1f6fd1',
     icone: 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-3.6 3.6-6.5 8-6.5s8 2.9 8 6.5M9 15l3 3 3-3',
     salarie: true,
     tarif: false,
@@ -57,6 +60,7 @@ export const PROFILS_CHAUFFEUR: Record<TypeChauffeur, ProfilChauffeur> = {
   JOURNALIER: {
     libelle: 'Journalier',
     description: 'Paye a la journee de travail',
+    couleur: '#d9792b',
     icone: 'M4 6h16v14H4zM4 10h16M8 3v5M16 3v5M8 14h3v3H8z',
     salarie: false,
     tarif: true,
@@ -70,6 +74,7 @@ export const PROFILS_CHAUFFEUR: Record<TypeChauffeur, ProfilChauffeur> = {
   PRESTATAIRE: {
     libelle: 'Prestataire',
     description: 'Independant ou sous-traitant qui facture',
+    couleur: '#7a4fd1',
     icone: 'M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 15.5h5M10 9h2',
     salarie: false,
     tarif: true,
@@ -147,8 +152,9 @@ export interface ChauffeurEnregistre {
         min-width: 0;
       }
 
-      select {
-        width: 130px;
+      ::ng-deep .select2-container {
+        flex: 0 0 130px;
+        width: 130px !important;
       }
 
       .unite {
@@ -231,6 +237,7 @@ export class FormulaireChauffeur implements OnInit {
   });
   readonly type = computed(() => (this.valeurs().typeChauffeur ?? 'SALARIE') as TypeChauffeur);
   readonly profil = computed(() => PROFILS_CHAUFFEUR[this.type()]);
+  readonly couleurType = computed(() => this.profil().couleur);
   /** Categories de la liste, plus la valeur d'une ancienne fiche saisie hors liste (« C, CE »). */
   readonly optionsCategories = computed(() => {
     const actuelle = (this.valeurs().categoriesPermis ?? '').trim();
@@ -265,7 +272,7 @@ export class FormulaireChauffeur implements OnInit {
   ngOnInit(): void {
     const id = this.chauffeurId();
     if (id === null) {
-      this.pieces.set([this.nouvellePiece('CARTE_IDENTITE'), this.nouvellePiece('PERMIS_CONDUIRE')]);
+      this.pieces.set([this.nouvellePiece('CARTE_IDENTITE')]);
       return;
     }
     this.service.parId(id).subscribe({

@@ -39,7 +39,13 @@ public final class Autorisations {
     public static final String PDV_PREPARATION = "hasAnyRole('ADMIN','GERANT','PREPARATEUR')";
 
     /** Point de vente : tout le personnel, pour les notifications de son poste. */
-    public static final String PDV_PERSONNEL = "hasAnyRole('ADMIN','GERANT','CAISSIER','SERVEUR','PREPARATEUR')";
+    public static final String PDV_PERSONNEL = "hasAnyRole('ADMIN','GERANT','CAISSIER','SERVEUR','PREPARATEUR','MAGASINIER')";
+
+    /** Quincaillerie avec entrepots : bons de retrait et transferts ; le magasinier ne voit que les quantites. */
+    public static final String PDV_MAGASIN = "hasAnyRole('ADMIN','GERANT','MAGASINIER')";
+
+    /** Quincaillerie avec entrepots : savoir ou se trouve la marchandise. */
+    public static final String PDV_LIEUX = "hasAnyRole('ADMIN','GERANT','CAISSIER','MAGASINIER')";
 
     /** Reserve a l'exploitant de la plateforme : entreprises abonnees. */
     public static final String PLATEFORME = "hasRole('SUPER_ADMIN')";

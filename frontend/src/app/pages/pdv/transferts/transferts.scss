@@ -1,0 +1,36 @@
+.case { display: flex; gap: 8px; align-items: center; font-weight: 400; }
+
+.liste {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+}
+
+.transfert {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+
+  .etiquette { margin-left: 6px; }
+  .etiquette.alerte { background: #fdeceb; color: #b42318; }
+  .etiquette.fini { background: #e6f6ee; color: #18794e; }
+  .trajet { margin-top: 4px; font-weight: 600; }
+  small { color: var(--texte-doux, #667085); }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { padding: 4px 0; border-top: 1px dashed var(--bordure, #e4e7ec); }
+
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: auto;
+  }
+}
+
+.ecarts { margin: 0 0 12px; padding-left: 18px; }
+
+@media (max-width: 520px) {
+  .liste { grid-template-columns: 1fr; }
+}

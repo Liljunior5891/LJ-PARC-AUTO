@@ -83,6 +83,9 @@ export class AuthService {
       if (this.aRole('ADMIN', 'GERANT')) {
         return '/pdv/tableau-bord';
       }
+      if (this.aRole('MAGASINIER') && !this.aRole('CAISSIER', 'SERVEUR')) {
+        return '/pdv/retraits';
+      }
       if (this.estRestauration()) {
         if (this.aRole('CAISSIER')) {
           return '/pdv/comptoir';

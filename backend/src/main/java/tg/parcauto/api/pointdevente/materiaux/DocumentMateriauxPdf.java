@@ -64,6 +64,8 @@ public class DocumentMateriauxPdf {
     private final SocieteService societeService;
     private final FacturePdfService facturePdf;
     private final LivraisonClientService livraisons;
+    private final tg.parcauto.api.pointdevente.lieu.BonRetraitRepository retraits;
+    private final tg.parcauto.api.pointdevente.lieu.TransfertRepository transferts;
 
     /** Ligne imprimee, commune a la facture et au devis. */
     private record Ligne(String designation, String unite, BigDecimal quantite, BigDecimal prix, BigDecimal remise,
@@ -254,6 +256,192 @@ public class DocumentMateriauxPdf {
 
     public String nomBonLivraison(Long bonId) {
         return "bon-livraison_" + livraisons.charger(bonId).getNumero() + ".pdf";
+    }
+
+    // ------------------------------------------------------------ bon de retrait
+
+    /** Papier que le porteur presente au lieu indique. Il ne porte aucun prix ; le code QR contient son numero. */
+    public byte[] bonRetrait(Long bonId) {
+        reglages.exiger();
+        tg.parcauto.api.pointdevente.lieu.BonRetrait bon = retraits.findById(bonId)
+                .orElseThrow(() -> tg.parcauto.api.common.ResourceNotFoundException.of("Bon de retrait", bonId));
+        Vente v = bon.getVente();
+        ClientPdv c = v.getClient();
+        Societe societe = societeService.entite();
+        ByteArrayOutputStream sortie = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4, 42, 42, 132, 70);
+        PdfWriter writer = PdfWriter.getInstance(document, sortie);
+        writer.setPageEvent(facturePdf.decorPage(societe, false));
+        document.open();
+
+        List<String[]> references = new ArrayList<>();
+        references.add(new String[]{"Bon N° :", bon.getNumero()});
+        references.add(new String[]{"Émis le :", DATE.format(bon.getDateEmission().atZone(ZONE))});
+        references.add(new String[]{"Commande N° :", v.getNumero()});
+        references.add(new String[]{"À retirer à :", bon.getLieu().getNom()});
+        enTete(document, "BON DE RETRAIT", c == null
+                ? new Destinataire(v.getClientNom() == null ? "Client comptoir" : v.getClientNom(), null, null, null, null)
+                : new Destinataire(c.getNom(), c.getTelephone(), null, null, c.getCode()),
+                "CLIENT :", references);
+
+        PdfPTable table = new PdfPTable(new float[]{58f, 14f, 14f, 14f});
+        table.setWidthPercentage(100);
+        table.setHeaderRows(1);
+        String[] entetes = {"Désignation", "Unité", "Acheté", "À retirer"};
+        for (int i = 0; i < entetes.length; i++) {
+            PdfPCell cellule = cellule(entetes[i], police(8.5f, Font.BOLD, Color.WHITE),
+                    i < 2 ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT, BLEU);
+            cellule.setPadding(6);
+            table.addCell(cellule);
+        }
+        for (LigneVente ligne : bon.lignes()) {
+            String u = unite(ligne.getConditionnement(), ligne.getArticle().getUnite());
+            table.addCell(ligneCellule(ligne.getLibelle(), Element.ALIGN_LEFT, null));
+            table.addCell(ligneCellule(u == null ? "" : u, Element.ALIGN_LEFT, null));
+            table.addCell(ligneCellule(quantite(ligne.getQuantite()), Element.ALIGN_RIGHT, null));
+            table.addCell(ligneCellule(quantite(ligne.resteALivrer()), Element.ALIGN_RIGHT, null));
+        }
+        table.setSpacingAfter(16);
+        document.add(table);
+
+        // Deux lectures possibles : le code QR au telephone, le code-barres a la douchette.
+        PdfPTable codes = new PdfPTable(new float[]{30f, 70f});
+        codes.setWidthPercentage(80);
+        com.lowagie.text.Image qr = imageQr(bon.getNumero());
+        qr.scaleAbsolute(110, 110);
+        PdfPCell celluleQr = new PdfPCell(qr, false);
+        celluleQr.setBorder(Rectangle.NO_BORDER);
+        celluleQr.setHorizontalAlignment(Element.ALIGN_CENTER);
+        celluleQr.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        codes.addCell(celluleQr);
+        com.lowagie.text.Image barres = imageCodeBarres(bon.getNumero());
+        barres.scaleAbsolute(280, 70);
+        PdfPCell celluleBarres = new PdfPCell(barres, false);
+        celluleBarres.setBorder(Rectangle.NO_BORDER);
+        celluleBarres.setHorizontalAlignment(Element.ALIGN_CENTER);
+        celluleBarres.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        codes.addCell(celluleBarres);
+        codes.setSpacingAfter(4);
+        document.add(codes);
+        Paragraph numero = new Paragraph(bon.getNumero(), police(13, Font.BOLD, SOMBRE));
+        numero.setAlignment(Element.ALIGN_CENTER);
+        numero.setSpacingAfter(12);
+        document.add(numero);
+        StringBuilder adresse = new StringBuilder(bon.getLieu().getNom());
+        if (bon.getLieu().getAdresse() != null) {
+            adresse.append(" - ").append(bon.getLieu().getAdresse());
+        }
+        if (bon.getLieu().getTelephone() != null) {
+            adresse.append(" - ").append(bon.getLieu().getTelephone());
+        }
+        Paragraph lieu = new Paragraph("Présentez ce bon à : " + adresse, police(10, Font.BOLD, SOMBRE));
+        lieu.setAlignment(Element.ALIGN_CENTER);
+        document.add(lieu);
+        Paragraph note = new Paragraph("La personne qui présente ce bon est servie. Il reste valable jusqu'au retrait complet de la marchandise ; "
+                + "gardez-le si vous la retirez en plusieurs fois.", police(9, Font.NORMAL, GRIS));
+        note.setAlignment(Element.ALIGN_CENTER);
+        document.add(note);
+        document.close();
+        return sortie.toByteArray();
+    }
+
+    public String nomBonRetrait(Long bonId) {
+        return "bon-retrait_" + retraits.findById(bonId).map(b -> b.getNumero()).orElse(String.valueOf(bonId)) + ".pdf";
+    }
+
+    private static com.lowagie.text.Image imageQr(String contenu) {
+        try {
+            return image(new com.google.zxing.qrcode.QRCodeWriter().encode(contenu,
+                    com.google.zxing.BarcodeFormat.QR_CODE, 330, 330,
+                    java.util.Map.of(com.google.zxing.EncodeHintType.MARGIN, 1)));
+        } catch (com.google.zxing.WriterException | java.io.IOException e) {
+            throw new IllegalStateException("Code QR impossible a produire", e);
+        }
+    }
+
+    /** Code 128 : il encode lettres, tiret et chiffres, et toutes les douchettes le lisent. */
+    private static com.lowagie.text.Image imageCodeBarres(String contenu) {
+        try {
+            return image(new com.google.zxing.oned.Code128Writer().encode(contenu,
+                    com.google.zxing.BarcodeFormat.CODE_128, 840, 210, java.util.Map.of(com.google.zxing.EncodeHintType.MARGIN, 20)));
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Code-barres impossible a produire", e);
+        }
+    }
+
+    private static com.lowagie.text.Image image(com.google.zxing.common.BitMatrix matrice)
+            throws com.lowagie.text.BadElementException, java.io.IOException {
+        {
+            java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(matrice.getWidth(), matrice.getHeight(),
+                    java.awt.image.BufferedImage.TYPE_BYTE_BINARY);
+            for (int y = 0; y < matrice.getHeight(); y++) {
+                for (int x = 0; x < matrice.getWidth(); x++) {
+                    image.setRGB(x, y, matrice.get(x, y) ? 0x000000 : 0xFFFFFF);
+                }
+            }
+            return com.lowagie.text.Image.getInstance(image, null);
+        }
+    }
+
+    // ---------------------------------------------------------- bon de transfert
+
+    /** Accompagne la marchandise : quantites chargees au depart, comptage et signatures a l'arrivee. */
+    public byte[] bonTransfert(Long transfertId) {
+        reglages.exiger();
+        tg.parcauto.api.pointdevente.lieu.Transfert t = transferts.findById(transfertId)
+                .orElseThrow(() -> tg.parcauto.api.common.ResourceNotFoundException.of("Transfert", transfertId));
+        Societe societe = societeService.entite();
+        ByteArrayOutputStream sortie = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4, 42, 42, 132, 70);
+        PdfWriter writer = PdfWriter.getInstance(document, sortie);
+        writer.setPageEvent(facturePdf.decorPage(societe, false));
+        document.open();
+
+        List<String[]> references = new ArrayList<>();
+        references.add(new String[]{"Transfert N° :", t.getNumero()});
+        references.add(new String[]{"Demandé le :", DATE.format(t.getDemandeLe().atZone(ZONE))});
+        if (t.getExpedieLe() != null) {
+            references.add(new String[]{"Expédié le :", DATE.format(t.getExpedieLe().atZone(ZONE))});
+        }
+        if (t.getTransporteur() != null) {
+            references.add(new String[]{"Transporteur :", t.getTransporteur()});
+        }
+        references.add(new String[]{"Départ :", t.getSource().getNom()});
+        enTete(document, "BON DE TRANSFERT", new Destinataire(t.getDestination().getNom(), t.getDestination().getTelephone(),
+                t.getDestination().getAdresse(), null, null), "DESTINATION :", references);
+
+        PdfPTable table = new PdfPTable(new float[]{52f, 12f, 12f, 12f, 12f});
+        table.setWidthPercentage(100);
+        table.setHeaderRows(1);
+        String[] entetes = {"Désignation", "Unité", "Demandé", "Expédié", "Reçu"};
+        for (int i = 0; i < entetes.length; i++) {
+            PdfPCell cellule = cellule(entetes[i], police(8.5f, Font.BOLD, Color.WHITE),
+                    i < 2 ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT, BLEU);
+            cellule.setPadding(6);
+            table.addCell(cellule);
+        }
+        for (tg.parcauto.api.pointdevente.lieu.LigneTransfert l : t.getLignes()) {
+            table.addCell(ligneCellule(l.getArticle().getNom(), Element.ALIGN_LEFT, null));
+            table.addCell(ligneCellule(l.getArticle().getUnite() == null ? "" : l.getArticle().getUnite(), Element.ALIGN_LEFT, null));
+            table.addCell(ligneCellule(quantite(l.getQuantite()), Element.ALIGN_RIGHT, null));
+            table.addCell(ligneCellule(l.getQuantiteExpediee() == null ? "" : quantite(l.getQuantiteExpediee()), Element.ALIGN_RIGHT, null));
+            table.addCell(ligneCellule(l.getQuantiteRecue() == null ? "" : quantite(l.getQuantiteRecue()), Element.ALIGN_RIGHT, null));
+        }
+        table.setSpacingAfter(30);
+        document.add(table);
+
+        PdfPTable signatures = new PdfPTable(3);
+        signatures.setWidthPercentage(100);
+        signatures.addCell(cellule("Expédié par :\n" + (t.getExpediePar() == null ? "" : t.getExpediePar()), police(9, Font.BOLD, SOMBRE), Element.ALIGN_LEFT, null));
+        signatures.addCell(cellule("Transporteur :\n" + (t.getTransporteur() == null ? "" : t.getTransporteur()), police(9, Font.BOLD, SOMBRE), Element.ALIGN_LEFT, null));
+        signatures.addCell(cellule("Reçu par :\n" + (t.getRecuPar() == null ? "" : t.getRecuPar()), police(9, Font.BOLD, SOMBRE), Element.ALIGN_LEFT, null));
+        document.add(signatures);
+        document.close();
+        return sortie.toByteArray();
+    }
+
+    public String nomBonTransfert(Long transfertId) {
+        return "bon-transfert_" + transferts.findById(transfertId).map(t -> t.getNumero()).orElse(String.valueOf(transfertId)) + ".pdf";
     }
 
     // ----------------------------------------------------------------- avoir

@@ -43,6 +43,8 @@ public class LivraisonClientService {
     private final ReglageMateriauxService reglages;
     private final SoldeResteRepository soldeRepository;
     private final SessionTravailService sessionsTravail;
+    private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
+    private final tg.parcauto.api.pointdevente.lieu.BonRetraitRepository retraits;
 
     /** Ventes dont il reste de la marchandise a remettre, les plus anciennes d'abord. */
     @Transactional(readOnly = true)
@@ -70,6 +72,7 @@ public class LivraisonClientService {
         BonLivraison bon = nouveauBon(vente, auteur.getNomComplet());
         bon.setRecuPar(vide(demande.recuPar()));
         bon.setNote(vide(demande.note()));
+        boolean multiLieux = lieux.actif();
         for (MateriauxDto.LigneRemise saisie : demande.lignes()) {
             LigneVente ligne = vente.getLignes().stream()
                     .filter(l -> l.getId().equals(saisie.ligneId()))
@@ -79,12 +82,26 @@ public class LivraisonClientService {
                 throw new BusinessException("Il ne reste que " + ligne.resteALivrer().stripTrailingZeros().toPlainString()
                         + " a livrer pour " + ligne.getLibelle());
             }
+            if (multiLieux) {
+                if (ligne.getLieu() == null) {
+                    ligne.setLieu(lieux.principal());
+                }
+                if (bon.getLieu() == null) {
+                    lieux.exigerAcces(auteur, ligne.getLieu());
+                    bon.setLieu(ligne.getLieu());
+                } else if (!bon.getLieu().getId().equals(ligne.getLieu().getId())) {
+                    throw new BusinessException("Un bon de livraison ne couvre qu'un lieu : remettez d'abord ce qui se retire a "
+                            + bon.getLieu().getNom());
+                }
+            }
             BigDecimal base = ligne.remettre(saisie.quantite());
-            stockService.livrer(ligne.getArticle(), base, "Livraison " + bon.getNumero() + " - commande " + vente.getNumero(),
-                    vente.getId());
+            stockService.livrer(ligne.getArticle(), ligne.getLieu(), base,
+                    "Livraison " + bon.getNumero() + " - commande " + vente.getNumero(), vente.getId());
             bon.ajouter(ligneBon(ligne, saisie.quantite(), base));
         }
-        return MateriauxDto.BonReponse.de(repository.save(bon));
+        BonLivraison enregistre = repository.save(bon);
+        lieux.actualiserBons(vente);
+        return MateriauxDto.BonReponse.de(enregistre);
     }
 
     /** Remise saisie par erreur : la marchandise revient en stock et redevient a livrer. */
@@ -97,13 +114,14 @@ public class LivraisonClientService {
         for (LigneBonLivraison l : bon.getLignes()) {
             LigneVente ligne = l.getLigneVente();
             ligne.reprendre(l.getQuantite(), l.getQuantiteBase());
-            stockService.annulerLivraison(ligne.getArticle(), l.getQuantiteBase(),
+            stockService.annulerLivraison(ligne.getArticle(), bon.getLieu(), ligne.getLieu(), l.getQuantiteBase(),
                     "Annulation du bon " + bon.getNumero(), bon.getVente().getId());
         }
         bon.setStatut(BonLivraison.Statut.ANNULE);
         bon.setAnnuleLe(Instant.now());
         bon.setAnnulePar(auteur.getNomComplet());
         bon.setMotifAnnulation(vide(motif));
+        lieux.actualiserBons(bon.getVente());
         return MateriauxDto.BonReponse.de(bon);
     }
 
@@ -157,7 +175,7 @@ public class LivraisonClientService {
             BigDecimal base = ligne.solder(renonce);
             ligne.setRemise(ligne.getRemise().subtract(remise));
             ligne.setTotal(ligne.getTotal().subtract(total));
-            stockService.liberer(ligne.getArticle(), base);
+            stockService.liberer(ligne.getArticle(), ligne.getLieu(), base);
             brut = brut.add(total);
 
             LigneSoldeReste l = new LigneSoldeReste();
@@ -192,7 +210,9 @@ public class LivraisonClientService {
             solde.setReferencePaiement(vide(demande.referencePaiement()));
         }
         solde.setNumero(numerotation.prochainNumero("AV"));
-        return MateriauxDto.SoldeReponse.de(soldeRepository.save(solde));
+        SoldeReste enregistre = soldeRepository.save(solde);
+        lieux.actualiserBons(vente);
+        return MateriauxDto.SoldeReponse.de(enregistre);
     }
 
     /**
@@ -214,7 +234,7 @@ public class LivraisonClientService {
         for (LigneSoldeReste l : solde.getLignes()) {
             LigneVente ligne = l.getLigneVente();
             ligne.restaurer(l.getQuantite(), l.getQuantiteBase(), l.getRemise(), l.getTotal());
-            stockService.reserverSansLimite(ligne.getArticle(), l.getQuantiteBase());
+            stockService.reserverSansLimite(ligne.getArticle(), ligne.getLieu(), l.getQuantiteBase());
         }
         vente.setTotalBrut(vente.getTotalBrut().add(solde.getMontantBrut()));
         vente.setRemise(vente.getRemise().add(solde.getMontantBrut().subtract(solde.getMontant())));
@@ -224,6 +244,7 @@ public class LivraisonClientService {
         solde.setAnnuleLe(Instant.now());
         solde.setAnnulePar(auteur.getNomComplet());
         solde.setMotifAnnulation(vide(motif));
+        lieux.actualiserBons(vente);
         return MateriauxDto.SoldeReponse.de(solde);
     }
 
@@ -255,6 +276,7 @@ public class LivraisonClientService {
                 if (bon == null) {
                     bon = nouveauBon(vente, vente.getCaissierNom());
                     bon.setDateBon(vente.getDateVente());
+                    bon.setLieu(ligne.getLieu());
                 }
                 bon.ajouter(ligneBon(ligne, ligne.getQuantiteLivree(), ligne.getQuantiteBaseLivree()));
             }
@@ -262,6 +284,8 @@ public class LivraisonClientService {
         if (bon != null) {
             repository.save(bon);
         }
+        // Avec des entrepots, ce qui reste a remettre part avec un bon de retrait par lieu.
+        lieux.actualiserBons(vente);
     }
 
     /** La vente annulee remet elle-meme son stock : ses bons sont seulement marques. */
@@ -274,6 +298,9 @@ public class LivraisonClientService {
                 bon.setAnnulePar(evenement.auteur());
                 bon.setMotifAnnulation("Commande annulee");
             }
+        }
+        for (tg.parcauto.api.pointdevente.lieu.BonRetrait retrait : retraits.findByVenteIdOrderByIdAsc(evenement.venteId())) {
+            retrait.setStatut(tg.parcauto.api.pointdevente.lieu.BonRetrait.Statut.ANNULE);
         }
     }
 

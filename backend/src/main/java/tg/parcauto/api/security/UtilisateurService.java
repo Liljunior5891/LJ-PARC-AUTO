@@ -164,6 +164,8 @@ public class UtilisateurService {
                 .filter(role -> role != Role.SUPER_ADMIN)
                 .filter(role -> role == Role.ADMIN || actifs.stream().anyMatch(m -> m.getProfils().contains(role)))
                 .filter(role -> restauration || !restaurant.contains(role))
+                .filter(role -> role != Role.MAGASINIER
+                        || "MATERIAUX".equals(moduleService.variante(entreprise, ModuleApplicatif.POINT_DE_VENTE)))
                 .map(role -> new UtilisateurDto.ProfilRole(role.name(), role.getLibelle()))
                 .toList();
     }

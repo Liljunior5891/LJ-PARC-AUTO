@@ -1,10 +1,7 @@
 import { Injectable, afterEveryRender } from '@angular/core';
 
-/**
- * Listes concernees. Une liste qui doit rester native porte l'attribut
- * data-natif.
- */
-const SELECTEUR = 'select:not([data-natif])';
+/** Toutes les listes de la plateforme, sans exception. */
+const SELECTEUR = 'select';
 
 /**
  * Toutes les listes ont leur zone de saisie, quel que soit le nombre
@@ -103,7 +100,7 @@ export class Select2Service {
   }
 
   /**
-   * Option enrichie : pastille de couleur (logo ou initiales) et, dans la
+   * Option enrichie : pastille de couleur (icone, logo ou initiales) et, dans la
    * liste ouverte, une ligne de detail. Sans attribut data-*, texte simple.
    */
   private rendu(option: OptionRendue, avecDetail: boolean): string | JQuery {
@@ -114,7 +111,9 @@ export class Select2Service {
     const ligne = $('<span class="s2-option"></span>');
     if (donnees['couleur']) {
       const pastille = $('<span class="s2-pastille"></span>').css('background', donnees['couleur']);
-      if (donnees['logo']) {
+      if (donnees['icone']) {
+        pastille.append(this.icone(donnees['icone']));
+      } else if (donnees['logo']) {
         pastille.append($('<img alt="">').attr('src', donnees['logo']));
       } else {
         pastille.text(donnees['monogramme'] ?? '');
@@ -126,6 +125,18 @@ export class Select2Service {
       textes.append($('<small></small>').text(donnees['detail']));
     }
     return ligne.append(textes);
+  }
+
+  /** Icone dessinee a partir de son trace (viewBox 24), construite sans passer par du HTML. */
+  private icone(trace: string): SVGSVGElement {
+    const espace = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(espace, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    const chemin = document.createElementNS(espace, 'path');
+    chemin.setAttribute('d', trace);
+    svg.appendChild(chemin);
+    return svg;
   }
 
   /** Recherche sur le libelle et la ligne de detail, sans tenir compte des accents. */

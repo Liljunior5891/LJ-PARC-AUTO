@@ -58,6 +58,11 @@ public class CommandeFournisseur extends BaseEntity {
     @Column(name = "recue_par", length = 150)
     private String recuePar;
 
+    /** Lieu qui a recu la marchandise ; nul tant que l'entreprise n'a pas d'entrepot. */
+    @jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "lieu_id")
+    private tg.parcauto.api.pointdevente.lieu.LieuStock lieu;
+
     @Column(name = "annulee_le")
     private Instant annuleeLe;
 

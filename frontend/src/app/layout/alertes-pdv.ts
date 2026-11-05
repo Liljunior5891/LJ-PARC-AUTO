@@ -10,7 +10,7 @@ import { PdvService } from '../core/services/pdv.service';
 const RAFRAICHISSEMENT_MS = 2 * 60 * 1000;
 
 const ICONES: Record<NotificationPdv['type'], string> = {
-  VALIDATION: '📱', BON: '🍳', PRET: '🔔', APPEL: '🙋', ADDITION: '🧾', CAISSE: '💰'
+  VALIDATION: '📱', BON: '🍳', PRET: '🔔', APPEL: '🙋', ADDITION: '🧾', CAISSE: '💰', RETRAIT: '📦', TRANSFERT: '🚚'
 };
 
 /**

@@ -7,6 +7,8 @@ import {
   LIBELLES_STATUT_COMMANDE_FOURNISSEUR,
   LigneCommandeFournisseur
 } from '../../../core/models/pdv';
+import { AuthService } from '../../../core/auth/auth.service';
+import { LieuxService } from '../../../core/services/lieux.service';
 import { PdvService } from '../../../core/services/pdv.service';
 import { ChampQuantite } from '../../../shared/champ-quantite';
 import { Modale } from '../../../shared/modale';
@@ -26,6 +28,11 @@ import { FormulaireCommande } from './formulaire-commande';
 export class CommandeFournisseurPdv implements OnInit {
   private readonly service = inject(PdvService);
   private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
+  private readonly lieuxService = inject(LieuxService);
+  /** Avec des entrepots, la marchandise entre dans le lieu choisi. */
+  readonly lieux = computed(() => this.lieuxService.etat()?.lieux ?? []);
+  lieuId: number | null = null;
 
   readonly libelles = LIBELLES_STATUT_COMMANDE_FOURNISSEUR;
   readonly commande = signal<CommandeFournisseurDetail | null>(null);
@@ -49,6 +56,9 @@ export class CommandeFournisseurPdv implements OnInit {
   );
 
   ngOnInit(): void {
+    if (this.auth.estMateriaux()) {
+      this.lieuxService.chargerEtat();
+    }
     this.charger();
   }
 
@@ -62,6 +72,7 @@ export class CommandeFournisseurPdv implements OnInit {
       recues[l.id] = { quantite: l.quantite, cout: l.coutUnitaire ?? null };
     }
     this.recues.set(recues);
+    this.lieuId = this.lieux().find((l) => l.type === 'ENTREPOT')?.id ?? this.lieux()[0]?.id ?? null;
     this.erreur.set(null);
     this.reception.set(true);
   }
@@ -80,7 +91,7 @@ export class CommandeFournisseurPdv implements OnInit {
       quantiteRecue: Math.max(0, this.recues()[l.id]?.quantite ?? 0),
       coutUnitaire: this.recues()[l.id]?.cout ?? null
     }));
-    this.service.receptionnerCommandeFournisseur(c.resume.id, lignes).subscribe({
+    this.service.receptionnerCommandeFournisseur(c.resume.id, lignes, this.lieuId).subscribe({
       next: (detail) => {
         this.commande.set(detail);
         this.reception.set(false);

@@ -95,6 +95,14 @@
     <app-modale [titre]="'Receptionner ' + c.resume.numero" [sousTitre]="c.resume.fournisseur" largeur="1240px" [grande]="true"
                 [erreur]="erreur()" (ferme)="reception.set(false)">
       <form (ngSubmit)="receptionner()">
+        @if (lieux().length) {
+          <div class="champ">
+            <label for="lieu">Lieu qui recoit la marchandise</label>
+            <select id="lieu" name="lieu" [(ngModel)]="lieuId">
+              @for (l of lieux(); track l.id) { <option [ngValue]="l.id">{{ l.nom }}</option> }
+            </select>
+          </div>
+        }
         <p class="aide">Saisissez ce qui a ete reellement livre. Ces quantites entrent en stock, au cout indique,
           qui devient le cout d'achat des produits.</p>
         <div class="tableau-conteneur liste-modale">

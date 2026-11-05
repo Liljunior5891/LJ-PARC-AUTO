@@ -10,8 +10,10 @@ import { ClientFormulaire, RequeteFormulaire, SOURCE_CLIENTS, TypeFiche } from '
 interface ProfilClient {
   /** Phrase d'aide sous la tuile du type. */
   description: string;
-  /** Trace SVG (viewBox 24) de l'icone de la tuile. */
+  /** Trace SVG (viewBox 24) de l'icone du type. */
   icone: string;
+  /** Teinte de la fiche et de la pastille du type. */
+  couleur: string;
   /** Un particulier se decrit par son nom et ses prenoms, pas par une raison sociale. */
   personne: boolean;
   libelleNom: string;
@@ -31,6 +33,7 @@ interface ProfilClient {
 export const PROFILS_CLIENT: Record<TypeFiche, ProfilClient> = {
   PARTICULIER: {
     description: 'Personne physique',
+    couleur: '#1f6fd1',
     icone: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6',
     personne: true,
     libelleNom: 'Nom',
@@ -40,6 +43,7 @@ export const PROFILS_CLIENT: Record<TypeFiche, ProfilClient> = {
   },
   ARTISAN: {
     description: 'Macon, plombier, electricien...',
+    couleur: '#d9792b',
     icone: 'M14.7 6.3a4 4 0 0 0-5.4 5l-6 6a1.5 1.5 0 0 0 2.1 2.1l6-6a4 4 0 0 0 5-5.4l-2.6 2.6-2.1-.6-.6-2.1z',
     personne: true,
     libelleNom: 'Nom',
@@ -48,6 +52,7 @@ export const PROFILS_CLIENT: Record<TypeFiche, ProfilClient> = {
   },
   ENTREPRISE: {
     description: 'Societe, commerce, entreprise individuelle',
+    couleur: '#0f8fa0',
     icone: 'M4 20V6l8-3v17M12 9h8v11M7 8h2M7 12h2M7 16h2M15 13h2M15 16h2M2 20h20',
     personne: false,
     libelleNom: 'Raison sociale',
@@ -61,6 +66,7 @@ export const PROFILS_CLIENT: Record<TypeFiche, ProfilClient> = {
   },
   ADMINISTRATION: {
     description: 'Ministere, mairie, etablissement public',
+    couleur: '#7a4fd1',
     icone: 'M3 9l9-5 9 5M5 9v9M9.5 9v9M14.5 9v9M19 9v9M3 20h18',
     personne: false,
     libelleNom: 'Nom de l\'administration',
@@ -72,6 +78,7 @@ export const PROFILS_CLIENT: Record<TypeFiche, ProfilClient> = {
   },
   ONG: {
     description: 'ONG, association, organisation internationale',
+    couleur: '#1f9d6b',
     icone: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3.5 9h17M3.5 15h17M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z',
     personne: false,
     libelleNom: 'Nom de l\'organisation',
@@ -191,6 +198,7 @@ export class FormulaireClient implements OnInit {
   });
   readonly type = computed(() => (this.valeurs().type ?? 'PARTICULIER') as TypeFiche);
   readonly profil = computed(() => PROFILS_CLIENT[this.type()]);
+  readonly couleurType = computed(() => this.profil().couleur);
 
   /** Champs obligatoires restant a saisir, cites a cote du bouton. */
   readonly champsManquants = computed(() => {

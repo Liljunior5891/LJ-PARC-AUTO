@@ -14,6 +14,8 @@ import {
 import { ClientPdv, Conditionnement, Devis, DevisRequete, ReglagesMateriaux } from '../../../core/models/materiaux';
 import { PdvService } from '../../../core/services/pdv.service';
 import { MateriauxService } from '../../../core/services/materiaux.service';
+import { LieuxService } from '../../../core/services/lieux.service';
+import { BonRetrait, DisponibiliteLieu, LieuCourt } from '../../../core/models/lieux';
 import { SessionTravailService } from '../../../core/services/session-travail.service';
 import { FinDeSaisie, LecteurDouchette, normaliserCodeBarres } from '../../../shared/code-barres';
 import { BandeauSession } from '../../../shared/bandeau-session';
@@ -101,6 +103,7 @@ export class Caisse implements OnInit, OnDestroy {
   readonly dernierTicket = signal<Ticket | null>(null);
 
   private readonly saisie = viewChild<ElementRef<HTMLInputElement>>('saisie');
+  private readonly champRecu = viewChild<ElementRef<HTMLInputElement>>('champRecu');
   private readonly route = inject(ActivatedRoute);
 
   // Commandes de la boutique en ligne : elles arrivent a la caisse, qui les accepte puis les encaisse.
@@ -136,6 +139,16 @@ export class Caisse implements OnInit, OnDestroy {
   // Livraison en plusieurs fois : ce que le client emporte maintenant, par ligne du panier.
   readonly resteALivrer = signal(false);
   readonly emportes = signal<Record<string, number | null>>({});
+  // Magasins et entrepots : chaque ligne se retire dans un lieu, le client part avec un bon.
+  private readonly lieuxService = inject(LieuxService);
+  readonly multiLieux = this.lieuxService.actif;
+  readonly lieux = computed(() => this.lieuxService.etat()?.lieux ?? []);
+  readonly magasin = signal<LieuCourt | null>(null);
+  readonly disponibilites = signal<DisponibiliteLieu[]>([]);
+  readonly lieuxLignes = signal<Record<string, number>>({});
+  readonly bonsRetrait = signal<BonRetrait[]>([]);
+  /** Le choix des lieux s'applique, sauf a une commande en ligne, remise en une fois au comptoir. */
+  readonly choixLieux = computed(() => this.multiLieux() && !this.commandeEnLigne());
   // Devis
   readonly devisCharge = signal<Devis | null>(null);
   /** Le panier a change depuis le chargement du devis : il faut l'enregistrer avant de l'encaisser. */
@@ -178,6 +191,9 @@ export class Caisse implements OnInit, OnDestroy {
   /** Paye maintenant : le total, ou l'acompte d'une vente a credit. */
   readonly aPayer = computed(() => (this.credit() ? Math.min(this.acompte() ?? 0, this.total()) : this.total()));
   readonly monnaie = computed(() => Math.max(0, (this.montantRecu() ?? 0) - this.aPayer()));
+  /** Part de la somme due deja recue, pour la jauge de la fenetre d'encaissement. */
+  readonly progression = computed(() =>
+    this.aPayer() <= 0 ? 100 : Math.min(100, Math.round(((this.montantRecu() ?? 0) / this.aPayer()) * 100)));
   readonly billets = computed(() => {
     const total = this.aPayer();
     const suggestions = new Set<number>([total, Math.ceil(total / 1000) * 1000]);
@@ -191,7 +207,11 @@ export class Caisse implements OnInit, OnDestroy {
     if (this.credit() && (!this.client() || (this.acompte() ?? 0) < 0 || (this.acompte() ?? 0) >= this.total())) {
       return false;
     }
-    if (this.resteALivrer() && (!this.client() || !this.emportesValides())) {
+    if (this.choixLieux()) {
+      if (!this.lignesLieuxValides()) {
+        return false;
+      }
+    } else if (this.resteALivrer() && (!this.client() || !this.emportesValides())) {
       return false;
     }
     return this.mode() !== 'ESPECES' || (this.montantRecu() ?? 0) >= this.aPayer();
@@ -214,6 +234,21 @@ export class Caisse implements OnInit, OnDestroy {
     const valeurs = lignes.map((l) => this.emporte(l));
     return lignes.every((l, i) => valeurs[i] >= 0 && valeurs[i] <= this.maximumEmporte(l))
       && lignes.some((l, i) => valeurs[i] < l.quantite);
+  });
+  /** Chaque lieu a la marchandise (sauf vente sur arrivage) et on n'emporte que depuis le magasin de la caisse. */
+  readonly lignesLieuxValides = computed(() => {
+    const lignes = this.lignesARemettre();
+    if (lignes.some((l) => !this.lieuLigne(l))) {
+      return false;
+    }
+    const parLieu = new Map<string, number>();
+    for (const l of lignes) {
+      const c = `${l.article.id}:${this.lieuLigne(l)}`;
+      parLieu.set(c, (parLieu.get(c) ?? 0) + unitesDeBase(l));
+    }
+    const dispoOk = this.reglages()?.venteSurArrivage || lignes.every((l) =>
+      (parLieu.get(`${l.article.id}:${this.lieuLigne(l)}`) ?? 0) <= this.dispoAuLieu(l.article.id, this.lieuLigne(l)));
+    return !!dispoOk && lignes.every((l) => this.emporte(l) >= 0 && this.emporte(l) <= this.maximumEmporteAuLieu(l));
   });
   /** Credit propose a l'encaissement : active par l'administrateur, et permis a ce profil. */
   readonly creditPossible = computed(() => {
@@ -470,7 +505,9 @@ export class Caisse implements OnInit, OnDestroy {
     this.acompte.set(0);
     this.resteALivrer.set(false);
     this.emportes.set({});
-    if (this.surVente()) {
+    if (this.choixLieux()) {
+      this.preparerLieux();
+    } else if (this.surVente()) {
       if (!this.client()) {
         this.signaler('Le panier depasse le stock disponible : choisissez la fiche du client, le surplus lui sera livre a l\'arrivage.');
         return;
@@ -481,6 +518,89 @@ export class Caisse implements OnInit, OnDestroy {
     this.reference = '';
     this.erreur.set(null);
     this.paiement.set(true);
+    this.selectionnerRecu();
+  }
+
+  cleLigne(l: LignePanier): string {
+    return cle(l);
+  }
+
+  choisirMode(mode: ModePaiementPdv): void {
+    this.mode.set(mode);
+    this.selectionnerRecu();
+  }
+
+  /** Le montant recu est pret a etre retape ; sur telephone, le clavier ne surgit pas tout seul. */
+  private selectionnerRecu(): void {
+    if (window.matchMedia('(min-width: 821px)').matches) {
+      setTimeout(() => this.champRecu()?.nativeElement.select());
+    }
+  }
+
+  /** Lit le magasin de la caisse et les stocks, puis propose un lieu pour chaque ligne. */
+  private preparerLieux(): void {
+    const session = this.session();
+    this.bonsRetrait.set([]);
+    this.resteALivrer.set(true);
+    const articles = [...new Set(this.lignesARemettre().map((l) => l.article.id))];
+    if (!session || articles.length === 0) {
+      return;
+    }
+    this.lieuxService.lieuDeCaisse(session.caisseId).subscribe({
+      next: (magasin) => {
+        this.magasin.set(magasin);
+        this.lieuxService.disponibilites(articles).subscribe({
+          next: (d) => {
+            this.disponibilites.set(d);
+            const lieux: Record<string, number> = {};
+            const emportes: Record<string, number | null> = {};
+            for (const l of this.lignesARemettre()) {
+              const besoin = unitesDeBase(l);
+              // Au comptoir s'il y a de quoi servir, sinon le premier lieu qui a tout.
+              const ailleurs = d.find((x) => x.articleId === l.article.id && x.disponible >= besoin);
+              const ici = this.dispoAuLieu(l.article.id, magasin.id) >= besoin;
+              lieux[cle(l)] = ici ? magasin.id : ailleurs?.lieuId ?? magasin.id;
+              emportes[cle(l)] = ici ? l.quantite : 0;
+            }
+            this.lieuxLignes.set(lieux);
+            this.emportes.set(emportes);
+          },
+          error: () => this.erreur.set('Lecture du stock des lieux impossible.')
+        });
+      },
+      error: () => this.erreur.set('Lecture du magasin de la caisse impossible.')
+    });
+  }
+
+  lieuLigne(l: LignePanier): number {
+    return this.lieuxLignes()[cle(l)];
+  }
+
+  dispoAuLieu(articleId: number, lieuId: number): number {
+    return this.disponibilites().find((d) => d.articleId === articleId && d.lieuId === lieuId)?.disponible ?? 0;
+  }
+
+  changerLieuLigne(l: LignePanier, lieuId: number): void {
+    this.lieuxLignes.update((v) => ({ ...v, [cle(l)]: lieuId }));
+    const ici = lieuId === this.magasin()?.id;
+    const disponible = Math.floor((this.dispoAuLieu(l.article.id, lieuId) / (l.conditionnement?.coefficient ?? 1)) * 1000) / 1000;
+    this.changerEmporte(l, ici ? Math.max(0, Math.min(l.quantite, disponible)) : 0);
+  }
+
+  /** On n'emporte que ce qui est au magasin de la caisse ; ailleurs, tout part avec le bon de retrait. */
+  maximumEmporteAuLieu(l: LignePanier): number {
+    if (this.lieuLigne(l) !== this.magasin()?.id) {
+      return 0;
+    }
+    const disponible = Math.floor((this.dispoAuLieu(l.article.id, this.lieuLigne(l)) / (l.conditionnement?.coefficient ?? 1)) * 1000) / 1000;
+    return Math.max(0, Math.min(l.quantite, disponible));
+  }
+
+  imprimerRetrait(b: BonRetrait): void {
+    this.lieuxService.retraitPdf(b.id).subscribe({
+      next: (pdf) => this.materiauxService.ouvrirPdf(pdf),
+      error: () => this.signaler('Bon de retrait indisponible.')
+    });
   }
 
   /** Bascule : le client emporte tout, ou seulement une partie (rien par defaut, a ajuster ligne par ligne). */
@@ -558,7 +678,8 @@ export class Caisse implements OnInit, OnDestroy {
           articleId: l.article.id,
           quantite: l.quantite,
           conditionnementId: l.conditionnement?.id ?? null,
-          quantiteLivree: this.resteALivrer() && l.article.suiviStock ? this.emporte(l) : null
+          quantiteLivree: (this.resteALivrer() || this.choixLieux()) && l.article.suiviStock ? this.emporte(l) : null,
+          lieuId: this.choixLieux() && l.article.suiviStock ? this.lieuLigne(l) : null
         })),
         remise: this.remise() || 0,
         modePaiement: this.mode(),
@@ -591,11 +712,12 @@ export class Caisse implements OnInit, OnDestroy {
           sessionId: this.session()?.id,
           credit: this.credit(),
           acompte: this.credit() ? this.acompte() ?? 0 : null,
-          emportes: this.resteALivrer()
+          emportes: this.resteALivrer() || this.choixLieux()
             ? this.panier().map((l) => ({
                 articleId: l.article.id,
                 conditionnementId: l.conditionnement?.id ?? null,
-                quantite: l.article.suiviStock ? this.emporte(l) : l.quantite
+                quantite: l.article.suiviStock ? this.emporte(l) : l.quantite,
+                lieuId: this.choixLieux() && l.article.suiviStock ? this.lieuLigne(l) : null
               }))
             : null
         })
@@ -627,6 +749,10 @@ export class Caisse implements OnInit, OnDestroy {
     this.enCours.set(false);
     this.paiement.set(false);
     this.dernierTicket.set(ticket);
+    this.bonsRetrait.set([]);
+    if (this.multiLieux()) {
+      this.lieuxService.retraitsDeLaVente(ticket.id).subscribe({ next: (b) => this.bonsRetrait.set(b) });
+    }
     this.decompterStock();
     if (this.commandeEnLigne()) {
       this.commandeEnLigne.set(null);
@@ -670,6 +796,7 @@ export class Caisse implements OnInit, OnDestroy {
   // --------------------------------------------- quincaillerie : initialisation
 
   private initialiserMateriaux(): void {
+    this.lieuxService.chargerEtat();
     this.materiauxService.reglages().subscribe({
       next: (r) => {
         this.reglages.set(r);

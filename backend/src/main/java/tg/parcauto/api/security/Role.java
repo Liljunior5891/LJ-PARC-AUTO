@@ -24,7 +24,9 @@ public enum Role {
     /** Bar / restaurant : tables, prise de commande et encaissement des additions. */
     SERVEUR("Serveur"),
     /** Bar / restaurant : ecrans de la cuisine et du bar. */
-    PREPARATEUR("Cuisinier / Barman");
+    PREPARATEUR("Cuisinier / Barman"),
+    /** Quincaillerie avec entrepots : sert les bons de retrait et les transferts de ses lieux, sans voir les prix. */
+    MAGASINIER("Magasinier");
 
     private final String libelle;
 

@@ -42,6 +42,8 @@ class LivraisonClientServiceTest {
     @Mock MouvementStockRepository mouvements;
     @Mock UtilisateurPrincipal auteur;
     @Mock SoldeResteRepository soldes;
+    @Mock tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
+    @Mock tg.parcauto.api.pointdevente.lieu.BonRetraitRepository retraits;
     @Mock tg.parcauto.api.pointdevente.caisse.SessionTravailService sessionsTravail;
     @Mock tg.parcauto.api.pointdevente.caisse.SessionCaisse session;
 
@@ -53,8 +55,8 @@ class LivraisonClientServiceTest {
 
     @BeforeEach
     void preparer() {
-        stock = new StockService(articles, mouvements);
-        service = new LivraisonClientService(bons, ventes, stock, numerotation, reglages, soldes, sessionsTravail);
+        stock = new StockService(articles, mouvements, lieux);
+        service = new LivraisonClientService(bons, ventes, stock, numerotation, reglages, soldes, sessionsTravail, lieux, retraits);
         when(numerotation.prochainNumero("BL")).thenReturn("BL-1");
         when(auteur.getNomComplet()).thenReturn("Magasinier");
         when(bons.save(any())).thenAnswer(i -> i.getArgument(0));

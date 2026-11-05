@@ -8,6 +8,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tg.parcauto.api.pointdevente.caisse.SessionTravailService;
 import tg.parcauto.api.pointdevente.catalogue.PostePreparation;
+import tg.parcauto.api.pointdevente.lieu.BonRetrait;
+import tg.parcauto.api.pointdevente.lieu.BonRetraitRepository;
+import tg.parcauto.api.pointdevente.lieu.LieuStockService;
+import tg.parcauto.api.pointdevente.lieu.RemiseHorsLigne;
+import tg.parcauto.api.pointdevente.lieu.RemiseHorsLigneRepository;
+import tg.parcauto.api.pointdevente.lieu.RetraitService;
+import tg.parcauto.api.pointdevente.lieu.Transfert;
+import tg.parcauto.api.pointdevente.lieu.TransfertRepository;
 import tg.parcauto.api.pointdevente.personnel.PersonnelService;
 import tg.parcauto.api.pointdevente.restauration.Commande;
 import tg.parcauto.api.pointdevente.restauration.CommandeRepository;
@@ -21,6 +29,7 @@ import tg.parcauto.api.security.UtilisateurPrincipal;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -45,7 +54,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class NotificationPdvService {
 
-    public enum Type { VALIDATION, APPEL, ADDITION, PRET, BON, CAISSE }
+    public enum Type { VALIDATION, APPEL, ADDITION, PRET, BON, CAISSE, RETRAIT, TRANSFERT }
 
     public record Evenement(String cle, Type type, String titre, String message, String lien, Instant date) {
     }
@@ -56,6 +65,10 @@ public class NotificationPdvService {
     private final EcranPreparationRepository ecranRepository;
     private final SessionTravailService sessionsTravail;
     private final CommandeEnLigneRepository commandesEnLigne;
+    private final LieuStockService lieux;
+    private final BonRetraitRepository bonsRetrait;
+    private final TransfertRepository transferts;
+    private final RemiseHorsLigneRepository remises;
 
     public List<Evenement> pour(UtilisateurPrincipal u) {
         List<Evenement> evenements = new ArrayList<>();
@@ -83,8 +96,55 @@ public class NotificationPdvService {
         if (aRole(u, Role.PREPARATEUR)) {
             preparation(u, evenements);
         }
+        if (aRole(u, Role.ADMIN, Role.GERANT, Role.MAGASINIER) && lieux.actif()) {
+            magasins(u, evenements);
+        }
         evenements.sort(Comparator.comparing(Evenement::date, Comparator.nullsLast(Comparator.reverseOrder())));
         return evenements;
+    }
+
+    /**
+     * Magasins et entrepots : le magasinier est prevenu de ce qui arrive sur ses lieux ;
+     * le gerant, de ce qui attend sa decision et des bons non retires depuis plus de 30 jours.
+     */
+    private void magasins(UtilisateurPrincipal u, List<Evenement> sortie) {
+        if (aRole(u, Role.ADMIN, Role.GERANT)) {
+            Instant avant = Instant.now().minus(RetraitService.JOURS_ALERTE, ChronoUnit.DAYS);
+            for (BonRetrait b : bonsRetrait.anciens(avant)) {
+                sortie.add(new Evenement("retrait-ancien-" + b.getId(), Type.RETRAIT, "Bon non retire depuis plus de 30 jours",
+                        b.getNumero() + " · " + b.getLieu().getNom(), "/pdv/retraits?q=" + b.getNumero(), b.getDateEmission()));
+            }
+            for (Transfert t : transferts.parStatuts(List.of(Transfert.Statut.DEMANDE, Transfert.Statut.ECART))) {
+                boolean ecart = t.getStatut() == Transfert.Statut.ECART;
+                sortie.add(new Evenement("transfert-" + t.getStatut() + "-" + t.getId(), Type.TRANSFERT,
+                        ecart ? "Ecart sur un transfert" : "Transfert a valider",
+                        t.getNumero() + " · " + t.getSource().getNom() + " vers " + t.getDestination().getNom(),
+                        "/pdv/transferts", ecart ? t.getRecuLe() : t.getDemandeLe()));
+            }
+            for (RemiseHorsLigne r : remises.findByStatutOrderByFaiteLeDesc(RemiseHorsLigne.Statut.CONFLIT)) {
+                sortie.add(new Evenement("conflit-" + r.getId(), Type.RETRAIT, "Remise sans connexion a verifier",
+                        r.getAuteur() + " · " + r.getDetail(), "/pdv/retraits", r.getFaiteLe()));
+            }
+        }
+        if (aRole(u, Role.MAGASINIER)) {
+            List<Long> miens = lieux.idsAccessibles(u);
+            if (miens.isEmpty()) {
+                return;
+            }
+            for (BonRetrait b : bonsRetrait.aServir(miens)) {
+                sortie.add(new Evenement("retrait-" + b.getId(), Type.RETRAIT, "Bon a servir",
+                        b.getNumero() + " · " + b.getLieu().getNom(), "/pdv/retraits?q=" + b.getNumero(), b.getDateEmission()));
+            }
+            for (Transfert t : transferts.parStatuts(List.of(Transfert.Statut.VALIDE, Transfert.Statut.EXPEDIE))) {
+                boolean depart = t.getStatut() == Transfert.Statut.VALIDE;
+                if (miens.contains((depart ? t.getSource() : t.getDestination()).getId())) {
+                    sortie.add(new Evenement("transfert-" + t.getStatut() + "-" + t.getId(), Type.TRANSFERT,
+                            depart ? "Transfert a expedier" : "Transfert a receptionner",
+                            t.getNumero() + " · " + t.getSource().getNom() + " vers " + t.getDestination().getNom(),
+                            "/pdv/transferts", depart ? t.getValideLe() : t.getExpedieLe()));
+                }
+            }
+        }
     }
 
     /** Evenements d'une commande de table pour l'utilisateur. */

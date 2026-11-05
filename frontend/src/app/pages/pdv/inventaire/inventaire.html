@@ -5,7 +5,9 @@
   </div>
   <div class="actions-entete">
     <app-export-pdv type="STOCK" title="Etat du stock" />
-    <button class="bouton secondaire info" type="button" (click)="importOuvert.set(true)">⇪ Importer un comptage</button>
+    @if (!lieux().length) {
+      <button class="bouton secondaire info" type="button" (click)="importOuvert.set(true)">⇪ Importer un comptage</button>
+    }
     <a class="bouton secondaire" routerLink="/pdv/stock">Reapprovisionnement</a>
   </div>
 </div>
@@ -28,6 +30,15 @@
 }
 
 <div class="carte filtres">
+  @if (lieux().length) {
+    <div class="champ">
+      <label for="lieu">Lieu compte</label>
+      <select id="lieu" [ngModel]="lieuId()" (ngModelChange)="changerLieu($event)">
+        <option [ngValue]="null">Choisir un lieu...</option>
+        @for (l of lieux(); track l.id) { <option [ngValue]="l.id">{{ l.nom }}</option> }
+      </select>
+    </div>
+  }
   <div class="champ">
     <label for="recherche">Rechercher</label>
     <input id="recherche" type="search" placeholder="Nom, code ou code-barres..." [ngModel]="recherche()"
@@ -65,7 +76,7 @@
         <tr [class.compte]="e !== null" [class.ecart]="e !== null && e !== 0">
           <td><strong>{{ a.nom }}</strong><br /><small>{{ a.code }}</small></td>
           <td>{{ a.categorieNom || '—' }}</td>
-          <td class="numerique">{{ a.stockActuel | number: '1.0-3' }} {{ a.unite || '' }}</td>
+          <td class="numerique">{{ attendu(a) | number: '1.0-3' }} {{ a.unite || '' }}</td>
           <td class="numerique">
             <div class="saisie">
               <app-champ-quantite [valeur]="compte(a)" (valeurChange)="saisir(a, $event)" placeholder="—"

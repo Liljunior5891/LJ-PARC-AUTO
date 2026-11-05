@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 public class GardeMateriaux implements GardeVariante {
 
     private final ClientPdvRepository clientRepository;
+    private final tg.parcauto.api.pointdevente.lieu.LieuStockRepository lieux;
 
     @Override
     public ModuleApplicatif module() {
@@ -34,6 +35,10 @@ public class GardeMateriaux implements GardeVariante {
                 throw new BusinessException("Des clients doivent encore "
                         + du.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString()
                         + " F a credit : faites-les regler avant de changer de type d'activite");
+            }
+            // Les autres activites n'ont qu'un stock : la marchandise des entrepots serait perdue de vue.
+            if (lieux.existsByTypeAndActifTrue(tg.parcauto.api.pointdevente.lieu.LieuStock.Type.ENTREPOT)) {
+                throw new BusinessException("Des entrepots sont actifs : videz-les et desactivez-les avant de changer de type d'activite");
             }
         }
     }

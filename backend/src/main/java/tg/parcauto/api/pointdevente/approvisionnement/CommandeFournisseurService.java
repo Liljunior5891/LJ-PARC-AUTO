@@ -44,6 +44,7 @@ public class CommandeFournisseurService {
     private final CommandeFournisseurRepository repository;
     private final ArticleRepository articleRepository;
     private final StockService stockService;
+    private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
     private final NumerotationService numerotation;
 
     public record LigneRequete(
@@ -65,7 +66,13 @@ public class CommandeFournisseurService {
     }
 
     /** Quantites effectivement livrees ; une ligne absente est recue en totalite. */
-    public record Reception(List<@Valid LigneReception> lignes) {
+    public record Reception(List<@Valid LigneReception> lignes,
+                            /** Lieu qui recoit la marchandise, quand l'entreprise a des entrepots ; le principal sinon. */
+                            Long lieuId) {
+
+        public Reception(List<LigneReception> lignes) {
+            this(lignes, null);
+        }
     }
 
     public record Ligne(Long id, Long articleId, String articleCode, String articleNom, String unite,
@@ -140,6 +147,8 @@ public class CommandeFournisseurService {
                 : reception.lignes().stream().collect(Collectors.toMap(LigneReception::ligneId, Function.identity(),
                         (a, b) -> b));
         boolean recu = false;
+        tg.parcauto.api.pointdevente.lieu.LieuStock lieu = lieux.cible(lieux.demande(reception == null ? null : reception.lieuId()));
+        commande.setLieu(lieu);
         for (LigneCommandeFournisseur ligne : commande.getLignes()) {
             LigneReception saisie = saisies.get(ligne.getId());
             BigDecimal quantite = saisie == null ? ligne.getQuantite() : saisie.quantiteRecue();
@@ -151,7 +160,7 @@ public class CommandeFournisseurService {
                 recu = true;
                 Article article = ligne.getArticle();
                 if (article.isSuiviStock()) {
-                    stockService.appliquer(article, TypeMouvementStock.ENTREE, quantite, ligne.getCoutUnitaire(),
+                    stockService.appliquer(article, lieu, TypeMouvementStock.ENTREE, quantite, ligne.getCoutUnitaire(),
                             "Reception " + commande.getNumero() + " - " + commande.getFournisseur(), null);
                 }
                 if (ligne.getCoutUnitaire() != null) {

@@ -226,6 +226,37 @@ export const routes: Routes = [
             title: 'Caisse — LJ SaaS'
           },
           {
+            // Magasins et entrepots : quincaillerie uniquement, le serveur le verifie aussi.
+            path: '',
+            canActivate: [varianteGuard('POINT_DE_VENTE', 'MATERIAUX')],
+            children: [
+              {
+                path: 'lieux',
+                canActivate: [roleGuard('ADMIN', 'GERANT')],
+                loadComponent: () => import('./pages/pdv/lieux/lieux').then((m) => m.LieuxPdv),
+                title: 'Magasins et entrepots — LJ SaaS'
+              },
+              {
+                path: 'stock-lieu',
+                canActivate: [roleGuard('ADMIN', 'GERANT', 'MAGASINIER')],
+                loadComponent: () => import('./pages/pdv/stock-lieu/stock-lieu').then((m) => m.StockLieuPdv),
+                title: 'Stock par lieu — LJ SaaS'
+              },
+              {
+                path: 'retraits',
+                canActivate: [roleGuard('ADMIN', 'GERANT', 'MAGASINIER')],
+                loadComponent: () => import('./pages/pdv/retraits/retraits').then((m) => m.RetraitsPdv),
+                title: 'Bons de retrait — LJ SaaS'
+              },
+              {
+                path: 'transferts',
+                canActivate: [roleGuard('ADMIN', 'GERANT', 'MAGASINIER')],
+                loadComponent: () => import('./pages/pdv/transferts/transferts').then((m) => m.TransfertsPdv),
+                title: 'Transferts — LJ SaaS'
+              }
+            ]
+          },
+          {
             path: 'ventes',
             canActivate: [roleGuard('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR')],
             loadComponent: () => import('./pages/pdv/ventes/ventes').then((m) => m.VentesPdv),

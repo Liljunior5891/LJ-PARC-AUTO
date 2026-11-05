@@ -87,6 +87,7 @@ const RESSOURCES: Record<string, Ressource> = {
   modules: { nom: 'module', le: 'le ', un: 'un ' },
   entreprises: { nom: 'entreprise', le: "l'", un: 'une ' },
   categories: { nom: 'categorie', le: 'la ', un: 'une ' },
+  lieux: { nom: 'lieu', le: 'le ', un: 'un ' },
   articles: { nom: 'article', le: "l'", un: 'un ' },
   ventes: { nom: 'commande', le: 'la ', un: 'une ' },
   mouvements: { nom: 'mouvement de stock', le: 'le ', un: 'un ' },

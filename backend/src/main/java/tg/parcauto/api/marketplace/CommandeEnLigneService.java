@@ -84,6 +84,7 @@ public class CommandeEnLigneService {
     private final SessionTravailService sessionsTravail;
     private final CommandeService commandeSalleService;
     private final CommandeRepository commandeSalleRepository;
+    private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
 
     // --------------------------------------------------------- Cote client
 
@@ -392,12 +393,14 @@ public class CommandeEnLigneService {
             ligne.setArticleId(article.getId());
             if (enCaisse) {
                 // Le stock sortira avec le point de vente (envoi en cuisine ou encaissement) : on verifie seulement.
-                if (article.isSuiviStock() && article.stockDisponible().compareTo(BigDecimal.valueOf(quantite)) < 0) {
+                BigDecimal disponible = lieux.disponibleEnLigne(article);
+                if (article.isSuiviStock() && disponible.compareTo(BigDecimal.valueOf(quantite)) < 0) {
                     throw new BusinessException("Stock insuffisant pour " + offre.getTitre() + " : "
-                            + article.stockDisponible().max(BigDecimal.ZERO).stripTrailingZeros().toPlainString() + " disponible(s)");
+                            + disponible.max(BigDecimal.ZERO).stripTrailingZeros().toPlainString() + " disponible(s)");
                 }
             } else if (article.isSuiviStock()) {
-                stockService.appliquer(article, TypeMouvementStock.VENTE, BigDecimal.valueOf(quantite),
+                stockService.appliquer(article, lieux.lieuEnLigne(article, BigDecimal.valueOf(quantite)),
+                        TypeMouvementStock.VENTE, BigDecimal.valueOf(quantite),
                         article.getPrixAchat(), "Commande en ligne " + numero, null);
             }
         } else if (offre.getStock() != null) {
@@ -418,7 +421,9 @@ public class CommandeEnLigneService {
             if (ligne.getArticleId() != null) {
                 articleRepository.findById(ligne.getArticleId())
                         .filter(Article::isSuiviStock)
-                        .ifPresent(article -> stockService.appliquer(article, TypeMouvementStock.RETOUR,
+                        .ifPresent(article -> stockService.appliquer(article,
+                                stockService.lieuDuMouvement(article, "Commande en ligne " + commande.getNumero()),
+                                TypeMouvementStock.RETOUR,
                                 BigDecimal.valueOf(ligne.getQuantite()), article.getPrixAchat(),
                                 "Annulation de la commande en ligne " + commande.getNumero(), null));
             } else if (ligne.getOffreId() != null) {

@@ -103,6 +103,16 @@
         </div>
       </div>
 
+      @if (magasins().length) {
+        <div class="champ">
+          <label for="magasin">Magasin de la caisse</label>
+          <select id="magasin" name="magasin" [(ngModel)]="formulaire.lieuId">
+            <option [ngValue]="null">Magasin principal</option>
+            @for (m of magasins(); track m.id) { <option [ngValue]="m.id">{{ m.nom }}</option> }
+          </select>
+        </div>
+      }
+
       <fieldset class="personnel">
         <legend>Personnel qui encaisse sur cette caisse</legend>
         @for (m of personnel(); track m.id) {

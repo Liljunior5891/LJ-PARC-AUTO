@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ArticlePdv, BilanInventaire, CategoriePdv } from '../../../core/models/pdv';
 import { BilanImport } from '../../../core/models/rapport';
+import { AuthService } from '../../../core/auth/auth.service';
+import { LieuxService } from '../../../core/services/lieux.service';
 import { PdvService } from '../../../core/services/pdv.service';
 import { ChampQuantite } from '../../../shared/champ-quantite';
 import { ExportPdv } from '../../../shared/export-pdv';
@@ -24,6 +26,12 @@ import { normaliserCodeBarres } from '../../../shared/code-barres';
 export class InventairePdv implements OnInit {
   private readonly service = inject(PdvService);
 
+  private readonly auth = inject(AuthService);
+  private readonly lieuxService = inject(LieuxService);
+  /** Avec des entrepots, on compte un lieu a la fois : l'attendu est le stock de ce lieu. */
+  readonly lieux = computed(() => this.lieuxService.etat()?.lieux ?? []);
+  readonly lieuId = signal<number | null>(null);
+  private readonly stockDuLieu = signal<Map<number, number>>(new Map());
   readonly articles = signal<ArticlePdv[]>([]);
   readonly categories = signal<CategoriePdv[]>([]);
   /** Quantite comptee par produit ; absent tant que le produit n'est pas compte. */
@@ -63,6 +71,9 @@ export class InventairePdv implements OnInit {
   );
 
   ngOnInit(): void {
+    if (this.auth.estMateriaux()) {
+      this.lieuxService.chargerEtat();
+    }
     this.charger();
     this.service.categories().subscribe({ next: (c) => this.categories.set(c.filter((x) => x.actif)) });
   }
@@ -78,13 +89,34 @@ export class InventairePdv implements OnInit {
 
   /** Le produit est juste : la quantite attendue est reprise comme comptee. */
   confirmer(a: ArticlePdv): void {
-    this.saisir(a, a.stockActuel);
+    this.saisir(a, this.attendu(a));
   }
 
   /** Ecart compte - attendu ; null tant que le produit n'est pas compte. */
   ecart(a: ArticlePdv, comptes = this.comptes()): number | null {
     const q = comptes[a.id];
-    return q === null || q === undefined || Number.isNaN(q) ? null : q - a.stockActuel;
+    return q === null || q === undefined || Number.isNaN(q) ? null : q - this.attendu(a);
+  }
+
+  attendu(a: ArticlePdv): number {
+    return this.lieuId() ? this.stockDuLieu().get(a.id) ?? 0 : a.stockActuel;
+  }
+
+  changerLieu(id: number | null): void {
+    this.lieuId.set(id);
+    this.comptes.set({});
+    this.bilan.set(null);
+    this.chargerStockDuLieu();
+  }
+
+  private chargerStockDuLieu(): void {
+    const lieu = this.lieuId();
+    if (lieu) {
+      this.lieuxService.stock(lieu, '', 0, 2000).subscribe({
+        next: (p) => this.stockDuLieu.set(new Map(p.content.map((s) => [s.articleId, s.stock]))),
+        error: () => this.erreur.set('Chargement du stock de ce lieu impossible.')
+      });
+    }
   }
 
   vider(): void {
@@ -101,7 +133,7 @@ export class InventairePdv implements OnInit {
     }
     this.envoi.set(true);
     this.erreur.set(null);
-    this.service.validerInventaire(comptages, this.motif).subscribe({
+    this.service.validerInventaire(comptages, this.motif, this.lieuId()).subscribe({
       next: (bilan) => {
         this.envoi.set(false);
         this.bilan.set(bilan);
@@ -126,6 +158,7 @@ export class InventairePdv implements OnInit {
     this.service.articles({ actif: true, size: 1000 }).subscribe({
       next: (p) => {
         this.articles.set(p.content.filter((a) => a.suiviStock));
+        this.chargerStockDuLieu();
         this.chargement.set(false);
       },
       error: () => {

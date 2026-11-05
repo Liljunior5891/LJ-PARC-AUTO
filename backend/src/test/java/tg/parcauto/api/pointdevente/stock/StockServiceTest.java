@@ -26,7 +26,7 @@ class StockServiceTest {
         MouvementStockRepository mouvements = mock(MouvementStockRepository.class);
         when(mouvements.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         articles = mock(ArticleRepository.class);
-        service = new StockService(articles, mouvements);
+        service = new StockService(articles, mouvements, org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class));
         article = new Article();
         article.setNom("Savon");
         article.setStockActuel(new BigDecimal("10"));

@@ -69,7 +69,7 @@
             </td>
             <td>
               @for (l of v.lignes; track l.ligneId) {
-                <div><strong>{{ l.reste | number: '1.0-3' }}</strong> {{ l.unite || '' }} · {{ l.libelle }}
+                <div><strong>{{ l.reste | number: '1.0-3' }}</strong> {{ l.unite || '' }} · {{ l.libelle }}@if (l.lieuNom) { <small> · a {{ l.lieuNom }}</small> }
                   <small>(sur {{ l.quantite | number: '1.0-3' }})</small></div>
               } @empty {
                 @if (v.statut === 'ANNULEE') { <span class="resultat-negatif">Commande annulee</span> } @else { Tout est regle }

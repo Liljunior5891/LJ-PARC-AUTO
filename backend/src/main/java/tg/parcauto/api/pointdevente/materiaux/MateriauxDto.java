@@ -139,7 +139,9 @@ public final class MateriauxDto {
                                /** Stock en magasin, dans l'unite de base du produit. */
                                BigDecimal enMagasin,
                                /** Valeur d'une unite pour un solde : apres remises de la ligne et de la vente. */
-                               BigDecimal valeurUnitaire) {
+                               BigDecimal valeurUnitaire,
+                               /** Lieu de retrait, quand l'entreprise a des entrepots. */
+                               Long lieuId, String lieuNom) {
 
         public static LigneALivrer de(tg.parcauto.api.pointdevente.vente.LigneVente l) {
             Vente v = l.getVente();
@@ -147,7 +149,8 @@ public final class MateriauxDto {
                     : l.getTotal().multiply(v.getTotal()).divide(v.getTotalBrut(), 6, java.math.RoundingMode.HALF_UP)
                             .divide(l.getQuantite(), 2, java.math.RoundingMode.HALF_UP);
             return new LigneALivrer(l.getId(), l.getArticle().getId(), l.getLibelle(), uniteDeLigne(l), l.getQuantite(),
-                    l.getQuantiteLivree(), l.resteALivrer(), l.getArticle().getStockActuel(), valeur);
+                    l.getQuantiteLivree(), l.resteALivrer(), l.getArticle().getStockActuel(), valeur,
+                    l.getLieu() == null ? null : l.getLieu().getId(), l.getLieu() == null ? null : l.getLieu().getNom());
         }
     }
 
@@ -326,7 +329,9 @@ public final class MateriauxDto {
     }
 
     /** Quantite emportee d'un produit du devis ; le reste sera livre plus tard. */
-    public record Emporte(@NotNull Long articleId, Long conditionnementId, @NotNull @PositiveOrZero BigDecimal quantite) {
+    public record Emporte(@NotNull Long articleId, Long conditionnementId, @NotNull @PositiveOrZero BigDecimal quantite,
+                          /** Avec des entrepots : lieu de retrait ; nul : le magasin de la caisse. */
+                          Long lieuId) {
     }
 
     // ----------------------------------------------------- conditionnements

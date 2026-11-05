@@ -134,6 +134,8 @@ export interface LigneALivrer {
   reste: number;
   /** Stock en magasin, dans l'unite de base du produit. */
   enMagasin: number;
+  /** Lieu de retrait, quand l'entreprise a des entrepots. */
+  lieuNom?: string | null;
   /** Valeur d'une unite pour un solde : apres remises de la ligne et de la vente. */
   valeurUnitaire: number;
 }
@@ -278,7 +280,7 @@ export interface EncaissementDevis {
   credit?: boolean;
   acompte?: number | null;
   /** Ce que le client emporte maintenant ; absent : tout. */
-  emportes?: { articleId: number; conditionnementId?: number | null; quantite: number }[] | null;
+  emportes?: { articleId: number; conditionnementId?: number | null; quantite: number; lieuId?: number | null }[] | null;
 }
 
 export interface Conditionnement {

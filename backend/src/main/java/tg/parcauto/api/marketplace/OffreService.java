@@ -44,6 +44,7 @@ public class OffreService {
     private final CamionRepository camionRepository;
     private final ModuleService moduleService;
     private final OffrePhotoRepository photoRepository;
+    private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
 
     // ------------------------------------------------------------ Espace de gestion
 
@@ -410,7 +411,7 @@ public class OffreService {
         return switch (o.getType()) {
             case ARTICLE -> {
                 Article a = s.article(o);
-                yield a == null ? BigDecimal.ZERO : a.isSuiviStock() ? a.stockDisponible().max(BigDecimal.ZERO) : null;
+                yield a == null ? BigDecimal.ZERO : a.isSuiviStock() ? lieux.disponibleEnLigne(a).max(BigDecimal.ZERO) : null;
             }
             case LIBRE -> o.getStock() == null ? null : BigDecimal.valueOf(Math.max(0, o.getStock()));
             case VEHICULE -> null;
@@ -421,7 +422,7 @@ public class OffreService {
         return switch (o.getType()) {
             case ARTICLE -> {
                 Article a = s.article(o);
-                yield a != null && a.isActif() && (!a.isSuiviStock() || a.stockDisponible().signum() > 0);
+                yield a != null && a.isActif() && (!a.isSuiviStock() || lieux.disponibleEnLigne(a).signum() > 0);
             }
             case VEHICULE -> {
                 Camion c = s.camion(o);

@@ -18,7 +18,8 @@ export type Role =
   | 'GERANT'
   | 'CAISSIER'
   | 'SERVEUR'
-  | 'PREPARATEUR';
+  | 'PREPARATEUR'
+  | 'MAGASINIER';
 
 /** Modules de la plateforme ; une entreprise n'accede qu'a ceux qu'elle a actives. */
 export type CodeModule = 'GESTION_PARC' | 'POINT_DE_VENTE' | 'MARKETPLACE';

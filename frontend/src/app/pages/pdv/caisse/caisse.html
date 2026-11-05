@@ -313,112 +313,178 @@
 }
 
 @if (paiement()) {
-  <app-modale titre="Encaissement" [sousTitre]="'Total : ' + (total() | number: '1.0-0') + ' F' + (credit() ? ' · a payer maintenant : ' + (aPayer() | number: '1.0-0') + ' F' : '') + (client() ? ' · ' + client()!.nom : '')"
-              largeur="600px" [erreur]="erreur()" (ferme)="paiement.set(false)">
-    <form class="paiement" (ngSubmit)="encaisser()">
-      @if (creditPossible()) {
-        <div class="choix-credit" role="radiogroup" aria-label="Comptant ou a credit">
-          <button type="button" [class.actif]="!credit()" (click)="basculerCredit(false)">Comptant</button>
-          <button type="button" [class.actif]="credit()" [disabled]="!client()" (click)="basculerCredit(true)">A credit / acompte</button>
-        </div>
-        @if (!client()) {
-          <small class="aide-credit">Pour vendre a credit, choisissez d'abord la fiche du client.</small>
-        }
-        @if (credit()) {
-          <div class="champ">
-            <label for="acompte">Acompte verse maintenant (F){{ (reglages()?.acompteMinimum ?? 0) > 0 ? ' · minimum ' + reglages()!.acompteMinimum + ' %' : '' }}</label>
-            <input id="acompte" name="acompte" type="number" min="0" step="any" class="grand"
-                   [ngModel]="acompte()" (ngModelChange)="changerAcompte($event)" />
+  <app-modale titre="Encaissement" [sousTitre]="nombreArticles() + ' article(s)' + (client() ? ' · ' + client()!.nom : '')"
+              largeur="1080px" [erreur]="erreur()" (ferme)="paiement.set(false)">
+    <form class="encaissement" (ngSubmit)="encaisser()">
+      <div class="colonnes-encaissement">
+        <!-- Ce que le client achete, et ou il le recupere -->
+        <section class="recap">
+          <div class="titre-recap">
+            <h3>Commande</h3>
+            @if (client(); as c) { <span class="puce-client">{{ c.nom }}</span> }
           </div>
-          <div class="monnaie">
-            Reste du par {{ client()?.nom }} : <strong>{{ total() - aPayer() | number: '1.0-0' }} F</strong>
-            · echeance dans {{ client()?.delaiPaiementJours ?? reglages()?.delaiPaiementJours }} jours
-          </div>
-        }
-      }
-      @if (livraisonPossible()) {
-        <div class="choix-credit" role="radiogroup" aria-label="Ce que le client emporte">
-          <button type="button" [class.actif]="!resteALivrer()" [disabled]="surVente()" (click)="basculerLivraison(false)">Il emporte tout</button>
-          <button type="button" [class.actif]="resteALivrer()" [disabled]="!client()" (click)="basculerLivraison(true)">Reste a livrer</button>
-        </div>
-        @if (!client()) {
-          <small class="aide-credit">Pour livrer plus tard, choisissez d'abord la fiche du client.</small>
-        }
-        @if (surVente()) {
-          <small class="aide-credit">Le panier depasse le stock disponible : le surplus sera livre a l'arrivage de la marchandise.</small>
-        }
-        @if (resteALivrer()) {
-          <div class="tableau-conteneur">
-            <table class="tableau">
-              <thead><tr><th>Article</th><th class="numerique">Vendu</th><th class="numerique">Emporte maintenant</th><th class="numerique">A livrer</th></tr></thead>
-              <tbody>
-                @for (l of lignesARemettre(); track l.article.id + ':' + (l.conditionnement?.id ?? 0)) {
-                  <tr>
-                    <td>{{ l.article.nom }} <small>/ {{ libelleUnite(l) }}</small></td>
-                    <td class="numerique">{{ l.quantite | number: '1.0-3' }}</td>
-                    <td class="numerique">
-                      <input type="number" min="0" [max]="maximumEmporte(l)" step="any" style="width: 80px; text-align: right"
-                             [name]="'emporte-' + l.article.id + '-' + (l.conditionnement?.id ?? 0)"
+
+          @if (!choixLieux() && livraisonPossible()) {
+            <div class="choix-credit" role="radiogroup" aria-label="Ce que le client emporte">
+              <button type="button" [class.actif]="!resteALivrer()" [disabled]="surVente()" (click)="basculerLivraison(false)">Il emporte tout</button>
+              <button type="button" [class.actif]="resteALivrer()" [disabled]="!client()" (click)="basculerLivraison(true)">Reste a livrer</button>
+            </div>
+            @if (!client()) {
+              <small class="aide-credit">Pour livrer plus tard, choisissez d'abord la fiche du client.</small>
+            }
+            @if (surVente()) {
+              <small class="aide-credit">Le panier depasse le stock disponible : le surplus sera livre a l'arrivage de la marchandise.</small>
+            }
+          }
+
+          <ul class="lignes-recap">
+            @for (l of panier(); track cleLigne(l); let i = $index) {
+              <li [style.--rang]="i">
+                <div class="entete-ligne-recap">
+                  <span class="vignette-recap">
+                    @if (l.article.image) { <img [src]="l.article.image" alt="" /> } @else { <span aria-hidden="true">{{ l.article.categorieIcone || '📦' }}</span> }
+                  </span>
+                  <span class="nom-recap">
+                    <strong>{{ l.article.nom }}</strong>
+                    <small>{{ l.quantite | number: '1.0-3' }} {{ libelleUnite(l) }} × {{ prixLigne(l) | number: '1.0-0' }} F</small>
+                  </span>
+                  <strong class="total-recap">{{ prixLigne(l) * l.quantite | number: '1.0-0' }} F</strong>
+                </div>
+                @if (choixLieux() && l.article.suiviStock) {
+                  <div class="retrait-ligne">
+                    <div class="champ">
+                      <label>Lieu de retrait</label>
+                      <select [attr.aria-label]="'Lieu de retrait de ' + l.article.nom" [ngModelOptions]="{ standalone: true }"
+                              [ngModel]="lieuLigne(l)" (ngModelChange)="changerLieuLigne(l, $event)">
+                        @for (lieu of lieux(); track lieu.id) {
+                          <option [ngValue]="lieu.id">{{ lieu.nom }} ({{ dispoAuLieu(l.article.id, lieu.id) | number: '1.0-3' }} dispo)</option>
+                        }
+                      </select>
+                    </div>
+                    <div class="champ champ-emporte">
+                      <label>Emporte ici</label>
+                      <input type="number" min="0" [max]="maximumEmporteAuLieu(l)" step="any"
+                             [disabled]="lieuLigne(l) !== magasin()?.id" [ngModelOptions]="{ standalone: true }"
                              [attr.aria-label]="'Quantite emportee de ' + l.article.nom"
-                             [ngModel]="emportes()[l.article.id + ':' + (l.conditionnement?.id ?? 0)]" (ngModelChange)="changerEmporte(l, $event)" />
-                    </td>
-                    <td class="numerique"><strong>{{ l.quantite - emporte(l) | number: '1.0-3' }}</strong></td>
-                  </tr>
+                             [ngModel]="emporte(l)" (ngModelChange)="changerEmporte(l, $event)" />
+                    </div>
+                    @if (l.quantite - emporte(l) > 0) {
+                      <span class="pastille-bon">🎫 {{ l.quantite - emporte(l) | number: '1.0-3' }} avec le bon de retrait</span>
+                    }
+                  </div>
+                } @else if (resteALivrer() && l.article.suiviStock) {
+                  <div class="retrait-ligne">
+                    <div class="champ champ-emporte">
+                      <label>Emporte maintenant</label>
+                      <input type="number" min="0" [max]="maximumEmporte(l)" step="any" [ngModelOptions]="{ standalone: true }"
+                             [attr.aria-label]="'Quantite emportee de ' + l.article.nom"
+                             [ngModel]="emporte(l)" (ngModelChange)="changerEmporte(l, $event)" />
+                    </div>
+                    <span class="pastille-bon">🚚 {{ l.quantite - emporte(l) | number: '1.0-3' }} a livrer</span>
+                  </div>
                 }
-              </tbody>
-            </table>
+              </li>
+            }
+          </ul>
+          @if (choixLieux() && !lignesLieuxValides()) {
+            <small class="alerte-recap">Un lieu n'a pas assez de marchandise : choisissez-en un autre, ou corrigez la quantite emportee.</small>
+          }
+          @if (!choixLieux() && resteALivrer() && !emportesValides()) {
+            <small class="alerte-recap">Indiquez une quantite entre 0 et ce qui est disponible, avec au moins un reste a livrer.</small>
+          }
+
+          <div class="totaux-recap">
+            <div><span>Sous-total</span><span>{{ totalBrut() | number: '1.0-0' }} F</span></div>
+            @if (!devisCharge()) {
+              <div class="ligne-remise">
+                <label for="remise">Remise</label>
+                <span class="champ-remise">
+                  <input id="remise" name="remise" type="number" min="0" step="any" [ngModel]="remise()"
+                         (ngModelChange)="remise.set($event); montantRecu.set(aPayer())" />
+                  <span>F</span>
+                </span>
+              </div>
+            }
+            <div class="ligne-total"><span>Total</span><strong>{{ total() | number: '1.0-0' }} F</strong></div>
           </div>
-          @if (!emportesValides()) {
-            <small class="aide-credit">Indiquez une quantite entre 0 et ce qui est disponible, avec au moins un reste a livrer.</small>
-          }
-        }
-      }
-      <div class="moyens">
-        @for (m of modes; track m.valeur) {
-          <button type="button" class="moyen" [class.actif]="mode() === m.valeur" (click)="mode.set(m.valeur)">
-            <span class="icone" aria-hidden="true">{{ m.icone }}</span>
-            <small>{{ m.libelle }}</small>
-          </button>
-        }
-      </div>
+        </section>
 
-      @if (mode() === 'ESPECES') {
-        <div class="champ">
-          <label for="recu">Montant recu</label>
-          <input id="recu" name="recu" type="number" min="0" step="any" class="grand"
-                 [ngModel]="montantRecu()" (ngModelChange)="montantRecu.set($event)" />
-        </div>
-        <div class="puces">
-          @for (b of billets(); track b) {
-            <button type="button" class="puce" (click)="montantRecu.set(b)">{{ b | number: '1.0-0' }}</button>
+        <!-- Comment il paie -->
+        <section class="reglement">
+          <div class="montant-du" [class.solde]="mode() === 'ESPECES' && (montantRecu() ?? 0) >= aPayer()">
+            <span>{{ credit() ? 'Acompte a payer maintenant' : 'A payer' }}</span>
+            @for (v of [aPayer()]; track v) { <strong class="vif">{{ v | number: '1.0-0' }} <small>F CFA</small></strong> }
+            @if (credit()) { <small>sur un total de {{ total() | number: '1.0-0' }} F</small> }
+          </div>
+
+          @if (creditPossible()) {
+            <div class="choix-credit" role="radiogroup" aria-label="Comptant ou a credit">
+              <button type="button" [class.actif]="!credit()" (click)="basculerCredit(false)">Comptant</button>
+              <button type="button" [class.actif]="credit()" [disabled]="!client()" (click)="basculerCredit(true)">A credit / acompte</button>
+            </div>
+            @if (!client()) {
+              <small class="aide-credit">Pour vendre a credit, choisissez d'abord la fiche du client.</small>
+            }
+            @if (credit()) {
+              <div class="bloc-apparition">
+                <div class="champ">
+                  <label for="acompte">Acompte verse maintenant (F){{ (reglages()?.acompteMinimum ?? 0) > 0 ? ' · minimum ' + reglages()!.acompteMinimum + ' %' : '' }}</label>
+                  <input id="acompte" name="acompte" type="number" min="0" step="any"
+                         [ngModel]="acompte()" (ngModelChange)="changerAcompte($event)" />
+                </div>
+                <small class="aide-credit">Reste du par {{ client()?.nom }} : <strong>{{ total() - aPayer() | number: '1.0-0' }} F</strong>,
+                  echeance dans {{ client()?.delaiPaiementJours ?? reglages()?.delaiPaiementJours }} jours.</small>
+              </div>
+            }
           }
-        </div>
-        <div class="monnaie" [class.insuffisant]="(montantRecu() ?? 0) < aPayer()">
-          @if ((montantRecu() ?? 0) >= aPayer()) {
-            Monnaie a rendre : <strong>{{ monnaie() | number: '1.0-0' }} F</strong>
+
+          <div class="tuiles-modes" role="radiogroup" aria-label="Moyen de paiement">
+            @for (m of modes; track m.valeur) {
+              <button type="button" class="tuile-mode" role="radio" [class.actif]="mode() === m.valeur" [attr.aria-checked]="mode() === m.valeur"
+                      (click)="choisirMode(m.valeur)">
+                <span aria-hidden="true">{{ m.icone }}</span>
+                <small>{{ m.libelle }}</small>
+              </button>
+            }
+          </div>
+
+          @if (mode() === 'ESPECES') {
+            <div class="bloc-apparition">
+              <div class="champ">
+                <label for="recu">Montant recu</label>
+                <input #champRecu id="recu" name="recu" type="number" min="0" step="any" class="saisie-recu" autocomplete="off"
+                       [ngModel]="montantRecu()" (ngModelChange)="montantRecu.set($event)" />
+              </div>
+              <div class="billets">
+                @for (b of billets(); track b) {
+                  <button type="button" [class.actif]="montantRecu() === b" (click)="montantRecu.set(b)">{{ b | number: '1.0-0' }}</button>
+                }
+              </div>
+              <div class="jauge" role="progressbar" [attr.aria-valuenow]="progression()" aria-valuemin="0" aria-valuemax="100">
+                <span [style.width.%]="progression()"></span>
+              </div>
+              <div class="resultat-especes" [class.manque]="(montantRecu() ?? 0) < aPayer()">
+                <span>{{ (montantRecu() ?? 0) >= aPayer() ? 'Monnaie a rendre' : 'Il manque' }}</span>
+                @for (v of [(montantRecu() ?? 0) >= aPayer() ? monnaie() : aPayer() - (montantRecu() ?? 0)]; track v) {
+                  <strong class="vif">{{ v | number: '1.0-0' }} F</strong>
+                }
+              </div>
+            </div>
           } @else {
-            Il manque <strong>{{ aPayer() - (montantRecu() ?? 0) | number: '1.0-0' }} F</strong>
+            <div class="bloc-apparition">
+              <div class="champ">
+                <label for="reference">Reference de la transaction (facultatif)</label>
+                <input id="reference" name="reference" [(ngModel)]="reference" placeholder="Ex. ID mobile money" />
+              </div>
+            </div>
           }
-        </div>
-      } @else {
-        <div class="champ">
-          <label for="reference">Reference de la transaction (facultatif)</label>
-          <input id="reference" name="reference" [(ngModel)]="reference" placeholder="Ex. ID mobile money" />
-        </div>
-      }
-
-      @if (!devisCharge()) {
-        <div class="champ">
-          <label for="remise">Remise (F CFA)</label>
-          <input id="remise" name="remise" type="number" min="0" step="any" [ngModel]="remise()"
-                 (ngModelChange)="remise.set($event); montantRecu.set(aPayer())" />
-        </div>
-      }
+        </section>
+      </div>
 
       <div class="actions-formulaire">
         <button class="bouton secondaire annuler" type="button" (click)="paiement.set(false)">Retour</button>
-        <button class="bouton-vert" type="submit" [disabled]="enCours() || !paiementPossible()">
-          {{ enCours() ? 'Enregistrement...' : (credit() ? 'Valider a credit' : 'Valider ' + (total() | number: '1.0-0') + ' F') }}
+        <button class="bouton-vert valider-encaissement" type="submit" [disabled]="enCours() || !paiementPossible()">
+          {{ enCours() ? 'Enregistrement...' : (credit() ? 'Valider a credit' : 'Encaisser ' + (aPayer() | number: '1.0-0') + ' F') }}
         </button>
       </div>
     </form>
@@ -440,9 +506,16 @@
         </p>
       }
       @if (resteDuTicket(t).length) {
-        <p class="reste-du">A livrer plus tard :
+        <p class="reste-du">{{ bonsRetrait().length ? 'A retirer avec le bon :' : 'A livrer plus tard :' }}
           @for (l of resteDuTicket(t); track l.libelle) { <br /><strong>{{ l.reste | number: '1.0-3' }}</strong> · {{ l.libelle }} }
         </p>
+      }
+      @if (bonsRetrait().length) {
+        <div class="actions-formulaire">
+          @for (b of bonsRetrait(); track b.id) {
+            <button class="bouton" type="button" (click)="imprimerRetrait(b)">Bon {{ b.numero }} · {{ b.lieuNom }}</button>
+          }
+        </div>
       }
       <div class="actions-formulaire">
         <button class="bouton secondaire info" type="button" (click)="imprimer(t)">Imprimer le recu</button>

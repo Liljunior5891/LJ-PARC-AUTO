@@ -158,6 +158,20 @@
   }
 }
 
+/* La liste Select2 garde une largeur fixe : le champ de recherche prend le reste. */
+.champ-recherche ::ng-deep .select2-container {
+  flex: 0 0 165px;
+  width: 165px !important;
+  border-left: 1px solid var(--bord);
+
+  .select2-selection--single {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
 .champ-recherche {
   display: flex;
   flex: 1;

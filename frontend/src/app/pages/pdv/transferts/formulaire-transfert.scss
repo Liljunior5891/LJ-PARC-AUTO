@@ -1,0 +1,37 @@
+.ajout-produit.inactif {
+  border-color: var(--couleur-bordure);
+  background: #f6f8fb;
+
+  span {
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.colonne-photo {
+  width: 56px;
+}
+
+.vignette-produit {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #eef2f7;
+  font-size: 1.2rem;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.depasse td {
+  background: #fff8ec;
+}
+
+.alerte-depasse {
+  color: #96660a !important;
+}

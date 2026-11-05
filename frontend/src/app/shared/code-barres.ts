@@ -28,6 +28,19 @@ export function normaliserCodeBarres(valeur: string): string {
 }
 
 /**
+ * Numero de bon lu a la douchette. Reglee en QWERTY sur un poste AZERTY, elle ecrit
+ * « BR)é0é^)à... » : les chiffres et le tiret sont remis en place. Un numero saisi
+ * normalement, qui n'a aucun de ces caracteres, reste tel quel.
+ */
+export function normaliserNumeroBon(valeur: string): string {
+  const v = valeur.trim();
+  if (![...v].some((c) => c === ')' || (c in AZERTY && c !== '-'))) {
+    return v;
+  }
+  return [...v].map((c) => (c === ')' ? '-' : AZERTY[c] ?? c)).join('').toUpperCase();
+}
+
+/**
  * Recueille les lectures de douchette tapees hors de tout champ de saisie
  * (focus sur un bouton, une categorie, ecran de telephone...). Une lecture
  * est une rafale rapide d'au moins 4 caracteres, terminee par Entree ou par

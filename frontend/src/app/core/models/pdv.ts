@@ -138,6 +138,9 @@ export interface MouvementStock {
   motif?: string;
   venteId?: number;
   auteur?: string;
+  lieuId?: number | null;
+  lieuNom?: string | null;
+  stockLieuApres?: number | null;
 }
 
 // ------------------------------------------------- commandes fournisseurs
@@ -205,6 +208,7 @@ export interface SaisieStock {
   quantite: number;
   coutUnitaire?: number | null;
   motif?: string;
+  lieuId?: number | null;
 }
 
 export type ModePaiementPdv = 'ESPECES' | 'MOBILE_MONEY' | 'CARTE' | 'AUTRE';
@@ -241,6 +245,8 @@ export interface CaissePdv {
   /** Session en cours : qui tient la caisse en ce moment. */
   session?: { id: number; numero: string; caissierId: number; caissierNom: string; ouverteLe: string } | null;
   sessions: number;
+  lieuId?: number | null;
+  lieuNom?: string | null;
 }
 
 export interface CaisseRequete {
@@ -248,6 +254,8 @@ export interface CaisseRequete {
   description?: string;
   actif?: boolean;
   utilisateurIds: number[];
+  /** Magasin d'ou vend la caisse, quand l'entreprise a des entrepots. */
+  lieuId?: number | null;
 }
 
 /** Billets ou pieces d'une valeur, comptes a l'ouverture ou a la fermeture. */

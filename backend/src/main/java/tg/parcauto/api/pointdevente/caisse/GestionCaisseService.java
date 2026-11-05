@@ -26,12 +26,15 @@ public class GestionCaisseService {
     private final CaisseRepository repository;
     private final SessionCaisseRepository sessionRepository;
     private final PersonnelService personnel;
+    private final tg.parcauto.api.pointdevente.lieu.LieuStockRepository lieux;
 
     public record Requete(
             @NotBlank @Size(max = 80) String nom,
             @Size(max = 255) String description,
             Boolean actif,
-            Set<Long> utilisateurIds) {
+            Set<Long> utilisateurIds,
+            /** Magasin d'ou vend la caisse, quand l'entreprise a des entrepots. */
+            Long lieuId) {
     }
 
     /** Session en cours sur la caisse, pour savoir qui la tient. */
@@ -40,7 +43,8 @@ public class GestionCaisseService {
 
     public record Reponse(
             Long id, String nom, String description, boolean actif,
-            List<PersonnelService.Membre> utilisateurs, SessionEnCours session, long sessions) {
+            List<PersonnelService.Membre> utilisateurs, SessionEnCours session, long sessions,
+            Long lieuId, String lieuNom) {
     }
 
     @Transactional(readOnly = true)
@@ -141,6 +145,15 @@ public class GestionCaisseService {
             c.getUtilisateurIds().clear();
             c.getUtilisateurIds().addAll(personnel.verifier(r.utilisateurIds()));
         }
+        if (r.lieuId() != null) {
+            tg.parcauto.api.pointdevente.lieu.LieuStock lieu = lieux.findById(r.lieuId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Lieu", r.lieuId()));
+            // Un entrepot stocke et sert les bons, mais il ne vend pas.
+            if (lieu.getType() != tg.parcauto.api.pointdevente.lieu.LieuStock.Type.MAGASIN) {
+                throw new BusinessException("Une caisse se rattache a un magasin : " + lieu.getNom() + " est un entrepot");
+            }
+            c.setLieu(lieu);
+        }
     }
 
     private Reponse versDto(Caisse c, SessionCaisse session, Map<Long, PersonnelService.Membre> membres) {
@@ -152,7 +165,8 @@ public class GestionCaisseService {
         return new Reponse(c.getId(), c.getNom(), c.getDescription(), c.isActif(), affectes,
                 session == null ? null : new SessionEnCours(session.getId(), session.getNumero(),
                         session.getCaissierId(), session.getCaissierNom(), session.getOuverteLe()),
-                sessionRepository.countByCaisseId(c.getId()));
+                sessionRepository.countByCaisseId(c.getId()),
+                c.getLieu() == null ? null : c.getLieu().getId(), c.getLieu() == null ? null : c.getLieu().getNom());
     }
 
     private Caisse charger(Long id) {

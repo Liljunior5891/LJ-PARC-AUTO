@@ -1,0 +1,193 @@
+<div class="entete-page">
+  <div>
+    <h1>Bons de retrait</h1>
+    <p class="sous-titre">Lisez ou saisissez le bon presente par le client, puis remettez la marchandise.</p>
+  </div>
+</div>
+
+@if (!horsLigne.enLigne()) {
+  <div class="message avertissement">
+    <strong>Sans connexion.</strong> Vous servez depuis la copie de cet appareil
+    @if (horsLigne.copieDu(); as date) { (du {{ date | date: 'dd/MM HH:mm' }}) }.
+    Un autre poste a pu servir le meme bon : les doublons seront signales au gerant au retour du reseau.
+  </div>
+}
+@if (horsLigne.enAttente().length) {
+  <div class="message info barre-attente">
+    <span>{{ horsLigne.enAttente().length }} remise(s) a envoyer au serveur.</span>
+    @if (horsLigne.enLigne()) {
+      <button class="bouton secondaire info" type="button" (click)="horsLigne.envoyer()">Envoyer maintenant</button>
+    }
+  </div>
+}
+@for (r of horsLigne.dernierEnvoi(); track r.cle) {
+  @if (r.statut === 'CONFLIT') { <div class="message erreur">Remise sans connexion a verifier par le gerant : {{ r.message }}</div> }
+}
+@if (succes()) {
+  <div class="message succes barre-attente">
+    <span>{{ succes() }}</span>
+    @if (dernierBon(); as b) {
+      <button class="bouton secondaire info" type="button" (click)="imprimerLivraison(b)">Imprimer le bon de livraison</button>
+    }
+  </div>
+}
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+
+@if (conflits().length) {
+  <div class="carte conflits">
+    <h2>Remises sans connexion a verifier</h2>
+    <p class="aide">La marchandise est deja partie alors que le serveur ne pouvait plus l'enregistrer. Controlez le stock
+      (inventaire si besoin), appelez le client, puis marquez le cas comme regle.</p>
+    @for (c of conflits(); track c.id) {
+      <div class="conflit">
+        <div>
+          <strong>{{ c.bonNumero }}</strong> · {{ c.lieuNom }} · {{ c.auteur }} · {{ c.faiteLe | date: 'dd/MM/yyyy HH:mm' }}
+          @if (c.recuPar) { · recu par {{ c.recuPar }} }
+          <br /><small>{{ c.detail }}</small>
+        </div>
+        <button class="bouton secondaire" type="button" (click)="traiter(c)">Regle</button>
+      </div>
+    }
+  </div>
+}
+
+<div class="carte lecture">
+  <div class="champ saisie-bon">
+    <label for="numero">Numero du bon, commande ou client</label>
+    <input id="numero" type="search" autocomplete="off" placeholder="Ex. BR-0042" [ngModel]="saisie" (ngModelChange)="rechercher($event)"
+           (keydown.enter)="ouvrirParNumero(saisie); $event.preventDefault()" />
+  </div>
+  @if (lecteurPossible) {
+    <button class="bouton" type="button" (click)="demarrerLecture()">Scanner le bon</button>
+  }
+  @if (horsLigne.enLigne()) {
+    @if ((etat()?.mesLieux?.length ?? 0) > 1) {
+      <div class="champ">
+        <label for="lieu">Lieu</label>
+        <select id="lieu" [ngModel]="lieuFiltre()" (ngModelChange)="lieuFiltre.set($event); charger()">
+          <option [ngValue]="null">Tous mes lieux</option>
+          @for (l of etat()?.mesLieux ?? []; track l.id) { <option [ngValue]="l.id">{{ l.nom }}</option> }
+        </select>
+      </div>
+    }
+    <label class="case">
+      <input type="checkbox" [ngModel]="tous()" (ngModelChange)="tous.set($event); charger()" />
+      Voir aussi les bons servis
+    </label>
+  }
+</div>
+
+<div class="liste-bons">
+  @for (b of affiches(); track b.id) {
+    <article class="carte bon" [class.ancien]="b.ancien">
+      <header>
+        <div>
+          <strong class="numero">{{ b.numero }}</strong>
+          @if (b.ancien) { <span class="etiquette alerte">Non retire depuis {{ b.jours }} jours</span> }
+          @if (b.statut === 'SERVI') { <span class="etiquette">Servi</span> }
+          @if (b.statut === 'ANNULE') { <span class="etiquette">Annule ou remplace</span> }
+          <br /><small>{{ b.lieuNom }} · commande {{ b.venteNumero }} · {{ b.dateEmission | date: 'dd/MM/yyyy' }}
+            @if (b.clientNom) { · {{ b.clientNom }} }</small>
+        </div>
+      </header>
+      <ul>
+        @for (l of b.lignes; track l.ligneId) {
+          <li [class.fini]="l.reste <= 0"><strong>{{ l.reste | number: '1.0-3' }}</strong> {{ l.unite || '' }} · {{ l.libelle }}
+            @if (l.servi > 0) { <small>({{ l.servi | number: '1.0-3' }} deja servi)</small> }
+          </li>
+        }
+      </ul>
+      <footer>
+        @if (b.statut === 'A_SERVIR') {
+          <button class="bouton succes" type="button" (click)="ouvrir(b)">Servir</button>
+          @if (horsLigne.enLigne()) {
+            <button class="bouton secondaire" type="button" (click)="imprimerRetrait(b)">Reimprimer</button>
+            @if (gerant) { <button class="bouton secondaire" type="button" (click)="ouvrirDeplacement(b)">Changer de lieu</button> }
+          }
+        }
+      </footer>
+    </article>
+  } @empty {
+    <div class="carte aucun">Aucun bon a servir.</div>
+  }
+</div>
+
+@if (bonOuvert(); as b) {
+  <app-modale [titre]="'Servir ' + b.numero" [sousTitre]="b.lieuNom + (b.clientNom ? ' · ' + b.clientNom : '')" largeur="680px"
+              [erreur]="erreurRemise()" (ferme)="bonOuvert.set(null)">
+    <form (ngSubmit)="remettre()">
+      @if (b.clientDoitEncore) {
+        <div class="message avertissement">Ce client doit encore de l'argent sur cette commande. Vous pouvez le servir quand meme.</div>
+      }
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Article</th><th class="numerique">Reste</th><th class="numerique">Sur place</th><th class="numerique">Remis maintenant</th></tr></thead>
+          <tbody>
+            @for (l of b.lignes; track l.ligneId) {
+              @if (l.reste > 0) {
+                <tr>
+                  <td>{{ l.libelle }} <small>{{ l.unite || '' }}</small></td>
+                  <td class="numerique">{{ l.reste | number: '1.0-3' }}</td>
+                  <td class="numerique">{{ l.enStock | number: '1.0-3' }}</td>
+                  <td class="numerique">
+                    <input type="number" min="0" [max]="l.reste" step="any" style="width: 90px; text-align: right"
+                           [name]="'q' + l.ligneId" [attr.aria-label]="'Quantite remise de ' + l.libelle"
+                           [ngModel]="quantites()[l.ligneId]" (ngModelChange)="changerQuantite(l, $event)" />
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="grille-formulaire" style="margin-top: 12px">
+        <div class="champ">
+          <label for="recu">Recu par (client, chauffeur...)</label>
+          <input id="recu" name="recu" maxlength="150" [(ngModel)]="recuPar" />
+        </div>
+        <div class="champ">
+          <label for="note">Note (immatriculation...)</label>
+          <input id="note" name="note" maxlength="200" [(ngModel)]="note" />
+        </div>
+      </div>
+      @if (!remiseValide()) { <small class="aide">Indiquez une quantite entre 0 et le reste, pour au moins un article.</small> }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="bonOuvert.set(null)">Annuler</button>
+        <button class="bouton succes" type="submit" [disabled]="!remiseValide() || envoi()">Remettre la marchandise</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (aDeplacer(); as b) {
+  <app-modale [titre]="'Changer le lieu de ' + b.numero" [sousTitre]="'Actuellement a ' + b.lieuNom" largeur="620px"
+              [erreur]="erreurDeplacement()" (ferme)="aDeplacer.set(null)">
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr><th>Lieu</th>@for (l of b.lignes; track l.ligneId) { @if (l.reste > 0) { <th class="numerique">{{ l.libelle }} ({{ l.reste | number: '1.0-3' }})</th> } }</tr>
+        </thead>
+        <tbody>
+          @for (lieu of autresLieux(b); track lieu.id) {
+            <tr>
+              <td><label class="case"><input type="radio" name="lieu" [value]="lieu.id" [(ngModel)]="nouveauLieu" /> {{ lieu.nom }}</label></td>
+              @for (l of b.lignes; track l.ligneId) { @if (l.reste > 0) { <td class="numerique">{{ dispoDe(lieu.id, l.articleId) | number: '1.0-3' }} disponible(s)</td> } }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="aide">Le nouveau lieu doit avoir toute la marchandise disponible. Le client recoit alors un nouveau bon.</p>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="aDeplacer.set(null)">Annuler</button>
+      <button class="bouton" type="button" [disabled]="!nouveauLieu" (click)="deplacer()">Changer de lieu</button>
+    </div>
+  </app-modale>
+}
+
+@if (lecture()) {
+  <div class="fenetre-lecture">
+    <video #video playsinline muted aria-label="Camera"></video>
+    <button class="bouton secondaire" type="button" (click)="arreterLecture()">Fermer</button>
+  </div>
+}

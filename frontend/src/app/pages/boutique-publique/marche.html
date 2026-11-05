@@ -21,7 +21,7 @@
       <label class="champ-recherche">
         <input type="search" placeholder="Que cherchez-vous ? Poulet, ciment, voiture..." aria-label="Rechercher"
                [(ngModel)]="recherche" (ngModelChange)="rechercher()" />
-        <select data-natif aria-label="Rayon" [(ngModel)]="categorie" (ngModelChange)="charger()">
+        <select aria-label="Rayon" [(ngModel)]="categorie" (ngModelChange)="charger()">
           <option value="">Tous les rayons</option>
           @for (c of categories(); track c) {
             <option [value]="c">{{ c }}</option>
@@ -32,7 +32,7 @@
       <div class="actions-entete">
         <label class="ville">
           <app-icone-vitrine nom="position" />
-          <select data-natif aria-label="Ville" [(ngModel)]="ville" (ngModelChange)="charger()">
+          <select aria-label="Ville" [(ngModel)]="ville" (ngModelChange)="charger()">
             <option value="">Toutes les villes</option>
             @for (v of villes(); track v) {
               <option [value]="v">{{ v }}</option>

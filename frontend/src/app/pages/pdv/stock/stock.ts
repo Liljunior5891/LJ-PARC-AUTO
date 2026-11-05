@@ -13,6 +13,8 @@ import {
   TYPES_MOUVEMENT_MANUELS,
   TypeMouvementStock
 } from '../../../core/models/pdv';
+import { AuthService } from '../../../core/auth/auth.service';
+import { LieuxService } from '../../../core/services/lieux.service';
 import { PdvService } from '../../../core/services/pdv.service';
 import { Modale } from '../../../shared/modale';
 import { FormulaireCommande } from './formulaire-commande';
@@ -32,7 +34,12 @@ import { FormulaireCommande } from './formulaire-commande';
 export class StockPdv implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(PdvService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly lieuxService = inject(LieuxService);
+  /** Avec des entrepots, un mouvement concerne un lieu. */
+  readonly lieux = computed(() => this.lieuxService.etat()?.lieux ?? []);
+  lieuId: number | null = null;
 
   readonly onglet = signal<'commandes' | 'mouvements'>('commandes');
   readonly libellesStatut = LIBELLES_STATUT_COMMANDE_FOURNISSEUR;
@@ -64,6 +71,9 @@ export class StockPdv implements OnInit {
   private readonly typeChoisi = signal<TypeMouvementStock>('ENTREE');
 
   ngOnInit(): void {
+    if (this.auth.estMateriaux()) {
+      this.lieuxService.chargerEtat();
+    }
     this.chargerCommandes();
     this.charger();
     this.service.articles({ stockBas: true, actif: true, size: 50 }).subscribe({
@@ -143,6 +153,7 @@ export class StockPdv implements OnInit {
     this.quantite = null;
     this.coutUnitaire = article?.prixAchat ?? null;
     this.motif = '';
+    this.lieuId = this.lieux()[0]?.id ?? null;
     this.erreur.set(null);
     this.saisie.set(true);
   }
@@ -167,7 +178,8 @@ export class StockPdv implements OnInit {
         type: this.type,
         quantite: this.quantite,
         coutUnitaire: this.type === 'ENTREE' ? this.coutUnitaire : null,
-        motif: this.motif || undefined
+        motif: this.motif || undefined,
+        lieuId: this.lieuId
       })
       .subscribe({
         next: (m) => {

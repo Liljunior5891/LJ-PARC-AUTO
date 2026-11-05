@@ -69,6 +69,11 @@ public class LigneVente extends BaseEntity {
     @Column(name = "quantite_base_livree", nullable = false, precision = 14, scale = 3)
     private BigDecimal quantiteBaseLivree;
 
+    /** Lieu ou retirer la marchandise ; nul tant que l'entreprise n'a pas d'entrepot. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lieu_id")
+    private tg.parcauto.api.pointdevente.lieu.LieuStock lieu;
+
     /** Sauf indication contraire, tout est remis a la vente. */
     @jakarta.persistence.PrePersist
     void completerQuantiteBase() {

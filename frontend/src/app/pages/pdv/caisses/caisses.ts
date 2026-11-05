@@ -1,8 +1,10 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CaissePdv, MembrePersonnel, SessionCaisse } from '../../../core/models/pdv';
+import { AuthService } from '../../../core/auth/auth.service';
+import { LieuxService } from '../../../core/services/lieux.service';
 import { PdvService } from '../../../core/services/pdv.service';
 import { Modale } from '../../../shared/modale';
 import { FermetureSession, OuvertureSession } from '../../../shared/session-caisse';
@@ -22,6 +24,7 @@ import { FermetureSession, OuvertureSession } from '../../../shared/session-cais
 export class CaissesPdv implements OnInit {
   private readonly service = inject(PdvService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
 
   readonly caisses = signal<CaissePdv[]>([]);
   readonly personnel = signal<MembrePersonnel[]>([]);
@@ -30,7 +33,9 @@ export class CaissesPdv implements OnInit {
   readonly chargement = signal(true);
 
   readonly edition = signal<CaissePdv | 'nouvelle' | null>(null);
-  formulaire = { nom: '', description: '', actif: true };
+  formulaire: { nom: string; description: string; actif: boolean; lieuId: number | null } = { nom: '', description: '', actif: true, lieuId: null };
+  private readonly lieuxService = inject(LieuxService);
+  readonly magasins = computed(() => (this.lieuxService.etat()?.lieux ?? []).filter((l) => l.type === 'MAGASIN'));
   readonly choisis = signal<Set<number>>(new Set());
 
   // Session : ouverture et fermeture
@@ -39,6 +44,9 @@ export class CaissesPdv implements OnInit {
   readonly succes = signal<string | null>(null);
 
   ngOnInit(): void {
+    if (this.auth.estMateriaux()) {
+      this.lieuxService.chargerEtat();
+    }
     this.charger();
     this.service.personnel().subscribe({ next: (p) => this.personnel.set(p.filter((m) => m.actif)) });
   }
@@ -89,7 +97,7 @@ export class CaissesPdv implements OnInit {
   }
 
   nouvelle(): void {
-    this.formulaire = { nom: '', description: '', actif: true };
+    this.formulaire = { nom: '', description: '', actif: true, lieuId: null };
     this.choisis.set(new Set());
     this.erreurFormulaire.set(null);
     this.edition.set('nouvelle');
@@ -97,7 +105,7 @@ export class CaissesPdv implements OnInit {
 
   modifier(caisse: CaissePdv, evenement: Event): void {
     evenement.stopPropagation();
-    this.formulaire = { nom: caisse.nom, description: caisse.description ?? '', actif: caisse.actif };
+    this.formulaire = { nom: caisse.nom, description: caisse.description ?? '', actif: caisse.actif, lieuId: caisse.lieuId ?? null };
     this.choisis.set(new Set(caisse.utilisateurs.map((u) => u.id)));
     this.erreurFormulaire.set(null);
     this.edition.set(caisse);
@@ -124,7 +132,8 @@ export class CaissesPdv implements OnInit {
       nom: this.formulaire.nom.trim(),
       description: this.formulaire.description.trim() || undefined,
       actif: this.formulaire.actif,
-      utilisateurIds: [...this.choisis()]
+      utilisateurIds: [...this.choisis()],
+      lieuId: this.formulaire.lieuId
     };
     const appel = edition === 'nouvelle'
       ? this.service.creerCaisse(requete)

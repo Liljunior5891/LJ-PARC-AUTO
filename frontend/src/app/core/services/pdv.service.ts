@@ -145,9 +145,9 @@ export class PdvService {
   }
 
   /** Quantites recues par ligne ; une ligne absente est recue en totalite. */
-  receptionnerCommandeFournisseur(id: number, lignes: { ligneId: number; quantiteRecue: number; coutUnitaire?: number | null }[]):
+  receptionnerCommandeFournisseur(id: number, lignes: { ligneId: number; quantiteRecue: number; coutUnitaire?: number | null }[], lieuId?: number | null):
     Observable<CommandeFournisseurDetail> {
-    return this.http.post<CommandeFournisseurDetail>(`${this.base}/approvisionnement/commandes/${id}/reception`, { lignes });
+    return this.http.post<CommandeFournisseurDetail>(`${this.base}/approvisionnement/commandes/${id}/reception`, { lignes, lieuId });
   }
 
   annulerCommandeFournisseur(id: number): Observable<CommandeFournisseurDetail> {
@@ -155,8 +155,8 @@ export class PdvService {
   }
 
   /** Feuille d'inventaire validee en une fois : un mouvement par ecart constate. */
-  validerInventaire(comptages: { articleId: number; quantite: number }[], motif?: string): Observable<BilanInventaire> {
-    return this.http.post<BilanInventaire>(`${this.base}/stock/inventaire`, { comptages, motif });
+  validerInventaire(comptages: { articleId: number; quantite: number }[], motif?: string, lieuId?: number | null): Observable<BilanInventaire> {
+    return this.http.post<BilanInventaire>(`${this.base}/stock/inventaire`, { comptages, motif, lieuId });
   }
 
   // --------------------------------------------------------------- caisses

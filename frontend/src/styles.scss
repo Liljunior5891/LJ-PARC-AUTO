@@ -1220,8 +1220,18 @@ table.tableau {
 /* ===================================================================
    Select2 : habillage des listes deroulantes, aligne sur les champs
    =================================================================== */
+/* Une liste et un champ cote a cote ont la meme hauteur. */
+.champ input:not([type='checkbox'], [type='radio'], [type='file']) {
+  min-height: 38px;
+}
+
 .select2-container--default {
   font: inherit;
+
+  /* Une liste courte s'affiche entiere, sans defilement. */
+  .select2-results > .select2-results__options {
+    max-height: 320px;
+  }
 
   .select2-selection--single {
     display: flex;
@@ -1304,6 +1314,16 @@ select.invalide + .select2-container .select2-selection--single {
   gap: 0.5rem;
   min-width: 0;
   vertical-align: middle;
+}
+
+.s2-pastille svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .s2-pastille {

@@ -9,7 +9,9 @@ public enum TypeMouvementStock {
     /** Comptage physique : la quantite saisie remplace le stock, l'ecart est enregistre. */
     INVENTAIRE("Inventaire", 0, true),
     VENTE("Vente", -1, false),
-    RETOUR("Retour (annulation de vente)", 1, false);
+    RETOUR("Retour (annulation de vente)", 1, false),
+    TRANSFERT_SORTIE("Transfert (depart)", -1, false),
+    TRANSFERT_ENTREE("Transfert (arrivee)", 1, false);
 
     private final String libelle;
     private final int sens;

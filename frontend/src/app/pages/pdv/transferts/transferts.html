@@ -1,0 +1,121 @@
+<div class="entete-page">
+  <div>
+    <h1>Transferts</h1>
+    <p class="sous-titre">Deplacez la marchandise entre vos magasins et vos entrepots.</p>
+  </div>
+  <div class="actions-entete">
+    <label class="case">
+      <input type="checkbox" [ngModel]="enCours()" (ngModelChange)="enCours.set($event); charger()" />
+      En cours seulement
+    </label>
+    <button class="bouton" type="button" (click)="nouvelle.set(true)">+ Nouveau transfert</button>
+  </div>
+</div>
+
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+
+<div class="liste">
+  @for (t of transferts(); track t.id) {
+    <article class="carte transfert">
+      <header>
+        <div>
+          <strong>{{ t.numero }}</strong>
+          <span class="etiquette" [class.alerte]="t.statut === 'ECART'" [class.fini]="t.statut === 'RECU'">{{ libelles[t.statut] }}</span>
+          <div class="trajet">{{ t.sourceNom }} → {{ t.destinationNom }}</div>
+          <small>Demande par {{ t.demandePar }} le {{ t.demandeLe | date: 'dd/MM/yyyy' }}
+            @if (t.transporteur) { · transporteur {{ t.transporteur }} }</small>
+        </div>
+      </header>
+      <ul>
+        @for (l of t.lignes; track l.id) {
+          <li>
+            <strong>{{ (l.quantiteRecue ?? l.quantiteExpediee ?? l.quantite) | number: '1.0-3' }}</strong> {{ l.unite || '' }} · {{ l.nom }}
+            @if (l.ecart > 0) {
+              <small class="resultat-negatif">ecart {{ l.ecart | number: '1.0-3' }}
+                @if (l.decisionEcart === 'PERTE') { (perdu) }
+                @if (l.decisionEcart === 'RETOUR_SOURCE') { (revenu au depart) }
+                @if (l.decisionEcart === 'ARRIVE') { (finalement arrive) }
+              </small>
+            }
+          </li>
+        }
+      </ul>
+      @if (t.note) { <small>{{ t.note }}</small> }
+      <footer>
+        @if (gerant && t.statut === 'DEMANDE') { <button class="bouton" type="button" (click)="valider(t)">Valider</button> }
+        @if (peutExpedier(t)) { <button class="bouton" type="button" (click)="ouvrirAction('expedition', t)">Expedier</button> }
+        @if (peutRecevoir(t)) { <button class="bouton succes" type="button" (click)="ouvrirAction('reception', t)">Receptionner</button> }
+        @if (gerant && t.statut === 'ECART') { <button class="bouton" type="button" (click)="ouvrirAction('ecart', t)">Traiter l'ecart</button> }
+        @if (gerant && (t.statut === 'DEMANDE' || t.statut === 'VALIDE')) {
+          <button class="bouton secondaire annuler" type="button" (click)="annuler(t)">Annuler</button>
+        }
+        <button class="bouton secondaire" type="button" (click)="imprimer(t)">Bon de transfert</button>
+      </footer>
+    </article>
+  } @empty {
+    <div class="carte aucun">Aucun transfert {{ enCours() ? 'en cours' : '' }}.</div>
+  }
+</div>
+
+@if (nouvelle()) {
+  <app-formulaire-transfert (enregistre)="transfertEnregistre($event)" (ferme)="nouvelle.set(false)" />
+}
+
+@if (action(); as a) {
+  <app-modale [titre]="(a.type === 'expedition' ? 'Expedier ' : a.type === 'reception' ? 'Receptionner ' : 'Ecart de ') + a.transfert.numero"
+              [sousTitre]="a.transfert.sourceNom + ' → ' + a.transfert.destinationNom" largeur="680px"
+              [erreur]="erreurFenetre()" (ferme)="action.set(null)">
+    <form (ngSubmit)="confirmerAction()">
+      @if (a.type === 'ecart') {
+        <ul class="ecarts">
+          @for (l of a.transfert.lignes; track l.id) {
+            @if (l.ecart > 0) { <li><strong>{{ l.ecart | number: '1.0-3' }}</strong> {{ l.unite || '' }} · {{ l.nom }}</li> }
+          }
+        </ul>
+        <div class="champ">
+          <label for="decision">Que s'est-il passe ?</label>
+          <select id="decision" name="decision" [(ngModel)]="decision">
+            <option value="PERTE">Perdu ou casse : sort du stock</option>
+            <option value="RETOUR_SOURCE">Revenu au lieu de depart</option>
+            <option value="ARRIVE">Finalement arrive a destination</option>
+          </select>
+        </div>
+        <div class="champ">
+          <label for="motif">Motif</label>
+          <input id="motif" name="motif" maxlength="200" [(ngModel)]="motif" placeholder="Ex. Sacs perces pendant le trajet" />
+        </div>
+      } @else {
+        <div class="tableau-conteneur">
+          <table class="tableau">
+            <thead><tr><th>Produit</th><th class="numerique">{{ a.type === 'expedition' ? 'Valide' : 'Expedie' }}</th><th class="numerique">{{ a.type === 'expedition' ? 'Charge' : 'Compte a l\'arrivee' }}</th></tr></thead>
+            <tbody>
+              @for (l of a.transfert.lignes; track l.id) {
+                <tr>
+                  <td>{{ l.nom }} <small>{{ l.unite || '' }}</small></td>
+                  <td class="numerique">{{ (a.type === 'expedition' ? l.quantite : l.quantiteExpediee) | number: '1.0-3' }}</td>
+                  <td class="numerique">
+                    <input type="number" min="0" step="any" style="width: 90px; text-align: right" [name]="'l' + l.id"
+                           [attr.aria-label]="'Quantite de ' + l.nom" [ngModel]="quantites()[l.id]" (ngModelChange)="changerQuantite(l.id, $event)" />
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (a.type === 'expedition') {
+          <div class="champ" style="margin-top: 10px">
+            <label for="transporteur">Transporteur</label>
+            <input id="transporteur" name="transporteur" maxlength="150" [(ngModel)]="transporteur" placeholder="Nom, immatriculation..." />
+          </div>
+        } @else {
+          <p class="aide">Ce qui manque reste en transit et sera signale au gerant.</p>
+        }
+      }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="action.set(null)">Annuler</button>
+        <button class="bouton" type="submit">Confirmer</button>
+      </div>
+    </form>
+  </app-modale>
+}

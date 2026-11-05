@@ -50,7 +50,7 @@ class CommandeServiceTest {
         repository = mock(CommandeRepository.class);
         MouvementStockRepository mouvements = mock(MouvementStockRepository.class);
         when(mouvements.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        StockService stockService = new StockService(mock(ArticleRepository.class), mouvements);
+        StockService stockService = new StockService(mock(ArticleRepository.class), mouvements, org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class));
         venteService = mock(VenteService.class);
         ArticleRepository articles = mock(ArticleRepository.class);
 

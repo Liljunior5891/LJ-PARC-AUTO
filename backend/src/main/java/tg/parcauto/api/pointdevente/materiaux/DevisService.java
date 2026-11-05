@@ -38,6 +38,8 @@ import java.util.List;
 @Transactional
 public class DevisService {
 
+    private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
+
     private final DevisRepository repository;
     private final ArticleRepository articleRepository;
     private final ReglageMateriauxService reglages;
@@ -129,6 +131,12 @@ public class DevisService {
                 BigDecimal emporte = disponible.min(l.getQuantite());
                 emportes.put(cle, disponible.subtract(emporte));
                 venteService.emporter(ligne, emporte);
+                e.emportes().stream()
+                        .filter(x -> x.lieuId() != null && x.articleId().equals(l.getArticle().getId())
+                                && java.util.Objects.equals(x.conditionnementId(),
+                                        l.getConditionnement() == null ? null : l.getConditionnement().getId()))
+                        .findFirst()
+                        .ifPresent(x -> ligne.setLieu(lieux.demande(x.lieuId())));
             }
             lignes.add(ligne);
         }

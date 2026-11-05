@@ -1,232 +1,253 @@
-<div class="formulaire-client fiche-serree" [class.compact]="compact()" [formGroup]="formulaire"
+<div class="formulaire-client fiche-serree fiche-client" [class.compact]="compact()" [formGroup]="formulaire"
      (keydown.enter)="surEntree($event)">
   @if (erreur()) {
     <div class="message erreur">{{ erreur() }}</div>
   }
 
   <!-- Type de client : il decide des champs et des pieces demandes. -->
-  <div class="types-client" role="radiogroup" aria-label="Type de client">
-    @for (t of types; track t.valeur) {
-      <button type="button" class="tuile-type" role="radio" [class.actif]="type() === t.valeur"
-              [attr.aria-checked]="type() === t.valeur" [title]="t.description" (click)="choisirType(t.valeur)">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="t.icone" /></svg>
-        <span>
-          <strong>{{ t.libelle }}</strong>
-        </span>
-      </button>
-    }
-  </div>
-
-  <h3>Identite</h3>
-  <div class="grille-formulaire">
-    @if (profil().personne) {
-      <div class="champ">
-        <label for="fc-nom">Nom <span class="requis">*</span></label>
-        <input id="fc-nom" formControlName="nom" placeholder="Nom de famille" autocomplete="family-name" />
-      </div>
-      <div class="champ">
-        <label for="fc-prenoms">Prenoms <span class="requis">*</span></label>
-        <input id="fc-prenoms" formControlName="prenoms" autocomplete="given-name" />
-      </div>
-      <div class="champ">
-        <label for="fc-naissance">Date de naissance</label>
-        <input id="fc-naissance" type="date" formControlName="dateNaissance" />
-      </div>
-      <div class="champ">
-        <label for="fc-profession">Profession</label>
-        <input id="fc-profession" formControlName="profession" />
-      </div>
+  <div class="bandeau-type" [style.--teinte]="couleurType()">
+    <span class="avatar-type" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path [attr.d]="profil().icone" /></svg>
+    </span>
+    <div class="champ choix-type">
+      <label for="fc-type">Type de client</label>
+      <select id="fc-type" data-recherche="jamais" (change)="choisirType($any($event.target).value)">
+        @for (t of types; track t.valeur) {
+          <option [value]="t.valeur" [selected]="t.valeur === type()" [attr.data-icone]="t.icone"
+                  [attr.data-couleur]="t.couleur" [attr.data-detail]="t.description">{{ t.libelle }}</option>
+        }
+      </select>
+    </div>
+    <p class="aide-type">{{ profil().description }}</p>
+    @if (champsManquants().length === 0) {
+      <span class="etat-fiche pret">✓ Fiche prete</span>
     } @else {
-      <div class="champ champ-large">
-        <label for="fc-raison">{{ profil().libelleNom }} <span class="requis">*</span></label>
-        <input id="fc-raison" formControlName="raisonSociale" [placeholder]="profil().placeholderNom" />
-      </div>
-      @if (profil().formeJuridique) {
-        <div class="champ">
-          <label for="fc-forme">Forme juridique</label>
-          <select id="fc-forme" formControlName="formeJuridique">
-            <option value="">Non precisee</option>
-            @for (forme of formesJuridiques; track forme) {
-              <option [value]="forme">{{ forme }}</option>
-            }
-          </select>
-        </div>
-      }
-      @if (profil().rccm) {
-        <div class="champ">
-          <label for="fc-rccm">N° RCCM</label>
-          <input id="fc-rccm" formControlName="rccm" placeholder="TG-LOM-01-2024-B12-00000" />
-        </div>
-      }
-      @if (profil().organismeTutelle) {
-        <div class="champ">
-          <label for="fc-tutelle" title="Ministere ou organisme de tutelle">Tutelle</label>
-          <input id="fc-tutelle" formControlName="organismeTutelle" />
-        </div>
-      }
-      @if (profil().numeroAgrement) {
-        <div class="champ">
-          <label for="fc-agrement" title="N° d'agrement ou d'accord de siege">N° d'agrement</label>
-          <input id="fc-agrement" formControlName="numeroAgrement" />
-        </div>
-      }
-      @if (profil().identifiantFiscal) {
-        <div class="champ">
-          <label for="fc-nif" title="Identifiant fiscal">NIF</label>
-          <input id="fc-nif" formControlName="identifiantFiscal" />
-        </div>
-      }
-      @if (profil().secteurActivite) {
-        <div class="champ">
-          <label for="fc-secteur">Secteur d'activite</label>
-          <input id="fc-secteur" formControlName="secteurActivite" placeholder="BTP, commerce, transport..." />
-        </div>
-      }
-    }
-    @if (!compact() && !source.codeAutomatique) {
-      <div class="champ">
-        <label for="fc-code">Code</label>
-        <input id="fc-code" formControlName="code" placeholder="Genere automatiquement" />
-      </div>
+      <span class="etat-fiche">{{ champsManquants().length }} champ(s) requis</span>
     }
   </div>
 
-  <h3>Coordonnees</h3>
-  <div class="grille-formulaire">
-    <div class="champ">
-      <label for="fc-telephone">Telephone</label>
-      <input id="fc-telephone" type="tel" formControlName="telephone" autocomplete="tel" />
-    </div>
-    <div class="champ">
-      <label for="fc-email">Email</label>
-      <input id="fc-email" type="email" formControlName="email" autocomplete="email" />
-    </div>
-    <div class="champ">
-      <label for="fc-adresse">Adresse</label>
-      <input id="fc-adresse" formControlName="adresse" />
-    </div>
-    <div class="champ">
-      <label for="fc-ville">Ville</label>
-      <input id="fc-ville" formControlName="ville" />
-    </div>
-    @if (!compact()) {
-      <div class="champ">
-        <label for="fc-pays">Pays</label>
-        <input id="fc-pays" formControlName="pays" />
-      </div>
-    }
-  </div>
-
-  @if (profil().libelleContact; as titreContact) {
-    <h3>{{ titreContact }}</h3>
-    <div class="grille-formulaire">
-      <div class="champ">
-        <label for="fc-contact">Nom complet</label>
-        <input id="fc-contact" formControlName="personneContact" />
-      </div>
-      <div class="champ">
-        <label for="fc-fonction">Fonction</label>
-        <input id="fc-fonction" formControlName="fonctionContact" placeholder="Gerant, directeur, comptable..." />
-      </div>
-      <div class="champ">
-        <label for="fc-tel-contact">Telephone</label>
-        <input id="fc-tel-contact" type="tel" formControlName="telephoneContact" />
-      </div>
-    </div>
-  }
-
-  <!-- Pieces justificatives : les types proposes dependent du type de client. -->
-  <div class="titre-pieces">
-    <h3>Pieces justificatives</h3>
-    <button class="bouton secondaire petit" type="button" (click)="ajouterPiece()">+ Ajouter une piece</button>
-  </div>
-  @if (documents().length) {
-    <ul class="pieces-enregistrees">
-      @for (d of documents(); track d.id) {
-        <li>
-          <span class="coche" aria-hidden="true">✔</span>
-          <span class="textes">
-            <strong>{{ d.typeLibelle }}</strong>
-            <small>
-              {{ d.numero ? 'N° ' + d.numero : 'Sans numero' }}
-              @if (d.dateExpiration) { · expire le {{ d.dateExpiration }} }
-              @if (d.expire) { <b class="expiree">· expiree</b> }
-            </small>
-          </span>
-          @if (d.fichierDisponible) {
-            <button class="bouton secondaire petit info" type="button" (click)="telecharger(d)">Voir</button>
-          }
-        </li>
-      }
-    </ul>
-  }
-
-  <div class="pieces">
-    @for (piece of pieces(); track piece.cle) {
-      <div class="piece">
-        <div class="champs-piece">
+  <div class="blocs-fiche">
+    <section class="bloc-fiche">
+      <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4zM8 10h4M8 14h8M16 10h.01" /></svg>Identite</h3>
+      <div class="grille-formulaire">
+        @if (profil().personne) {
           <div class="champ">
-            <label [for]="'fc-type-piece-' + piece.cle">Type de piece</label>
-            <select [id]="'fc-type-piece-' + piece.cle"
-                    (change)="modifierPiece(piece.cle, 'type', $any($event.target).value)">
-              @for (t of profil().pieces; track t) {
-                <option [value]="t" [selected]="t === piece.type">{{ libelleType(t) }}</option>
-              }
+            <label for="fc-nom">Nom <span class="requis">*</span></label>
+            <input id="fc-nom" formControlName="nom" placeholder="Nom de famille" autocomplete="family-name" />
+          </div>
+          <div class="champ">
+            <label for="fc-prenoms">Prenoms <span class="requis">*</span></label>
+            <input id="fc-prenoms" formControlName="prenoms" autocomplete="given-name" />
+          </div>
+          <div class="champ">
+            <label for="fc-naissance">Date de naissance</label>
+            <input id="fc-naissance" type="date" formControlName="dateNaissance" />
+          </div>
+          <div class="champ">
+            <label for="fc-profession">Profession</label>
+            <input id="fc-profession" formControlName="profession" />
+          </div>
+        } @else {
+          <div class="champ champ-large">
+            <label for="fc-raison">{{ profil().libelleNom }} <span class="requis">*</span></label>
+            <input id="fc-raison" formControlName="raisonSociale" [placeholder]="profil().placeholderNom" />
+          </div>
+          @if (profil().formeJuridique) {
+            <div class="champ">
+              <label for="fc-forme">Forme juridique</label>
+              <select id="fc-forme" formControlName="formeJuridique">
+                <option value="">Non precisee</option>
+                @for (forme of formesJuridiques; track forme) {
+                  <option [value]="forme">{{ forme }}</option>
+                }
+              </select>
+            </div>
+          }
+          @if (profil().rccm) {
+            <div class="champ">
+              <label for="fc-rccm">N° RCCM</label>
+              <input id="fc-rccm" formControlName="rccm" placeholder="TG-LOM-01-2024-B12-00000" />
+            </div>
+          }
+          @if (profil().organismeTutelle) {
+            <div class="champ">
+              <label for="fc-tutelle" title="Ministere ou organisme de tutelle">Tutelle</label>
+              <input id="fc-tutelle" formControlName="organismeTutelle" />
+            </div>
+          }
+          @if (profil().numeroAgrement) {
+            <div class="champ">
+              <label for="fc-agrement" title="N° d'agrement ou d'accord de siege">N° d'agrement</label>
+              <input id="fc-agrement" formControlName="numeroAgrement" />
+            </div>
+          }
+          @if (profil().identifiantFiscal) {
+            <div class="champ">
+              <label for="fc-nif" title="Identifiant fiscal">NIF</label>
+              <input id="fc-nif" formControlName="identifiantFiscal" />
+            </div>
+          }
+          @if (profil().secteurActivite) {
+            <div class="champ">
+              <label for="fc-secteur">Secteur d'activite</label>
+              <input id="fc-secteur" formControlName="secteurActivite" placeholder="BTP, commerce, transport..." />
+            </div>
+          }
+        }
+        @if (!compact() && !source.codeAutomatique) {
+          <div class="champ">
+            <label for="fc-code">Code</label>
+            <input id="fc-code" formControlName="code" placeholder="Genere automatiquement" />
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="bloc-fiche">
+      <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h4l1.5 5-2.5 1.5a11 11 0 0 0 5.5 5.5L16 12.5l5 1.5v4a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z" /></svg>Coordonnees</h3>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="fc-telephone">Telephone</label>
+          <input id="fc-telephone" type="tel" formControlName="telephone" autocomplete="tel" />
+        </div>
+        <div class="champ">
+          <label for="fc-email">Email</label>
+          <input id="fc-email" type="email" formControlName="email" autocomplete="email" />
+        </div>
+        <div class="champ">
+          <label for="fc-adresse">Adresse</label>
+          <input id="fc-adresse" formControlName="adresse" />
+        </div>
+        <div class="champ">
+          <label for="fc-ville">Ville</label>
+          <input id="fc-ville" formControlName="ville" />
+        </div>
+        @if (!compact()) {
+          <div class="champ">
+            <label for="fc-pays">Pays</label>
+            <input id="fc-pays" formControlName="pays" />
+          </div>
+        }
+      </div>
+    </section>
+
+    @if (profil().libelleContact; as titreContact) {
+      <section class="bloc-fiche">
+        <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" /></svg>{{ titreContact }}</h3>
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label for="fc-contact">Nom complet</label>
+            <input id="fc-contact" formControlName="personneContact" />
+          </div>
+          <div class="champ">
+            <label for="fc-fonction">Fonction</label>
+            <input id="fc-fonction" formControlName="fonctionContact" placeholder="Gerant, directeur..." />
+          </div>
+          <div class="champ">
+            <label for="fc-tel-contact">Telephone</label>
+            <input id="fc-tel-contact" type="tel" formControlName="telephoneContact" />
+          </div>
+        </div>
+      </section>
+    }
+
+    @if (!compact()) {
+      <section class="bloc-fiche">
+        <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4zM4 11h16M8 15h3" /></svg>Conditions commerciales</h3>
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label for="fc-delai" title="Delai de paiement, en jours">Delai (jours)</label>
+            <input id="fc-delai" type="number" min="0" formControlName="delaiPaiementJours"
+                   [placeholder]="source.aideDelai ? 'Par defaut' : ''" [title]="source.aideDelai ?? ''" />
+          </div>
+          <div class="champ">
+            <label for="fc-plafond" title="Plafond de credit, en FCFA">Plafond (FCFA)</label>
+            <input id="fc-plafond" type="number" min="0" formControlName="plafondCredit"
+                   [placeholder]="source.aidePlafond ? 'Par defaut' : ''" [title]="source.aidePlafond ?? ''" />
+          </div>
+          <div class="champ">
+            <label for="fc-actif">Fiche active</label>
+            <select id="fc-actif" formControlName="actif">
+              <option [ngValue]="true">Oui</option>
+              <option [ngValue]="false">Non (archive)</option>
             </select>
           </div>
           <div class="champ">
-            <label [for]="'fc-numero-piece-' + piece.cle">Numero</label>
-            <input [id]="'fc-numero-piece-' + piece.cle" type="text" [value]="piece.numero"
-                   (input)="modifierPiece(piece.cle, 'numero', $any($event.target).value)" />
+            <label for="fc-conditions">Conditions particulieres</label>
+            <textarea id="fc-conditions" rows="1" formControlName="conditionsCommerciales"></textarea>
           </div>
-          @if (expirable(piece.type)) {
-            <div class="champ">
-              <label [for]="'fc-expiration-piece-' + piece.cle">Expire le</label>
-              <input [id]="'fc-expiration-piece-' + piece.cle" type="date" [value]="piece.dateExpiration"
-                     (change)="modifierPiece(piece.cle, 'dateExpiration', $any($event.target).value)" />
-            </div>
-          }
+          <div class="champ">
+            <label for="fc-observations">Observations</label>
+            <textarea id="fc-observations" rows="1" formControlName="observations"></textarea>
+          </div>
         </div>
-        <div class="depot-piece">
-          <app-piece-jointe [libelle]="libelleType(piece.type)" [fichier]="piece.fichier"
-                            (fichierChange)="modifierPiece(piece.cle, 'fichier', $event)" />
-          <button class="retirer" type="button" title="Retirer cette piece" aria-label="Retirer cette piece"
-                  (click)="retirerPiece(piece.cle)">✕</button>
-        </div>
-      </div>
+      </section>
     }
-  </div>
 
-  @if (!compact()) {
-    <h3>Conditions commerciales</h3>
-    <div class="grille-formulaire">
-      <div class="champ">
-        <label for="fc-delai" title="Delai de paiement, en jours">Delai (jours)</label>
-        <input id="fc-delai" type="number" min="0" formControlName="delaiPaiementJours"
-               [placeholder]="source.aideDelai ? 'Par defaut' : ''" [title]="source.aideDelai ?? ''" />
+    <!-- Pieces justificatives : les types proposes dependent du type de client. -->
+    <section class="bloc-fiche bloc-large">
+      <div class="titre-pieces">
+        <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6" /></svg>Pieces justificatives</h3>
+        <button class="bouton secondaire petit" type="button" (click)="ajouterPiece()">+ Ajouter une piece</button>
       </div>
-      <div class="champ">
-        <label for="fc-plafond" title="Plafond de credit, en FCFA">Plafond (FCFA)</label>
-        <input id="fc-plafond" type="number" min="0" formControlName="plafondCredit"
-               [placeholder]="source.aidePlafond ? 'Par defaut' : ''" [title]="source.aidePlafond ?? ''" />
+      @if (documents().length) {
+        <ul class="pieces-enregistrees">
+          @for (d of documents(); track d.id) {
+            <li>
+              <span class="coche" aria-hidden="true">✔</span>
+              <span class="textes">
+                <strong>{{ d.typeLibelle }}</strong>
+                <small>
+                  {{ d.numero ? 'N° ' + d.numero : 'Sans numero' }}
+                  @if (d.dateExpiration) { · expire le {{ d.dateExpiration }} }
+                  @if (d.expire) { <b class="expiree">· expiree</b> }
+                </small>
+              </span>
+              @if (d.fichierDisponible) {
+                <button class="bouton secondaire petit info" type="button" (click)="telecharger(d)">Voir</button>
+              }
+            </li>
+          }
+        </ul>
+      }
+
+      <div class="pieces">
+        @for (piece of pieces(); track piece.cle) {
+          <div class="piece">
+            <div class="champs-piece">
+              <div class="champ">
+                <label [for]="'fc-type-piece-' + piece.cle">Type de piece</label>
+                <select [id]="'fc-type-piece-' + piece.cle"
+                        (change)="modifierPiece(piece.cle, 'type', $any($event.target).value)">
+                  @for (t of profil().pieces; track t) {
+                    <option [value]="t" [selected]="t === piece.type">{{ libelleType(t) }}</option>
+                  }
+                </select>
+              </div>
+              <div class="champ">
+                <label [for]="'fc-numero-piece-' + piece.cle">Numero</label>
+                <input [id]="'fc-numero-piece-' + piece.cle" type="text" [value]="piece.numero"
+                       (input)="modifierPiece(piece.cle, 'numero', $any($event.target).value)" />
+              </div>
+              @if (expirable(piece.type)) {
+                <div class="champ">
+                  <label [for]="'fc-expiration-piece-' + piece.cle">Expire le</label>
+                  <input [id]="'fc-expiration-piece-' + piece.cle" type="date" [value]="piece.dateExpiration"
+                         (change)="modifierPiece(piece.cle, 'dateExpiration', $any($event.target).value)" />
+                </div>
+              }
+            </div>
+            <div class="depot-piece">
+              <app-piece-jointe [libelle]="libelleType(piece.type)" [fichier]="piece.fichier"
+                                (fichierChange)="modifierPiece(piece.cle, 'fichier', $event)" />
+              <button class="retirer" type="button" title="Retirer cette piece" aria-label="Retirer cette piece"
+                      (click)="retirerPiece(piece.cle)">✕</button>
+            </div>
+          </div>
+        }
       </div>
-      <div class="champ">
-        <label for="fc-actif">Fiche active</label>
-        <select id="fc-actif" formControlName="actif">
-          <option [ngValue]="true">Oui</option>
-          <option [ngValue]="false">Non (archive)</option>
-        </select>
-      </div>
-      <div class="champ champ-large">
-        <label for="fc-conditions">Conditions particulieres</label>
-        <textarea id="fc-conditions" rows="1" formControlName="conditionsCommerciales"></textarea>
-      </div>
-      <div class="champ champ-large">
-        <label for="fc-observations">Observations</label>
-        <textarea id="fc-observations" rows="1" formControlName="observations"></textarea>
-      </div>
-    </div>
-  }
+    </section>
+  </div>
 
   @if (doublons().length) {
     <!-- Ce numero est deja connu : on propose la fiche existante plutot qu'un doublon. -->

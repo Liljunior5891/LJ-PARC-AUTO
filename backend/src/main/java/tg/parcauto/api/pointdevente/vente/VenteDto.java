@@ -24,10 +24,17 @@ public final class VenteDto {
             /** Conditionnement vendu (tonne, botte, carton) ; nul pour l'unite de base. */
             Long conditionnementId,
             /** Quincaillerie : ce que le client emporte maintenant ; nul : toute la ligne. */
-            @PositiveOrZero BigDecimal quantiteLivree) {
+            @PositiveOrZero BigDecimal quantiteLivree,
+            /** Avec des entrepots : lieu ou retirer la ligne ; nul : le magasin de la caisse. */
+            Long lieuId) {
 
         public LigneDemande(Long articleId, BigDecimal quantite, BigDecimal remise, Long conditionnementId) {
-            this(articleId, quantite, remise, conditionnementId, null);
+            this(articleId, quantite, remise, conditionnementId, null, null);
+        }
+
+        public LigneDemande(Long articleId, BigDecimal quantite, BigDecimal remise, Long conditionnementId,
+                            BigDecimal quantiteLivree) {
+            this(articleId, quantite, remise, conditionnementId, quantiteLivree, null);
         }
     }
 

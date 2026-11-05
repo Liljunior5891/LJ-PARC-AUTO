@@ -1,0 +1,120 @@
+<div class="entete-page">
+  <div>
+    <h1>Magasins et entrepots</h1>
+    <p class="sous-titre">Ou se trouve votre marchandise, et qui la sert.</p>
+  </div>
+  @if (estAdmin) {
+    <div class="actions-entete">
+      @if (actif()) {
+        <button class="bouton secondaire info" type="button" (click)="ouvrirNouveau('MAGASIN')">+ Magasin</button>
+      }
+      <button class="bouton" type="button" (click)="ouvrirNouveau('ENTREPOT')">+ Entrepot</button>
+    </div>
+  }
+</div>
+
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+
+@if (chargement()) {
+  <p class="aucun">Chargement...</p>
+} @else if (!actif()) {
+  <div class="carte presentation">
+    <h2>Votre boutique a un seul stock</h2>
+    <p>Rien ne change tant qu'aucun entrepot n'est enregistre. Le premier entrepot active la gestion par lieu :</p>
+    <ul>
+      <li>votre stock actuel et ce qui reste a livrer vont dans un <strong>Magasin principal</strong> ;</li>
+      <li>la caisse choisit ou chaque article est retire et remet un <strong>bon de retrait</strong> avec code QR ;</li>
+      <li>les magasiniers servent les bons et les <strong>transferts</strong> se suivent entre vos lieux.</li>
+    </ul>
+    @if (!estAdmin) { <p class="aide">Seul l'administrateur peut enregistrer un entrepot.</p> }
+  </div>
+}
+
+@if (lieux().length) {
+  <div class="grille-lieux">
+    @for (l of lieux(); track l.id) {
+      <article class="carte lieu" [class.ferme]="!l.actif">
+        <header>
+          <div>
+            <span class="etiquette" [class.entrepot]="l.type === 'ENTREPOT'">{{ l.type === 'ENTREPOT' ? 'Entrepot' : 'Magasin' }}</span>
+            @if (l.principal) { <span class="etiquette">Principal</span> }
+            @if (!l.actif) { <span class="etiquette">Desactive</span> }
+            @if (l.visibleEnLigne) { <span class="etiquette en-ligne">En ligne</span> }
+            <h2>{{ l.nom }}</h2>
+            @if (l.adresse || l.telephone) { <small>{{ l.adresse }}{{ l.adresse && l.telephone ? ' · ' : '' }}{{ l.telephone }}</small> }
+          </div>
+        </header>
+        <dl>
+          <div><dt>Produits</dt><dd>{{ l.references }}</dd></div>
+          <div><dt>En stock</dt><dd>{{ l.quantite | number: '1.0-3' }}</dd></div>
+          <div><dt>Reserve</dt><dd>{{ l.reserve | number: '1.0-3' }}</dd></div>
+          <div><dt>Valeur d'achat</dt><dd>{{ l.valeurAchat | number: '1.0-0' }} F</dd></div>
+        </dl>
+        <p class="details">
+          @if (l.type === 'MAGASIN') { Caisses : {{ l.caisses.length ? l.caisses.join(', ') : 'aucune' }}<br /> }
+          Personnel : @for (u of l.utilisateurs; track u.id) { {{ u.nomComplet }}{{ $last ? '' : ', ' }} } @empty { aucun }
+        </p>
+        <footer>
+          <a class="bouton secondaire info" routerLink="/pdv/stock-lieu" [queryParams]="{ lieu: l.id }">Voir le stock</a>
+          @if (estAdmin) { <button class="bouton secondaire" type="button" (click)="ouvrir(l)">Modifier</button> }
+        </footer>
+      </article>
+    }
+  </div>
+  @if (actif()) {
+    <p class="total">Valeur d'achat dans les lieux : <strong>{{ totalAchat() | number: '1.0-0' }} F</strong>
+      <small>(hors marchandise en transit)</small></p>
+  }
+}
+
+@if (edition(); as e) {
+  <app-modale [titre]="e === 'nouveau' ? (formulaire.type === 'ENTREPOT' ? 'Nouvel entrepot' : 'Nouveau magasin') : formulaire.nom"
+              largeur="680px" [erreur]="erreurFormulaire()" (ferme)="edition.set(null)">
+    <form (ngSubmit)="enregistrer()">
+      @if (e === 'nouveau' && formulaire.type === 'ENTREPOT' && !actif()) {
+        <div class="message info">C'est votre premier entrepot : la gestion par lieu s'active pour toute la boutique.
+          Votre stock actuel sera place au Magasin principal.</div>
+      }
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="nom">Nom *</label>
+          <input id="nom" name="nom" required maxlength="80" [(ngModel)]="formulaire.nom" placeholder="Ex. Depot d'Adidogome" />
+        </div>
+        <div class="champ">
+          <label for="telephone">Telephone</label>
+          <input id="telephone" name="telephone" maxlength="40" [(ngModel)]="formulaire.telephone" />
+        </div>
+        <div class="champ" style="grid-column: 1 / -1">
+          <label for="adresse">Adresse (imprimee sur le bon de retrait)</label>
+          <input id="adresse" name="adresse" maxlength="255" [(ngModel)]="formulaire.adresse" />
+        </div>
+      </div>
+      <fieldset class="personnel">
+        <legend>Personnel de ce lieu</legend>
+        @for (m of magasiniers(); track m.id) {
+          <label class="membre" [class.choisi]="choisis().has(m.id)">
+            <input type="checkbox" [checked]="choisis().has(m.id)" (change)="basculer(m)" />
+            <span><strong>{{ m.nomComplet }}</strong> <small>{{ m.roles.join(', ') }}</small></span>
+          </label>
+        } @empty {
+          <p class="aucun">Creez un compte avec le profil Magasinier depuis l'ecran Utilisateurs.</p>
+        }
+      </fieldset>
+      <label class="case">
+        <input type="checkbox" name="visible" [(ngModel)]="formulaire.visibleEnLigne" />
+        Son stock est vendu sur la boutique en ligne
+      </label>
+      @if (e !== 'nouveau' && !e.principal) {
+        <label class="case">
+          <input type="checkbox" name="actif" [(ngModel)]="formulaire.actif" />
+          Lieu actif (il ne se desactive que vide)
+        </label>
+      }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="edition.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!formulaire.nom.trim()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}

@@ -42,7 +42,7 @@
           <input type="search" placeholder="Rechercher un produit..." aria-label="Rechercher un produit"
                  [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" (keydown.enter)="defilerVers('produits')" />
           @if (categories().length > 1) {
-            <select data-natif aria-label="Rayon" [ngModel]="categorie()" (ngModelChange)="choisirRayon($event)">
+            <select aria-label="Rayon" [ngModel]="categorie()" (ngModelChange)="choisirRayon($event)">
               <option value="">Tous les rayons</option>
               @for (c of categories(); track c) {
                 <option [value]="c">{{ c }}</option>

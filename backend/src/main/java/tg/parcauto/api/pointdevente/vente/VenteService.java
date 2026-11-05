@@ -56,6 +56,7 @@ public class VenteService {
     private final CompteClientService comptes;
     private final ReglementClientRepository reglementRepository;
     private final tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository soldeRepository;
+    private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
 
     public VenteDto.Ticket encaisser(VenteDto.Encaissement demande, UtilisateurPrincipal caissier) {
         List<LigneVente> lignes = new ArrayList<>();
@@ -66,6 +67,14 @@ public class VenteService {
                     : conditionnement(article, demandeLigne.conditionnementId());
             LigneVente ligne = ligne(article, conditionnement, demandeLigne.quantite(), demandeLigne.remise(), null);
             emporter(ligne, demandeLigne.quantiteLivree());
+            tg.parcauto.api.pointdevente.lieu.LieuStock lieu = lieux.demande(demandeLigne.lieuId());
+            if (lieu != null) {
+                ligne.setLieu(lieu);
+                // Lieu choisi sans quantite precise : tout se retirera avec le bon, sauf s'il s'agit du comptoir.
+                if (demandeLigne.quantiteLivree() == null) {
+                    emporter(ligne, BigDecimal.ZERO);
+                }
+            }
             if (demande.commandeEnLigneId() != null && ligne.resteALivrer().signum() > 0) {
                 throw new BusinessException("Une commande en ligne se remet en une seule fois");
             }
@@ -163,26 +172,40 @@ public class VenteService {
         vente.setDevisId(devisId);
         boolean resteALivrer = vente.getLignes().stream().anyMatch(l -> l.resteALivrer().signum() > 0);
         boolean surArrivage = false;
+        boolean multiLieux = lieux.actif();
+        tg.parcauto.api.pointdevente.lieu.LieuStock magasin = multiLieux ? lieux.lieuDeCaisse(vente.getSession().getCaisse()) : null;
         if (resteALivrer) {
             surArrivage = reglagesMateriaux.exiger().isVenteSurArrivage();
-            if (!reglagesMateriaux.exiger().isLivraisonDifferee()) {
-                throw new BusinessException("La livraison en plusieurs fois est desactivee dans les reglages");
-            }
-            if (vente.getClient() == null) {
-                throw new BusinessException("Choisissez la fiche du client a qui le reste sera livre");
+            // Avec des entrepots, le bon de retrait fait foi : son porteur est servi, avec ou sans fiche client.
+            if (!multiLieux) {
+                if (!reglagesMateriaux.exiger().isLivraisonDifferee()) {
+                    throw new BusinessException("La livraison en plusieurs fois est desactivee dans les reglages");
+                }
+                if (vente.getClient() == null) {
+                    throw new BusinessException("Choisissez la fiche du client a qui le reste sera livre");
+                }
             }
         }
         for (LigneVente ligne : vente.getLignes()) {
             if (ligne.getArticle().isSuiviStock()) {
+                if (multiLieux) {
+                    if (ligne.getLieu() == null) {
+                        ligne.setLieu(magasin);
+                    }
+                    if (!ligne.getLieu().getId().equals(magasin.getId()) && ligne.baseDejaLivree().signum() > 0) {
+                        throw new BusinessException(ligne.getLibelle() + " se retire a " + ligne.getLieu().getNom()
+                                + " : le client ne peut pas l'emporter depuis cette caisse");
+                    }
+                }
                 if (ligne.baseDejaLivree().signum() > 0) {
-                    stockService.appliquer(ligne.getArticle(), TypeMouvementStock.VENTE, ligne.baseDejaLivree(),
+                    stockService.appliquer(ligne.getArticle(), ligne.getLieu(), TypeMouvementStock.VENTE, ligne.baseDejaLivree(),
                             null, "Commande " + vente.getNumero(), vente.getId());
                 }
                 if (ligne.resteBaseALivrer().signum() > 0) {
                     if (surArrivage) {
-                        stockService.reserverSansLimite(ligne.getArticle(), ligne.resteBaseALivrer());
+                        stockService.reserverSansLimite(ligne.getArticle(), ligne.getLieu(), ligne.resteBaseALivrer());
                     } else {
-                        stockService.reserver(ligne.getArticle(), ligne.resteBaseALivrer());
+                        stockService.reserver(ligne.getArticle(), ligne.getLieu(), ligne.resteBaseALivrer());
                     }
                 }
             }
@@ -287,15 +310,20 @@ public class VenteService {
             evenements.publishEvent(new AdditionAnnulee(vente.getId(), vente.getCommandeId()));
             return VenteDto.Ticket.de(vente);
         }
+        boolean multiLieux = lieux.actif();
+        if (multiLieux) {
+            // Chaque quantite retourne dans le lieu d'ou elle est reellement sortie.
+            stockService.retournerVente(vente.getId(), "Annulation de la commande " + vente.getNumero());
+        }
         for (LigneVente ligne : vente.getLignes()) {
             if (ligne.getArticle().isSuiviStock()) {
                 // Seul ce qui a ete remis revient en stock ; le reste n'etait que reserve.
-                if (ligne.baseDejaLivree().signum() > 0) {
+                if (!multiLieux && ligne.baseDejaLivree().signum() > 0) {
                     stockService.appliquer(ligne.getArticle(), TypeMouvementStock.RETOUR, ligne.baseDejaLivree(),
                             null, "Annulation de la commande " + vente.getNumero(), vente.getId());
                 }
                 if (ligne.resteBaseALivrer().signum() > 0) {
-                    stockService.liberer(ligne.getArticle(), ligne.resteBaseALivrer());
+                    stockService.liberer(ligne.getArticle(), ligne.getLieu(), ligne.resteBaseALivrer());
                 }
             }
         }
