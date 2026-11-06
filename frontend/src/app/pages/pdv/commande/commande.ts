@@ -25,6 +25,7 @@ import { SessionTravailService } from '../../../core/services/session-travail.se
 import { BandeauSession } from '../../../shared/bandeau-session';
 import { BoutonEspeces } from '../../../shared/bouton-especes';
 import { Modale } from '../../../shared/modale';
+import { OperationService } from '../../../core/operation/operation.service';
 import { FinDeSaisie, LecteurDouchette, normaliserCodeBarres } from '../../../shared/code-barres';
 import { imprimerAddition, imprimerTicket } from '../../../shared/ticket-pdv';
 
@@ -132,6 +133,8 @@ export class CommandePdv implements OnInit {
 
   // Session ouverte par un gerant sur laquelle le poste encaisse : indefinie tant qu'elle n'est pas lue, nulle si aucune
   private readonly sessions = inject(SessionTravailService);
+  /** Confirmation des operations importantes (envoi, validation, deplacement, encaissement). */
+  private readonly operation = inject(OperationService);
   readonly session = this.sessions.courante;
   /** Aucune caisse ouverte pour l'utilisateur : rien ne bouge en salle (le serveur le refuse aussi). */
   readonly salleFermee = computed(() => this.sessions.ouvertes()?.length === 0);
@@ -499,7 +502,15 @@ export class CommandePdv implements OnInit {
   // ----------------------------------------------------------- service
 
   /** La caisse envoie en preparation ; le serveur transmet a la caisse. */
-  envoyer(): void {
+  async envoyer(): Promise<void> {
+    const accepte = await this.operation.demander(this.peutEnvoyer
+      ? { titre: 'Envoyer la commande en preparation ?', message: 'Les articles partent sur les ecrans de la cuisine et du bar.',
+          libelleAction: 'Envoyer' }
+      : { titre: 'Transmettre la commande a la caisse ?', message: 'La caisse la validera avant son envoi en preparation.',
+          libelleAction: 'Transmettre' });
+    if (!accepte) {
+      return;
+    }
     if (!this.peutEnvoyer) {
       this.executer(this.service.transmettre(this.id), () =>
         this.information.set('Commande transmise a la caisse : elle partira en preparation des sa validation.'));
@@ -508,7 +519,12 @@ export class CommandePdv implements OnInit {
     this.executer(this.service.envoyer(this.id), () => this.information.set('Commande envoyee en preparation.'));
   }
 
-  validerDemandes(): void {
+  async validerDemandes(): Promise<void> {
+    const accepte = await this.operation.demander({ titre: 'Valider la commande ?',
+      message: 'Les articles demandes partent en preparation.', libelleAction: 'Valider' });
+    if (!accepte) {
+      return;
+    }
     this.executer(this.service.validerDemandes(this.id), () =>
       this.information.set('Commande validee et envoyee en preparation.'));
   }
@@ -561,7 +577,12 @@ export class CommandePdv implements OnInit {
     });
   }
 
-  transferer(t: TablePlan): void {
+  async transferer(t: TablePlan): Promise<void> {
+    const accepte = await this.operation.demander({ titre: `Deplacer la commande sur la table ${t.table.nom} ?`,
+      libelleAction: 'Deplacer' });
+    if (!accepte) {
+      return;
+    }
     this.executer(this.service.transferer(this.id, t.table.id), () => {
       this.transfert.set(null);
       this.information.set(`Commande deplacee sur la table ${t.table.nom}.`);
@@ -621,8 +642,16 @@ export class CommandePdv implements OnInit {
     this.montantRecu.set(this.montantAPayer());
   }
 
-  encaisser(): void {
+  async encaisser(): Promise<void> {
     if (this.occupe() || !this.paiementPossible()) {
+      return;
+    }
+    const accepte = await this.operation.demander({
+      titre: `Encaisser ${Math.round(this.montantAPayer()).toLocaleString('fr-FR')} F ?`,
+      message: 'Verifiez le montant et le moyen de paiement avant de valider.',
+      libelleAction: 'Encaisser'
+    });
+    if (!accepte || this.occupe()) {
       return;
     }
     const lignes = this.parConvive()

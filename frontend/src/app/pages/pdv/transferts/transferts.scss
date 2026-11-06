@@ -13,6 +13,26 @@
   gap: 8px;
   margin: 0;
 
+  > header {
+    margin: -1.25rem -1.25rem 0;
+    padding: 0.85rem 1.25rem;
+    background: #eaf3fe;
+    border-bottom: 1px solid #d5e5fb;
+    border-radius: var(--rayon) var(--rayon) 0 0;
+  }
+
+  .plus-produits {
+    align-self: flex-start;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    color: var(--couleur-primaire-clair);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .plus-produits:hover { text-decoration: underline; }
+
   .etiquette { margin-left: 6px; }
   .etiquette.alerte { background: #fdeceb; color: #b42318; }
   .etiquette.fini { background: #e6f6ee; color: #18794e; }
@@ -22,12 +42,6 @@
   ul { list-style: none; margin: 0; padding: 0; }
   li { padding: 4px 0; border-top: 1px dashed var(--bordure, #e4e7ec); }
 
-  footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: auto;
-  }
 }
 
 .ecarts { margin: 0 0 12px; padding-left: 18px; }

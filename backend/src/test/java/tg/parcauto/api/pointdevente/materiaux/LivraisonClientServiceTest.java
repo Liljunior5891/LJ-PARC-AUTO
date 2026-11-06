@@ -46,6 +46,7 @@ class LivraisonClientServiceTest {
     @Mock tg.parcauto.api.pointdevente.lieu.BonRetraitRepository retraits;
     @Mock tg.parcauto.api.pointdevente.caisse.SessionTravailService sessionsTravail;
     @Mock tg.parcauto.api.pointdevente.caisse.SessionCaisse session;
+    @Mock tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetre;
 
     private StockService stock;
     private LivraisonClientService service;
@@ -56,7 +57,7 @@ class LivraisonClientServiceTest {
     @BeforeEach
     void preparer() {
         stock = new StockService(articles, mouvements, lieux);
-        service = new LivraisonClientService(bons, ventes, stock, numerotation, reglages, soldes, sessionsTravail, lieux, retraits);
+        service = new LivraisonClientService(bons, ventes, stock, numerotation, reglages, soldes, sessionsTravail, lieux, retraits, perimetre);
         when(numerotation.prochainNumero("BL")).thenReturn("BL-1");
         when(auteur.getNomComplet()).thenReturn("Magasinier");
         when(bons.save(any())).thenAnswer(i -> i.getArgument(0));

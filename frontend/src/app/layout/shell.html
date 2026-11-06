@@ -48,7 +48,10 @@
         }
       </span>
     </header>
-    @if (avecVerrou && verrou.verrouille()) {
+    @if (sansCaisse()) {
+      <app-sans-caisse [nom]="utilisateur()?.nomComplet ?? ''" [verification]="verificationCaisse()"
+                       (reverifier)="verifierCaisse()" (deconnexion)="deconnexion()" />
+    } @else if (avecVerrou && verrou.verrouille()) {
       <app-verrou-caisse (deconnexion)="deconnexion()" />
     }
   } @else {
@@ -173,7 +176,9 @@
   }
 
   <main class="contenu" #contenu>
-    <router-outlet />
+    @if (!sansCaisse()) {
+      <router-outlet />
+    }
   </main>
 </div>
 

@@ -47,6 +47,14 @@ const RAFRAICHISSEMENT_MS = 20000;
           <button type="button" class="lien-caisse" (click)="fermer(s)">Fermer</button>
         }
       </div>
+    } @else if (sansCaisse()) {
+      <div class="etat-caisse fermee">
+        <span class="voyant"></span>
+        <span class="texte">
+          Aucune caisse ne vous a encore ete affectee.
+          <small>Demandez a votre gerant de vous affecter une caisse pour pouvoir encaisser.</small>
+        </span>
+      </div>
     } @else {
       <div class="etat-caisse fermee">
         <span class="voyant"></span>
@@ -110,14 +118,31 @@ export class BandeauSession implements OnInit {
   readonly choixCaisse = signal<CaissePdv[] | null>(null);
   readonly aOuvrir = signal<CaissePdv | null>(null);
   readonly aFermer = signal<SessionCaisse | null>(null);
+  /** Caissier a qui aucune caisse n'est affectee : il ne pourra jamais encaisser en l'etat. */
+  readonly sansCaisse = signal(false);
+  private readonly caissier = !this.gestionnaire && this.auth.aRole('CAISSIER');
 
   constructor() {
-    const minuterie = setInterval(() => this.sessions.rafraichir(), RAFRAICHISSEMENT_MS);
+    const minuterie = setInterval(() => {
+      this.sessions.rafraichir();
+      if (this.sansCaisse()) {
+        this.verifierAffectation();
+      }
+    }, RAFRAICHISSEMENT_MS);
     inject(DestroyRef).onDestroy(() => clearInterval(minuterie));
   }
 
   ngOnInit(): void {
     this.sessions.rafraichir();
+    this.verifierAffectation();
+  }
+
+  /** Le gerant peut affecter la caisse pendant que le caissier attend : la relecture suit. */
+  private verifierAffectation(): void {
+    if (!this.caissier) {
+      return;
+    }
+    this.pdv.caissesDisponibles().subscribe({ next: (c) => this.sansCaisse.set(c.length === 0) });
   }
 
   /** Une seule caisse fermee : elle s'ouvre directement ; sinon le gerant choisit. */

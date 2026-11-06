@@ -1387,3 +1387,33 @@ select.invalide + .select2-container .select2-selection--single {
   justify-content: space-between;
   gap: 0.6rem;
 }
+
+/* Boutons en pied de carte (bons, transferts, magasins et entrepots) : icone et libelle, tous sur une ligne. */
+.actions-carte {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin-top: auto;
+
+  .bouton {
+    flex: 1 1 auto;
+    justify-content: center;
+    gap: 0.3rem;
+    min-width: 0;
+    padding: 0.45rem 0.5rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  .ico {
+    flex: none;
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .lib {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

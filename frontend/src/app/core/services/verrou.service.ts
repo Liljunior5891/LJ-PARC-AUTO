@@ -33,6 +33,11 @@ export class VerrouService {
     return this.http.post<void>(`${this.base}/verification`, { pin }, this.direct).pipe(tap(() => this.deverrouiller()));
   }
 
+  /** Changement du code depuis « Mon compte » : le code actuel est exige. */
+  changer(actuel: string, nouveau: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/changement`, { actuel, nouveau });
+  }
+
   verrouiller(): void {
     this.verrouille.set(true);
     try {

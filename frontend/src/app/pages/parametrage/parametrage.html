@@ -117,6 +117,19 @@
         </small>
       </div>
       <div class="champ champ-large">
+        <span class="libelle-format">Format des documents imprimes</span>
+        <div class="choix-format" role="radiogroup" aria-label="Format des documents imprimes">
+          @for (f of formats; track f.valeur) {
+            <label class="format" [class.choisi]="formulaire.controls.formatDocuments.value === f.valeur">
+              <input type="radio" formControlName="formatDocuments" [value]="f.valeur" />
+              <span class="feuille" [class.a5]="f.valeur === 'A5'" aria-hidden="true"></span>
+              <span><strong>{{ f.valeur }}</strong><small>{{ f.description }}</small></span>
+            </label>
+          }
+        </div>
+        <small>Factures, devis, bons de livraison, bons de retrait, transferts, avoirs et contrats sortent dans ce format.</small>
+      </div>
+      <div class="champ champ-large">
         <label for="mentionsFacture">Mentions de bas de facture</label>
         <textarea id="mentionsFacture" rows="2" formControlName="mentionsFacture"
                   placeholder="Conditions de reglement, penalites de retard..."></textarea>

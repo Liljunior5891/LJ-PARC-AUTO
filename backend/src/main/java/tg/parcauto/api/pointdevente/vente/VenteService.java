@@ -57,6 +57,7 @@ public class VenteService {
     private final ReglementClientRepository reglementRepository;
     private final tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository soldeRepository;
     private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
+    private final tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetre;
 
     public VenteDto.Ticket encaisser(VenteDto.Encaissement demande, UtilisateurPrincipal caissier) {
         List<LigneVente> lignes = new ArrayList<>();
@@ -336,6 +337,22 @@ public class VenteService {
         return VenteDto.Ticket.de(charger(id));
     }
 
+    /** Ticket vu par un caissier : seulement s'il a ete encaisse sur sa caisse. */
+    @Transactional(readOnly = true)
+    public VenteDto.Ticket ticket(Long id, UtilisateurPrincipal utilisateur) {
+        Vente vente = charger(id);
+        perimetre.exiger(vente.getSession(), utilisateur);
+        return VenteDto.Ticket.de(vente);
+    }
+
+    /** Vente complete, refusee a un caissier si elle vient d'une autre caisse. */
+    @Transactional(readOnly = true)
+    public Vente detail(Long id, UtilisateurPrincipal utilisateur) {
+        Vente vente = charger(id);
+        perimetre.exiger(vente.getSession(), utilisateur);
+        return vente;
+    }
+
     /** Vente complete (lignes et session chargees), pour la facture A4. */
     @Transactional(readOnly = true)
     public Vente detail(Long id) {
@@ -345,11 +362,30 @@ public class VenteService {
     @Transactional(readOnly = true)
     public Page<VenteDto.Resume> lister(Instant debut, Instant fin, Long sessionId, Boolean enLigne,
                                         Pageable pageable) {
-        Page<Vente> page = sessionId != null
+        return lister(debut, fin, sessionId, enLigne, null, null, pageable);
+    }
+
+    /**
+     * Avec une session, {@code q} filtre sur le numero de commande, le nom ou le
+     * telephone du client. Un caissier ne voit que les ventes de ses caisses.
+     */
+    @Transactional(readOnly = true)
+    public Page<VenteDto.Resume> lister(Instant debut, Instant fin, Long sessionId, Boolean enLigne, String q,
+                                        UtilisateurPrincipal utilisateur, Pageable pageable) {
+        String recherche = q == null ? "" : q.trim().toLowerCase();
+        java.util.Set<Long> caisses = perimetre.caisses(utilisateur);
+        if (sessionId != null) {
+            perimetre.exigerSession(sessionId, utilisateur);
+        }
+        Page<Vente> page = sessionId != null && !recherche.isEmpty()
+                ? repository.deLaSession(sessionId, recherche, pageable)
+                : sessionId != null
                 ? repository.findBySessionIdOrderByDateVenteDesc(sessionId, pageable)
                 : enLigne != null
-                ? repository.periodeParCanal(debut, fin, enLigne, pageable)
-                : repository.periode(debut, fin, pageable);
+                ? (caisses == null ? repository.periodeParCanal(debut, fin, enLigne, pageable)
+                        : repository.periodeParCanalDesCaisses(debut, fin, enLigne, caisses, pageable))
+                : caisses == null ? repository.periode(debut, fin, pageable)
+                : repository.periodeDesCaisses(debut, fin, caisses, pageable);
         return page.map(VenteDto.Resume::de);
     }
 

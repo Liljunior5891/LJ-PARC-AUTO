@@ -148,7 +148,9 @@ public class RetraitService {
             }
             lignes.add(new MateriauxDto.LigneRemise(l.ligneId(), l.quantite()));
         }
-        return livraisons.remettre(bon.getVente().getId(), new MateriauxDto.RemiseRequete(lignes, demande.recuPar(), demande.note()), auteur);
+        // Le bon se sert au lieu, quelle que soit la caisse qui a vendu : l'acces au lieu suffit.
+        return livraisons.remettreSurBon(bon.getVente().getId(),
+                new MateriauxDto.RemiseRequete(lignes, demande.recuPar(), demande.note()), auteur);
     }
 
     /**

@@ -47,6 +47,7 @@ public class CaisseController {
 
     private final CaisseService service;
     private final RapportSessionPdf rapportPdf;
+    private final PerimetreCaisse perimetre;
 
     @GetMapping("/coupures")
     @PreAuthorize(Autorisations.PDV_CAISSE)
@@ -113,7 +114,8 @@ public class CaisseController {
     @GetMapping("/{id}")
     @PreAuthorize(Autorisations.PDV_CAISSE)
     @Operation(summary = "Rapport d'une session : totaux par moyen de paiement, mouvements, billettage et ecart")
-    public CaisseService.Reponse rapport(@PathVariable Long id) {
+    public CaisseService.Reponse rapport(@PathVariable Long id, @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        perimetre.exigerSession(id, principal);
         return service.rapport(id);
     }
 

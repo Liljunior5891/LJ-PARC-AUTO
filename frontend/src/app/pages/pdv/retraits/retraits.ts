@@ -10,6 +10,7 @@ import { MateriauxService } from '../../../core/services/materiaux.service';
 import { RetraitsHorsLigneService } from '../../../core/services/retraits-hors-ligne.service';
 import { LecteurDouchette, normaliserNumeroBon } from '../../../shared/code-barres';
 import { Modale } from '../../../shared/modale';
+import { OperationService } from '../../../core/operation/operation.service';
 import { Page } from '../../../core/models/models';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
@@ -35,6 +36,7 @@ export class RetraitsPdv implements OnInit, OnDestroy {
   private readonly materiaux = inject(MateriauxService);
   private readonly route = inject(ActivatedRoute);
   readonly horsLigne = inject(RetraitsHorsLigneService);
+  private readonly operation = inject(OperationService);
   readonly gerant = inject(AuthService).aRole('ADMIN', 'GERANT');
 
   readonly etat = this.service.etat;
@@ -216,9 +218,18 @@ export class RetraitsPdv implements OnInit, OnDestroy {
     this.quantites.update((q) => ({ ...q, [l.ligneId]: valeur }));
   }
 
-  remettre(): void {
+  async remettre(): Promise<void> {
     const bon = this.bonOuvert();
     if (!bon || !this.remiseValide() || this.envoi()) {
+      return;
+    }
+    // Confirmation demandee ici, avant l'envoi : un refus ne doit pas passer pour une coupure reseau.
+    const accepte = await this.operation.demander({
+      titre: `Remettre la marchandise du bon ${bon.numero} ?`,
+      message: 'Le stock sort du lieu et un bon de livraison est emis pour le client.',
+      libelleAction: 'Remettre'
+    });
+    if (!accepte || this.envoi() || this.bonOuvert() !== bon) {
       return;
     }
     const lignes = bon.lignes
@@ -264,7 +275,29 @@ export class RetraitsPdv implements OnInit, OnDestroy {
   }
 
   imprimerRetrait(b: BonRetrait): void {
-    this.service.retraitPdf(b.id).subscribe({ next: (pdf) => this.materiaux.ouvrirPdf(pdf) });
+    this.service.retraitPdf(b.id).subscribe({
+      next: (pdf) => this.materiaux.ouvrirPdf(pdf),
+      error: () => this.erreur.set('Le bon ' + b.numero + ' ne peut pas etre imprime pour le moment.')
+    });
+  }
+
+  // ------------------------------------------- cartes : 5 produits, puis « + plus »
+
+  readonly APERCU = 5;
+  private readonly deplies = signal<ReadonlySet<number>>(new Set());
+
+  deplie(id: number): boolean {
+    return this.deplies().has(id);
+  }
+
+  basculer(id: number): void {
+    this.deplies.update((s) => {
+      const copie = new Set(s);
+      if (!copie.delete(id)) {
+        copie.add(id);
+      }
+      return copie;
+    });
   }
 
   // ---------------------------------------------------------- changement de lieu
@@ -286,12 +319,22 @@ export class RetraitsPdv implements OnInit, OnDestroy {
     return (this.etat()?.lieux ?? []).filter((l) => l.id !== b.lieuId);
   }
 
-  deplacer(): void {
+  async deplacer(): Promise<void> {
     const b = this.aDeplacer();
-    if (!b || !this.nouveauLieu) {
+    const lieu = this.nouveauLieu;
+    if (!b || !lieu) {
       return;
     }
-    this.service.changerLieu(b.id, this.nouveauLieu).subscribe({
+    const nom = (this.etat()?.lieux ?? []).find((l) => l.id === lieu)?.nom ?? 'l\'autre lieu';
+    const accepte = await this.operation.demander({
+      titre: `Faire retirer le reste a ${nom} ?`,
+      message: `Le bon ${b.numero} est remplace par un nouveau bon, a remettre au client.`,
+      libelleAction: 'Changer de lieu'
+    });
+    if (!accepte) {
+      return;
+    }
+    this.service.changerLieu(b.id, lieu).subscribe({
       next: (nouveau) => {
         this.aDeplacer.set(null);
         this.succes.set(`Le reste se retire maintenant a ${nouveau.lieuNom} avec le bon ${nouveau.numero}. Remettez ce nouveau bon au client.`);
@@ -308,7 +351,15 @@ export class RetraitsPdv implements OnInit, OnDestroy {
     this.service.conflits().subscribe({ next: (c) => this.conflits.set(c), error: () => this.conflits.set([]) });
   }
 
-  traiter(c: ConflitHorsLigne): void {
+  async traiter(c: ConflitHorsLigne): Promise<void> {
+    const accepte = await this.operation.demander({
+      titre: 'Marquer ce conflit comme traite ?',
+      message: 'Il disparait de la liste des remises a regulariser.',
+      libelleAction: 'Marquer traite'
+    });
+    if (!accepte) {
+      return;
+    }
     this.service.traiterConflit(c.id).subscribe({ next: () => this.chargerConflits() });
   }
 

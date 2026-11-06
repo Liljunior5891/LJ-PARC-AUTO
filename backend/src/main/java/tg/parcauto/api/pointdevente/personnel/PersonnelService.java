@@ -30,11 +30,13 @@ public class PersonnelService {
 
     private final UtilisateurRepository repository;
 
-    public record Membre(Long id, String nomComplet, List<String> roles, boolean actif) {
+    /** {@code roles} : libelles a afficher ; {@code codes} : profils (CAISSIER, MAGASINIER...) pour filtrer. */
+    public record Membre(Long id, String nomComplet, List<String> roles, List<String> codes, boolean actif) {
 
         public static Membre de(Utilisateur u) {
             return new Membre(u.getId(), u.nomComplet(),
-                    u.getRoles().stream().map(Role::getLibelle).sorted().toList(), u.isActif());
+                    u.getRoles().stream().map(Role::getLibelle).sorted().toList(),
+                    u.getRoles().stream().map(Role::name).sorted().toList(), u.isActif());
         }
     }
 
@@ -68,6 +70,26 @@ public class PersonnelService {
             throw new BusinessException("Un des comptes choisis n'appartient pas a votre entreprise");
         }
         return new java.util.HashSet<>(ids);
+    }
+
+    /**
+     * Comme {@link #verifier(Collection)}, et chaque compte doit porter l'un des
+     * profils demandes (une caisse se confie a un caissier, un lieu a un magasinier).
+     */
+    public Set<Long> verifier(Collection<Long> ids, Set<Role> profils, String libelle) {
+        Set<Long> retenus = verifier(ids);
+        if (retenus.isEmpty()) {
+            return retenus;
+        }
+        Long entreprise = ContexteEntreprise.exiger();
+        repository.findAllById(retenus).stream()
+                .filter(u -> entreprise.equals(u.getEntrepriseId()))
+                .filter(u -> u.getRoles().stream().noneMatch(profils::contains))
+                .findFirst()
+                .ifPresent(u -> {
+                    throw new BusinessException(u.nomComplet() + " n'a pas le profil " + libelle);
+                });
+        return retenus;
     }
 
     /**

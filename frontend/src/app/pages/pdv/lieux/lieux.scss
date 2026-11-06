@@ -19,6 +19,14 @@
 
   &.ferme { opacity: 0.6; }
 
+  > header {
+    margin: -1.25rem -1.25rem 0;
+    padding: 0.85rem 1.25rem;
+    background: #eaf3fe;
+    border-bottom: 1px solid #d5e5fb;
+    border-radius: var(--rayon) var(--rayon) 0 0;
+  }
+
   h2 { margin: 6px 0 2px; font-size: 1.05rem; }
   small { color: var(--texte-doux, #667085); }
 
@@ -38,11 +46,6 @@
 
   .details { margin: 0; font-size: 0.82rem; color: var(--texte-doux, #667085); }
 
-  footer {
-    display: flex;
-    gap: 8px;
-    margin-top: auto;
-  }
 }
 
 .total { margin-top: 14px; text-align: right; }

@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/auth/auth.service';
 import { LONGUEUR_MOT_DE_PASSE, Utilisateur } from '../core/models/utilisateur';
 import { UtilisateurService } from '../core/services/utilisateur.service';
+import { VerrouService } from '../core/services/verrou.service';
+import { OperationService } from '../core/operation/operation.service';
 
 /**
  * « Mon compte », dans une fenetre verticale ancree a droite : chacun met a jour
@@ -49,6 +51,7 @@ import { UtilisateurService } from '../core/services/utilisateur.service';
 
         <section>
           <h3>Mes informations</h3>
+          <div class="ligne-deux">
           <div class="champ">
             <label for="compte-nom">Nom <span class="requis">*</span></label>
             <input id="compte-nom" name="nom" required maxlength="100" [(ngModel)]="nom" autocomplete="family-name" />
@@ -57,6 +60,8 @@ import { UtilisateurService } from '../core/services/utilisateur.service';
             <label for="compte-prenom">Prenom</label>
             <input id="compte-prenom" name="prenom" maxlength="100" [(ngModel)]="prenom" autocomplete="given-name" />
           </div>
+          </div>
+          <div class="ligne-deux">
           <div class="champ">
             <label for="compte-telephone">Telephone</label>
             <input id="compte-telephone" name="telephone" type="tel" maxlength="30" [(ngModel)]="telephone"
@@ -65,8 +70,9 @@ import { UtilisateurService } from '../core/services/utilisateur.service';
           <div class="champ">
             <label for="compte-email">Adresse e-mail</label>
             <input id="compte-email" name="email" [value]="compte()?.email ?? ''" disabled />
-            <small>Votre identifiant de connexion : seul un administrateur peut le changer.</small>
           </div>
+          </div>
+          <small class="aide-email">L'adresse e-mail est votre identifiant de connexion : seul un administrateur peut la changer.</small>
         </section>
 
         <section>
@@ -76,17 +82,49 @@ import { UtilisateurService } from '../core/services/utilisateur.service';
             <label for="compte-actuel">Mot de passe actuel</label>
             <input id="compte-actuel" name="actuel" type="password" autocomplete="current-password" [(ngModel)]="actuel" />
           </div>
+          <div class="ligne-deux">
           <div class="champ">
             <label for="compte-nouveau">Nouveau mot de passe</label>
             <input id="compte-nouveau" name="nouveau" type="password" autocomplete="new-password" [(ngModel)]="nouveau" />
-            <small>{{ longueurMinimale }} caracteres minimum.</small>
           </div>
           <div class="champ">
             <label for="compte-confirmation">Confirmation</label>
             <input id="compte-confirmation" name="confirmation" type="password" autocomplete="new-password"
                    [(ngModel)]="confirmation" />
           </div>
+          </div>
+          <small class="aide-email">{{ longueurMinimale }} caracteres minimum.</small>
         </section>
+
+        @if (avecPin) {
+          <section class="bloc-pin">
+            <h3>Code PIN de caisse</h3>
+            <p class="aide">Il deverrouille votre ecran de caisse. De 4 a 6 chiffres, a garder pour vous.</p>
+            @if (erreurPin()) { <div class="message erreur">{{ erreurPin() }}</div> }
+            @if (succesPin()) { <div class="message succes">{{ succesPin() }}</div> }
+            <div class="ligne-pin">
+              <div class="champ">
+                <label for="pin-actuel">Code actuel</label>
+                <input id="pin-actuel" name="pinActuel" type="password" inputmode="numeric" maxlength="6" autocomplete="off"
+                       [(ngModel)]="pinActuel" />
+              </div>
+              <div class="champ">
+                <label for="pin-nouveau">Nouveau code</label>
+                <input id="pin-nouveau" name="pinNouveau" type="password" inputmode="numeric" maxlength="6" autocomplete="off"
+                       [(ngModel)]="pinNouveau" />
+              </div>
+              <div class="champ">
+                <label for="pin-confirmation">Confirmation</label>
+                <input id="pin-confirmation" name="pinConfirmation" type="password" inputmode="numeric" maxlength="6"
+                       autocomplete="off" [(ngModel)]="pinConfirmation" />
+              </div>
+            </div>
+            <button class="bouton secondaire" type="button" [disabled]="changementPin()" (click)="changerPin()">
+              {{ changementPin() ? 'Changement...' : 'Changer mon code PIN' }}
+            </button>
+            <small class="aide">Code oublie ? Demandez a votre gerant de l'effacer : vous en creerez un nouveau au deverrouillage.</small>
+          </section>
+        }
 
         <footer class="actions-formulaire">
           <button class="bouton secondaire annuler" type="button" (click)="ferme.emit()">Annuler</button>
@@ -101,7 +139,7 @@ import { UtilisateurService } from '../core/services/utilisateur.service';
     .voile-compte { position: fixed; inset: 0; z-index: 1000; background: rgba(16, 30, 24, 0.45); backdrop-filter: blur(2px); }
     .panneau-compte {
       position: fixed; top: 0; right: 0; bottom: 0; z-index: 1001; display: flex; flex-direction: column;
-      width: min(460px, 100vw); background: var(--couleur-surface); box-shadow: -18px 0 50px rgba(16, 40, 30, 0.28);
+      width: min(540px, 100vw); background: var(--couleur-surface); box-shadow: -18px 0 50px rgba(16, 40, 30, 0.28);
       animation: glissement 0.2s ease-out;
     }
     @keyframes glissement { from { transform: translateX(40px); opacity: 0; } }
@@ -133,11 +171,20 @@ import { UtilisateurService } from '../core/services/utilisateur.service';
     }
     .profils { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.2rem; }
     .profils span { padding: 0.1rem 0.5rem; border-radius: 999px; background: #eef2f7; font-size: 0.72rem; font-weight: 600; }
-    .champ { margin-bottom: 0.7rem; }
+    .champ { margin-bottom: 0.7rem; min-width: 0; }
+    .ligne-deux { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+    .aide-email { display: block; margin: -0.3rem 0 0.4rem; color: var(--couleur-texte-doux); font-size: 0.75rem; }
+    @media (max-width: 400px) { .ligne-deux { grid-template-columns: 1fr; } }
     .champ input { width: 100%; }
     .champ input:disabled { background: #f3f5f7; color: var(--couleur-texte-doux); cursor: not-allowed; }
     .champ small, .aide { color: var(--couleur-texte-doux); font-size: 0.75rem; }
     .aide { margin: -0.3rem 0 0.6rem; }
+    .bloc-pin { padding: 0.9rem; border: 1px solid var(--couleur-bordure); border-radius: 14px; }
+    .bloc-pin .aide { display: block; margin: 0 0 0.6rem; }
+    .bloc-pin small.aide { margin: 0.6rem 0 0; }
+    .ligne-pin { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+    .ligne-pin input { letter-spacing: 0.3em; text-align: center; }
+    @media (max-width: 420px) { .ligne-pin { grid-template-columns: 1fr; } }
     .actions-formulaire {
       position: sticky; bottom: 0; justify-content: center; margin: auto -1.3rem 0; padding: 1rem 1.3rem 1.2rem;
       border-top: 1px solid var(--couleur-bordure); background: color-mix(in srgb, var(--couleur-fond) 70%, var(--couleur-surface));
@@ -148,7 +195,56 @@ import { UtilisateurService } from '../core/services/utilisateur.service';
 export class PanneauCompte implements OnInit, OnDestroy {
   private readonly service = inject(UtilisateurService);
   private readonly auth = inject(AuthService);
+  private readonly verrou = inject(VerrouService);
+  private readonly operation = inject(OperationService);
   readonly ferme = output<void>();
+
+  /** Caissier et serveur : ils changent eux-memes le code PIN de leur ecran de caisse. */
+  readonly avecPin = this.auth.aRole('CAISSIER', 'SERVEUR');
+  readonly changementPin = signal(false);
+  readonly erreurPin = signal<string | null>(null);
+  readonly succesPin = signal<string | null>(null);
+  pinActuel = '';
+  pinNouveau = '';
+  pinConfirmation = '';
+
+  async changerPin(): Promise<void> {
+    this.erreurPin.set(null);
+    this.succesPin.set(null);
+    if (!/^\d{4,6}$/.test(this.pinActuel)) {
+      this.erreurPin.set('Saisissez votre code actuel (4 a 6 chiffres).');
+      return;
+    }
+    if (!/^\d{4,6}$/.test(this.pinNouveau)) {
+      this.erreurPin.set('Le nouveau code compte 4 a 6 chiffres.');
+      return;
+    }
+    if (this.pinNouveau !== this.pinConfirmation) {
+      this.erreurPin.set('La confirmation ne correspond pas au nouveau code.');
+      return;
+    }
+    const accepte = await this.operation.demander({
+      titre: 'Changer votre code PIN de caisse ?',
+      message: 'Le nouveau code sera demande a chaque deverrouillage de votre ecran.',
+      libelleAction: 'Changer'
+    });
+    if (!accepte) {
+      return;
+    }
+    this.changementPin.set(true);
+    this.verrou.changer(this.pinActuel, this.pinNouveau).subscribe({
+      next: () => {
+        this.changementPin.set(false);
+        this.pinActuel = this.pinNouveau = this.pinConfirmation = '';
+        this.succesPin.set('Votre code PIN est change.');
+      },
+      error: (e) => {
+        this.changementPin.set(false);
+        this.pinActuel = '';
+        this.erreurPin.set(this.message(e, 'Changement du code impossible.'));
+      }
+    });
+  }
 
   readonly longueurMinimale = LONGUEUR_MOT_DE_PASSE;
   readonly compte = signal<Utilisateur | null>(null);

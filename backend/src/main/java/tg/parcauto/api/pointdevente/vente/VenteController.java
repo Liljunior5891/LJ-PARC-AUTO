@@ -55,17 +55,20 @@ public class VenteController {
             @RequestParam(required = false) Long sessionId,
             /** Canal de vente : vrai = en ligne (Marketplace), faux = comptoir ; absent = tous. */
             @RequestParam(required = false) Boolean enLigne,
-            @PageableDefault(size = 30) Pageable pageable) {
+            /** Avec une session : numero de commande, nom ou telephone du client. */
+            @RequestParam(required = false) String q,
+            @PageableDefault(size = 30) Pageable pageable,
+            @AuthenticationPrincipal UtilisateurPrincipal principal) {
         Instant finRetenue = fin == null ? Instant.now().plusSeconds(1) : fin;
         Instant debutRetenu = debut == null ? finRetenue.minus(1, ChronoUnit.DAYS) : debut;
-        return service.lister(debutRetenu, finRetenue, sessionId, enLigne, pageable);
+        return service.lister(debutRetenu, finRetenue, sessionId, enLigne, q, principal, pageable);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize(Autorisations.PDV_CAISSE)
     @Operation(summary = "Commande complete, pour consultation ou reimpression du recu")
-    public VenteDto.Ticket ticket(@PathVariable Long id) {
-        return service.ticket(id);
+    public VenteDto.Ticket ticket(@PathVariable Long id, @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.ticket(id, principal);
     }
 
     @PostMapping("/{id}/annulation")

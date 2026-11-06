@@ -70,6 +70,10 @@ public class Societe extends BaseEntity {
     @Column(name = "taux_tva", nullable = false, precision = 5, scale = 2)
     private java.math.BigDecimal tauxTva = java.math.BigDecimal.valueOf(18);
 
+    /** Format des documents imprimes : « A4 » ou « A5 », choisi par l'administrateur. */
+    @Column(name = "format_documents", nullable = false, length = 2)
+    private String formatDocuments = "A4";
+
     /** Mentions ajoutees en bas de chaque facture. */
     @Column(name = "mentions_facture", length = 500)
     private String mentionsFacture;

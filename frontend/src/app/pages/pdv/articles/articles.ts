@@ -21,6 +21,18 @@ import { Modale } from '../../../shared/modale';
 import { normaliserCodeBarres } from '../../../shared/code-barres';
 import { FenetreCategorie } from '../../../shared/fenetre-categorie';
 import { GaleriePhotos } from '../../../shared/galerie-photos';
+import { OptionSelect, SelectRecherche } from '../../../shared/select-recherche';
+
+/** Autre unite de vente du produit : choisie dans la liste, ou saisie si elle n'y figure pas. */
+interface LigneUniteVente {
+  id?: number | null;
+  /** Valeur choisie dans la liste, ou « autre » pour une saisie libre. */
+  choix: string;
+  nom: string;
+  coefficient: number | null;
+  prixVente: number | null;
+  codeBarres: string;
+}
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 /** Valeurs du formulaire d'article, nombres compris ; null pour un champ vide. */
@@ -52,7 +64,7 @@ const VIDE: FormulaireArticle = {
  */
 @Component({
   selector: 'app-articles-pdv',
-  imports: [SuiteListe, FormsModule, DecimalPipe, RouterLink, Modale, ExportPdv, ImportPdv, GaleriePhotos, FenetreCategorie],
+  imports: [SuiteListe, FormsModule, DecimalPipe, RouterLink, Modale, ExportPdv, ImportPdv, GaleriePhotos, FenetreCategorie, SelectRecherche],
   templateUrl: './articles.html',
   styleUrl: './articles.scss'
 })
@@ -93,8 +105,35 @@ export class ArticlesPdv implements OnInit {
   private readonly materiauxService = inject(MateriauxService);
   private readonly materiaux = inject(AuthService).estMateriaux();
   readonly conditionnementsActifs = signal(false);
-  conditionnements: { id?: number | null; nom: string; coefficient: number | null; prixVente: number | null; codeBarres: string }[] = [];
+  conditionnements: LigneUniteVente[] = [];
   private conditionnementsInitiaux = '[]';
+
+  /** Valeur de la liste qui ouvre la saisie libre du nom de l'unite. */
+  readonly AUTRE_UNITE = '__autre__';
+  /** Unites proposees pour les autres unites de vente, puis « Autre » pour une unite absente de la liste. */
+  readonly optionsUnitesVente: OptionSelect[] = [
+    ...UNITES_MESURE.map((u) => ({ valeur: u.valeur, libelle: u.libelle })),
+    { valeur: this.AUTRE_UNITE, libelle: 'Autre (saisir le nom)...' }
+  ];
+
+  /** Nom enregistre pour une unite de la liste : son libelle sans l'abreviation (« Tonne (t) » donne « Tonne »). */
+  private nomUnite(valeur: string): string {
+    const libelle = UNITES_MESURE.find((u) => u.valeur === valeur)?.libelle ?? valeur;
+    return libelle.replace(/\s*\(.*\)\s*$/, '');
+  }
+
+  /** Unite de la liste qui correspond a un nom deja enregistre ; sinon « Autre », avec le nom garde tel quel. */
+  private choixDuNom(nom: string): string {
+    const cle = nom.trim().toLowerCase();
+    const trouvee = UNITES_MESURE.find((u) =>
+      u.valeur.toLowerCase() === cle || this.nomUnite(u.valeur).toLowerCase() === cle || u.libelle.toLowerCase() === cle);
+    return trouvee ? trouvee.valeur : this.AUTRE_UNITE;
+  }
+
+  choisirUniteVente(ligne: LigneUniteVente, choix: string | number | null): void {
+    ligne.choix = String(choix ?? '');
+    ligne.nom = ligne.choix === this.AUTRE_UNITE ? '' : this.nomUnite(ligne.choix);
+  }
 
   ngOnInit(): void {
     this.chargerCategories();
@@ -107,7 +146,7 @@ export class ArticlesPdv implements OnInit {
   }
 
   ajouterConditionnement(): void {
-    this.conditionnements = [...this.conditionnements, { nom: '', coefficient: null, prixVente: null, codeBarres: '' }];
+    this.conditionnements = [...this.conditionnements, { choix: '', nom: '', coefficient: null, prixVente: null, codeBarres: '' }];
   }
 
   retirerConditionnement(index: number): void {
@@ -217,7 +256,8 @@ export class ArticlesPdv implements OnInit {
         next: (liste) => {
           this.conditionnements = liste
             .filter((c) => c.actif)
-            .map((c) => ({ id: c.id, nom: c.nom, coefficient: c.coefficient, prixVente: c.prixVente, codeBarres: c.codeBarres ?? '' }));
+            .map((c) => ({ id: c.id, choix: this.choixDuNom(c.nom), nom: c.nom, coefficient: c.coefficient, prixVente: c.prixVente,
+              codeBarres: c.codeBarres ?? '' }));
           this.conditionnementsInitiaux = JSON.stringify(this.conditionnements);
         }
       });

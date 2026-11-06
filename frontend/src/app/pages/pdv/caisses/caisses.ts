@@ -48,16 +48,18 @@ export class CaissesPdv implements OnInit {
       this.lieuxService.chargerEtat();
     }
     this.charger();
-    this.service.personnel().subscribe({ next: (p) => this.personnel.set(p.filter((m) => m.actif)) });
+    // Une caisse se confie aux caissiers ; au restaurant, les serveurs encaissent aussi leurs additions.
+    const profils = this.auth.estRestauration() ? ['CAISSIER', 'SERVEUR'] : ['CAISSIER'];
+    this.service.personnel().subscribe({
+      next: (p) => this.personnel.set(p.filter((m) => m.actif && (m.codes ?? []).some((c) => profils.includes(c))))
+    });
   }
 
   /** Retire une caisse sans perdre son historique, ou la remet en service. */
   basculerActivation(caisse: CaissePdv): void {
     this.succes.set(null);
     this.erreur.set(null);
-    this.service.modifierCaisse(caisse.id, {
-      nom: caisse.nom, description: caisse.description, actif: !caisse.actif, utilisateurIds: caisse.utilisateurs.map((u) => u.id)
-    })
+    this.service.modifierCaisse(caisse.id, { nom: caisse.nom, description: caisse.description, actif: !caisse.actif })
       .subscribe({
         next: () => {
           this.succes.set(`${caisse.nom} ${caisse.actif ? 'desactivee' : 'reactivee'}.`);
@@ -106,7 +108,9 @@ export class CaissesPdv implements OnInit {
   modifier(caisse: CaissePdv, evenement: Event): void {
     evenement.stopPropagation();
     this.formulaire = { nom: caisse.nom, description: caisse.description ?? '', actif: caisse.actif, lieuId: caisse.lieuId ?? null };
-    this.choisis.set(new Set(caisse.utilisateurs.map((u) => u.id)));
+    // Un compte affecte avant la regle (sans profil caissier) est retire a l'enregistrement.
+    const eligibles = new Set(this.personnel().map((m) => m.id));
+    this.choisis.set(new Set(caisse.utilisateurs.map((u) => u.id).filter((id) => eligibles.has(id))));
     this.erreurFormulaire.set(null);
     this.edition.set(caisse);
   }

@@ -41,11 +41,6 @@ export function imprimerTicket(ticket: Ticket, societe: Societe | null): void {
     )
     .join('');
 
-  // Quincaillerie : ce que le client n'a pas encore emporte.
-  const aLivrer = ticket.statut === 'VALIDEE'
-    ? ticket.lignes.filter((l) => (l.quantiteLivree ?? l.quantite) < l.quantite)
-    : [];
-
   const coordonnees = [societe?.adresse, societe?.ville, societe?.telephone].filter(Boolean).map(echapper).join(' · ');
   // Vente a credit (quincaillerie) : l'acompte paye et le reste du, a signer par le client.
   const aCredit = ticket.statut === 'VALIDEE' && (ticket.montantPaye ?? ticket.total) < ticket.total;
@@ -93,7 +88,6 @@ export function imprimerTicket(ticket: Ticket, societe: Societe | null): void {
     ${aCredit ? `<tr class="total"><td>RESTE DU</td><td class="montant">${fcfa(ticket.resteDu)}</td></tr>
     ${ticket.echeance ? `<tr><td colspan="2">A regler avant le ${echapper(new Date(ticket.echeance).toLocaleDateString('fr-FR'))}</td></tr>` : ''}` : ''}
   </table>
-  ${aLivrer.length ? `<hr><div><b>RESTE A LIVRER</b></div><table>${aLivrer.map((l) => `<tr><td>${echapper(l.libelle)}</td><td class="montant">${quantite.format(l.quantite - (l.quantiteLivree ?? l.quantite))}</td></tr>`).join('')}</table>` : ''}
   ${aCredit ? '<div class="petit" style="margin-top:4mm">Signature du client :<br><br><br></div>' : ''}
   <hr>
   <div class="centre">Merci de votre visite !</div>

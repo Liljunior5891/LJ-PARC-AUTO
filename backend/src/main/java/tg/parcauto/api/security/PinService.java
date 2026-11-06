@@ -49,6 +49,18 @@ public class PinService {
         u.setPinHash(encodeur.encode(pin));
     }
 
+    /**
+     * Le caissier change lui-meme son code depuis « Mon compte » : l'ancien code
+     * est exige (memes limites d'essais que le deverrouillage).
+     */
+    public void changer(Long utilisateurId, String actuel, String nouveau) {
+        verifier(utilisateurId, actuel);
+        if (actuel.equals(nouveau)) {
+            throw new BusinessException("Le nouveau code doit etre different de l'actuel");
+        }
+        charger(utilisateurId).setPinHash(encodeur.encode(nouveau));
+    }
+
     @Transactional(readOnly = true)
     public void verifier(Long utilisateurId, String pin) {
         Echecs courant = echecs.get(utilisateurId);

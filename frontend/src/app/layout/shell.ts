@@ -8,6 +8,8 @@ import { ClocheNotifications } from '../shared/cloche-notifications';
 import { IconeDemandesEnLigne } from '../shared/icone-demandes-en-ligne';
 import { MINUTES_INACTIVITE, VerrouService } from '../core/services/verrou.service';
 import { VerrouCaisse } from './verrou-caisse';
+import { SansCaisse } from './sans-caisse';
+import { PdvService } from '../core/services/pdv.service';
 import { NotificationsPdv } from './notifications-pdv';
 import { AlertesPdv } from './alertes-pdv';
 import { PanneauCompte } from './panneau-compte';
@@ -55,7 +57,7 @@ interface Onglet {
 @Component({
   selector: 'app-shell',
   host: { '(document:click)': 'clicDocument($event)' },
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, IconeDemandesEnLigne, VerrouCaisse, NotificationsPdv, AlertesPdv, PanneauCompte],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, IconeDemandesEnLigne, VerrouCaisse, SansCaisse, NotificationsPdv, AlertesPdv, PanneauCompte],
   templateUrl: './shell.html',
   styleUrl: './shell.scss'
 })
@@ -80,6 +82,26 @@ export class Shell {
     && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'PREPARATEUR', 'MAGASINIER');
   readonly verrou = inject(VerrouService);
   readonly pleinEcran = signal(false);
+
+  /** Poste de caisse sans caisse affectee : un ecran plein remplace celui de la caisse. */
+  private readonly posteCaissier = this.estPoste && this.auth.aRole('CAISSIER');
+  private readonly pdv = inject(PdvService);
+  readonly sansCaisse = signal(false);
+  readonly verificationCaisse = signal(false);
+
+  verifierCaisse(): void {
+    if (!this.posteCaissier || this.verificationCaisse()) {
+      return;
+    }
+    this.verificationCaisse.set(true);
+    this.pdv.caissesDisponibles().subscribe({
+      next: (caisses) => {
+        this.verificationCaisse.set(false);
+        this.sansCaisse.set(caisses.length === 0);
+      },
+      error: () => this.verificationCaisse.set(false)
+    });
+  }
 
   /** Les alertes de la cloche viennent du parc : seuls ses profils les recoivent. */
   /** Gestion de parc avec Marketplace : icone des demandes de location en ligne, a cote de la cloche. */
@@ -185,21 +207,17 @@ export class Shell {
           ]
         },
         {
-          libelle: 'Stock', description: 'Produits, reapprovisionnement, inventaire', roles: ['ADMIN', 'GERANT'],
+          libelle: 'Stock', description: 'Produits, reapprovisionnement, inventaire, magasins', roles: ['ADMIN', 'GERANT'],
           enfants: [
             { libelle: 'Produits', route: '/pdv/articles', description: 'Catalogue, prix et photos' },
             { libelle: 'Categories', route: '/pdv/categories', description: 'Familles de produits de la caisse' },
             { libelle: 'Reapprovisionnement', route: '/pdv/stock', description: 'Receptions, sorties et pertes' },
-            { libelle: 'Inventaire', route: '/pdv/inventaire', description: 'Compter le stock et corriger les ecarts' }
-          ]
-        },
-        {
-          libelle: 'Magasins', description: 'Magasins, entrepots, retraits et transferts', roles: ['ADMIN', 'GERANT'], variante: 'MATERIAUX',
-          enfants: [
-            { libelle: 'Magasins et entrepots', route: '/pdv/lieux', description: 'Lieux, personnel et valeur du stock' },
-            { libelle: 'Stock par lieu', route: '/pdv/stock-lieu', description: 'Ce qui est sur place et disponible', avecLieux: true },
-            { libelle: 'Bons de retrait', route: '/pdv/retraits', description: 'Bons a servir et non retires', avecLieux: true },
-            { libelle: 'Transferts', route: '/pdv/transferts', description: 'Marchandise entre les lieux', avecLieux: true }
+            { libelle: 'Inventaire', route: '/pdv/inventaire', description: 'Compter le stock et corriger les ecarts' },
+            // Quincaillerie : magasins, entrepots, retraits et transferts (sans entrepot, seul le premier apparait).
+            { libelle: 'Magasins et entrepots', route: '/pdv/lieux', description: 'Lieux, personnel et valeur du stock', variante: 'MATERIAUX' },
+            { libelle: 'Stock par lieu', route: '/pdv/stock-lieu', description: 'Ce qui est sur place et disponible', variante: 'MATERIAUX', avecLieux: true },
+            { libelle: 'Bons de retrait', route: '/pdv/retraits', description: 'Bons a servir et non retires', variante: 'MATERIAUX', avecLieux: true },
+            { libelle: 'Transferts', route: '/pdv/transferts', description: 'Marchandise entre les lieux', variante: 'MATERIAUX', avecLieux: true }
           ]
         },
         {
@@ -363,6 +381,12 @@ export class Shell {
     }
     if (this.avecVerrou) {
       this.surveillerInactivite(destroyRef);
+    }
+    if (this.posteCaissier) {
+      this.verifierCaisse();
+      // Le gerant peut affecter la caisse pendant que le caissier attend devant l'ecran.
+      const relecture = window.setInterval(() => this.sansCaisse() && this.verifierCaisse(), 20_000);
+      destroyRef.onDestroy(() => clearInterval(relecture));
     }
     const suivrePleinEcran = () => this.pleinEcran.set(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', suivrePleinEcran);

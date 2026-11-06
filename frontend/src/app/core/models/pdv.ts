@@ -231,7 +231,10 @@ export interface TotalMode {
 export interface MembrePersonnel {
   id: number;
   nomComplet: string;
+  /** Libelles des profils, pour l'affichage. */
   roles: string[];
+  /** Codes des profils (CAISSIER, MAGASINIER...), pour filtrer. */
+  codes: string[];
   actif: boolean;
 }
 
@@ -253,7 +256,8 @@ export interface CaisseRequete {
   nom: string;
   description?: string;
   actif?: boolean;
-  utilisateurIds: number[];
+  /** Absent : les affectations restent telles quelles. */
+  utilisateurIds?: number[];
   /** Magasin d'ou vend la caisse, quand l'entreprise a des entrepots. */
   lieuId?: number | null;
 }

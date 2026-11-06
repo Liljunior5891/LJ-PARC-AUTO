@@ -48,7 +48,7 @@
         </div>
 
         <!-- Les actions de la caisse, selon son etat : une icone et une couleur douce par action. -->
-        <footer class="actions-caisse">
+        <footer class="actions-caisse actions-carte">
           <button type="button" class="action bleu" (click)="modifier(c, $event)" title="Modifier la caisse et son personnel"
                   aria-label="Modifier la caisse">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>
@@ -114,14 +114,14 @@
       }
 
       <fieldset class="personnel">
-        <legend>Personnel qui encaisse sur cette caisse</legend>
+        <legend>Caissiers qui encaissent sur cette caisse</legend>
         @for (m of personnel(); track m.id) {
           <label class="membre" [class.choisi]="choisis().has(m.id)">
             <input type="checkbox" [checked]="choisis().has(m.id)" (change)="basculer(m)" />
             <span><strong>{{ m.nomComplet }}</strong><small>{{ m.roles.join(', ') }}</small></span>
           </label>
         } @empty {
-          <p class="aucun">Aucun compte au point de vente : creez-en depuis l'ecran Utilisateurs.</p>
+          <p class="aucun">Aucun caissier actif : creez un compte avec le profil Caissier depuis l'ecran Utilisateurs.</p>
         }
       </fieldset>
       <p class="aide">Seuls le gerant et l'administrateur ouvrent et ferment les sessions ; le personnel coche ci-dessus encaisse

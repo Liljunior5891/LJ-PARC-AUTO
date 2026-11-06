@@ -58,7 +58,8 @@ export class Utilisateurs implements OnInit {
   prenom = '';
   telephone = '';
   motDePasse = '';
-  rolesChoisis: Role[] = ['GESTIONNAIRE_PARC'];
+  /** Aucun profil coche d'avance : un profil d'un module non active resterait coche sans etre visible. */
+  rolesChoisis: Role[] = [];
   nouveauMotDePasse = '';
 
   ngOnInit(): void {
@@ -113,7 +114,7 @@ export class Utilisateurs implements OnInit {
     this.prenom = '';
     this.telephone = '';
     this.motDePasse = '';
-    this.rolesChoisis = ['GESTIONNAIRE_PARC'];
+    this.rolesChoisis = [];
     this.formulaireOuvert.set(true);
     this.reinitialise.set(null);
     this.messages();
@@ -126,7 +127,9 @@ export class Utilisateurs implements OnInit {
     this.prenom = utilisateur.prenom ?? '';
     this.telephone = utilisateur.telephone ?? '';
     this.motDePasse = '';
-    this.rolesChoisis = [...utilisateur.roles];
+    // Seuls les profils proposes (modules actives) restent : un profil d'un module coupe part a l'enregistrement.
+    const proposes = new Set<Role>(this.profils().map((p) => p.valeur));
+    this.rolesChoisis = utilisateur.roles.filter((r) => proposes.size === 0 || proposes.has(r));
     this.formulaireOuvert.set(true);
     this.reinitialise.set(null);
     this.messages();

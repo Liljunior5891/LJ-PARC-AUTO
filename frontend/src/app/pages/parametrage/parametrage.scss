@@ -75,3 +75,43 @@ h2 {
     margin-top: 0;
   }
 }
+
+/* Format des documents imprimes : deux cartes, une feuille dessinee a l'echelle. */
+.libelle-format { display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.85rem; }
+
+.choix-format {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.3rem;
+
+  .format {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 210px;
+    padding: 0.6rem 0.9rem;
+    border: 1.5px solid var(--couleur-bordure);
+    border-radius: 12px;
+    background: var(--couleur-surface);
+    cursor: pointer;
+
+    input { position: absolute; opacity: 0; pointer-events: none; }
+    strong { display: block; font-size: 1rem; }
+    small { color: var(--couleur-texte-doux); font-size: 0.75rem; }
+
+    &.choisi { border-color: var(--couleur-primaire); background: #eef5ff; box-shadow: 0 0 0 3px rgba(27, 107, 168, 0.12); }
+    &:focus-within { outline: 2px solid var(--couleur-primaire-clair); outline-offset: 2px; }
+  }
+
+  .feuille {
+    flex: none;
+    width: 30px;
+    height: 42px;
+    border: 1.5px solid #8aa0bb;
+    border-radius: 3px;
+    background: repeating-linear-gradient(180deg, #fff 0 6px, #e6edf6 6px 7px);
+
+    &.a5 { width: 21px; height: 30px; }
+  }
+}

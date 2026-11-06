@@ -262,9 +262,15 @@
           </p>
           @for (c of conditionnements; track $index) {
             <div class="ligne-conditionnement">
-              <div class="champ">
-                <label [attr.for]="'cond-nom-' + $index">Nom</label>
-                <input [id]="'cond-nom-' + $index" [name]="'cond-nom-' + $index" maxlength="40" [(ngModel)]="c.nom" placeholder="Tonne, Botte..." />
+              <div class="champ champ-unite-vente">
+                <label>Unite</label>
+                <app-select-recherche [options]="optionsUnitesVente" placeholder="Choisir l'unite..." [autoriserVide]="false"
+                                      [ngModelOptions]="{ standalone: true }" [ngModel]="c.choix"
+                                      (ngModelChange)="choisirUniteVente(c, $event)" />
+                @if (c.choix === AUTRE_UNITE) {
+                  <input [id]="'cond-nom-' + $index" [name]="'cond-nom-' + $index" maxlength="40" [(ngModel)]="c.nom"
+                         placeholder="Nom de l'unite (ex. Palette)" aria-label="Nom de l'autre unite" class="nom-autre-unite" />
+                }
               </div>
               <div class="champ">
                 <label [attr.for]="'cond-coef-' + $index">Nb de {{ formulaire.unite || 'unites' }}</label>

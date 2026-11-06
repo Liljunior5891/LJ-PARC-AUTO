@@ -55,9 +55,9 @@
           @if (l.type === 'MAGASIN') { Caisses : {{ l.caisses.length ? l.caisses.join(', ') : 'aucune' }}<br /> }
           Personnel : @for (u of l.utilisateurs; track u.id) { {{ u.nomComplet }}{{ $last ? '' : ', ' }} } @empty { aucun }
         </p>
-        <footer>
-          <a class="bouton secondaire info" routerLink="/pdv/stock-lieu" [queryParams]="{ lieu: l.id }">Voir le stock</a>
-          @if (estAdmin) { <button class="bouton secondaire" type="button" (click)="ouvrir(l)">Modifier</button> }
+        <footer class="actions-carte">
+          <a class="bouton secondaire info" routerLink="/pdv/stock-lieu" [queryParams]="{ lieu: l.id }"><span class="ico" aria-hidden="true">📦</span><span class="lib">Voir le stock</span></a>
+          @if (estAdmin) { <button class="bouton secondaire" type="button" (click)="ouvrir(l)"><span class="ico" aria-hidden="true">📝</span><span class="lib">Modifier</span></button> }
         </footer>
       </article>
     }

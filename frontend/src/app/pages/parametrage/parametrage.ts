@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { SocieteRequete } from '../../core/models/parametrage';
+import { FormatDocuments, SocieteRequete } from '../../core/models/parametrage';
 import { SocieteService } from '../../core/services/societe.service';
 import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 
@@ -43,8 +43,15 @@ export class Parametrage implements OnInit {
     banque: [''],
     compteBancaire: [''],
     mentionsFacture: [''],
-    tauxTva: [18, [Validators.required, Validators.min(0), Validators.max(100)]]
+    tauxTva: [18, [Validators.required, Validators.min(0), Validators.max(100)]],
+    formatDocuments: ['A4' as FormatDocuments]
   });
+
+  /** Formats proposes pour les documents imprimes. */
+  readonly formats: { valeur: FormatDocuments; description: string }[] = [
+    { valeur: 'A4', description: 'Feuille entiere (21 x 29,7 cm)' },
+    { valeur: 'A5', description: 'Demi-feuille (14,8 x 21 cm)' }
+  ];
 
   ngOnInit(): void {
     this.service.lire().subscribe({
@@ -64,7 +71,8 @@ export class Parametrage implements OnInit {
           banque: societe.banque ?? '',
           compteBancaire: societe.compteBancaire ?? '',
           mentionsFacture: societe.mentionsFacture ?? '',
-          tauxTva: societe.tauxTva ?? 18
+          tauxTva: societe.tauxTva ?? 18,
+          formatDocuments: societe.formatDocuments ?? 'A4'
         });
         this.logo.set(societe.logo ?? null);
         this.chargement.set(false);

@@ -27,6 +27,7 @@ public class GestionCaisseService {
     private final SessionCaisseRepository sessionRepository;
     private final PersonnelService personnel;
     private final tg.parcauto.api.pointdevente.lieu.LieuStockRepository lieux;
+    private final tg.parcauto.api.plateforme.module.ModuleService modules;
 
     public record Requete(
             @NotBlank @Size(max = 80) String nom,
@@ -142,8 +143,16 @@ public class GestionCaisseService {
             c.setActif(r.actif());
         }
         if (r.utilisateurIds() != null) {
+            // Une caisse se confie aux caissiers ; au restaurant, les serveurs encaissent aussi leurs additions.
+            boolean restauration = "RESTAURATION".equals(
+                    modules.variante(tg.parcauto.api.plateforme.tenant.ContexteEntreprise.exiger(),
+                            tg.parcauto.api.plateforme.module.ModuleApplicatif.POINT_DE_VENTE));
+            Set<tg.parcauto.api.security.Role> profils = restauration
+                    ? java.util.EnumSet.of(tg.parcauto.api.security.Role.CAISSIER, tg.parcauto.api.security.Role.SERVEUR)
+                    : java.util.EnumSet.of(tg.parcauto.api.security.Role.CAISSIER);
+            Set<Long> retenus = personnel.verifier(r.utilisateurIds(), profils, restauration ? "Caissier ou Serveur" : "Caissier");
             c.getUtilisateurIds().clear();
-            c.getUtilisateurIds().addAll(personnel.verifier(r.utilisateurIds()));
+            c.getUtilisateurIds().addAll(retenus);
         }
         if (r.lieuId() != null) {
             tg.parcauto.api.pointdevente.lieu.LieuStock lieu = lieux.findById(r.lieuId())

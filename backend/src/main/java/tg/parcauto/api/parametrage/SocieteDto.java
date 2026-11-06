@@ -30,7 +30,9 @@ public final class SocieteDto {
             String mentionsFacture,
             java.math.BigDecimal tauxTva,
             /** Logo pret a etre affiche : « data:image/png;base64,... ». */
-            String logo) {
+            String logo,
+            /** Format des documents imprimes : A4 ou A5. */
+            String formatDocuments) {
     }
 
     public record Requete(
@@ -48,6 +50,8 @@ public final class SocieteDto {
             @Size(max = 120) String banque,
             @Size(max = 60) String compteBancaire,
             @Size(max = 500) String mentionsFacture,
-            @NotNull @DecimalMin("0") @DecimalMax("100") java.math.BigDecimal tauxTva) {
+            @NotNull @DecimalMin("0") @DecimalMax("100") java.math.BigDecimal tauxTva,
+            /** A4 ou A5 ; absent : le format actuel est garde. */
+            @jakarta.validation.constraints.Pattern(regexp = "A4|A5", message = "A4 ou A5") String formatDocuments) {
     }
 }

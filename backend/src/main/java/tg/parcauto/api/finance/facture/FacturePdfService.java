@@ -90,7 +90,7 @@ public class FacturePdfService {
         pied(document, facture, societe);
 
         document.close();
-        return sortie.toByteArray();
+        return societeService.auFormat(sortie.toByteArray());
     }
 
     /**

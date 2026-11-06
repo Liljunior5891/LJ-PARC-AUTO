@@ -355,7 +355,8 @@ public class LieuStockService {
         }
         if (r.utilisateurIds() != null) {
             l.getUtilisateurIds().clear();
-            l.getUtilisateurIds().addAll(personnel.verifier(r.utilisateurIds()));
+            // Le personnel d'un lieu, ce sont ses magasiniers ; la caisse y accede par son magasin.
+            l.getUtilisateurIds().addAll(personnel.verifier(r.utilisateurIds(), java.util.EnumSet.of(Role.MAGASINIER), "Magasinier"));
         }
     }
 

@@ -1,6 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, ElementRef, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { catchError, forkJoin, of } from 'rxjs';
 import { CommandeEnLigne } from '../../../core/models/marketplace';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -9,9 +10,12 @@ import {
   CategoriePdv,
   MODES_PAIEMENT_PDV,
   ModePaiementPdv,
-  Ticket
+  Ticket,
+  VenteResume
 } from '../../../core/models/pdv';
-import { ClientPdv, Conditionnement, Devis, DevisRequete, ReglagesMateriaux } from '../../../core/models/materiaux';
+import { Page } from '../../../core/models/models';
+import { BonLivraison, ClientPdv, Conditionnement, Devis, DevisRequete, ReglagesMateriaux } from '../../../core/models/materiaux';
+import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 import { PdvService } from '../../../core/services/pdv.service';
 import { MateriauxService } from '../../../core/services/materiaux.service';
 import { LieuxService } from '../../../core/services/lieux.service';
@@ -24,6 +28,7 @@ import { SocieteService } from '../../../core/services/societe.service';
 import { Modale } from '../../../shared/modale';
 import { imprimerTicket } from '../../../shared/ticket-pdv';
 import { CompteClientPdv } from '../../../shared/compte-client-pdv';
+import { OperationService } from '../../../core/operation/operation.service';
 import { FormulaireClientPdv } from '../../../shared/formulaire-client-pdv';
 
 /** Ligne du panier en cours de constitution. */
@@ -63,7 +68,7 @@ const unitesDeBase = (l: LignePanier) => l.quantite * (l.conditionnement?.coeffi
  */
 @Component({
   selector: 'app-caisse',
-  imports: [FormsModule, DecimalPipe, DatePipe, Modale, BandeauSession, BoutonEspeces, CompteClientPdv, FormulaireClientPdv],
+  imports: [FormsModule, DecimalPipe, DatePipe, Modale, BandeauSession, BoutonEspeces, CompteClientPdv, FormulaireClientPdv, SuiteListe],
   templateUrl: './caisse.html',
   styleUrls: ['../commande/commande.scss', './caisse.scss'],
   host: { '(document:keydown)': 'captureDouchette($event)' }
@@ -105,6 +110,8 @@ export class Caisse implements OnInit, OnDestroy {
   private readonly saisie = viewChild<ElementRef<HTMLInputElement>>('saisie');
   private readonly champRecu = viewChild<ElementRef<HTMLInputElement>>('champRecu');
   private readonly route = inject(ActivatedRoute);
+  /** Confirmation des operations importantes (encaissement, commandes en ligne). */
+  private readonly operation = inject(OperationService);
 
   // Commandes de la boutique en ligne : elles arrivent a la caisse, qui les accepte puis les encaisse.
   readonly marketplace = this.auth.aModule('MARKETPLACE');
@@ -155,6 +162,18 @@ export class Caisse implements OnInit, OnDestroy {
   readonly devisModifie = signal(false);
   readonly fenetreDevis = signal(false);
   readonly devisOuverts = signal<Devis[]>([]);
+  /** Fenetre des devis : recherche par numero, client ou telephone. */
+  readonly rechercheDevis = signal('');
+  readonly devisFiltres = computed(() => {
+    const motif = this.rechercheDevis().trim().toLowerCase();
+    return !motif ? this.devisOuverts() : this.devisOuverts().filter((d) =>
+      [d.numero, d.clientNom, d.clientTelephone ?? ''].some((t) => t.toLowerCase().includes(motif)));
+  });
+  readonly totalDevis = computed(() => this.devisFiltres().reduce((s, d) => s + d.total, 0));
+
+  initialesClient(nom: string): string {
+    return (nom || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((m) => m[0].toUpperCase()).join('');
+  }
   readonly enregistrementDevis = signal(false);
   noteDevis = '';
 
@@ -256,7 +275,16 @@ export class Caisse implements OnInit, OnDestroy {
     return this.materiaux && !!r?.creditActif && (r.creditCaissier || this.estGestionnaire) && !this.commandeEnLigne();
   });
 
+  /** Nombre entier de conditionnements que couvre le stock disponible. */
+  disponiblesEn(stock: number, coefficient: number): number {
+    return coefficient > 0 ? Math.floor(stock / coefficient) : 0;
+  }
+
+  /** Format des documents choisi par l'administrateur, affiche sur le bouton de la facture. */
+  readonly formatDocuments = signal<'A4' | 'A5'>('A4');
+
   ngOnInit(): void {
+    this.societeService.lire().subscribe({ next: (s) => this.formatDocuments.set(s.formatDocuments ?? 'A4') });
     this.service.catalogueCaisse().subscribe({ next: (a) => this.articles.set(a) });
     this.service.categories().subscribe({ next: (c) => this.categories.set(c.filter((x) => x.actif)) });
     this.refocaliser();
@@ -289,7 +317,22 @@ export class Caisse implements OnInit, OnDestroy {
     });
   }
 
-  avancerEnLigne(commande: CommandeEnLigne, statut: 'CONFIRMEE' | 'PRETE' | 'EN_LIVRAISON' | 'ANNULEE'): void {
+  async avancerEnLigne(commande: CommandeEnLigne, statut: 'CONFIRMEE' | 'PRETE' | 'EN_LIVRAISON' | 'ANNULEE'): Promise<void> {
+    const libelles = {
+      CONFIRMEE: { titre: 'Accepter', action: 'Accepter' },
+      PRETE: { titre: 'Marquer prete', action: 'Marquer prete' },
+      EN_LIVRAISON: { titre: 'Mettre en livraison', action: 'Mettre en livraison' },
+      ANNULEE: { titre: 'Refuser', action: 'Refuser' }
+    }[statut];
+    const accepte = await this.operation.demander({
+      titre: `${libelles.titre} la commande ${commande.numero} ?`,
+      message: statut === 'ANNULEE' ? 'Le client verra le refus sur son lien de suivi.' : undefined,
+      libelleAction: libelles.action,
+      danger: statut === 'ANNULEE'
+    });
+    if (!accepte) {
+      return;
+    }
     this.erreur.set(null);
     this.service.changerStatutEnLigne(commande.id, statut, statut === 'ANNULEE' ? this.motifRefus.trim() || undefined : undefined)
       .subscribe({
@@ -580,6 +623,30 @@ export class Caisse implements OnInit, OnDestroy {
     return this.disponibilites().find((d) => d.articleId === articleId && d.lieuId === lieuId)?.disponible ?? 0;
   }
 
+  /** Produits du panier qui se retirent dans un lieu (ceux dont le stock est suivi). */
+  readonly lignesAvecLieu = computed(() => this.panier().filter((l) => l.article.suiviStock));
+
+  /** Lieu commun a toutes les lignes, ou null quand elles se retirent dans des lieux differents. */
+  readonly lieuCommun = computed(() => {
+    const ids = new Set(this.lignesAvecLieu().map((l) => this.lieuLigne(l)));
+    return ids.size === 1 ? [...ids][0] ?? null : null;
+  });
+
+  /** Nombre de produits que le lieu peut servir en entier, pour guider le choix global. */
+  produitsServis(lieuId: number): number {
+    return this.lignesAvecLieu().filter((l) => this.dispoAuLieu(l.article.id, lieuId) >= unitesDeBase(l)).length;
+  }
+
+  /** Un seul geste pour tout le panier ; chaque ligne reste modifiable ensuite. */
+  appliquerLieuATous(lieuId: number | null): void {
+    if (lieuId === null) {
+      return;
+    }
+    for (const l of this.lignesAvecLieu()) {
+      this.changerLieuLigne(l, lieuId);
+    }
+  }
+
   changerLieuLigne(l: LignePanier, lieuId: number): void {
     this.lieuxLignes.update((v) => ({ ...v, [cle(l)]: lieuId }));
     const ici = lieuId === this.magasin()?.id;
@@ -661,8 +728,22 @@ export class Caisse implements OnInit, OnDestroy {
     this.montantRecu.set(this.aPayer());
   }
 
-  encaisser(): void {
+  async encaisser(): Promise<void> {
     if (this.enCours() || !this.paiementPossible()) {
+      return;
+    }
+    const montant = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} F`;
+    const demande = {
+      titre: `Encaisser ${montant(this.aPayer())} ?`,
+      message: this.credit()
+        ? `Vente a credit de ${montant(this.total())} : ${montant(this.total() - this.aPayer())} restent dus par le client.`
+        : 'Verifiez le panier et le moyen de paiement : la vente sera enregistree et le stock mis a jour.',
+      libelleAction: 'Encaisser'
+    };
+    // Devis modifie : sa mise a jour part juste avant l'encaissement, sans seconde confirmation.
+    const devisAMettreAJour = !!this.devisCharge() && this.devisModifie();
+    const accepte = await (devisAMettreAJour ? this.operation.confirmer(demande) : this.operation.demander(demande));
+    if (!accepte || this.enCours()) {
       return;
     }
     this.enCours.set(true);
@@ -784,6 +865,85 @@ export class Caisse implements OnInit, OnDestroy {
     this.materiauxService.facturePdf(ticket.id).subscribe({
       next: (pdf) => this.materiauxService.ouvrirPdf(pdf),
       error: () => this.signaler('Facture indisponible.')
+    });
+  }
+
+  // ------------------------------------------ commandes de la caisse : reimpressions
+
+  readonly fenetreCommandes = signal(false);
+  readonly pageCommandes = signal<Page<VenteResume> | null>(null);
+  private readonly suiteCommandes = new SuiteDePages();
+  readonly commandeOuverte = signal<number | null>(null);
+  readonly detailCommande = signal<{ ticket: Ticket; retraits: BonRetrait[]; livraisons: BonLivraison[] } | null>(null);
+  readonly erreurCommandes = signal<string | null>(null);
+  rechercheCommandes = '';
+  private minuterieCommandes?: ReturnType<typeof setTimeout>;
+
+  /** Commandes encaissees sur la session de caisse en cours, les plus recentes d'abord. */
+  ouvrirCommandes(): void {
+    this.fenetreCommandes.set(true);
+    this.commandeOuverte.set(null);
+    this.detailCommande.set(null);
+    this.erreurCommandes.set(null);
+    this.pageCommandes.set(null);
+    this.rechercheCommandes = '';
+    this.chargerCommandes();
+  }
+
+  /** Recherche par numero de commande, nom ou telephone du client, relancee apres la frappe. */
+  rechercherCommandes(): void {
+    clearTimeout(this.minuterieCommandes);
+    this.minuterieCommandes = setTimeout(() => {
+      this.commandeOuverte.set(null);
+      this.chargerCommandes();
+    }, 250);
+  }
+
+  suiteDesCommandes(): void {
+    if (this.suiteCommandes.demander(this.pageCommandes())) {
+      this.chargerCommandes();
+    }
+  }
+
+  private chargerCommandes(): void {
+    const session = this.session();
+    if (!session) {
+      return;
+    }
+    this.service.ventes({ sessionId: session.id, q: this.rechercheCommandes, page: this.suiteCommandes.numero() }).subscribe({
+      next: (p) => this.pageCommandes.set(cumulerPage(this.pageCommandes(), p)),
+      error: (e) => this.erreurCommandes.set(this.message(e, 'Chargement des commandes impossible.'))
+    });
+  }
+
+  /** Deplie une commande : son ticket et ses bons, prets a reimprimer. */
+  deplierCommande(v: VenteResume): void {
+    if (this.commandeOuverte() === v.id) {
+      this.commandeOuverte.set(null);
+      return;
+    }
+    this.commandeOuverte.set(v.id);
+    this.detailCommande.set(null);
+    this.erreurCommandes.set(null);
+    const sansBons = of([] as never[]);
+    forkJoin({
+      ticket: this.service.ticket(v.id),
+      retraits: this.multiLieux() ? this.lieuxService.retraitsDeLaVente(v.id).pipe(catchError(() => sansBons)) : sansBons,
+      livraisons: this.materiaux ? this.materiauxService.bonsDeLaVente(v.id).pipe(catchError(() => sansBons)) : sansBons
+    }).subscribe({
+      next: (d) => {
+        if (this.commandeOuverte() === v.id) {
+          this.detailCommande.set(d);
+        }
+      },
+      error: (e) => this.erreurCommandes.set(this.message(e, 'Commande ' + v.numero + ' introuvable.'))
+    });
+  }
+
+  imprimerLivraison(b: BonLivraison): void {
+    this.materiauxService.bonPdf(b.id).subscribe({
+      next: (pdf) => this.materiauxService.ouvrirPdf(pdf),
+      error: () => this.erreurCommandes.set('Bon de livraison ' + b.numero + ' indisponible.')
     });
   }
 
@@ -955,6 +1115,7 @@ export class Caisse implements OnInit, OnDestroy {
   }
 
   ouvrirDevis(): void {
+    this.rechercheDevis.set('');
     this.fenetreDevis.set(true);
     this.materiauxService.devis({ statut: 'EN_COURS' }).subscribe({
       next: (p) => this.devisOuverts.set(p.content),

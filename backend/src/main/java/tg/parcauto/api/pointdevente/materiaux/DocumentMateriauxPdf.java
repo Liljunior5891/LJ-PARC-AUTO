@@ -66,6 +66,7 @@ public class DocumentMateriauxPdf {
     private final LivraisonClientService livraisons;
     private final tg.parcauto.api.pointdevente.lieu.BonRetraitRepository retraits;
     private final tg.parcauto.api.pointdevente.lieu.TransfertRepository transferts;
+    private final BonLivraisonRepository bonsLivraison;
 
     /** Ligne imprimee, commune a la facture et au devis. */
     private record Ligne(String designation, String unite, BigDecimal quantite, BigDecimal prix, BigDecimal remise,
@@ -251,7 +252,7 @@ public class DocumentMateriauxPdf {
         document.add(signatures);
 
         document.close();
-        return sortie.toByteArray();
+        return societeService.auFormat(sortie.toByteArray());
     }
 
     public String nomBonLivraison(Long bonId) {
@@ -279,54 +280,40 @@ public class DocumentMateriauxPdf {
         references.add(new String[]{"Émis le :", DATE.format(bon.getDateEmission().atZone(ZONE))});
         references.add(new String[]{"Commande N° :", v.getNumero()});
         references.add(new String[]{"À retirer à :", bon.getLieu().getNom()});
-        enTete(document, "BON DE RETRAIT", c == null
+        boolean servi = bon.getStatut() == tg.parcauto.api.pointdevente.lieu.BonRetrait.Statut.SERVI;
+        boolean annule = bon.getStatut() == tg.parcauto.api.pointdevente.lieu.BonRetrait.Statut.ANNULE;
+        references.add(new String[]{"État :", servi ? "Entièrement servi" : annule ? "Annulé ou remplacé" : "À servir"});
+        enTete(document, servi ? "BON DE RETRAIT SERVI" : annule ? "BON DE RETRAIT ANNULÉ" : "BON DE RETRAIT", c == null
                 ? new Destinataire(v.getClientNom() == null ? "Client comptoir" : v.getClientNom(), null, null, null, null)
                 : new Destinataire(c.getNom(), c.getTelephone(), null, null, c.getCode()),
                 "CLIENT :", references);
 
-        PdfPTable table = new PdfPTable(new float[]{58f, 14f, 14f, 14f});
+        PdfPTable table = new PdfPTable(new float[]{46f, 12f, 14f, 14f, 14f});
         table.setWidthPercentage(100);
         table.setHeaderRows(1);
-        String[] entetes = {"Désignation", "Unité", "Acheté", "À retirer"};
+        String[] entetes = {"Désignation", "Unité", "Acheté", "Déjà servi", "À retirer"};
         for (int i = 0; i < entetes.length; i++) {
             PdfPCell cellule = cellule(entetes[i], police(8.5f, Font.BOLD, Color.WHITE),
                     i < 2 ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT, BLEU);
             cellule.setPadding(6);
             table.addCell(cellule);
         }
-        for (LigneVente ligne : bon.lignes()) {
+        List<LigneVente> lignesDuBon = bon.lignes();
+        boolean pair = false;
+        for (LigneVente ligne : lignesDuBon) {
+            Color fond = pair ? FOND_DOUX : null;
             String u = unite(ligne.getConditionnement(), ligne.getArticle().getUnite());
-            table.addCell(ligneCellule(ligne.getLibelle(), Element.ALIGN_LEFT, null));
-            table.addCell(ligneCellule(u == null ? "" : u, Element.ALIGN_LEFT, null));
-            table.addCell(ligneCellule(quantite(ligne.getQuantite()), Element.ALIGN_RIGHT, null));
-            table.addCell(ligneCellule(quantite(ligne.resteALivrer()), Element.ALIGN_RIGHT, null));
+            table.addCell(ligneCellule(ligne.getLibelle(), Element.ALIGN_LEFT, fond));
+            table.addCell(ligneCellule(u == null ? "" : u, Element.ALIGN_LEFT, fond));
+            table.addCell(ligneCellule(quantite(ligne.getQuantite()), Element.ALIGN_RIGHT, fond));
+            table.addCell(ligneCellule(quantite(ligne.getQuantite().subtract(ligne.resteALivrer())), Element.ALIGN_RIGHT, fond));
+            table.addCell(ligneCellule(quantite(ligne.resteALivrer()), Element.ALIGN_RIGHT, fond));
+            pair = !pair;
         }
         table.setSpacingAfter(16);
         document.add(table);
+        historiqueDesRemises(document, bon, lignesDuBon);
 
-        // Deux lectures possibles : le code QR au telephone, le code-barres a la douchette.
-        PdfPTable codes = new PdfPTable(new float[]{30f, 70f});
-        codes.setWidthPercentage(80);
-        com.lowagie.text.Image qr = imageQr(bon.getNumero());
-        qr.scaleAbsolute(110, 110);
-        PdfPCell celluleQr = new PdfPCell(qr, false);
-        celluleQr.setBorder(Rectangle.NO_BORDER);
-        celluleQr.setHorizontalAlignment(Element.ALIGN_CENTER);
-        celluleQr.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        codes.addCell(celluleQr);
-        com.lowagie.text.Image barres = imageCodeBarres(bon.getNumero());
-        barres.scaleAbsolute(280, 70);
-        PdfPCell celluleBarres = new PdfPCell(barres, false);
-        celluleBarres.setBorder(Rectangle.NO_BORDER);
-        celluleBarres.setHorizontalAlignment(Element.ALIGN_CENTER);
-        celluleBarres.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        codes.addCell(celluleBarres);
-        codes.setSpacingAfter(4);
-        document.add(codes);
-        Paragraph numero = new Paragraph(bon.getNumero(), police(13, Font.BOLD, SOMBRE));
-        numero.setAlignment(Element.ALIGN_CENTER);
-        numero.setSpacingAfter(12);
-        document.add(numero);
         StringBuilder adresse = new StringBuilder(bon.getLieu().getNom());
         if (bon.getLieu().getAdresse() != null) {
             adresse.append(" - ").append(bon.getLieu().getAdresse());
@@ -337,12 +324,96 @@ public class DocumentMateriauxPdf {
         Paragraph lieu = new Paragraph("Présentez ce bon à : " + adresse, police(10, Font.BOLD, SOMBRE));
         lieu.setAlignment(Element.ALIGN_CENTER);
         document.add(lieu);
-        Paragraph note = new Paragraph("La personne qui présente ce bon est servie. Il reste valable jusqu'au retrait complet de la marchandise ; "
-                + "gardez-le si vous la retirez en plusieurs fois.", police(9, Font.NORMAL, GRIS));
+        Paragraph note = new Paragraph(servi
+                ? "Toute la marchandise de ce bon a été remise : il ne donne plus droit à aucun retrait."
+                : annule
+                ? "Ce bon a été annulé ou remplacé par un bon d'un autre lieu : il ne donne plus droit à aucun retrait."
+                : "La personne qui présente ce bon est servie. Il reste valable jusqu'au retrait complet de la marchandise ; "
+                + "gardez-le si vous la retirez en plusieurs fois.",
+                police(9, servi || annule ? Font.BOLD : Font.NORMAL, servi || annule ? ROUGE : GRIS));
         note.setAlignment(Element.ALIGN_CENTER);
+        note.setSpacingAfter(14);
         document.add(note);
+        codesDuBon(document, bon.getNumero());
         document.close();
-        return sortie.toByteArray();
+        return societeService.auFormat(sortie.toByteArray());
+    }
+
+    /**
+     * Deux lectures possibles, en bas du bon : le code QR a gauche (telephone), le
+     * code-barres a droite (douchette). Le numero n'est pas repete dessous : il figure
+     * deja dans l'en-tete du bon.
+     */
+    private static void codesDuBon(Document document, String numero) throws com.lowagie.text.DocumentException {
+        PdfPTable codes = new PdfPTable(new float[]{50f, 50f});
+        codes.setWidthPercentage(100);
+        codes.setKeepTogether(true);
+        com.lowagie.text.Image qr = imageQr(numero);
+        qr.scaleAbsolute(78, 78);
+        PdfPCell celluleQr = new PdfPCell(qr, false);
+        celluleQr.setBorder(Rectangle.NO_BORDER);
+        celluleQr.setHorizontalAlignment(Element.ALIGN_LEFT);
+        celluleQr.setVerticalAlignment(Element.ALIGN_BOTTOM);
+        codes.addCell(celluleQr);
+        com.lowagie.text.Image barres = imageCodeBarres(numero);
+        barres.scaleAbsolute(190, 46);
+        PdfPCell celluleBarres = new PdfPCell(barres, false);
+        celluleBarres.setBorder(Rectangle.NO_BORDER);
+        celluleBarres.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        celluleBarres.setVerticalAlignment(Element.ALIGN_BOTTOM);
+        codes.addCell(celluleBarres);
+        document.add(codes);
+    }
+
+    /** Remises deja faites sur ce bon : date, bon de livraison, qui a remis, qui a recu et quoi. */
+    private void historiqueDesRemises(Document document, tg.parcauto.api.pointdevente.lieu.BonRetrait bon,
+                                      List<LigneVente> lignesDuBon) {
+        List<Long> ids = lignesDuBon.stream().map(LigneVente::getId).toList();
+        List<BonLivraison> remises = new ArrayList<>(bonsLivraison.findByVenteIdOrderByDateBonDescIdDesc(bon.getVente().getId()).stream()
+                .filter(b -> b.getStatut() == BonLivraison.Statut.VALIDE)
+                .filter(b -> b.getLieu() == null || b.getLieu().getId().equals(bon.getLieu().getId()))
+                .filter(b -> b.getLignes().stream().anyMatch(l -> ids.contains(l.getLigneVente().getId())))
+                .toList());
+        if (remises.isEmpty()) {
+            return;
+        }
+        java.util.Collections.reverse(remises);
+        Paragraph titre = new Paragraph("Remises déjà faites", police(10.5f, Font.BOLD, SOMBRE));
+        titre.setSpacingAfter(6);
+        document.add(titre);
+        PdfPTable table = new PdfPTable(new float[]{18f, 18f, 40f, 24f});
+        table.setWidthPercentage(100);
+        table.setHeaderRows(1);
+        for (String e : new String[]{"Date", "Bon de livraison", "Articles remis", "Remis par / reçu par"}) {
+            PdfPCell cellule = cellule(e, police(8.5f, Font.BOLD, Color.WHITE), Element.ALIGN_LEFT, BLEU);
+            cellule.setPadding(6);
+            table.addCell(cellule);
+        }
+        DateTimeFormatter heure = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        boolean pair = false;
+        for (BonLivraison remise : remises) {
+            Color fond = pair ? FOND_DOUX : null;
+            StringBuilder articles = new StringBuilder();
+            for (LigneBonLivraison l : remise.getLignes()) {
+                if (ids.contains(l.getLigneVente().getId())) {
+                    if (!articles.isEmpty()) {
+                        articles.append('\n');
+                    }
+                    String u = unite(l.getLigneVente().getConditionnement(), l.getLigneVente().getArticle().getUnite());
+                    articles.append(quantite(l.getQuantite())).append(u == null ? "" : " " + u)
+                            .append(" · ").append(l.getLigneVente().getLibelle());
+                }
+            }
+            String personnes = (remise.getRemisPar() == null ? "—" : remise.getRemisPar())
+                    + (remise.getRecuPar() == null || remise.getRecuPar().isBlank() ? "" : "\n→ " + remise.getRecuPar());
+            table.addCell(ligneCellule(heure.format(remise.getDateBon().atZone(ZONE)), Element.ALIGN_LEFT, fond));
+            table.addCell(ligneCellule(remise.getNumero(), Element.ALIGN_LEFT, fond));
+            table.addCell(ligneCellule(articles.toString(), Element.ALIGN_LEFT, fond));
+            table.addCell(ligneCellule(personnes, Element.ALIGN_LEFT, fond));
+            pair = !pair;
+        }
+        table.setSpacingAfter(16);
+        document.add(table);
     }
 
     public String nomBonRetrait(Long bonId) {
@@ -437,7 +508,7 @@ public class DocumentMateriauxPdf {
         signatures.addCell(cellule("Reçu par :\n" + (t.getRecuPar() == null ? "" : t.getRecuPar()), police(9, Font.BOLD, SOMBRE), Element.ALIGN_LEFT, null));
         document.add(signatures);
         document.close();
-        return sortie.toByteArray();
+        return societeService.auFormat(sortie.toByteArray());
     }
 
     public String nomBonTransfert(Long transfertId) {
@@ -521,7 +592,7 @@ public class DocumentMateriauxPdf {
 
         document.add(new Paragraph("Signature du client :", police(9, Font.BOLD, SOMBRE)));
         document.close();
-        return sortie.toByteArray();
+        return societeService.auFormat(sortie.toByteArray());
     }
 
     public String nomAvoir(Long soldeId) {
@@ -638,7 +709,7 @@ public class DocumentMateriauxPdf {
         document.add(bas);
 
         document.close();
-        return sortie.toByteArray();
+        return societeService.auFormat(sortie.toByteArray());
     }
 
     // -------------------------------------------------------------- outils

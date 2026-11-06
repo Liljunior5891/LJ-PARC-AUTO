@@ -61,6 +61,9 @@ public class SocieteService {
         societe.setCompteBancaire(vide(requete.compteBancaire()));
         societe.setMentionsFacture(vide(requete.mentionsFacture()));
         societe.setTauxTva(requete.tauxTva());
+        if (requete.formatDocuments() != null) {
+            societe.setFormatDocuments(requete.formatDocuments());
+        }
 
         entreprise().ifPresent(e -> {
             e.setNom(societe.getNom());
@@ -170,6 +173,22 @@ public class SocieteService {
                 s.getNom(), s.getSigle(), s.getFormeJuridique(), s.getAdresse(), s.getVille(),
                 s.getPays(), s.getTelephone(), s.getEmail(), s.getSiteWeb(), s.getNif(),
                 s.getRccm(), s.getBanque(), s.getCompteBancaire(), s.getMentionsFacture(),
-                s.getTauxTva(), logo(s));
+                s.getTauxTva(), logo(s), formatDocuments(s));
+    }
+
+    private static String formatDocuments(Societe s) {
+        return "A5".equals(s.getFormatDocuments()) ? "A5" : "A4";
+    }
+
+    /**
+     * Derniere main sur un document genere : le nom de l'entreprise en filigrane
+     * (authenticite), puis le format choisi par l'administrateur. Les documents
+     * sont composes en A4 ; en A5, chaque page est reduite a l'identique (A5 = A4 x 1/√2).
+     */
+    @Transactional(readOnly = true)
+    public byte[] auFormat(byte[] pdfA4) {
+        Societe societe = charger();
+        byte[] signe = FormatPapier.filigrane(pdfA4, societe.getNom());
+        return "A5".equals(formatDocuments(societe)) ? FormatPapier.versA5(signe) : signe;
     }
 }

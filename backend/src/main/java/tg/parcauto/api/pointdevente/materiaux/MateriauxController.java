@@ -140,8 +140,9 @@ public class MateriauxController {
     @Operation(summary = "Ventes dont il reste de la marchandise a remettre au client")
     public Page<MateriauxDto.VenteALivrer> resteALivrer(@RequestParam(required = false) String q,
                                                         @RequestParam(required = false) Long clientId,
-                                                        @PageableDefault(size = 30) Pageable pageable) {
-        return livraisons.resteALivrer(q, clientId, pageable);
+                                                        @PageableDefault(size = 30) Pageable pageable,
+                                                        @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return livraisons.resteALivrer(q, clientId, principal, pageable);
     }
 
     @GetMapping("/livraisons/historique")
@@ -149,8 +150,9 @@ public class MateriauxController {
     @Operation(summary = "Commandes qui ont un bon de livraison ou un solde, meme entierement remises")
     public Page<MateriauxDto.VenteALivrer> historiqueLivraisons(@RequestParam(required = false) String q,
                                                                 @RequestParam(required = false) Long clientId,
-                                                                @PageableDefault(size = 30) Pageable pageable) {
-        return livraisons.historique(q, clientId, pageable);
+                                                                @PageableDefault(size = 30) Pageable pageable,
+                                                                @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return livraisons.historique(q, clientId, principal, pageable);
     }
 
     @PostMapping("/ventes/{id}/soldes")
@@ -165,7 +167,9 @@ public class MateriauxController {
     @GetMapping("/ventes/{id}/soldes")
     @PreAuthorize(Autorisations.PDV_CAISSE)
     @Operation(summary = "Soldes du reste d'une vente")
-    public List<MateriauxDto.SoldeReponse> soldesDeLaVente(@PathVariable Long id) {
+    public List<MateriauxDto.SoldeReponse> soldesDeLaVente(@PathVariable Long id,
+                                                           @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        livraisons.exigerVente(id, principal);
         return livraisons.soldesDeLaVente(id);
     }
 
@@ -196,7 +200,9 @@ public class MateriauxController {
     @GetMapping("/ventes/{id}/livraisons")
     @PreAuthorize(Autorisations.PDV_CAISSE)
     @Operation(summary = "Bons de livraison d'une vente")
-    public List<MateriauxDto.BonReponse> bonsDeLaVente(@PathVariable Long id) {
+    public List<MateriauxDto.BonReponse> bonsDeLaVente(@PathVariable Long id,
+                                                       @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        livraisons.exigerVente(id, principal);
         return livraisons.bonsDeLaVente(id);
     }
 
@@ -391,7 +397,8 @@ public class MateriauxController {
     @GetMapping("/ventes/{id}/facture-pdf")
     @PreAuthorize(Autorisations.PDV_CAISSE)
     @Operation(summary = "Facture A4 d'une vente")
-    public ResponseEntity<byte[]> facture(@PathVariable Long id) {
+    public ResponseEntity<byte[]> facture(@PathVariable Long id, @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        livraisons.exigerVente(id, principal);
         return pdf(documents.facture(id), documents.nomFacture(id));
     }
 

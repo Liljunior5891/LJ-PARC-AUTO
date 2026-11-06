@@ -105,7 +105,7 @@ public class ContratRecettePdfService {
         signatures(document, societe, recette);
 
         document.close();
-        return sortie.toByteArray();
+        return societeService.auFormat(sortie.toByteArray());
     }
 
     public String nomFichier(Long recetteId) {

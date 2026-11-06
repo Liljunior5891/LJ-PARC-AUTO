@@ -18,7 +18,11 @@ export interface Societe {
   tauxTva: number;
   /** Logo pret a etre affiche : « data:image/png;base64,... ». */
   logo?: string | null;
+  /** Format des documents imprimes, choisi par l'administrateur. */
+  formatDocuments?: FormatDocuments;
 }
+
+export type FormatDocuments = 'A4' | 'A5';
 
 export type SocieteRequete = Omit<Societe, 'logo'>;
 

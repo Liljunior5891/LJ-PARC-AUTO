@@ -35,7 +35,7 @@
         </div>
       </header>
       <ul>
-        @for (l of t.lignes; track l.id) {
+        @for (l of (deplie(t.id) ? t.lignes : t.lignes.slice(0, APERCU)); track l.id) {
           <li>
             <strong>{{ (l.quantiteRecue ?? l.quantiteExpediee ?? l.quantite) | number: '1.0-3' }}</strong> {{ l.unite || '' }} · {{ l.nom }}
             @if (l.ecart > 0) {
@@ -48,16 +48,21 @@
           </li>
         }
       </ul>
+      @if (t.lignes.length > APERCU) {
+        <button type="button" class="plus-produits" [attr.aria-expanded]="deplie(t.id)" (click)="basculer(t.id)">
+          {{ deplie(t.id) ? '− Moins' : '+ plus (' + (t.lignes.length - APERCU) + ' autres produits)' }}
+        </button>
+      }
       @if (t.note) { <small>{{ t.note }}</small> }
-      <footer>
-        @if (gerant && t.statut === 'DEMANDE') { <button class="bouton" type="button" (click)="ouvrirAction('validation', t)">Valider</button> }
-        @if (peutExpedier(t)) { <button class="bouton" type="button" (click)="ouvrirAction('expedition', t)">Expedier</button> }
-        @if (peutRecevoir(t)) { <button class="bouton succes" type="button" (click)="ouvrirAction('reception', t)">Receptionner</button> }
-        @if (gerant && t.statut === 'ECART') { <button class="bouton" type="button" (click)="ouvrirAction('ecart', t)">Traiter l'ecart</button> }
+      <footer class="actions-carte">
+        @if (gerant && t.statut === 'DEMANDE') { <button class="bouton" type="button" (click)="ouvrirAction('validation', t)" title="Valider et choisir le lieu de depart"><span class="ico" aria-hidden="true">✓</span><span class="lib">Valider</span></button> }
+        @if (peutExpedier(t)) { <button class="bouton" type="button" (click)="ouvrirAction('expedition', t)"><span class="ico" aria-hidden="true">🚚</span><span class="lib">Expedier</span></button> }
+        @if (peutRecevoir(t)) { <button class="bouton succes" type="button" (click)="ouvrirAction('reception', t)"><span class="ico" aria-hidden="true">📥</span><span class="lib">Receptionner</span></button> }
+        @if (gerant && t.statut === 'ECART') { <button class="bouton" type="button" (click)="ouvrirAction('ecart', t)" title="Traiter l'ecart"><span class="ico" aria-hidden="true">⚖</span><span class="lib">Ecart</span></button> }
         @if (gerant && (t.statut === 'DEMANDE' || t.statut === 'VALIDE')) {
-          <button class="bouton secondaire annuler" type="button" (click)="annuler(t)">Annuler</button>
+          <button class="bouton secondaire annuler" type="button" (click)="annuler(t)"><span class="ico" aria-hidden="true">✕</span><span class="lib">Annuler</span></button>
         }
-        <button class="bouton secondaire" type="button" (click)="imprimer(t)">Bon de transfert</button>
+        <button class="bouton secondaire" type="button" (click)="imprimer(t)" title="Imprimer le bon de transfert"><span class="ico" aria-hidden="true">🖨</span><span class="lib">Imprimer</span></button>
       </footer>
     </article>
   } @empty {

@@ -145,6 +145,9 @@
 
 @media (min-width: 641px) {
   /* Les colonnes se lisent sous les libelles de la premiere ligne ; ils restent lus par les lecteurs d'ecran. */
+  /* « Autre » : le champ du nom s'ouvre sous la liste des unites. */
+  .champ-unite-vente .nom-autre-unite { margin-top: 0.35rem; }
+
   .ligne-conditionnement + .ligne-conditionnement label {
     position: absolute;
     width: 1px;

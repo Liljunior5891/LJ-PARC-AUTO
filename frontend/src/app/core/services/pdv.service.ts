@@ -266,8 +266,11 @@ export class PdvService {
     });
   }
 
-  ventes(filtre: { debut?: string; fin?: string; sessionId?: number; enLigne?: boolean; page?: number }): Observable<Page<VenteResume>> {
+  ventes(filtre: { debut?: string; fin?: string; sessionId?: number; enLigne?: boolean; q?: string; page?: number }): Observable<Page<VenteResume>> {
     let params = new HttpParams().set('page', filtre.page ?? 0).set('size', 30);
+    if (filtre.q?.trim()) {
+      params = params.set('q', filtre.q.trim());
+    }
     if (filtre.enLigne !== undefined) {
       params = params.set('enLigne', filtre.enLigne);
     }

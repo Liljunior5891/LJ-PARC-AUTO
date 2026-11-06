@@ -9,6 +9,7 @@ import { MateriauxService } from '../core/services/materiaux.service';
 import { SessionTravailService } from '../core/services/session-travail.service';
 import { SocieteService } from '../core/services/societe.service';
 import { Modale } from './modale';
+import { OperationService } from '../core/operation/operation.service';
 import { imprimerRecuReglement } from './ticket-pdv';
 
 /**
@@ -27,6 +28,7 @@ export class CompteClientPdv implements OnInit {
   private readonly service = inject(MateriauxService);
   private readonly societes = inject(SocieteService);
   private readonly sessions = inject(SessionTravailService);
+  private readonly operation = inject(OperationService);
   readonly estGestionnaire = inject(AuthService).aRole('ADMIN', 'GERANT');
 
   readonly clientId = input.required<number>();
@@ -105,7 +107,7 @@ export class CompteClientPdv implements OnInit {
     this.versement.set(true);
   }
 
-  encaisser(): void {
+  async encaisser(): Promise<void> {
     const montant = this.montant() ?? 0;
     if (this.enCours() || montant <= 0) {
       return;
@@ -114,6 +116,14 @@ export class CompteClientPdv implements OnInit {
       this.erreur.set(this.sessions.choixRequis()
         ? 'Choisissez la caisse sur laquelle vous encaissez.'
         : 'Aucune caisse ouverte : un gerant doit ouvrir une session avant d\'encaisser.');
+      return;
+    }
+    const accepte = await this.operation.demander({
+      titre: `Enregistrer le versement de ${montant.toLocaleString('fr-FR')} F ?`,
+      message: 'Il diminue ce que doit le client et entre dans la caisse.',
+      libelleAction: 'Enregistrer'
+    });
+    if (!accepte || this.enCours()) {
       return;
     }
     this.enCours.set(true);

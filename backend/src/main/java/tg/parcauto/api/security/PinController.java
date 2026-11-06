@@ -43,6 +43,18 @@ public class PinController {
         service.creer(principal.getId(), pin.pin());
     }
 
+    public record Changement(
+            @NotBlank @Pattern(regexp = "^\\d{4,6}$", message = "4 a 6 chiffres") String actuel,
+            @NotBlank @Pattern(regexp = "^\\d{4,6}$", message = "4 a 6 chiffres") String nouveau) {
+    }
+
+    @PostMapping("/changement")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Change son code PIN en donnant le code actuel")
+    public void changer(@Valid @RequestBody Changement changement, @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        service.changer(principal.getId(), changement.actuel(), changement.nouveau());
+    }
+
     @PostMapping("/verification")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Verifie le code PIN pour deverrouiller l'ecran de caisse")

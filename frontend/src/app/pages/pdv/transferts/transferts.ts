@@ -6,6 +6,7 @@ import { DecisionEcart, DisponibiliteLieu, LIBELLES_STATUT_TRANSFERT, StatutTran
 import { LieuxService } from '../../../core/services/lieux.service';
 import { MateriauxService } from '../../../core/services/materiaux.service';
 import { Modale } from '../../../shared/modale';
+import { OperationService } from '../../../core/operation/operation.service';
 import { Page } from '../../../core/models/models';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 import { FormulaireTransfert } from './formulaire-transfert';
@@ -23,6 +24,7 @@ import { FormulaireTransfert } from './formulaire-transfert';
 export class TransfertsPdv implements OnInit {
   private readonly service = inject(LieuxService);
   private readonly materiaux = inject(MateriauxService);
+  private readonly operation = inject(OperationService);
   readonly gerant = inject(AuthService).aRole('ADMIN', 'GERANT');
   readonly libelles = LIBELLES_STATUT_TRANSFERT;
   readonly etat = this.service.etat;
@@ -94,8 +96,36 @@ export class TransfertsPdv implements OnInit {
     return this.disponibilites().find((d) => d.articleId === articleId && d.lieuId === this.departValidation())?.disponible ?? 0;
   }
 
-  annuler(t: Transfert): void {
+  async annuler(t: Transfert): Promise<void> {
+    const accepte = await this.operation.demander({
+      titre: `Annuler le transfert ${t.numero} ?`,
+      message: 'Cette action ne peut pas etre defaite.',
+      libelleAction: 'Annuler le transfert',
+      danger: true
+    });
+    if (!accepte) {
+      return;
+    }
     this.executer(this.service.annulerTransfert(t.id, ''), `Transfert ${t.numero} annule.`);
+  }
+
+  // ------------------------------------------- cartes : 5 produits, puis « + plus »
+
+  readonly APERCU = 5;
+  private readonly deplies = signal<ReadonlySet<number>>(new Set());
+
+  deplie(id: number): boolean {
+    return this.deplies().has(id);
+  }
+
+  basculer(id: number): void {
+    this.deplies.update((s) => {
+      const copie = new Set(s);
+      if (!copie.delete(id)) {
+        copie.add(id);
+      }
+      return copie;
+    });
   }
 
   ouvrirAction(type: 'validation' | 'expedition' | 'reception' | 'ecart', t: Transfert): void {
@@ -116,9 +146,19 @@ export class TransfertsPdv implements OnInit {
     this.quantites.update((v) => ({ ...v, [id]: q }));
   }
 
-  confirmerAction(): void {
+  async confirmerAction(): Promise<void> {
     const a = this.action();
     if (!a) {
+      return;
+    }
+    const n = a.transfert.numero;
+    const demande = {
+      validation: { titre: `Valider le transfert ${n} ?`, message: 'Le lieu de depart pourra expedier la marchandise.', libelleAction: 'Valider' },
+      expedition: { titre: `Expedier le transfert ${n} ?`, message: 'Les quantites saisies sortent du stock du lieu de depart.', libelleAction: 'Expedier' },
+      reception: { titre: `Receptionner le transfert ${n} ?`, message: 'Les quantites comptees entrent dans le stock du lieu d\'arrivee.', libelleAction: 'Receptionner' },
+      ecart: { titre: `Enregistrer la decision sur l'ecart du transfert ${n} ?`, message: 'Cette decision est definitive.', libelleAction: 'Enregistrer' }
+    }[a.type];
+    if (!(await this.operation.demander(demande)) || this.action() !== a) {
       return;
     }
     const lignes = a.transfert.lignes.map((l) => ({ ligneId: l.id, quantite: Math.max(0, this.quantites()[l.id] ?? 0) }));

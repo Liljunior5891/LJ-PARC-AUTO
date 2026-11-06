@@ -45,27 +45,57 @@ public class LivraisonClientService {
     private final SessionTravailService sessionsTravail;
     private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
     private final tg.parcauto.api.pointdevente.lieu.BonRetraitRepository retraits;
+    private final tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetre;
 
-    /** Ventes dont il reste de la marchandise a remettre, les plus anciennes d'abord. */
+    /** Ventes dont il reste de la marchandise a remettre, les plus anciennes d'abord ; un caissier, celles de sa caisse. */
     @Transactional(readOnly = true)
-    public Page<MateriauxDto.VenteALivrer> resteALivrer(String q, Long clientId, Pageable pageable) {
+    public Page<MateriauxDto.VenteALivrer> resteALivrer(String q, Long clientId, UtilisateurPrincipal utilisateur,
+                                                        Pageable pageable) {
         reglages.exiger();
         String motif = q == null ? "" : q.trim().toLowerCase();
-        return venteRepository.aLivrer(motif, clientId, pageable).map(MateriauxDto.VenteALivrer::de);
+        java.util.Set<Long> caisses = perimetre.caisses(utilisateur);
+        return (caisses == null ? venteRepository.aLivrer(motif, clientId, pageable)
+                : venteRepository.aLivrerDesCaisses(motif, clientId, caisses, pageable)).map(MateriauxDto.VenteALivrer::de);
     }
 
     /** Commandes qui ont un bon ou un solde, meme entierement remises : leurs documents restent accessibles. */
     @Transactional(readOnly = true)
-    public Page<MateriauxDto.VenteALivrer> historique(String q, Long clientId, Pageable pageable) {
+    public Page<MateriauxDto.VenteALivrer> historique(String q, Long clientId, UtilisateurPrincipal utilisateur,
+                                                      Pageable pageable) {
         reglages.exiger();
         String motif = q == null ? "" : q.trim().toLowerCase();
-        return venteRepository.avecDocuments(motif, clientId, pageable).map(MateriauxDto.VenteALivrer::de);
+        java.util.Set<Long> caisses = perimetre.caisses(utilisateur);
+        return (caisses == null ? venteRepository.avecDocuments(motif, clientId, pageable)
+                : venteRepository.avecDocumentsDesCaisses(motif, clientId, caisses, pageable)).map(MateriauxDto.VenteALivrer::de);
+    }
+
+    /** Refuse a un caissier une commande encaissee sur une autre caisse. */
+    @Transactional(readOnly = true)
+    public void exigerVente(Long venteId, UtilisateurPrincipal utilisateur) {
+        Vente vente = venteRepository.detail(venteId).orElseThrow(() -> ResourceNotFoundException.of("Vente", venteId));
+        perimetre.exiger(vente.getSession(), utilisateur);
     }
 
     /** Enregistre une remise : le stock sort, la reservation diminue, un bon est emis. */
     public MateriauxDto.BonReponse remettre(Long venteId, MateriauxDto.RemiseRequete demande, UtilisateurPrincipal auteur) {
+        return remettre(venteId, demande, auteur, true);
+    }
+
+    /**
+     * Remise d'un bon de retrait par le magasinier : le bon se sert au lieu, quelle
+     * que soit la caisse qui a vendu ; l'acces au lieu est verifie par l'appelant.
+     */
+    public MateriauxDto.BonReponse remettreSurBon(Long venteId, MateriauxDto.RemiseRequete demande, UtilisateurPrincipal auteur) {
+        return remettre(venteId, demande, auteur, false);
+    }
+
+    private MateriauxDto.BonReponse remettre(Long venteId, MateriauxDto.RemiseRequete demande, UtilisateurPrincipal auteur,
+                                             boolean controleCaisse) {
         reglages.exiger();
         Vente vente = venteRepository.detail(venteId).orElseThrow(() -> ResourceNotFoundException.of("Vente", venteId));
+        if (controleCaisse) {
+            perimetre.exiger(vente.getSession(), auteur);
+        }
         if (vente.getStatut() != Vente.Statut.VALIDEE) {
             throw new BusinessException("La commande " + vente.getNumero() + " est annulee");
         }

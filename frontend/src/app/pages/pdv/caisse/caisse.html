@@ -9,6 +9,11 @@
                aria-label="Code-barres ou nom du produit" />
       </label>
       <app-bouton-especes />
+      @if (session()) {
+        <button type="button" class="bouton-en-ligne" (click)="ouvrirCommandes()" title="Commandes encaissees sur cette caisse : reimprimer ticket, facture ou bons">
+          🧾 Commandes
+        </button>
+      }
       @if (materiaux && reglages()?.devisActif) {
         <button type="button" class="bouton-en-ligne" (click)="ouvrirDevis()" title="Devis en cours : les charger pour les modifier ou les encaisser">
           📄 Devis
@@ -229,15 +234,6 @@
       </div>
     </div>
 
-    <div class="moyens">
-      @for (m of modes.slice(0, 4); track m.valeur) {
-        <button type="button" class="moyen" [disabled]="panier().length === 0 || !session()" (click)="ouvrirPaiement(m.valeur)">
-          <span class="icone" aria-hidden="true">{{ m.icone }}</span>
-          <small>{{ m.libelle }}</small>
-        </button>
-      }
-    </div>
-
     @if (materiaux && reglages()?.devisActif && panier().length > 0 && !commandeEnLigne()) {
       <button type="button" class="bouton secondaire bouton-devis" [disabled]="enregistrementDevis()" (click)="enregistrerDevis()">
         📄 {{ devisCharge() ? 'Mettre a jour le devis ' + devisCharge()!.numero : 'Enregistrer en devis' }}
@@ -263,6 +259,91 @@
     <span>Voir la commande</span>
     <strong>{{ total() | number: '1.0-0' }} F</strong>
   </button>
+}
+
+<!-- Commandes encaissees sur la session : on deplie une commande pour reimprimer ticket, facture ou bons. -->
+@if (fenetreCommandes()) {
+  <app-modale titre="Commandes de la caisse"
+              [sousTitre]="(session()?.caisseNom ?? '') + ' · session ' + (session()?.numero ?? '') + ' · cliquez une commande pour la reimprimer'"
+              largeur="780px" [erreur]="erreurCommandes()" (ferme)="fenetreCommandes.set(false)">
+    <div class="fenetre-caisse">
+      <div class="resume-fenetre">
+        <div class="tuile-resume">
+          <small>Commandes</small>
+          <strong>{{ pageCommandes()?.totalElements ?? 0 }}</strong>
+        </div>
+        <div class="tuile-resume">
+          <small>Session</small>
+          <strong>{{ session()?.chiffreAffaires ?? 0 | number: '1.0-0' }} F</strong>
+        </div>
+        <label class="recherche recherche-commandes">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+          <input type="search" placeholder="Numero, client ou telephone..." autocomplete="off"
+                 [(ngModel)]="rechercheCommandes" (ngModelChange)="rechercherCommandes()" aria-label="Rechercher une commande" />
+        </label>
+      </div>
+
+      <ul class="cartes-fenetre liste-defilante">
+        @for (v of pageCommandes()?.content ?? []; track v.id) {
+          <li class="carte-fenetre" [class.ouverte]="commandeOuverte() === v.id" [class.annulee]="v.statut === 'ANNULEE'">
+            <button type="button" class="tete-carte" [attr.aria-expanded]="commandeOuverte() === v.id" (click)="deplierCommande(v)">
+              <span class="pastille-carte" aria-hidden="true">🧾</span>
+              <span class="infos-carte">
+                <strong>{{ v.numero }}</strong>
+                <small>{{ v.dateVente | date: 'HH:mm' }} · {{ v.clientNom || 'Client comptoir' }}</small>
+              </span>
+              <span class="droite-carte">
+                <strong class="montant-carte">{{ v.total | number: '1.0-0' }} F</strong>
+                <span class="badges-carte">
+                  @if (v.statut === 'ANNULEE') { <span class="badge rouge">Annulee</span> }
+                  @if (v.resteDu) { <span class="badge orange">Credit</span> }
+                  <span class="badge gris">{{ v.modePaiementLibelle }}</span>
+                </span>
+              </span>
+              <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            @if (commandeOuverte() === v.id) {
+              <div class="corps-carte">
+                <small class="titre-corps">Reimprimer</small>
+                <div class="documents-carte">
+                  @if (detailCommande(); as d) {
+                    <button type="button" class="document" (click)="imprimer(d.ticket)">
+                      <span aria-hidden="true">🧾</span><span>Ticket<small>de caisse</small></span>
+                    </button>
+                    @if (materiaux) {
+                      <button type="button" class="document" (click)="facture(d.ticket)">
+                        <span aria-hidden="true">📄</span><span>Facture<small>format A4</small></span>
+                      </button>
+                    }
+                    @for (b of d.retraits; track b.id) {
+                      <button type="button" class="document" (click)="imprimerRetrait(b)">
+                        <span aria-hidden="true">🏷</span>
+                        <span>Bon {{ b.numero }}<small>{{ b.lieuNom }}@if (b.statut === 'SERVI') { · servi }</small></span>
+                      </button>
+                    }
+                    @for (b of d.livraisons; track b.id) {
+                      <button type="button" class="document" (click)="imprimerLivraison(b)">
+                        <span aria-hidden="true">🚚</span>
+                        <span>Livraison<small>{{ b.numero }}@if (b.statut === 'ANNULE') { · annule }</small></span>
+                      </button>
+                    }
+                  } @else if (!erreurCommandes()) {
+                    <small class="chargement-carte">Chargement des documents...</small>
+                  }
+                </div>
+              </div>
+            }
+          </li>
+        } @empty {
+          <li class="vide-fenetre">
+            <span aria-hidden="true">🧾</span>
+            {{ !pageCommandes() ? 'Chargement...' : rechercheCommandes.trim() ? 'Aucune commande ne correspond a cette recherche.' : 'Aucune commande encaissee sur cette session.' }}
+          </li>
+        }
+      </ul>
+    </div>
+    @if (pageCommandes(); as p) { <app-suite-liste [page]="p" (suite)="suiteDesCommandes()" /> }
+  </app-modale>
 }
 
 <!-- Encaissement -->
@@ -335,6 +416,23 @@
             @if (surVente()) {
               <small class="aide-credit">Le panier depasse le stock disponible : le surplus sera livre a l'arrivage de la marchandise.</small>
             }
+          }
+
+          @if (choixLieux() && lignesAvecLieu().length > 1) {
+            <!-- Un lieu pour tout le panier en un geste ; chaque ligne reste modifiable dessous. -->
+            <div class="lieu-global">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 9.5L12 4l8.5 5.5V20h-17z" /><path d="M9 20v-6h6v6" /></svg>
+              <label for="lieu-global">Tout retirer a</label>
+              <select id="lieu-global" [ngModelOptions]="{ standalone: true }" [ngModel]="lieuCommun()"
+                      (ngModelChange)="appliquerLieuATous($event)">
+                @if (lieuCommun() === null) {
+                  <option [ngValue]="null" disabled>Lieux differents selon le produit</option>
+                }
+                @for (lieu of lieux(); track lieu.id) {
+                  <option [ngValue]="lieu.id">{{ lieu.nom }} · {{ produitsServis(lieu.id) }}/{{ lignesAvecLieu().length }} produit(s) en stock</option>
+                }
+              </select>
+            </div>
           }
 
           <ul class="lignes-recap">
@@ -440,10 +538,28 @@
 
           <div class="tuiles-modes" role="radiogroup" aria-label="Moyen de paiement">
             @for (m of modes; track m.valeur) {
-              <button type="button" class="tuile-mode" role="radio" [class.actif]="mode() === m.valeur" [attr.aria-checked]="mode() === m.valeur"
-                      (click)="choisirMode(m.valeur)">
-                <span aria-hidden="true">{{ m.icone }}</span>
+              <button type="button" class="tuile-mode" role="radio" [attr.data-mode]="m.valeur" [class.actif]="mode() === m.valeur"
+                      [attr.aria-checked]="mode() === m.valeur" (click)="choisirMode(m.valeur)">
+                <span class="pictogramme-mode" aria-hidden="true">
+                  @switch (m.valeur) {
+                    @case ('ESPECES') {
+                      <svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2" /><circle cx="12" cy="12" r="2.8" /><path d="M6 9.5v5M18 9.5v5" /></svg>
+                    }
+                    @case ('MOBILE_MONEY') {
+                      <svg viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.2" /><path d="M10.5 18.5h3" /><path d="M9.5 9.5l2 2 3.5-3.5" /></svg>
+                    }
+                    @case ('CARTE') {
+                      <svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2" /><path d="M2.5 9.5h19" /><path d="M6 14.5h4" /></svg>
+                    }
+                    @default {
+                      <svg viewBox="0 0 24 24"><path d="M6 2.5h12v19l-2.4-1.6-2.4 1.6-2.4-1.6L8.4 21.5 6 19.9z" /><path d="M9 7.5h6M9 11h6M9 14.5h4" /></svg>
+                    }
+                  }
+                </span>
                 <small>{{ m.libelle }}</small>
+                @if (mode() === m.valeur) {
+                  <span class="coche-mode" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9" /></svg></span>
+                }
               </button>
             }
           </div>
@@ -493,87 +609,155 @@
 
 <!-- Paiement enregistre -->
 @if (dernierTicket(); as t) {
-  <app-modale titre="Paiement enregistre" [sousTitre]="'Commande ' + t.numero" largeur="460px" (ferme)="nouvelleVente()">
-    <div class="ticket-emis">
-      <div class="coche" aria-hidden="true">✓</div>
-      <p class="total-emis">{{ t.total | number: '1.0-0' }} F</p>
-      <p>{{ t.modePaiementLibelle }}
-        @if (t.monnaieRendue) { · monnaie rendue <strong>{{ t.monnaieRendue | number: '1.0-0' }} F</strong> }
-      </p>
-      @if ((t.resteDu ?? 0) > 0) {
-        <p class="reste-du">Acompte {{ t.montantPaye | number: '1.0-0' }} F · reste du <strong>{{ t.resteDu | number: '1.0-0' }} F</strong>
-          @if (t.echeance) { avant le {{ t.echeance | date: 'dd/MM/yyyy' }} }
-        </p>
-      }
-      @if (resteDuTicket(t).length) {
-        <p class="reste-du">{{ bonsRetrait().length ? 'A retirer avec le bon :' : 'A livrer plus tard :' }}
-          @for (l of resteDuTicket(t); track l.libelle) { <br /><strong>{{ l.reste | number: '1.0-3' }}</strong> · {{ l.libelle }} }
-        </p>
-      }
-      @if (bonsRetrait().length) {
-        <div class="actions-formulaire">
-          @for (b of bonsRetrait(); track b.id) {
-            <button class="bouton" type="button" (click)="imprimerRetrait(b)">Bon {{ b.numero }} · {{ b.lieuNom }}</button>
-          }
-        </div>
-      }
-      <div class="actions-formulaire">
-        <button class="bouton secondaire info" type="button" (click)="imprimer(t)">Imprimer le recu</button>
-        @if (aUnBon(t)) {
-          <button class="bouton secondaire info" type="button" (click)="bonLivraison(t)">Bon de livraison</button>
-        }
-        @if (materiaux && reglages()?.factureA4) {
-          <button class="bouton secondaire info" type="button" (click)="facture(t)">Facture A4</button>
-        }
-        <button class="bouton-vert" type="button" (click)="nouvelleVente()">Client suivant</button>
+  <app-modale titre="Paiement enregistre" [sousTitre]="'Commande ' + t.numero + ' · ' + (t.dateVente | date: 'dd/MM/yyyy HH:mm')"
+              largeur="520px" (ferme)="nouvelleVente()">
+    <div class="vente-terminee">
+      <div class="sceau" aria-hidden="true">
+        <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" /><path d="M15 27l7.5 7.5L37.5 19" /></svg>
       </div>
+      <p class="montant-encaisse">{{ t.total | number: '1.0-0' }} <small>F</small></p>
+      <p class="libelle-encaisse">{{ (t.resteDu ?? 0) > 0 ? 'Vente a credit enregistree' : 'Paiement recu' }}</p>
+
+      <dl class="details-vente">
+        <div><dt>Moyen de paiement</dt><dd>{{ t.modePaiementLibelle }}</dd></div>
+        @if (t.montantRecu && t.monnaieRendue) {
+          <div><dt>Montant recu</dt><dd>{{ t.montantRecu | number: '1.0-0' }} F</dd></div>
+          <div class="fort"><dt>Monnaie a rendre</dt><dd>{{ t.monnaieRendue | number: '1.0-0' }} F</dd></div>
+        }
+        @if ((t.resteDu ?? 0) > 0) {
+          <div><dt>Acompte verse</dt><dd>{{ t.montantPaye | number: '1.0-0' }} F</dd></div>
+          <div class="alerte"><dt>Reste du @if (t.echeance) { avant le {{ t.echeance | date: 'dd/MM/yyyy' }} }</dt>
+            <dd>{{ t.resteDu | number: '1.0-0' }} F</dd></div>
+        }
+      </dl>
+
+      <p class="titre-documents">Documents a imprimer</p>
+      <div class="documents-vente">
+        <button type="button" class="document-vente" (click)="imprimer(t)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2.5h12v19l-2.4-1.6-2.4 1.6-2.4-1.6L8.4 21.5 6 19.9z" /><path d="M9 7.5h6M9 11h6M9 14.5h4" /></svg>
+          <span>Recu<small>ticket de caisse</small></span>
+        </button>
+        @if (materiaux && reglages()?.factureA4) {
+          <button type="button" class="document-vente" (click)="facture(t)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z" /><path d="M14 2.5V8h5.5" /><path d="M8.5 13h7M8.5 16.5h5" /></svg>
+            <span>Facture<small>{{ formatDocuments() }}</small></span>
+          </button>
+        }
+        @if (aUnBon(t)) {
+          <button type="button" class="document-vente" (click)="bonLivraison(t)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 6.5h11v9h-11z" /><path d="M13.5 9.5h4l3 3.2v2.8h-7z" /><circle cx="6.5" cy="17.5" r="1.8" /><circle cx="16.5" cy="17.5" r="1.8" /></svg>
+            <span>Bon de livraison<small>a signer</small></span>
+          </button>
+        }
+        @for (b of bonsRetrait(); track b.id) {
+          <button type="button" class="document-vente retrait" (click)="imprimerRetrait(b)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5h17v12h-17z" /><path d="M3.5 7.5l2-4h13l2 4" /><path d="M10 11.5h4" /></svg>
+            <span>Bon {{ b.numero }}<small>a retirer a {{ b.lieuNom }}</small></span>
+          </button>
+        }
+      </div>
+
+      <button class="bouton-vert client-suivant" type="button" (click)="nouvelleVente()">
+        Client suivant
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6.5l5.5 5.5-5.5 5.5" /></svg>
+      </button>
     </div>
   </app-modale>
 }
 
 <!-- Quincaillerie : choix de l'unite de vente (sac, tonne, botte, carton) -->
 @if (choixUnite(); as a) {
-  <app-modale [titre]="a.nom" sousTitre="Choisissez l'unite de vente" largeur="460px" (ferme)="choixUnite.set(null)">
+  <app-modale [titre]="a.nom" sousTitre="Choisissez l'unite de vente" largeur="600px" (ferme)="choixUnite.set(null)">
+    @if (a.suiviStock) {
+      <div class="stock-unites" [class.bas]="a.stockDisponible <= 0">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z" /><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9" /></svg>
+        <span>En stock</span>
+        <strong>{{ a.stockDisponible | number: '1.0-3' }} {{ a.unite || 'unite(s)' }}</strong>
+      </div>
+    }
     <div class="choix-unites">
-      <button type="button" class="unite" (click)="ajouterLigne(a, null)">
-        <strong>{{ a.unite || 'Unite' }}</strong>
-        <span>{{ a.prixVente | number: '1.0-0' }} F</span>
+      <button type="button" class="unite base" (click)="ajouterLigne(a, null)">
+        <span class="icone-unite" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2.5" /><path d="M9 12h6" /></svg>
+        </span>
+        <span class="nom-unite">
+          <strong>{{ a.unite || 'Unite' }}</strong>
+          <small>Unite de base</small>
+        </span>
+        <span class="prix-unite">{{ a.prixVente | number: '1.0-0' }} F</span>
       </button>
       @for (c of conditionnementsDe(a); track c.id) {
-        <button type="button" class="unite" (click)="ajouterLigne(a, c)">
-          <strong>{{ c.nom }}</strong>
-          <small>{{ c.coefficient | number: '1.0-3' }} {{ a.unite || 'unites' }}</small>
-          <span>{{ c.prixVente | number: '1.0-0' }} F</span>
+        <button type="button" class="unite" (click)="ajouterLigne(a, c)"
+                [class.epuise]="a.suiviStock && a.stockDisponible < c.coefficient">
+          <span class="icone-unite conditionnement" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3.5 8L12 4l8.5 4v8.5L12 20.5l-8.5-4z" /><path d="M3.5 8L12 12l8.5-4M12 12v8.5" /></svg>
+          </span>
+          <span class="nom-unite">
+            <strong>{{ c.nom }}</strong>
+            <small>= {{ c.coefficient | number: '1.0-3' }} {{ a.unite || 'unites' }}
+              · {{ c.prixVente / c.coefficient | number: '1.0-0' }} F / {{ a.unite || 'unite' }}</small>
+            @if (a.suiviStock) {
+              <small class="dispo-unite">{{ a.stockDisponible < c.coefficient ? 'Stock insuffisant' : 'Environ ' + (disponiblesEn(a.stockDisponible, c.coefficient) | number: '1.0-0') + ' disponible(s)' }}</small>
+            }
+          </span>
+          <span class="prix-unite">{{ c.prixVente | number: '1.0-0' }} F</span>
         </button>
       }
     </div>
-    @if (a.suiviStock) {
-      <p class="aide-credit">Disponible : {{ a.stockDisponible | number: '1.0-3' }} {{ a.unite || '' }}</p>
-    }
   </app-modale>
 }
 
 <!-- Quincaillerie : devis en cours -->
 @if (fenetreDevis()) {
   <app-modale titre="Devis en cours" sousTitre="Charger un devis pour le modifier ou l'encaisser a ses prix"
-              largeur="680px" (ferme)="fenetreDevis.set(false)">
-    <ul class="liste-en-ligne">
-      @for (d of devisOuverts(); track d.id) {
-        <li>
-          <div class="entete-ligne">
-            <strong>{{ d.numero }} · {{ d.clientNom }}</strong>
-            <span class="statut">{{ d.expire ? 'Expire' : 'Valable au ' + (d.valableJusqu | date: 'dd/MM') }}</span>
-          </div>
-          <small>{{ d.dateDevis | date: 'dd/MM/yyyy' }} · {{ d.vendeurNom }}</small>
-          <div class="actions">
-            <strong class="montant">{{ d.total | number: '1.0-0' }} F</strong>
-            <button class="bouton petit" type="button" (click)="chargerDevis(d)">Charger</button>
-          </div>
-        </li>
-      } @empty {
-        <li class="vide">Aucun devis en cours.</li>
-      }
-    </ul>
+              largeur="720px" (ferme)="fenetreDevis.set(false)">
+    <div class="fenetre-caisse">
+      <div class="resume-fenetre">
+        <div class="tuile-resume">
+          <small>Devis en cours</small>
+          <strong>{{ devisOuverts().length }}</strong>
+        </div>
+        <div class="tuile-resume">
+          <small>Montant total</small>
+          <strong>{{ totalDevis() | number: '1.0-0' }} F</strong>
+        </div>
+        <label class="recherche recherche-commandes">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+          <input type="search" placeholder="Numero, client ou telephone..." autocomplete="off"
+                 [ngModel]="rechercheDevis()" (ngModelChange)="rechercheDevis.set($event)" aria-label="Rechercher un devis" />
+        </label>
+      </div>
+
+      <ul class="cartes-fenetre liste-defilante">
+        @for (d of devisFiltres(); track d.id) {
+          <li class="carte-fenetre" [class.annulee]="d.expire">
+            <div class="tete-carte statique">
+              <span class="pastille-carte devis" aria-hidden="true">{{ initialesClient(d.clientNom) }}</span>
+              <span class="infos-carte">
+                <strong>{{ d.clientNom }}</strong>
+                <small>{{ d.numero }} · {{ d.dateDevis | date: 'dd/MM/yyyy' }} · {{ d.lignes.length }} article(s) · {{ d.vendeurNom }}</small>
+              </span>
+              <span class="droite-carte">
+                <strong class="montant-carte">{{ d.total | number: '1.0-0' }} F</strong>
+                <span class="badges-carte">
+                  @if (d.expire) {
+                    <span class="badge rouge">Expire le {{ d.valableJusqu | date: 'dd/MM' }}</span>
+                  } @else {
+                    <span class="badge vert">Valable au {{ d.valableJusqu | date: 'dd/MM' }}</span>
+                  }
+                </span>
+              </span>
+              <button class="bouton petit" type="button" (click)="chargerDevis(d)">Charger</button>
+            </div>
+          </li>
+        } @empty {
+          <li class="vide-fenetre">
+            <span aria-hidden="true">📋</span>
+            {{ rechercheDevis().trim() ? 'Aucun devis ne correspond a cette recherche.' : 'Aucun devis en cours.' }}
+          </li>
+        }
+      </ul>
+    </div>
   </app-modale>
 }
 

@@ -89,26 +89,34 @@
         <div>
           <strong class="numero">{{ b.numero }}</strong>
           @if (b.ancien) { <span class="etiquette alerte">Non retire depuis {{ b.jours }} jours</span> }
-          @if (b.statut === 'SERVI') { <span class="etiquette">Servi</span> }
+          @if (b.statut === 'SERVI') { <span class="etiquette servi">✓ Servi</span> }
           @if (b.statut === 'ANNULE') { <span class="etiquette">Annule ou remplace</span> }
           <br /><small>{{ b.lieuNom }} · commande {{ b.venteNumero }} · {{ b.dateEmission | date: 'dd/MM/yyyy' }}
             @if (b.clientNom) { · {{ b.clientNom }} }</small>
         </div>
       </header>
       <ul>
-        @for (l of b.lignes; track l.ligneId) {
+        @for (l of (deplie(b.id) ? b.lignes : b.lignes.slice(0, APERCU)); track l.ligneId) {
           <li [class.fini]="l.reste <= 0"><strong>{{ l.reste | number: '1.0-3' }}</strong> {{ l.unite || '' }} · {{ l.libelle }}
             @if (l.servi > 0) { <small>({{ l.servi | number: '1.0-3' }} deja servi)</small> }
           </li>
         }
       </ul>
-      <footer>
+      @if (b.lignes.length > APERCU) {
+        <button type="button" class="plus-produits" [attr.aria-expanded]="deplie(b.id)" (click)="basculer(b.id)">
+          {{ deplie(b.id) ? '− Moins' : '+ plus (' + (b.lignes.length - APERCU) + ' autres produits)' }}
+        </button>
+      }
+      <footer class="actions-carte">
         @if (b.statut === 'A_SERVIR') {
-          <button class="bouton succes" type="button" (click)="ouvrir(b)">Servir</button>
+          <button class="bouton succes" type="button" (click)="ouvrir(b)"><span class="ico" aria-hidden="true">📦</span><span class="lib">Servir</span></button>
           @if (horsLigne.enLigne()) {
-            <button class="bouton secondaire" type="button" (click)="imprimerRetrait(b)">Reimprimer</button>
-            @if (gerant) { <button class="bouton secondaire" type="button" (click)="ouvrirDeplacement(b)">Changer de lieu</button> }
+            <button class="bouton secondaire" type="button" (click)="imprimerRetrait(b)"><span class="ico" aria-hidden="true">🖨</span><span class="lib">Reimprimer</span></button>
+            @if (gerant) { <button class="bouton secondaire" type="button" (click)="ouvrirDeplacement(b)" title="Changer le lieu de retrait"><span class="ico" aria-hidden="true">⇄</span><span class="lib">Deplacer</span></button> }
           }
+        }
+        @if (b.statut === 'SERVI' && horsLigne.enLigne()) {
+          <button class="bouton secondaire" type="button" (click)="imprimerRetrait(b)" title="Le bon complet : achete, servi, et le detail de chaque remise"><span class="ico" aria-hidden="true">🖨</span><span class="lib">Reimprimer</span></button>
         }
       </footer>
     </article>

@@ -59,7 +59,7 @@ public class UtilisateurService {
         utilisateur.setNom(demande.nom().trim());
         utilisateur.setPrenom(vide(demande.prenom()) ? null : demande.prenom().trim());
         utilisateur.setTelephone(vide(demande.telephone()) ? null : demande.telephone().trim());
-        utilisateur.setRoles(copie(demande.roles()));
+        utilisateur.setRoles(attribuables(copie(demande.roles()), Set.of()));
         utilisateur.setMotDePasse(encodeur.encode(demande.motDePasse()));
         utilisateur.setActif(true);
         return versDto(repository.save(utilisateur));
@@ -74,7 +74,7 @@ public class UtilisateurService {
                     throw new BusinessException("Un compte existe deja avec l'adresse " + demande.email());
                 });
 
-        Set<Role> roles = copie(demande.roles());
+        Set<Role> roles = attribuables(copie(demande.roles()), utilisateur.getRoles());
         if (id.equals(idCourant) && !roles.contains(Role.ADMIN)
                 && utilisateur.getRoles().contains(Role.ADMIN)) {
             throw new BusinessException(
@@ -183,6 +183,26 @@ public class UtilisateurService {
     }
 
     /** Un administrateur d'entreprise ne peut pas s'octroyer, ni octroyer, le profil de la plateforme. */
+    /**
+     * Refuse un profil que l'entreprise ne propose pas (module non active, serveur
+     * hors restaurant...). Un profil que le compte avait deja peut rester.
+     */
+    private Set<Role> attribuables(Set<Role> roles, Set<Role> dejaAttribues) {
+        Set<String> proposes = profils().stream().map(UtilisateurDto.ProfilRole::valeur)
+                .collect(java.util.stream.Collectors.toSet());
+        roles.stream()
+                .filter(r -> !proposes.contains(r.name()) && !dejaAttribues.contains(r))
+                .findFirst()
+                .ifPresent(r -> {
+                    throw new BusinessException("Le profil " + r.getLibelle()
+                            + " n'est pas disponible : le module correspondant n'est pas active");
+                });
+        if (roles.isEmpty()) {
+            throw new BusinessException("Choisissez au moins un profil");
+        }
+        return roles;
+    }
+
     private Set<Role> copie(Set<Role> roles) {
         if (roles.contains(Role.SUPER_ADMIN)) {
             throw new BusinessException("Le profil administrateur plateforme ne peut pas etre attribue ici");

@@ -37,9 +37,8 @@ export class LieuxPdv implements OnInit {
 
   readonly actif = computed(() => this.lieux().some((l) => l.type === 'ENTREPOT' && l.actif));
   readonly totalAchat = computed(() => this.lieux().reduce((s, l) => s + l.valeurAchat, 0));
-  /** Comptes du point de vente qu'on peut affecter : les magasiniers d'abord. */
-  readonly magasiniers = computed(() =>
-    [...this.personnel()].sort((a, b) => Number(b.roles.includes('MAGASINIER')) - Number(a.roles.includes('MAGASINIER'))));
+  /** Seuls les magasiniers s'affectent a un lieu ; la caisse y accede par son magasin. */
+  readonly magasiniers = computed(() => this.personnel().filter((m) => (m.codes ?? []).includes('MAGASINIER')));
 
   ngOnInit(): void {
     this.charger();
@@ -74,7 +73,9 @@ export class LieuxPdv implements OnInit {
     this.formulaire = {
       nom: l.nom, type: l.type, adresse: l.adresse ?? '', telephone: l.telephone ?? '', actif: l.actif, visibleEnLigne: l.visibleEnLigne
     };
-    this.choisis.set(new Set(l.utilisateurs.map((u) => u.id)));
+    // Un compte affecte avant la regle (sans profil magasinier) est retire a l'enregistrement.
+    const eligibles = new Set(this.magasiniers().map((m) => m.id));
+    this.choisis.set(new Set(l.utilisateurs.map((u) => u.id).filter((id) => eligibles.has(id))));
     this.erreurFormulaire.set(null);
     this.edition.set(l);
   }

@@ -7,6 +7,7 @@ import { LieuxService } from '../../../core/services/lieux.service';
 import { ChampQuantite } from '../../../shared/champ-quantite';
 import { normaliserCodeBarres } from '../../../shared/code-barres';
 import { Modale } from '../../../shared/modale';
+import { OperationService } from '../../../core/operation/operation.service';
 
 /** Produit sur le transfert en cours de saisie. */
 interface LigneSaisie {
@@ -38,6 +39,7 @@ type ProduitPropose = ProduitCourt & { disponible: number | null };
 })
 export class FormulaireTransfert implements OnInit {
   private readonly service = inject(LieuxService);
+  private readonly operation = inject(OperationService);
   readonly gerant = inject(AuthService).aRole('ADMIN', 'GERANT');
   readonly etat = this.service.etat;
 
@@ -148,7 +150,7 @@ export class FormulaireTransfert implements OnInit {
     this.lignes.update((l) => l.map((x) => (x === ligne ? { ...x, quantite } : x)));
   }
 
-  enregistrer(): void {
+  async enregistrer(): Promise<void> {
     const destination = this.destinationId();
     if (!destination || (this.gerant && !this.sourceId())) {
       this.erreur.set(this.gerant ? 'Choisissez le lieu de depart et le lieu d\'arrivee.' : 'Choisissez le lieu d\'arrivee.');
@@ -156,6 +158,14 @@ export class FormulaireTransfert implements OnInit {
     }
     if (!this.valide()) {
       this.erreur.set('Ajoutez au moins un produit, avec une quantite pour chacun.');
+      return;
+    }
+    const accepte = await this.operation.demander({
+      titre: this.gerant ? 'Enregistrer ce transfert ?' : 'Envoyer cette demande de transfert au gerant ?',
+      message: 'Verifiez les lieux et les quantites avant de valider.',
+      libelleAction: this.gerant ? 'Enregistrer' : 'Envoyer'
+    });
+    if (!accepte || this.envoi()) {
       return;
     }
     this.envoi.set(true);

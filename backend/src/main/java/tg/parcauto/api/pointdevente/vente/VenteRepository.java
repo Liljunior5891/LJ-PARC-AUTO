@@ -37,7 +37,38 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
     Page<Vente> periodeParCanal(@Param("debut") Instant debut, @Param("fin") Instant fin,
                                 @Param("enLigne") boolean enLigne, Pageable pageable);
 
+    /** Ventes d'une periode enregistrees sur l'une des caisses donnees (ce que voit un caissier). */
+    @Query("""
+            select v from Vente v
+            where v.dateVente >= :debut and v.dateVente < :fin and v.session.caisse.id in :caisses
+            order by v.dateVente desc
+            """)
+    Page<Vente> periodeDesCaisses(@Param("debut") Instant debut, @Param("fin") Instant fin,
+                                  @Param("caisses") java.util.Collection<Long> caisses, Pageable pageable);
+
+    @Query("""
+            select v from Vente v
+            where v.dateVente >= :debut and v.dateVente < :fin and v.enLigne = :enLigne
+              and v.session.caisse.id in :caisses
+            order by v.dateVente desc
+            """)
+    Page<Vente> periodeParCanalDesCaisses(@Param("debut") Instant debut, @Param("fin") Instant fin,
+                                          @Param("enLigne") boolean enLigne,
+                                          @Param("caisses") java.util.Collection<Long> caisses, Pageable pageable);
+
     Page<Vente> findBySessionIdOrderByDateVenteDesc(Long sessionId, Pageable pageable);
+
+    /** Ventes d'une session dont le numero ou le client contient {@code q} (deja en minuscules). */
+    @Query("""
+            select v from Vente v left join v.client c
+            where v.session.id = :sessionId
+              and (lower(v.numero) like concat('%', :q, '%')
+                   or lower(coalesce(v.clientNom, '')) like concat('%', :q, '%')
+                   or lower(coalesce(c.nom, '')) like concat('%', :q, '%')
+                   or lower(coalesce(c.telephone, '')) like concat('%', :q, '%'))
+            order by v.dateVente desc
+            """)
+    Page<Vente> deLaSession(@Param("sessionId") Long sessionId, @Param("q") String q, Pageable pageable);
 
     /** Ventes validees dont il reste a remettre, les plus anciennes d'abord ; {@code clientId} nul : tous. */
     @Query("""
@@ -62,6 +93,34 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
             order by v.dateVente desc
             """)
     Page<Vente> avecDocuments(@Param("q") String q, @Param("clientId") Long clientId, Pageable pageable);
+
+    /** {@link #aLivrer}, limite aux ventes des caisses donnees. */
+    @Query("""
+            select distinct v from Vente v join v.lignes l
+            where v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
+              and l.quantiteLivree < l.quantite
+              and v.session.caisse.id in :caisses
+              and (:clientId is null or v.client.id = :clientId)
+              and (:q = '' or lower(v.numero) like concat('%', :q, '%')
+                   or lower(coalesce(v.clientNom, '')) like concat('%', :q, '%'))
+            order by v.dateVente
+            """)
+    Page<Vente> aLivrerDesCaisses(@Param("q") String q, @Param("clientId") Long clientId,
+                                  @Param("caisses") java.util.Collection<Long> caisses, Pageable pageable);
+
+    /** {@link #avecDocuments}, limite aux ventes des caisses donnees. */
+    @Query("""
+            select v from Vente v
+            where (exists (select b.id from tg.parcauto.api.pointdevente.materiaux.BonLivraison b where b.vente = v)
+                   or exists (select s.id from tg.parcauto.api.pointdevente.materiaux.SoldeReste s where s.vente = v))
+              and v.session.caisse.id in :caisses
+              and (:clientId is null or v.client.id = :clientId)
+              and (:q = '' or lower(v.numero) like concat('%', :q, '%')
+                   or lower(coalesce(v.clientNom, '')) like concat('%', :q, '%'))
+            order by v.dateVente desc
+            """)
+    Page<Vente> avecDocumentsDesCaisses(@Param("q") String q, @Param("clientId") Long clientId,
+                                        @Param("caisses") java.util.Collection<Long> caisses, Pageable pageable);
 
     /**
      * [mode, encaisse, nombre] des ventes validees d'une session : ce qui est
