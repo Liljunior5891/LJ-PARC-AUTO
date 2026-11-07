@@ -5,6 +5,9 @@ import { CategoriePdv } from '../../../core/models/pdv';
 import { PdvService } from '../../../core/services/pdv.service';
 import { FenetreCategorie } from '../../../shared/fenetre-categorie';
 import { SuiteListe } from '../../../shared/suite-liste';
+import { ExportPdv } from '../../../shared/export-pdv';
+import { ImportPdv, messageImport } from '../../../shared/import-pdv';
+import { BilanImport } from '../../../core/models/rapport';
 
 const PAR_PAGE = 20;
 
@@ -15,7 +18,7 @@ const PAR_PAGE = 20;
  */
 @Component({
   selector: 'app-categories-pdv',
-  imports: [FormsModule, FenetreCategorie, SuiteListe],
+  imports: [FormsModule, FenetreCategorie, SuiteListe, ExportPdv, ImportPdv],
   templateUrl: './categories.html',
   styleUrl: './categories.scss'
 })
@@ -50,7 +53,15 @@ export class CategoriesPdv implements OnInit {
   // Fenetre d'ajout et de modification
   readonly edition = signal<CategoriePdv | 'nouvelle' | null>(null);
 
+  readonly importOuvert = signal(false);
+
   ngOnInit(): void {
+    this.charger();
+  }
+
+  importTermine(bilan: BilanImport): void {
+    this.importOuvert.set(false);
+    this.succes.set(messageImport(bilan));
     this.charger();
   }
 

@@ -44,6 +44,8 @@ public class RapportController {
             MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     /** Un fichier importe ne depasse pas cette taille. */
     private static final long TAILLE_MAX = 5L * 1024 * 1024;
+    /** Archive ZIP des produits et de leurs photos. */
+    private static final long TAILLE_MAX_ARCHIVE = 60L * 1024 * 1024;
 
     private final RapportPdvService service;
     private final ImportService importService;
@@ -102,6 +104,26 @@ public class RapportController {
                                         @RequestParam(defaultValue = "true") boolean simulation) throws IOException {
         if (fichier.isEmpty()) {
             throw new BusinessException("Aucun fichier recu");
+        }
+        // Produits avec leurs photos : une archive ZIP (le tableau et les photos), plus lourde qu'un simple tableau.
+        if (ArchiveImport.estArchive(fichier.getOriginalFilename())) {
+            if (type != ImportService.TypeImport.PRODUITS) {
+                throw new BusinessException("L'archive ZIP ne sert qu'a importer les produits avec leurs photos");
+            }
+            if (fichier.getSize() > TAILLE_MAX_ARCHIVE) {
+                throw new BusinessException("Archive trop volumineuse : 60 Mo au plus (reduisez ou decoupez les photos)");
+            }
+            ArchiveImport.Contenu contenu = ArchiveImport.lire(fichier.getInputStream());
+            List<LecteurTableau.Ligne> lignes = LecteurTableau.lire(contenu.nomTableau(),
+                    new java.io.ByteArrayInputStream(contenu.tableau()));
+            ImportService.Bilan bilan = importService.importer(type, lignes, simulation, contenu.photos());
+            if (contenu.ignores().isEmpty()) {
+                return bilan;
+            }
+            List<String> avertissements = new java.util.ArrayList<>(bilan.avertissements());
+            contenu.ignores().forEach(n -> avertissements.add("Fichier " + n + " ignore : ni tableau ni photo"));
+            return new ImportService.Bilan(bilan.type(), bilan.lignes(), bilan.crees(), bilan.modifies(), bilan.inchanges(),
+                    bilan.simulation(), bilan.applique(), bilan.erreurs(), bilan.photos(), avertissements);
         }
         if (fichier.getSize() > TAILLE_MAX) {
             throw new BusinessException("Fichier trop volumineux : 5 Mo au plus");

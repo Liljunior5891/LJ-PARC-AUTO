@@ -21,8 +21,9 @@ spring:
     default-property-inclusion: non_null
   servlet:
     multipart:
-      max-file-size: 15MB
-      max-request-size: 20MB
+      # 60 Mo pour l'archive ZIP des produits et de leurs photos ; chaque ecran garde son propre plafond.
+      max-file-size: 60MB
+      max-request-size: 65MB
 
 server:
   port: ${SERVER_PORT:8081}

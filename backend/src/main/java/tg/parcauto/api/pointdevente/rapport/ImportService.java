@@ -11,6 +11,7 @@ import tg.parcauto.api.pointdevente.catalogue.CatalogueDto;
 import tg.parcauto.api.pointdevente.catalogue.CatalogueService;
 import tg.parcauto.api.pointdevente.catalogue.Categorie;
 import tg.parcauto.api.pointdevente.catalogue.CategorieRepository;
+import tg.parcauto.api.pointdevente.catalogue.PostePreparation;
 import tg.parcauto.api.pointdevente.stock.StockService;
 
 import java.math.BigDecimal;
@@ -47,14 +48,30 @@ public class ImportService {
     private final CategorieRepository categorieRepository;
     private final CatalogueService catalogueService;
     private final StockService stockService;
+    private final tg.parcauto.api.plateforme.module.ModuleService moduleService;
 
-    public enum TypeImport { PRODUITS, STOCK }
+    /** Le poste de preparation (cuisine, bar) n'a de sens qu'au restaurant. */
+    private boolean restauration() {
+        return "RESTAURATION".equals(moduleService.variante(tg.parcauto.api.plateforme.tenant.ContexteEntreprise.exiger(),
+                tg.parcauto.api.plateforme.module.ModuleApplicatif.POINT_DE_VENTE));
+    }
+
+    public enum TypeImport { PRODUITS, STOCK, CATEGORIES }
 
     public record Erreur(int ligne, String message) {
     }
 
+    /**
+     * {@code photos} : photos rattachees a un produit (import par archive ZIP) ;
+     * {@code avertissements} : ce qui n'empeche pas l'import (photo sans produit...).
+     */
     public record Bilan(TypeImport type, int lignes, int crees, int modifies, int inchanges, boolean simulation,
-                        boolean applique, List<Erreur> erreurs) {
+                        boolean applique, List<Erreur> erreurs, int photos, List<String> avertissements) {
+
+        public Bilan(TypeImport type, int lignes, int crees, int modifies, int inchanges, boolean simulation,
+                     boolean applique, List<Erreur> erreurs) {
+            this(type, lignes, crees, modifies, inchanges, simulation, applique, erreurs, 0, List.of());
+        }
     }
 
     /** Ligne de produit controlee, prete a creer ou a mettre a jour. */
@@ -62,10 +79,19 @@ public class ImportService {
     }
 
     public Bilan importer(TypeImport type, List<LecteurTableau.Ligne> lignes, boolean simulation) {
+        return importer(type, lignes, simulation, Map.of());
+    }
+
+    /** {@code photos} : photos d'une archive ZIP, par nom de fichier en minuscules (produits seulement). */
+    public Bilan importer(TypeImport type, List<LecteurTableau.Ligne> lignes, boolean simulation, Map<String, byte[]> photos) {
         if (lignes.isEmpty()) {
             throw new BusinessException("Aucune ligne a importer sous l'entete");
         }
-        Bilan bilan = type == TypeImport.PRODUITS ? produits(lignes, simulation) : stock(lignes, simulation);
+        Bilan bilan = switch (type) {
+            case PRODUITS -> produits(lignes, simulation, photos);
+            case STOCK -> stock(lignes, simulation);
+            case CATEGORIES -> categories(lignes, simulation);
+        };
         if (!bilan.applique()) {
             // Simulation ou erreurs : la transaction n'enregistre rien, meme les categories creees en chemin.
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
@@ -75,11 +101,16 @@ public class ImportService {
 
     // ---------------------------------------------------------- produits
 
-    private Bilan produits(List<LecteurTableau.Ligne> lignes, boolean simulation) {
+    private Bilan produits(List<LecteurTableau.Ligne> lignes, boolean simulation, Map<String, byte[]> photos) {
         List<Erreur> erreurs = new ArrayList<>();
         List<Produit> produits = new ArrayList<>();
         Set<String> codes = new HashSet<>();
         int inchanges = 0;
+        // Photos par radical (« cim-001.jpg » -> « cim-001 ») pour le rattachement par code ou code-barres.
+        Map<String, String> parRadical = new HashMap<>();
+        photos.keySet().forEach(n -> parRadical.putIfAbsent(PhotoProduit.radical(n), n));
+        Set<String> photosUtilisees = new HashSet<>();
+        int photosRattachees = 0;
         for (LecteurTableau.Ligne l : lignes) {
             try {
                 String code = l.valeur("code", "reference", "ref");
@@ -103,6 +134,13 @@ public class ImportService {
                     throw new BusinessException("le prix de vente est obligatoire et positif");
                 }
                 Article a = existant.orElse(null);
+                String photo = photoDeLaLigne(l, code, codeBarres, photos, parRadical);
+                String image = a == null ? null : a.getImage();
+                if (photo != null) {
+                    image = PhotoProduit.reduire(photo, photos.get(photo));
+                    photosUtilisees.add(photo);
+                    photosRattachees++;
+                }
                 String suivi = l.valeur("suivi_stock", "suivi_du_stock");
                 CatalogueDto.ArticleRequete requete = new CatalogueDto.ArticleRequete(
                         code, codeBarres != null ? codeBarres : a == null ? null : a.getCodeBarres(), nom,
@@ -116,12 +154,12 @@ public class ImportService {
                         valeurOuExistant(nombre(l.valeur("seuil_alerte", "seuil_d_alerte", "seuil"), "seuil d'alerte"),
                                 a == null ? null : a.getSeuilAlerte()),
                         a == null ? null : a.isActif(),
-                        a == null ? null : a.getImage());
+                        image);
                 String categorie = l.valeur("categorie", "rayon", "famille");
                 if (categorie == null && a != null && a.getCategorie() != null) {
                     categorie = a.getCategorie().getNom();
                 }
-                if (a != null && identique(a, requete, categorie)) {
+                if (a != null && identique(a, requete, categorie) && Objects.equals(a.getImage(), requete.image())) {
                     inchanges++;
                     continue;
                 }
@@ -132,8 +170,12 @@ public class ImportService {
         }
         int crees = (int) produits.stream().filter(p -> p.existant() == null).count();
         int modifies = produits.size() - crees;
+        List<String> avertissements = new ArrayList<>();
+        photos.keySet().stream().filter(n -> !photosUtilisees.contains(n)).sorted()
+                .forEach(n -> avertissements.add("Photo " + n + " : aucun produit du fichier ne porte ce code"));
         if (!erreurs.isEmpty() || simulation) {
-            return new Bilan(TypeImport.PRODUITS, lignes.size(), crees, modifies, inchanges, simulation, false, erreurs);
+            return new Bilan(TypeImport.PRODUITS, lignes.size(), crees, modifies, inchanges, simulation, false, erreurs,
+                    photosRattachees, avertissements);
         }
         Map<String, Long> categories = new HashMap<>();
         categorieRepository.findAll().forEach(c -> categories.put(c.getNom().toLowerCase(Locale.ROOT), c.getId()));
@@ -155,7 +197,39 @@ public class ImportService {
         }
         boolean applique = erreurs.isEmpty();
         return new Bilan(TypeImport.PRODUITS, lignes.size(), applique ? crees : 0, applique ? modifies : 0,
-                applique ? inchanges : 0, false, applique, erreurs);
+                applique ? inchanges : 0, false, applique, erreurs, applique ? photosRattachees : 0, avertissements);
+    }
+
+    /**
+     * Photo de la ligne : celle que nomme la colonne « image » (son nom de fichier),
+     * sinon celle qui porte le code, puis le code-barres du produit. Une photo
+     * nommee dans le tableau mais absente de l'archive est une erreur.
+     */
+    private static String photoDeLaLigne(LecteurTableau.Ligne l, String code, String codeBarres,
+                                         Map<String, byte[]> photos, Map<String, String> parRadical) {
+        if (photos.isEmpty()) {
+            return null;
+        }
+        String nommee = l.valeur("image", "photo", "fichier_image", "nom_image");
+        if (nommee != null) {
+            String nom = nommee.replace('\\', '/');
+            nom = nom.substring(nom.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT);
+            if (photos.containsKey(nom)) {
+                return nom;
+            }
+            String parNom = parRadical.get(PhotoProduit.radical(nom));
+            if (parNom != null) {
+                return parNom;
+            }
+            throw new BusinessException("la photo " + nommee + " ne figure pas dans l'archive");
+        }
+        if (code != null && parRadical.containsKey(code.toLowerCase(Locale.ROOT))) {
+            return parRadical.get(code.toLowerCase(Locale.ROOT));
+        }
+        if (codeBarres != null && parRadical.containsKey(codeBarres.toLowerCase(Locale.ROOT))) {
+            return parRadical.get(codeBarres.toLowerCase(Locale.ROOT));
+        }
+        return null;
     }
 
     /** Vrai si la ligne reprend le produit tel qu'il est : il n'est alors ni reecrit ni compte comme modifie. */
@@ -192,6 +266,120 @@ public class ImportService {
             categories.put(cle, id);
         }
         return id;
+    }
+
+    // -------------------------------------------------------- categories
+
+    /** Ligne de categorie controlee : creee si son nom est nouveau, mise a jour sinon. */
+    private record LigneCategorie(int ligne, Categorie existante, CatalogueDto.CategorieRequete requete) {
+    }
+
+    /**
+     * Categories reconnues par leur nom (sans tenir compte des majuscules). Une
+     * colonne vide garde la valeur actuelle ; une nouvelle categorie sans ordre se
+     * place a la suite des autres.
+     */
+    private Bilan categories(List<LecteurTableau.Ligne> lignes, boolean simulation) {
+        List<Erreur> erreurs = new ArrayList<>();
+        List<LigneCategorie> aEnregistrer = new ArrayList<>();
+        Set<String> noms = new HashSet<>();
+        Map<String, Categorie> existantes = new HashMap<>();
+        categorieRepository.findAll().forEach(c -> existantes.put(c.getNom().trim().toLowerCase(Locale.ROOT), c));
+        int prochainOrdre = existantes.values().stream().mapToInt(Categorie::getOrdre).max().orElse(-1) + 1;
+        int inchanges = 0;
+        for (LecteurTableau.Ligne l : lignes) {
+            try {
+                String nom = l.valeur("categorie", "nom", "libelle", "rayon", "famille");
+                if (nom == null) {
+                    throw new BusinessException("le nom de la categorie est obligatoire");
+                }
+                if (nom.length() > 80) {
+                    throw new BusinessException("le nom de la categorie depasse 80 caracteres");
+                }
+                String cle = nom.toLowerCase(Locale.ROOT);
+                if (!noms.add(cle)) {
+                    throw new BusinessException("la categorie " + nom + " figure deux fois dans le fichier");
+                }
+                Categorie c = existantes.get(cle);
+                String couleur = l.valeur("couleur");
+                if (couleur != null && !couleur.matches("^#[0-9a-fA-F]{6}$")) {
+                    throw new BusinessException("couleur invalide (" + couleur + ") : format #rrggbb, ex. #1f9d6b");
+                }
+                String icone = l.valeur("icone", "emoji");
+                if (icone != null && icone.length() > 16) {
+                    throw new BusinessException("icone trop longue : un emoji suffit");
+                }
+                BigDecimal ordre = nombre(l.valeur("ordre", "position", "rang"), "ordre");
+                String actif = l.valeur("actif", "active", "statut");
+                String poste = l.valeur("poste", "poste_de_preparation", "preparation");
+                int ordreRetenu = ordre != null ? ordre.intValue() : c != null ? c.getOrdre() : prochainOrdre++;
+                boolean actifRetenu = actif != null
+                        ? oui(actif) || actif.trim().toLowerCase(Locale.ROOT).startsWith("activ")
+                        : c == null || c.isActif();
+                CatalogueDto.CategorieRequete requete = new CatalogueDto.CategorieRequete(
+                        nom,
+                        couleur != null ? couleur : c == null ? null : c.getCouleur(),
+                        ordreRetenu,
+                        actifRetenu,
+                        poste != null ? poste(poste) : c == null ? null : c.getPoste(),
+                        icone != null ? icone : c == null ? null : c.getIcone());
+                if (c != null && identique(c, requete)) {
+                    inchanges++;
+                    continue;
+                }
+                aEnregistrer.add(new LigneCategorie(l.numero(), c, requete));
+            } catch (BusinessException e) {
+                erreurs.add(new Erreur(l.numero(), e.getMessage()));
+            }
+        }
+        int crees = (int) aEnregistrer.stream().filter(c -> c.existante() == null).count();
+        int modifies = aEnregistrer.size() - crees;
+        if (!erreurs.isEmpty() || simulation) {
+            return new Bilan(TypeImport.CATEGORIES, lignes.size(), crees, modifies, inchanges, simulation, false, erreurs);
+        }
+        for (LigneCategorie c : aEnregistrer) {
+            try {
+                if (c.existante() == null) {
+                    catalogueService.creerCategorie(c.requete());
+                } else {
+                    catalogueService.modifierCategorie(c.existante().getId(), c.requete());
+                }
+            } catch (BusinessException e) {
+                erreurs.add(new Erreur(c.ligne(), e.getMessage()));
+            }
+        }
+        boolean applique = erreurs.isEmpty();
+        return new Bilan(TypeImport.CATEGORIES, lignes.size(), applique ? crees : 0, applique ? modifies : 0,
+                applique ? inchanges : 0, false, applique, erreurs);
+    }
+
+    private static boolean identique(Categorie c, CatalogueDto.CategorieRequete r) {
+        return Objects.equals(c.getNom(), r.nom())
+                && Objects.equals(vide(c.getCouleur()), vide(r.couleur()))
+                && Objects.equals(vide(c.getIcone()), vide(r.icone()))
+                && c.getOrdre() == r.ordre()
+                && c.isActif() == r.actif()
+                && (r.poste() == null || c.getPoste() == r.poste());
+    }
+
+    /** Poste de preparation (restaurant) : par son code ou son libelle. */
+    private static PostePreparation poste(String valeur) {
+        String v = valeur.trim().toLowerCase(Locale.ROOT);
+        for (PostePreparation p : PostePreparation.values()) {
+            if (p.name().equalsIgnoreCase(v) || p.getLibelle().equalsIgnoreCase(v)) {
+                return p;
+            }
+        }
+        if (v.startsWith("cuisin")) {
+            return PostePreparation.CUISINE;
+        }
+        if (v.startsWith("bar")) {
+            return PostePreparation.BAR;
+        }
+        if (v.startsWith("aucun") || v.startsWith("servi") || v.startsWith("direct")) {
+            return PostePreparation.AUCUN;
+        }
+        throw new BusinessException("poste de preparation inconnu (" + valeur + ") : Cuisine, Bar ou Servi directement");
     }
 
     // ------------------------------------------------------------- stock
@@ -242,6 +430,28 @@ public class ImportService {
     /** Modele d'import pre-rempli avec les donnees actuelles. */
     @Transactional(readOnly = true)
     public Rapport modele(TypeImport type) {
+        if (type == TypeImport.CATEGORIES) {
+            Rapport.Constructeur r = new Rapport.Constructeur("MODELE_CATEGORIES", "Import des categories",
+                    "Une ligne par categorie ; un nom existant met la categorie a jour, un nouveau nom en cree une")
+                    .colonne("categorie", "Categorie", TEXTE)
+                    .colonne("ordre", "Ordre", NOMBRE)
+                    .colonne("icone", "Icone", TEXTE)
+                    .colonne("couleur", "Couleur", TEXTE)
+                    .colonne("actif", "Actif", TEXTE);
+            boolean restauration = restauration();
+            if (restauration) {
+                r.colonne("poste", "Poste", TEXTE);
+            }
+            for (Categorie c : categorieRepository.findAllByOrderByOrdreAscNomAsc()) {
+                if (restauration) {
+                    r.ligne(c.getNom(), c.getOrdre(), c.getIcone(), c.getCouleur(), c.isActif() ? "oui" : "non",
+                            c.getPoste().getLibelle());
+                } else {
+                    r.ligne(c.getNom(), c.getOrdre(), c.getIcone(), c.getCouleur(), c.isActif() ? "oui" : "non");
+                }
+            }
+            return r.construire();
+        }
         List<Article> articles = articleRepository.findAll().stream()
                 .filter(Article::isActif)
                 .sorted(Comparator.comparing(a -> a.getNom().toLowerCase(Locale.ROOT)))
@@ -266,11 +476,12 @@ public class ImportService {
                 .colonne("unite", "Unite", TEXTE)
                 .colonne("suivi_stock", "Suivi stock", TEXTE)
                 .colonne("seuil_alerte", "Seuil alerte", NOMBRE)
-                .colonne("stock_initial", "Stock initial", NOMBRE);
+                .colonne("stock_initial", "Stock initial", NOMBRE)
+                .colonne("image", "Image", TEXTE);
         for (Article a : articles) {
             Categorie c = a.getCategorie();
             r.ligne(a.getCode(), a.getNom(), c == null ? null : c.getNom(), a.getPrixVente(), a.getPrixAchat(),
-                    a.getCodeBarres(), a.getUnite(), a.isSuiviStock() ? "oui" : "non", a.getSeuilAlerte(), null);
+                    a.getCodeBarres(), a.getUnite(), a.isSuiviStock() ? "oui" : "non", a.getSeuilAlerte(), null, null);
         }
         return r.construire();
     }

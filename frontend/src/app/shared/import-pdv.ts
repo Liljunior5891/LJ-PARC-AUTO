@@ -4,7 +4,7 @@ import { RapportService, enregistrerFichier } from '../core/services/rapport.ser
 import { Modale } from './modale';
 
 /**
- * Fenetre d'import du point de vente : produits ou stock compte, depuis un
+ * Fenetre d'import du point de vente : produits, categories ou stock compte, depuis un
  * fichier CSV ou Excel. Le modele se telecharge pre-rempli, le fichier est
  * verifie sans rien enregistrer, puis importe d'un bloc s'il est sans erreur.
  * Ouverte depuis les Rapports, les Produits et l'Inventaire.
@@ -23,6 +23,11 @@ import { Modale } from './modale';
               <strong>📦 Liste des produits</strong>
               <small>Cree ou met a jour le catalogue : nom, categorie, prix, code-barres, seuil...</small>
             </button>
+            <button type="button" role="radio" [class.actif]="typeImport() === 'CATEGORIES'"
+                    [attr.aria-checked]="typeImport() === 'CATEGORIES'" (click)="changerType('CATEGORIES')">
+              <strong>🗂️ Categories</strong>
+              <small>Cree ou met a jour les categories : nom, ordre, icone, couleur, active.</small>
+            </button>
             <button type="button" role="radio" [class.actif]="typeImport() === 'STOCK'"
                     [attr.aria-checked]="typeImport() === 'STOCK'" (click)="changerType('STOCK')">
               <strong>📋 Stock compte</strong>
@@ -33,6 +38,8 @@ import { Modale } from './modale';
           <p class="type-choisi">
             {{ typeImport() === 'PRODUITS'
               ? '📦 Liste des produits : chaque ligne cree un produit ou met a jour celui qui porte le meme code ou code-barres.'
+              : typeImport() === 'CATEGORIES'
+              ? '🗂️ Categories : chaque ligne cree une categorie ou met a jour celle qui porte le meme nom.'
               : '📋 Stock compte : le stock de chaque produit du fichier est remplace par la quantite indiquee.' }}
           </p>
         }
@@ -54,8 +61,23 @@ import { Modale } from './modale';
           <div>
             <strong>Choisissez votre fichier</strong>
             <small>Format .xlsx ou .csv (separateur point-virgule ou virgule), 5 000 lignes au plus.</small>
+            @if (typeImport() === 'PRODUITS') {
+              <details class="aide-zip">
+                <summary>📷 Importer aussi les photos des produits (archive .zip)</summary>
+                <ol>
+                  <li>Remplissez le modele des produits comme d'habitude.</li>
+                  <li>Nommez chaque photo d'apres le <strong>code du produit</strong> (ex. <code>CIM-001.jpg</code>),
+                    ou ecrivez son nom de fichier dans la colonne <strong>Image</strong> du modele.</li>
+                  <li>Mettez le tableau et les photos dans un meme fichier .zip (sous-dossiers acceptes), puis choisissez ce .zip ici.</li>
+                </ol>
+                <small>Photos JPEG, PNG, GIF ou BMP ; elles sont recadrees au carre et reduites comme dans la fiche produit.
+                  Archive de 60 Mo au plus. Une photo remplace celle du produit ; sans photo, le produit garde la sienne.</small>
+              </details>
+            }
             <label class="choix-fichier">
-              <input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              <input type="file" [accept]="typeImport() === 'PRODUITS'
+                       ? '.csv,.xlsx,.zip,text/csv,application/zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                       : '.csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
                      hidden (change)="choisirFichier($event)" />
               <span class="bouton secondaire petit">Parcourir...</span>
               <span class="nom-fichier">{{ fichier()?.name ?? 'Aucun fichier choisi' }}</span>
@@ -74,6 +96,9 @@ import { Modale } from './modale';
                   <p>✓ {{ b.lignes }} ligne(s) lue(s) :
                     @if (b.type === 'PRODUITS') {
                       {{ b.crees }} produit(s) a creer, {{ b.modifies }} a mettre a jour, {{ b.inchanges }} inchange(s).
+                      @if (b.photos) { {{ b.photos }} photo(s) rattachee(s). }
+                    } @else if (b.type === 'CATEGORIES') {
+                      {{ b.crees }} categorie(s) a creer, {{ b.modifies }} a mettre a jour, {{ b.inchanges }} inchangee(s).
                     } @else {
                       {{ b.modifies }} stock(s) a corriger, {{ b.inchanges }} deja juste(s).
                     }
@@ -87,6 +112,14 @@ import { Modale } from './modale';
                   </ul>
                 }
               </div>
+              @if (b.avertissements?.length) {
+                <div class="avertissements">
+                  <p>⚠ {{ b.avertissements!.length }} remarque(s), sans effet sur l'import :</p>
+                  <ul>
+                    @for (a of b.avertissements!.slice(0, 50); track $index) { <li>{{ a }}</li> }
+                  </ul>
+                </div>
+              }
             }
           </div>
         </div>
@@ -107,7 +140,7 @@ import { Modale } from './modale';
   styles: `
     .import { display: flex; flex-direction: column; gap: 1rem; }
     .type-choisi { margin: 0; padding: 0.7rem 0.9rem; border-radius: 10px; background: var(--couleur-fond); font-size: 0.9rem; }
-    .types-import { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .types-import { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
     .types-import button {
       display: flex; flex-direction: column; gap: 0.3rem; padding: 0.8rem;
       border: 2px solid var(--couleur-bordure); border-radius: 12px; background: var(--couleur-surface);
@@ -139,6 +172,20 @@ import { Modale } from './modale';
       max-height: 180px; margin: 0.4rem 0 0; padding-left: 1.1rem; overflow-y: auto;
       color: var(--couleur-texte); font-size: 0.85rem;
     }
+    .aide-zip {
+      margin: 0.2rem 0; padding: 0.55rem 0.8rem; border: 1px dashed #b7c9e2; border-radius: 10px; background: #f6f9fe;
+      font-size: 0.85rem;
+    }
+    .aide-zip summary { cursor: pointer; font-weight: 600; color: #1f5fae; }
+    .aide-zip ol { margin: 0.5rem 0 0.4rem; padding-left: 1.2rem; }
+    .aide-zip li { margin-bottom: 0.2rem; }
+    .aide-zip code { padding: 0 0.25rem; border-radius: 4px; background: #e6eef9; }
+    .aide-zip small { color: var(--couleur-texte-doux); }
+    .avertissements {
+      margin-top: 0.4rem; padding: 0.6rem 0.9rem; border-radius: 10px; background: #fff6e5; color: #8a5a00; font-size: 0.85rem;
+    }
+    .avertissements p { margin: 0; font-weight: 600; }
+    .avertissements ul { max-height: 140px; margin: 0.3rem 0 0; padding-left: 1.1rem; overflow-y: auto; }
     @media (max-width: 700px) { .types-import { grid-template-columns: 1fr; } }
   `
 })
@@ -209,7 +256,11 @@ export class ImportPdv implements OnInit {
 
 /** Message de fin d'import, commun aux ecrans qui ouvrent la fenetre. */
 export function messageImport(bilan: BilanImport): string {
+  if (bilan.type === 'CATEGORIES') {
+    return `Import termine : ${bilan.crees} categorie(s) creee(s), ${bilan.modifies} mise(s) a jour, ${bilan.inchanges} inchangee(s).`;
+  }
   return bilan.type === 'PRODUITS'
-    ? `Import termine : ${bilan.crees} produit(s) cree(s), ${bilan.modifies} mis a jour, ${bilan.inchanges} inchange(s).`
+    ? `Import termine : ${bilan.crees} produit(s) cree(s), ${bilan.modifies} mis a jour, ${bilan.inchanges} inchange(s)`
+      + (bilan.photos ? `, ${bilan.photos} photo(s) ajoutee(s).` : '.')
     : `Import termine : ${bilan.modifies} stock(s) corrige(s), ${bilan.inchanges} deja juste(s).`;
 }

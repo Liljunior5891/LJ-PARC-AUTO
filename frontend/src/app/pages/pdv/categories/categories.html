@@ -5,8 +5,17 @@
       {{ restauration ? 'Elles organisent la carte et envoient chaque article en cuisine ou au bar.' : 'Elles organisent les boutons de l\'ecran de caisse.' }}
     </p>
   </div>
-  <button class="bouton" type="button" (click)="ouvrir()">+ Ajouter une categorie</button>
+  <div class="actions-entete">
+    <app-export-pdv type="CATEGORIES" />
+    <button class="bouton secondaire info" type="button" (click)="importOuvert.set(true)">⇪ Importer</button>
+    <button class="bouton" type="button" (click)="ouvrir()">+ Ajouter une categorie</button>
+  </div>
 </div>
+
+<!-- Import des categories (CSV ou Excel), verifie avant d'etre enregistre -->
+@if (importOuvert()) {
+  <app-import-pdv type="CATEGORIES" [typeFixe]="true" (ferme)="importOuvert.set(false)" (importe)="importTermine($event)" />
+}
 
 @if (succes()) {
   <div class="message succes">{{ succes() }}</div>

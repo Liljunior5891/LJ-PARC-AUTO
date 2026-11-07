@@ -24,7 +24,7 @@ export interface Rapport {
   indicateurs: { libelle: string; valeur: number; format: FormatColonne }[];
 }
 
-export type TypeImport = 'PRODUITS' | 'STOCK';
+export type TypeImport = 'PRODUITS' | 'STOCK' | 'CATEGORIES';
 
 export interface BilanImport {
   type: TypeImport;
@@ -35,4 +35,8 @@ export interface BilanImport {
   simulation: boolean;
   applique: boolean;
   erreurs: { ligne: number; message: string }[];
+  /** Import des produits par archive ZIP : photos rattachees a un produit. */
+  photos?: number;
+  /** Ce qui n'empeche pas l'import : photo sans produit, fichier ignore... */
+  avertissements?: string[];
 }
