@@ -36,6 +36,7 @@ public class UtilisateurService {
     private final UtilisateurRepository repository;
     private final PasswordEncoder encodeur;
     private final ModuleService moduleService;
+    private final tg.parcauto.api.pointdevente.reglage.ReglagePdvRepository reglagesPdv;
 
     @Transactional(readOnly = true)
     public Page<UtilisateurDto.Reponse> rechercher(String q, Role role, Boolean actif, Pageable pageable) {
@@ -166,8 +167,15 @@ public class UtilisateurService {
                 .filter(role -> restauration || !restaurant.contains(role))
                 .filter(role -> role != Role.MAGASINIER
                         || "MATERIAUX".equals(moduleService.variante(entreprise, ModuleApplicatif.POINT_DE_VENTE)))
+                // Associe : seulement quand l'option des benefices est activee dans les reglages du point de vente.
+                .filter(role -> role != Role.ASSOCIE || associesActifs())
                 .map(role -> new UtilisateurDto.ProfilRole(role.name(), role.getLibelle()))
                 .toList();
+    }
+
+    private boolean associesActifs() {
+        return reglagesPdv.findFirstByOrderByIdAsc()
+                .map(tg.parcauto.api.pointdevente.reglage.ReglagePdv::isAssociesActif).orElse(false);
     }
 
     private void verifierDernierAdministrateur(Long id) {

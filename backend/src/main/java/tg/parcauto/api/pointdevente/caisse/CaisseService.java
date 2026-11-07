@@ -59,6 +59,7 @@ public class CaisseService {
     private final GestionCaisseService gestionCaisses;
     private final SessionTravailService sessionsTravail;
     private final tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository soldeRepository;
+    private final tg.parcauto.api.pointdevente.tresorerie.RemiseCaisseRepository remiseRepository;
 
     /** Quantite comptee d'une valeur de billet ou de piece. */
     public record LigneBillettage(@NotNull BigDecimal valeur, @NotNull @PositiveOrZero Integer quantite) {
@@ -162,6 +163,36 @@ public class CaisseService {
         return enregistrerMouvement(sessionId, MouvementCaisse.Type.SORTIE, montant, motif, auteur);
     }
 
+    /** Especes attendues dans le tiroir d'une session ouverte (fond, ventes, entrees, sorties). */
+    @Transactional(readOnly = true)
+    public BigDecimal especesDuTiroir(Long sessionId) {
+        SessionCaisse session = chargerOuverte(sessionId);
+        return especesAttendues(session, totaux(sessionId), mouvements(sessionId));
+    }
+
+    /** Session ouverte, pour le circuit des remises. */
+    @Transactional(readOnly = true)
+    public SessionCaisse sessionOuverte(Long sessionId) {
+        return chargerOuverte(sessionId);
+    }
+
+    /**
+     * Remise validee par le gerant : les especes recomptees quittent le tiroir.
+     * Pas de plafond ici : un excedent compte physiquement sort aussi du tiroir.
+     */
+    public MouvementCaisse retraitRemise(Long sessionId, BigDecimal montant, String motif, UtilisateurPrincipal gerant) {
+        SessionCaisse session = chargerOuverte(sessionId);
+        MouvementCaisse m = new MouvementCaisse();
+        m.setSession(session);
+        m.setType(MouvementCaisse.Type.SORTIE);
+        m.setMontant(montant);
+        m.setMotif(motif.length() <= 255 ? motif : motif.substring(0, 255));
+        m.setAuteurId(gerant.getId());
+        m.setAuteurNom(gerant.getNomComplet());
+        m.setDateMouvement(Instant.now());
+        return mouvementRepository.save(m);
+    }
+
     /** Retire la sortie d'une depense ou d'un reglement annule, tant que la session est ouverte. */
     public void retirerSortie(MouvementCaisse mouvement, String piece) {
         SessionCaisse session = mouvement.getSession();
@@ -219,6 +250,10 @@ public class CaisseService {
             throw new BusinessException(enCours.size() + " commande(s) en cours non reglee(s) : "
                     + enCours.stream().map(Commande::repere).limit(8).collect(Collectors.joining(", "))
                     + ". Encaissez-les ou annulez-les avant de fermer la caisse");
+        }
+        if (remiseRepository.existsBySessionIdAndStatut(id, tg.parcauto.api.pointdevente.tresorerie.RemiseCaisse.Statut.EN_ATTENTE)) {
+            throw new BusinessException("Une remise de recette attend la validation du gerant : "
+                    + "validez-la ou refusez-la avant de fermer la caisse");
         }
         List<Coupure> comptees = coupures(cloture.billettage(), Coupure.Moment.FERMETURE);
         BigDecimal compte = total(comptees);

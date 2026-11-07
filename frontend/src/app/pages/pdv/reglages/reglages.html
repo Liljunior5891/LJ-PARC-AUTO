@@ -1,0 +1,162 @@
+<div class="entete-page">
+  <div>
+    <h1>Reglages du point de vente</h1>
+    <p class="sous-titre">Activez les options utiles a votre commerce : desactivees, elles ne changent rien.</p>
+  </div>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes() && !modifie()) { <div class="message succes">{{ succes() }}</div> }
+
+@if (formulaire(); as f) {
+  <div class="mise-en-page">
+    <!-- Sommaire : un lien par bloc, avec son etat. -->
+    <nav class="sommaire" aria-label="Sections des reglages">
+      @for (e of sommaire(); track e.id; let i = $index) {
+        @if (i === 0 || sommaire()[i - 1].groupe !== e.groupe) {
+          <span class="groupe-sommaire">{{ e.groupe }}</span>
+        }
+        <button type="button" (click)="aller(e.id)">
+          <span aria-hidden="true">{{ e.icone }}</span>
+          <span class="libelle">{{ e.libelle }}</span>
+        </button>
+      }
+    </nav>
+
+    <div class="contenu">
+      <h2 class="titre-groupe">Options</h2>
+
+      <!-- ===================================================== associes -->
+      <section class="bloc-reglage" id="reglage-associes" [class.actif]="f.associesActif">
+        <label class="entete-bloc">
+          <span class="pictogramme" aria-hidden="true">🤝</span>
+          <span>
+            <span class="titre-bloc">Benefices des associes</span>
+            <span class="texte-bloc">Chaque associe touche un pourcentage de la marge brute (ventes − cout d'achat) des produits ou categories
+              auxquels il est rattache, et ne voit que sa part.</span>
+          </span>
+          <input class="bascule" type="checkbox" name="associesActif" [(ngModel)]="f.associesActif" aria-label="Activer les benefices des associes" />
+        </label>
+        @if (f.associesActif) {
+          <div class="corps-bloc">
+            @if (!options.associesActif()) {
+              <p class="note-bloc">Enregistrez pour activer l'option : vous pourrez ensuite rattacher chaque associe a ses produits.</p>
+            } @else {
+              <div class="liste-associes">
+                @for (a of associes(); track a.id) {
+                  <div class="associe" [class.desactive]="!a.actif">
+                    <span class="avatar" aria-hidden="true">{{ a.nom.slice(0, 1) }}</span>
+                    <div class="identite">
+                      <strong>{{ a.nom }}</strong>
+                      <small>{{ a.email }}{{ a.actif ? '' : ' · compte desactive' }}</small>
+                      <div class="parts">
+                        @for (p of a.parts; track p.id) {
+                          <span class="etiquette-part">{{ p.articleNom ? '📦 ' + p.articleNom : '🏷 ' + p.categorieNom }} · <strong>{{ p.taux | number: '1.0-2' }} %</strong></span>
+                        } @empty {
+                          <span class="sans-part">Aucun produit rattache : sa part est nulle</span>
+                        }
+                      </div>
+                    </div>
+                    <button class="bouton secondaire petit info" type="button" (click)="ouvrirParts(a)">Produits et %</button>
+                  </div>
+                } @empty {
+                  <p class="note-bloc">Aucun compte au profil « Associe ». Creez-le dans <a routerLink="/utilisateurs">Utilisateurs</a>
+                    en cochant le profil Associe.</p>
+                }
+              </div>
+              <p class="note-bloc">Plusieurs associes peuvent partager un produit, sans depasser 100 % : le reste revient a l'entreprise.
+                Un rattachement au produit l'emporte sur celui de sa categorie. Pour ouvrir d'autres ecrans a un associe,
+                ajoutez-lui d'autres profils dans <a routerLink="/utilisateurs">Utilisateurs</a>.</p>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- ============================================== circuit caisse -->
+      <section class="bloc-reglage" id="reglage-circuit" [class.actif]="f.circuitCaisseActif">
+        <label class="entete-bloc">
+          <span class="pictogramme" aria-hidden="true">🔐</span>
+          <span>
+            <span class="titre-bloc">Circuit des especes</span>
+            <span class="texte-bloc">Les recettes en especes remontent de la caisse a l'administrateur, avec un billettage a chaque etape.</span>
+          </span>
+          <input class="bascule" type="checkbox" name="circuitCaisseActif" [(ngModel)]="f.circuitCaisseActif" aria-label="Activer le circuit des especes" />
+        </label>
+        @if (f.circuitCaisseActif) {
+          <div class="corps-bloc">
+            <ol class="etapes-circuit">
+              <li><span class="etape">🗄</span><strong>Caisse</strong><small>Le caissier compte sa recette et l'envoie</small></li>
+              <li><span class="etape">🔐</span><strong>Coffre du gerant</strong><small>Il recompte, valide, puis degage son coffre</small></li>
+              <li><span class="etape">🏦</span><strong>Compte de l'entreprise</strong><small>L'administrateur recompte et valide</small></li>
+            </ol>
+            <div class="champs-bloc">
+              <div class="champ">
+                <label for="ecart">Ecart tolere sans justification (F)</label>
+                <input id="ecart" name="ecart" type="number" min="0" step="any" [(ngModel)]="f.ecartTolere" />
+                <small>Au-dela, chaque remise, recompte ou degagement explique l'ecart. 0 : tout ecart est justifie.</small>
+              </div>
+            </div>
+            <p class="note-bloc">La remise du caissier ne ferme pas la caisse : le gerant ouvre et ferme la session comme aujourd'hui.
+              Mobile money et carte vont directement au compte de l'entreprise.</p>
+          </div>
+        }
+      </section>
+
+      @if (materiaux) {
+        <h2 class="titre-groupe">Quincaillerie et materiaux</h2>
+        <app-reglages-materiaux />
+      }
+    </div>
+  </div>
+
+  <!-- Barre d'enregistrement : visible des qu'une modification attend. -->
+  @if (modifie()) {
+    <div class="barre-enregistrement" role="status">
+      <span><strong>Modifications non enregistrees</strong></span>
+      <div class="actions">
+        <button class="bouton secondaire annuler" type="button" [disabled]="envoi()" (click)="annuler()">Annuler</button>
+        <button class="bouton succes" type="button" [disabled]="envoi()" (click)="enregistrer()">
+          {{ envoi() ? 'Enregistrement...' : 'Enregistrer' }}
+        </button>
+      </div>
+    </div>
+  }
+}
+
+@if (associeOuvert(); as a) {
+  <app-modale [titre]="'Produits de ' + a.nom" sousTitre="Pourcentage de la marge brute sur chaque produit ou categorie"
+              largeur="820px" [erreur]="erreurParts()" (ferme)="associeOuvert.set(null)">
+    <div class="lignes-parts">
+      @for (l of lignes(); track l.cle) {
+        <div class="ligne-part">
+          <div class="champs-part">
+            <div class="champ">
+              <label [for]="'part-type-' + l.cle">Rattache a</label>
+              <select [id]="'part-type-' + l.cle" [name]="'type' + l.cle" [ngModel]="l.type" (ngModelChange)="modifierLigne(l.cle, 'type', $event)">
+                <option value="CATEGORIE">Une categorie entiere</option>
+                <option value="PRODUIT">Un produit</option>
+              </select>
+            </div>
+            <div class="champ">
+              <label>{{ l.type === 'PRODUIT' ? 'Produit' : 'Categorie' }} *</label>
+              <app-select-recherche [name]="'cible' + l.cle" [ngModel]="l.cibleId" (ngModelChange)="modifierLigne(l.cle, 'cibleId', $event)"
+                                    [options]="l.type === 'PRODUIT' ? optionsProduits() : optionsCategories()"
+                                    [placeholder]="l.type === 'PRODUIT' ? 'Choisir un produit' : 'Choisir une categorie'" />
+            </div>
+            <div class="champ">
+              <label [for]="'part-taux-' + l.cle">Pourcentage de la marge (%) *</label>
+              <input [id]="'part-taux-' + l.cle" [name]="'taux' + l.cle" type="number" min="0.01" max="100" step="0.01"
+                     placeholder="Ex. 25" [ngModel]="l.taux" (ngModelChange)="modifierLigne(l.cle, 'taux', $event)" />
+            </div>
+          </div>
+          <button class="retirer" type="button" title="Retirer cette ligne" aria-label="Retirer cette ligne" (click)="retirerLigne(l.cle)">✕</button>
+        </div>
+      }
+    </div>
+    <button class="bouton secondaire petit" type="button" (click)="ajouterLigne()">+ Ajouter un produit ou une categorie</button>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="associeOuvert.set(null)">Annuler</button>
+      <button class="bouton" type="button" (click)="enregistrerParts()">Enregistrer</button>
+    </div>
+  </app-modale>
+}

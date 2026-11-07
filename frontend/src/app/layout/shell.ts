@@ -16,6 +16,7 @@ import { PanneauCompte } from './panneau-compte';
 import { activerDefilementTableaux } from '../shared/defilement-tableaux';
 import { CodeModule, Role } from '../core/models/models';
 import { LieuxService } from '../core/services/lieux.service';
+import { OptionsPdvService } from '../core/services/options-pdv.service';
 import { environment } from '../../environments/environment';
 
 interface EntreeMenu {
@@ -26,6 +27,8 @@ interface EntreeMenu {
   description: string;
   /** Visible seulement quand l'entreprise a un entrepot. */
   avecLieux?: boolean;
+  /** Option du point de vente a activer dans ses reglages pour voir l'entree. */
+  option?: 'associes' | 'circuit';
   /** Profils autorises ; absent, l'entree est visible de tous. */
   roles?: Role[];
   /** Module dont depend l'entree ; absent, elle fait partie du socle commun. */
@@ -66,6 +69,7 @@ export class Shell {
   private readonly societeService = inject(SocieteService);
   private readonly router = inject(Router);
   private readonly lieux = inject(LieuxService);
+  private readonly optionsPdv = inject(OptionsPdvService);
 
   readonly nomPlateforme = environment.nomPlateforme;
   readonly estSuperAdmin = this.auth.estSuperAdmin();
@@ -232,6 +236,7 @@ export class Shell {
           libelle: 'Caisse', description: 'Caisses et vente au comptoir', roles: ['ADMIN', 'GERANT'], variante: ['BOUTIQUE', 'MATERIAUX'],
           enfants: [
             { libelle: 'Caisses', route: '/pdv/caisses', description: 'Caisses, affectations et historique' },
+            { libelle: 'Remises et coffre', route: '/pdv/tresorerie', description: 'Recettes des caissiers, coffre, compte de l\'entreprise', option: 'circuit' },
             { libelle: 'Vente au comptoir', route: '/pdv/caisse', description: 'Encaisser a la caisse' }
           ]
         },
@@ -239,13 +244,15 @@ export class Shell {
           libelle: 'Caisse', description: 'Caisses, cuisine, salle et codes QR', roles: ['ADMIN', 'GERANT'], variante: 'RESTAURATION',
           enfants: [
             { libelle: 'Caisses', route: '/pdv/caisses', description: 'Caisses, affectations et historique' },
+            { libelle: 'Remises et coffre', route: '/pdv/tresorerie', description: 'Recettes des caissiers, coffre, compte de l\'entreprise', option: 'circuit' },
             { libelle: 'Ecrans de preparation', route: '/pdv/ecrans', description: 'Ecrans, categories et personnel', variante: 'RESTAURATION' },
             { libelle: 'Salle et tables', route: '/pdv/plan-salle', description: 'Plan du restaurant et service', variante: 'RESTAURATION' },
             { libelle: 'Codes QR', route: '/pdv/codes-qr', description: 'Commande des clients depuis leur table', variante: 'RESTAURATION' }
           ]
         },
+        { libelle: 'Benefices associes', route: '/pdv/benefices', description: 'Part de chaque associe sur la marge de ses produits', roles: ['ADMIN', 'ASSOCIE'], option: 'associes' },
         { libelle: 'Rapports', route: '/pdv/rapports', description: 'Statistiques, exports et imports', roles: ['ADMIN', 'GERANT'] },
-        { libelle: 'Reglages', route: '/pdv/reglages-materiaux', description: 'Credit, devis, facture A4 et conditionnements', roles: ['ADMIN'], variante: 'MATERIAUX' }
+        { libelle: 'Reglages', route: '/pdv/reglages', description: 'Options et reglages du point de vente', roles: ['ADMIN'] }
       ]
     },
     {
@@ -291,10 +298,13 @@ export class Shell {
       return this.menuPlateforme;
     }
     const lieuxActifs = this.lieux.actif();
+    const optionsActives = { associes: this.optionsPdv.associesActif(), circuit: this.optionsPdv.circuitActif() };
     const varianteCourante = this.auth.variante('POINT_DE_VENTE') ?? '';
     const autorise = (e: { roles?: Role[]; module?: CodeModule; variante?: string | string[]; sansModules?: CodeModule[];
-                           avecModules?: CodeModule[]; avecUnDesModules?: CodeModule[]; avecLieux?: boolean }) =>
+                           avecModules?: CodeModule[]; avecUnDesModules?: CodeModule[]; avecLieux?: boolean;
+                           option?: 'associes' | 'circuit' }) =>
       (!e.avecLieux || lieuxActifs) &&
+      (!e.option || optionsActives[e.option]) &&
       (!e.roles || this.auth.aRole(...e.roles)) &&
       (!e.sansModules || !e.sansModules.some((m) => this.auth.aModule(m))) &&
       (!e.avecModules || e.avecModules.every((m) => this.auth.aModule(m))) &&
@@ -386,6 +396,10 @@ export class Shell {
     // Les ecrans de retrait et de transfert n'apparaissent qu'avec un entrepot.
     if (this.auth.estMateriaux() && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'MAGASINIER')) {
       this.lieux.chargerEtat();
+    }
+    // Options du point de vente (associes, circuit des especes) : elles montrent ou cachent des ecrans.
+    if (this.auth.aModule('POINT_DE_VENTE') && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'ASSOCIE')) {
+      this.optionsPdv.charger();
     }
     if (this.avecVerrou) {
       this.surveillerInactivite(destroyRef);

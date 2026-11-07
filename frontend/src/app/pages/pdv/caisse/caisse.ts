@@ -24,6 +24,7 @@ import { SessionTravailService } from '../../../core/services/session-travail.se
 import { FinDeSaisie, LecteurDouchette, normaliserCodeBarres } from '../../../shared/code-barres';
 import { BandeauSession } from '../../../shared/bandeau-session';
 import { BoutonEspeces } from '../../../shared/bouton-especes';
+import { BoutonRemise } from '../../../shared/tresorerie-pdv';
 import { SocieteService } from '../../../core/services/societe.service';
 import { Modale } from '../../../shared/modale';
 import { imprimerTicket } from '../../../shared/ticket-pdv';
@@ -68,7 +69,7 @@ const unitesDeBase = (l: LignePanier) => l.quantite * (l.conditionnement?.coeffi
  */
 @Component({
   selector: 'app-caisse',
-  imports: [FormsModule, DecimalPipe, DatePipe, Modale, BandeauSession, BoutonEspeces, CompteClientPdv, FormulaireClientPdv, SuiteListe],
+  imports: [FormsModule, DecimalPipe, DatePipe, Modale, BandeauSession, BoutonEspeces, BoutonRemise, CompteClientPdv, FormulaireClientPdv, SuiteListe],
   templateUrl: './caisse.html',
   styleUrls: ['../commande/commande.scss', './caisse.scss'],
   host: { '(document:keydown)': 'captureDouchette($event)' }

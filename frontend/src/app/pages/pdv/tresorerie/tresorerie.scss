@@ -1,0 +1,75 @@
+/* Remises et coffre : onglets, cartes d'indicateurs, tableaux. */
+.aide {
+  margin-top: 0;
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+}
+
+.indicateurs {
+  margin-bottom: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+
+  .carte-apercu strong {
+    font-size: 1.5rem;
+  }
+}
+
+.titre-section {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+}
+
+.deux-colonnes {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 2fr;
+  gap: 1rem;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+td.negatif {
+  color: var(--couleur-danger);
+}
+
+td.positif {
+  color: #157a37;
+}
+
+.statut {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+
+  &.en_attente {
+    background: #fff2df;
+    color: #9a5b00;
+  }
+
+  &.validee,
+  &.valide {
+    background: #e3f6ed;
+    color: #157a37;
+  }
+
+  &.refusee,
+  &.refuse {
+    background: #fde8e4;
+    color: #b8321c;
+  }
+}
+
+/* Historique : remises des caissiers et degagements des coffres cote a cote. */
+.historiques {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: 1fr;
+  }
+}

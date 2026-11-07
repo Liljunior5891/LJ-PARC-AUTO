@@ -1,0 +1,95 @@
+/* Benefices des associes : periode, cartes, un bloc deroulant par associe. */
+.filtres-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.choix-periode {
+  width: 210px;
+  font-weight: 600;
+}
+
+.dates-periode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+
+  input {
+    height: 38px;
+    padding: 0 0.6rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+  }
+
+  &.invalides input {
+    border-color: var(--couleur-danger);
+  }
+}
+
+.indicateurs {
+  margin-bottom: 1rem;
+
+  .carte-apercu strong {
+    font-size: 1.5rem;
+  }
+}
+
+.associe {
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 12px;
+  margin-bottom: 0.7rem;
+  overflow: hidden;
+
+  &.moi {
+    border-color: #1f9d6b;
+  }
+
+  .tableau-conteneur {
+    padding: 0 0.8rem 0.8rem;
+  }
+}
+
+.entete-associe {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 2fr) repeat(3, minmax(110px, 1fr));
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 0;
+  background: var(--couleur-surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  small {
+    display: block;
+    color: var(--couleur-texte-doux);
+    font-size: 0.72rem;
+    font-weight: 400;
+  }
+
+  .chiffre {
+    text-align: right;
+    font-weight: 600;
+  }
+
+  .part {
+    color: #157a37;
+    font-size: 1.1rem;
+  }
+
+  @media (max-width: 760px) {
+    grid-template-columns: auto 1fr;
+
+    .chiffre {
+      grid-column: 2;
+      text-align: left;
+    }
+  }
+}

@@ -1,0 +1,24 @@
+/* Comptage et recompte des especes : billettage a gauche, controle a droite (comme la fermeture de caisse). */
+.consigne { margin: 0 0 0.8rem; color: var(--couleur-texte-doux); }
+.comptage { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 1rem; align-items: start; }
+.controle-direct {
+  padding: 0.8rem 0.9rem; border: 1px solid var(--couleur-bordure); border-radius: 12px; background: var(--couleur-fond);
+}
+.controle-direct h3 { margin: 0 0 0.5rem; font-size: 0.9rem; }
+.controle-direct dl { display: grid; gap: 0.3rem; margin: 0; }
+.controle-direct dl div { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.85rem; }
+.controle-direct dt { color: var(--couleur-texte-doux); }
+.controle-direct dd { margin: 0; font-weight: 600; white-space: nowrap; }
+.controle-direct .attendu { padding-top: 0.35rem; border-top: 1px dashed var(--couleur-bordure); }
+.controle-direct .attendu dt, .controle-direct .attendu dd, .controle-direct .compte dd { color: var(--couleur-texte); font-weight: 700; }
+.controle-direct .ecart-direct { margin-top: 0.3rem; padding: 0.45rem 0.55rem; border-radius: 8px; font-size: 0.92rem; }
+.controle-direct .ecart-direct dt, .controle-direct .ecart-direct dd { color: inherit; font-weight: 700; }
+.controle-direct .ecart-direct.juste { background: #e3f6ed; color: #1f9d6b; }
+.controle-direct .ecart-direct.manque { background: #fde8e4; color: #d9452b; }
+.controle-direct .ecart-direct.surplus { background: #fff2df; color: #b8650a; }
+.controle-direct .champ { margin-top: 0.7rem; }
+.champ textarea { width: 100%; background: #fff; }
+.champ textarea.requise { border-color: var(--couleur-danger); }
+.note-expediteur { margin: 0.6rem 0 0; font-size: 0.82rem; }
+.destination { margin: 0.6rem 0 0; font-size: 0.82rem; color: var(--couleur-texte-doux); }
+@media (max-width: 760px) { .comptage { grid-template-columns: 1fr; } }

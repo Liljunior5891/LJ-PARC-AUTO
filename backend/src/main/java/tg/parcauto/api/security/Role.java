@@ -26,7 +26,13 @@ public enum Role {
     /** Bar / restaurant : ecrans de la cuisine et du bar. */
     PREPARATEUR("Cuisinier / Barman"),
     /** Quincaillerie avec entrepots : sert les bons de retrait et les transferts de ses lieux, sans voir les prix. */
-    MAGASINIER("Magasinier");
+    MAGASINIER("Magasinier"),
+    /**
+     * Point de vente (option « benefices des associes ») : ne voit que sa propre part
+     * de la marge des produits auxquels il est rattache. Pour d'autres ecrans,
+     * l'administrateur lui ajoute d'autres profils.
+     */
+    ASSOCIE("Associe");
 
     private final String libelle;
 

@@ -257,6 +257,18 @@ export const routes: Routes = [
             ]
           },
           {
+            // Benefices des associes : l'administrateur voit tout, un associe sa seule part.
+            path: 'benefices',
+            canActivate: [roleGuard('ADMIN', 'ASSOCIE')],
+            loadComponent: () => import('./pages/pdv/benefices/benefices').then((m) => m.BeneficesPdv),
+            title: 'Benefices des associes — LJ SaaS'
+          },
+          {
+            path: 'reglages-materiaux',
+            pathMatch: 'full',
+            redirectTo: 'reglages'
+          },
+          {
             path: 'ventes',
             canActivate: [roleGuard('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR')],
             loadComponent: () => import('./pages/pdv/ventes/ventes').then((m) => m.VentesPdv),
@@ -353,6 +365,18 @@ export const routes: Routes = [
                 title: 'Reapprovisionnement — LJ SaaS'
               },
               {
+                // Circuit des especes (option des reglages) : remises a recompter, coffre, compte de l'entreprise.
+                path: 'tresorerie',
+                loadComponent: () => import('./pages/pdv/tresorerie/tresorerie').then((m) => m.TresoreriePdv),
+                title: 'Remises et coffre — LJ SaaS'
+              },
+              {
+                path: 'reglages',
+                canActivate: [roleGuard('ADMIN')],
+                loadComponent: () => import('./pages/pdv/reglages/reglages').then((m) => m.ReglagesPdvPage),
+                title: 'Reglages du point de vente — LJ SaaS'
+              },
+              {
                 path: 'fournisseurs',
                 loadComponent: () => import('./pages/pdv/fournisseurs/fournisseurs').then((m) => m.FournisseursPdv),
                 title: 'Fournisseurs — LJ SaaS'
@@ -402,13 +426,6 @@ export const routes: Routes = [
                 canActivate: [roleGuard('ADMIN', 'GERANT')],
                 loadComponent: () => import('./pages/pdv/devis/devis').then((m) => m.DevisPdv),
                 title: 'Devis — LJ SaaS'
-              },
-              {
-                path: 'reglages-materiaux',
-                canActivate: [roleGuard('ADMIN')],
-                loadComponent: () =>
-                  import('./pages/pdv/reglages-materiaux/reglages-materiaux').then((m) => m.ReglagesMateriauxPdv),
-                title: 'Reglages de la quincaillerie — LJ SaaS'
               }
             ]
           },

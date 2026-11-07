@@ -39,7 +39,8 @@ public enum ModuleApplicatif {
             "Point de vente",
             "Caisse, articles et codes-barres, stock, commandes, sessions de caisse et chiffre d'affaires du jour.",
             true,
-            EnumSet.of(Role.ADMIN, Role.GERANT, Role.CAISSIER, Role.SERVEUR, Role.PREPARATEUR, Role.MAGASINIER),
+            EnumSet.of(Role.ADMIN, Role.GERANT, Role.CAISSIER, Role.SERVEUR, Role.PREPARATEUR, Role.MAGASINIER,
+                    Role.ASSOCIE),
             List.of(
                     new Variante("BOUTIQUE", "Boutique / commerce",
                             "Caisse rapide au comptoir : douchette, panier et recu."),

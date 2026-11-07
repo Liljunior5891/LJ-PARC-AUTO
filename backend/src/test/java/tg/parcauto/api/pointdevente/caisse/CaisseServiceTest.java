@@ -53,7 +53,8 @@ class CaisseServiceTest {
         reglementsClients = mock(ReglementClientRepository.class);
         service = new CaisseService(sessions, mouvements, ventes, reglementsClients, commandes, mock(NumerotationService.class),
                 mock(GestionCaisseService.class), mock(SessionTravailService.class),
-                mock(tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository.class));
+                mock(tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository.class),
+                mock(tg.parcauto.api.pointdevente.tresorerie.RemiseCaisseRepository.class));
 
         Caisse caisse = new Caisse();
         caisse.setId(3L);

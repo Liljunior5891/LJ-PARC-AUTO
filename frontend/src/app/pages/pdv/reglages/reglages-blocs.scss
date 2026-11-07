@@ -1,0 +1,210 @@
+/*
+ * Blocs des reglages du point de vente, partages par la page et par la partie
+ * quincaillerie : un en-tete (pictogramme, titre, explication, interrupteur),
+ * puis les sous-options en lignes regulieres et les champs.
+ */
+
+.bloc-reglage {
+  scroll-margin-top: 1rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &.actif {
+    border-color: color-mix(in srgb, #1f9d6b 35%, var(--couleur-bordure));
+    box-shadow: 0 1px 0 color-mix(in srgb, #1f9d6b 10%, transparent);
+  }
+}
+
+.entete-bloc {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+
+  .pictogramme {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #eef3fa;
+    font-size: 1.35rem;
+  }
+
+  .titre-bloc {
+    display: block;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .texte-bloc {
+    display: block;
+    margin-top: 0.15rem;
+    color: var(--couleur-texte-doux);
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
+}
+
+.actif .entete-bloc .pictogramme {
+  background: #e3f6ed;
+}
+
+.corps-bloc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0 1.1rem 1.1rem calc(1.1rem + 44px + 0.9rem);
+
+  &.inactif {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
+
+/* Une sous-option : texte a gauche, interrupteur a droite, separee par un filet. */
+.ligne-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid #eef0f3;
+  cursor: pointer;
+
+  span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  strong {
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+}
+
+/* Interrupteur : case a cocher dessinee en glissiere. */
+.bascule {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 24px;
+  margin: 0;
+  border-radius: 999px;
+  background: #cfd6df;
+  cursor: pointer;
+  appearance: none;
+  transition: background 0.18s ease;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 0.18s ease;
+  }
+
+  &:checked {
+    background: #1f9d6b;
+
+    &::after {
+      transform: translateX(20px);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--couleur-primaire);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.champs-bloc {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid #eef0f3;
+
+  .champ small {
+    color: var(--couleur-texte-doux);
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+}
+
+.note-bloc {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: #f5f7fa;
+  color: var(--couleur-texte-doux);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.titre-groupe {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.6rem 0 0;
+  color: var(--couleur-texte-doux);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--couleur-bordure);
+  }
+}
+
+@media (max-width: 640px) {
+  .entete-bloc {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 0.7rem;
+    padding: 0.9rem;
+
+    .pictogramme {
+      width: 36px;
+      height: 36px;
+      font-size: 1.1rem;
+    }
+  }
+
+  .corps-bloc {
+    padding: 0 0.9rem 0.9rem;
+  }
+}
+
+/* En-tete sans interrupteur principal (facture) : rien a cliquer. */
+div.entete-bloc {
+  cursor: default;
+}

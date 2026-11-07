@@ -1,0 +1,289 @@
+/* Reglages du point de vente : sommaire fixe a gauche, blocs reguliers a droite, barre d'enregistrement. */
+.mise-en-page {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 1.2rem;
+  align-items: start;
+  padding-bottom: 4.5rem;
+}
+
+.sommaire {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 14px;
+  background: #fff;
+
+  .groupe-sommaire {
+    margin: 0.5rem 0.5rem 0.2rem;
+    color: var(--couleur-texte-doux);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+
+    &:first-child {
+      margin-top: 0.2rem;
+    }
+  }
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    border: 0;
+    border-radius: 9px;
+    background: none;
+    color: var(--couleur-texte);
+    font: inherit;
+    font-size: 0.87rem;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: #f1f5fb;
+    }
+  }
+}
+
+.contenu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-width: 0;
+
+  > .titre-groupe:first-child {
+    margin-top: 0;
+  }
+}
+
+.liste-associes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid #eef0f3;
+}
+
+.associe {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #e6eaf0;
+  border-radius: 12px;
+  background: #fafbfd;
+
+  &.desactive {
+    opacity: 0.55;
+  }
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #e8eefb;
+    color: #1f5fae;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .identite {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+
+    small {
+      color: var(--couleur-texte-doux);
+      font-size: 0.75rem;
+    }
+  }
+
+  .parts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.25rem;
+  }
+
+  .sans-part {
+    color: var(--couleur-texte-doux);
+    font-size: 0.78rem;
+    font-style: italic;
+  }
+}
+
+.etiquette-part {
+  padding: 0.12rem 0.55rem;
+  border: 1px solid #c9dcf5;
+  border-radius: 999px;
+  background: #eef5fe;
+  font-size: 0.76rem;
+}
+
+/* Les trois etapes du circuit, reliees par une fleche. */
+.etapes-circuit {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.8rem 0 0;
+  border-top: 1px solid #eef0f3;
+  list-style: none;
+
+  li {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.6rem 0.7rem;
+    border-radius: 12px;
+    background: #f5f8fc;
+
+    &:not(:last-child)::after {
+      content: '›';
+      position: absolute;
+      top: 50%;
+      right: -0.55rem;
+      z-index: 1;
+      color: #1f9d6b;
+      font-size: 1.3rem;
+      font-weight: 700;
+      transform: translateY(-50%);
+    }
+  }
+
+  .etape {
+    font-size: 1.1rem;
+  }
+
+  strong {
+    font-size: 0.85rem;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+    font-size: 0.74rem;
+    line-height: 1.3;
+  }
+}
+
+/* Barre d'enregistrement, collee en bas de l'ecran. */
+.barre-enregistrement {
+  position: sticky;
+  bottom: 1rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: -3.5rem;
+  margin-left: calc(230px + 1.2rem);
+  padding: 0.7rem 0.9rem 0.7rem 1.1rem;
+  border: 1px solid #f0cf8f;
+  border-radius: 14px;
+  background: #fffaf0;
+  box-shadow: 0 10px 28px rgba(15, 30, 60, 0.14);
+  animation: monter 0.18s ease-out;
+
+  .actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+}
+
+@keyframes monter {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
+
+.lignes-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+/* Une ligne de rattachement : les champs du projet (libelle au-dessus), puis le bouton de retrait. */
+.ligne-part {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 12px;
+  background: #fafbfd;
+}
+
+.champs-part {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 190px minmax(0, 1fr) 200px;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.retirer {
+  flex: none;
+  margin-bottom: 3px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--couleur-texte-doux);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--couleur-danger);
+    color: var(--couleur-danger);
+  }
+}
+
+@media (max-width: 900px) {
+  .mise-en-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sommaire {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+
+    .groupe-sommaire {
+      display: none;
+    }
+
+    button {
+      width: auto;
+    }
+  }
+
+  .barre-enregistrement {
+    margin-left: 0;
+  }
+
+  .etapes-circuit {
+    grid-template-columns: minmax(0, 1fr);
+
+    li::after {
+      display: none;
+    }
+  }
+
+  .champs-part {
+    grid-template-columns: 1fr;
+  }
+}

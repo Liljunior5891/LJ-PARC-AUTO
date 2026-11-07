@@ -19,7 +19,9 @@ export type Role =
   | 'CAISSIER'
   | 'SERVEUR'
   | 'PREPARATEUR'
-  | 'MAGASINIER';
+  | 'MAGASINIER'
+  /** Point de vente, option « benefices des associes » : toujours accompagne du profil ADMIN. */
+  | 'ASSOCIE';
 
 /** Modules de la plateforme ; une entreprise n'accede qu'a ceux qu'elle a actives. */
 export type CodeModule = 'GESTION_PARC' | 'POINT_DE_VENTE' | 'MARKETPLACE';

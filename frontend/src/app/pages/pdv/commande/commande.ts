@@ -24,6 +24,7 @@ import { SocieteService } from '../../../core/services/societe.service';
 import { SessionTravailService } from '../../../core/services/session-travail.service';
 import { BandeauSession } from '../../../shared/bandeau-session';
 import { BoutonEspeces } from '../../../shared/bouton-especes';
+import { BoutonRemise } from '../../../shared/tresorerie-pdv';
 import { Modale } from '../../../shared/modale';
 import { OperationService } from '../../../core/operation/operation.service';
 import { FinDeSaisie, LecteurDouchette, normaliserCodeBarres } from '../../../shared/code-barres';
@@ -54,7 +55,7 @@ const RAFRAICHISSEMENT_MS = 8000;
 @Component({
   selector: 'app-commande-pdv',
   host: { '(document:keydown.escape)': 'tiroir.set(false)', '(document:keydown)': 'captureDouchette($event)' },
-  imports: [DecimalPipe, FormsModule, RouterLink, Modale, BandeauSession, BoutonEspeces],
+  imports: [DecimalPipe, FormsModule, RouterLink, Modale, BandeauSession, BoutonEspeces, BoutonRemise],
   templateUrl: './commande.html',
   styleUrl: './commande.scss'
 })

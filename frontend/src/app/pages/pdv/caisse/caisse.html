@@ -9,6 +9,7 @@
                aria-label="Code-barres ou nom du produit" />
       </label>
       <app-bouton-especes />
+      <app-bouton-remise />
       @if (session()) {
         <button type="button" class="bouton-en-ligne" (click)="ouvrirCommandes()" title="Commandes encaissees sur cette caisse : reimprimer ticket, facture ou bons">
           🧾 Commandes

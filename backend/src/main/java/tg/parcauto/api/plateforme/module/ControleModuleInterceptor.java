@@ -47,7 +47,25 @@ public class ControleModuleInterceptor implements HandlerInterceptor {
         if (!requis.publique() && !profilAutorise(requis.value())) {
             throw new AccessDeniedException("Votre profil n'a pas acces au module " + requis.value().getLibelle());
         }
+        // Un compte qui n'a que le profil associe ne voit que sa part des benefices.
+        if (!requis.publique() && seulementAssocie(requis.value())
+                && AnnotatedElementUtils.findMergedAnnotation(methode.getBeanType(), OuvertAuxAssocies.class) == null) {
+            throw new AccessDeniedException("Votre profil d'associe ne donne acces qu'a votre part des benefices");
+        }
         return true;
+    }
+
+    /** Parmi les profils du module, le compte n'a que celui d'associe. */
+    private boolean seulementAssocie(ModuleApplicatif module) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+        java.util.Set<String> roles = auth.getAuthorities().stream()
+                .map(a -> a.getAuthority().replaceFirst("^ROLE_", ""))
+                .filter(role -> module.getProfils().stream().anyMatch(p -> p.name().equals(role)))
+                .collect(java.util.stream.Collectors.toSet());
+        return roles.equals(java.util.Set.of(tg.parcauto.api.security.Role.ASSOCIE.name()));
     }
 
     private boolean profilAutorise(ModuleApplicatif module) {

@@ -83,6 +83,10 @@ export class AuthService {
       if (this.aRole('ADMIN', 'GERANT')) {
         return '/pdv/tableau-bord';
       }
+      // Un associe sans autre profil n'a que sa part des benefices.
+      if (this.aRole('ASSOCIE') && !this.aRole('CAISSIER', 'SERVEUR', 'PREPARATEUR', 'MAGASINIER')) {
+        return '/pdv/benefices';
+      }
       if (this.aRole('MAGASINIER') && !this.aRole('CAISSIER', 'SERVEUR')) {
         return '/pdv/retraits';
       }
