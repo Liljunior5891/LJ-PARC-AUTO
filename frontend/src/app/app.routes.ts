@@ -353,6 +353,16 @@ export const routes: Routes = [
                 title: 'Reapprovisionnement — LJ SaaS'
               },
               {
+                path: 'fournisseurs',
+                loadComponent: () => import('./pages/pdv/fournisseurs/fournisseurs').then((m) => m.FournisseursPdv),
+                title: 'Fournisseurs — LJ SaaS'
+              },
+              {
+                path: 'depenses',
+                loadComponent: () => import('./pages/pdv/depenses/depenses').then((m) => m.DepensesPdv),
+                title: 'Depenses — LJ SaaS'
+              },
+              {
                 path: 'caisses',
                 loadComponent: () => import('./pages/pdv/caisses/caisses').then((m) => m.CaissesPdv),
                 title: 'Caisses — LJ SaaS'

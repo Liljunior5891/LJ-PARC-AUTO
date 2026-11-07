@@ -150,27 +150,50 @@ public class CaisseService {
 
     /** Entree ou sortie d'especes : par un gerant ou par le personnel de la caisse, motif obligatoire. */
     public Reponse mouvement(Long id, Mouvement demande, UtilisateurPrincipal auteur) {
+        MouvementCaisse m = enregistrerMouvement(id, demande.type(), demande.montant(), demande.motif(), auteur);
+        return versDto(m.getSession());
+    }
+
+    /**
+     * Sortie d'especes pour payer une depense ou un fournisseur : elle pese sur
+     * les especes attendues de la session, comme une sortie saisie a la caisse.
+     */
+    public MouvementCaisse sortie(Long sessionId, BigDecimal montant, String motif, UtilisateurPrincipal auteur) {
+        return enregistrerMouvement(sessionId, MouvementCaisse.Type.SORTIE, montant, motif, auteur);
+    }
+
+    /** Retire la sortie d'une depense ou d'un reglement annule, tant que la session est ouverte. */
+    public void retirerSortie(MouvementCaisse mouvement, String piece) {
+        SessionCaisse session = mouvement.getSession();
+        if (session.getStatut() != SessionCaisse.Statut.OUVERTE) {
+            throw new BusinessException("La session " + session.getNumero() + " est fermee : " + piece
+                    + " paye(e) depuis cette caisse ne peut plus etre annule(e)");
+        }
+        mouvementRepository.delete(mouvement);
+    }
+
+    private MouvementCaisse enregistrerMouvement(Long id, MouvementCaisse.Type type, BigDecimal montant, String motif,
+                                                 UtilisateurPrincipal auteur) {
         SessionCaisse session = chargerOuverte(id);
         if (!PersonnelService.gestionnaire(auteur) && !session.getCaisse().getUtilisateurIds().contains(auteur.getId())) {
             throw new BusinessException("La caisse " + session.getCaisse().getNom() + " ne vous est pas affectee");
         }
-        if (demande.type() == MouvementCaisse.Type.SORTIE) {
+        if (type == MouvementCaisse.Type.SORTIE) {
             BigDecimal disponible = especesAttendues(session, totaux(session.getId()), mouvements(session.getId()));
-            if (demande.montant().compareTo(disponible) > 0) {
+            if (montant.compareTo(disponible) > 0) {
                 throw new BusinessException("Sortie impossible : il n'y a que " + entier(disponible)
-                        + " F d'especes attendues dans le tiroir");
+                        + " F d'especes attendues dans le tiroir de " + session.getCaisse().getNom());
             }
         }
         MouvementCaisse m = new MouvementCaisse();
         m.setSession(session);
-        m.setType(demande.type());
-        m.setMontant(demande.montant());
-        m.setMotif(demande.motif().trim());
+        m.setType(type);
+        m.setMontant(montant);
+        m.setMotif(motif.trim());
         m.setAuteurId(auteur.getId());
         m.setAuteurNom(auteur.getNomComplet());
         m.setDateMouvement(Instant.now());
-        mouvementRepository.save(m);
-        return versDto(session);
+        return mouvementRepository.save(m);
     }
 
     // ------------------------------------------------------------ fermeture

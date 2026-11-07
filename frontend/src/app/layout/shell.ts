@@ -207,17 +207,25 @@ export class Shell {
           ]
         },
         {
-          libelle: 'Stock', description: 'Produits, reapprovisionnement, inventaire, magasins', roles: ['ADMIN', 'GERANT'],
+          libelle: 'Stock', description: 'Produits, categories, inventaire, magasins', roles: ['ADMIN', 'GERANT'],
           enfants: [
             { libelle: 'Produits', route: '/pdv/articles', description: 'Catalogue, prix et photos' },
             { libelle: 'Categories', route: '/pdv/categories', description: 'Familles de produits de la caisse' },
-            { libelle: 'Reapprovisionnement', route: '/pdv/stock', description: 'Receptions, sorties et pertes' },
             { libelle: 'Inventaire', route: '/pdv/inventaire', description: 'Compter le stock et corriger les ecarts' },
             // Quincaillerie : magasins, entrepots, retraits et transferts (sans entrepot, seul le premier apparait).
             { libelle: 'Magasins et entrepots', route: '/pdv/lieux', description: 'Lieux, personnel et valeur du stock', variante: 'MATERIAUX' },
             { libelle: 'Stock par lieu', route: '/pdv/stock-lieu', description: 'Ce qui est sur place et disponible', variante: 'MATERIAUX', avecLieux: true },
             { libelle: 'Bons de retrait', route: '/pdv/retraits', description: 'Bons a servir et non retires', variante: 'MATERIAUX', avecLieux: true },
             { libelle: 'Transferts', route: '/pdv/transferts', description: 'Marchandise entre les lieux', variante: 'MATERIAUX', avecLieux: true }
+          ]
+        },
+        {
+          // Toutes les variantes : fournisseurs et leurs dettes, depenses et benefice net.
+          libelle: 'Achats et depenses', description: 'Fournisseurs, commandes et depenses', roles: ['ADMIN', 'GERANT'],
+          enfants: [
+            { libelle: 'Fournisseurs', route: '/pdv/fournisseurs', description: 'Fiches, dettes, echeances et paiements' },
+            { libelle: 'Reapprovisionnement', route: '/pdv/stock', description: 'Commandes, receptions, sorties et pertes' },
+            { libelle: 'Depenses', route: '/pdv/depenses', description: 'Salaires, loyer, electricite, recurrentes' }
           ]
         },
         {

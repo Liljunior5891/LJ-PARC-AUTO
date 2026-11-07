@@ -1,0 +1,191 @@
+/* Depenses : periode, synthese par categorie, tableau, recurrentes, categories. */
+
+/* Periode : la liste des raccourcis, puis les deux dates si « Entre deux dates ». */
+.filtres-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+
+  .choix-periode {
+    flex: 0 0 200px;
+    font-weight: 600;
+  }
+
+  /* Les listes sont habillees par Select2 (largeur 100 %) : l'enveloppe fixe la largeur. */
+  .filtre {
+    flex: 0 0 190px;
+  }
+
+  .recherche {
+    flex: 1 1 200px;
+    min-width: 180px;
+    height: 38px;
+    padding: 0 0.7rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font: inherit;
+  }
+}
+
+.dates-periode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+
+  input {
+    height: 38px;
+    padding: 0 0.6rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+  }
+
+  &.invalides input {
+    border-color: var(--couleur-danger);
+  }
+}
+
+.libelle-periode {
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+}
+
+.icone-categorie {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-right: 0.3rem;
+  border-radius: 8px;
+  background: var(--couleur-fond, #f3f5f7);
+}
+
+.choix-icone {
+  margin-top: 1rem;
+}
+
+.grille-icones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 0.4rem;
+}
+
+.bouton-icone {
+  height: 44px;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 10px;
+  background: var(--couleur-surface);
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    border-color: var(--couleur-primaire-clair);
+  }
+
+  &.actif {
+    border: 2px solid var(--couleur-primaire);
+    background: #eaf2fe;
+  }
+}
+
+.synthese {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 12px;
+  background: var(--couleur-surface);
+
+  .total {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+
+    small {
+      color: var(--couleur-texte-doux);
+    }
+
+    strong {
+      font-size: 1.5rem;
+      color: var(--couleur-danger);
+    }
+  }
+
+  .repartition {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .barre {
+    display: grid;
+    grid-template-columns: minmax(120px, 220px) 1fr auto;
+    gap: 0.6rem;
+    align-items: center;
+    font-size: 0.85rem;
+
+    .jauge {
+      height: 8px;
+      border-radius: 999px;
+      background: var(--couleur-bordure);
+      overflow: hidden;
+
+      span {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: #d9534f;
+      }
+    }
+
+    .montant {
+      font-weight: 600;
+      white-space: nowrap;
+    }
+  }
+}
+
+tr.annulee td {
+  opacity: 0.55;
+  text-decoration: line-through;
+
+  .motif {
+    text-decoration: none;
+  }
+}
+
+.joindre {
+  cursor: pointer;
+}
+
+.aide {
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+}
+
+.vide-ligne {
+  color: var(--couleur-texte-doux);
+}
+
+
+@media (max-width: 720px) {
+  .synthese {
+    grid-template-columns: 1fr;
+
+    .barre {
+      grid-template-columns: 1fr auto;
+
+      .jauge {
+        display: none;
+      }
+    }
+  }
+}

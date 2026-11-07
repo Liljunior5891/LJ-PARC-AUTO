@@ -29,6 +29,7 @@ public class DocumentService {
     private final ChauffeurService chauffeurService;
     private final ClientService clientService;
     private final ClientPdvRepository clientPdvRepository;
+    private final tg.parcauto.api.pointdevente.fournisseur.FournisseurRepository fournisseurPdvRepository;
 
     @Transactional(readOnly = true)
     public Page<DocumentDto.Reponse> rechercher(ProprietaireDocument proprietaireType, Long proprietaireId,
@@ -126,6 +127,8 @@ public class DocumentService {
             case CLIENT -> clientService.charger(id);
             case CLIENT_PDV -> clientPdvRepository.findById(id)
                     .orElseThrow(() -> ResourceNotFoundException.of("Client", id));
+            case FOURNISSEUR_PDV -> fournisseurPdvRepository.findById(id)
+                    .orElseThrow(() -> ResourceNotFoundException.of("Fournisseur", id));
         }
     }
 
@@ -137,6 +140,8 @@ public class DocumentService {
                 case CLIENT -> clientService.charger(d.getProprietaireId()).getRaisonSociale();
                 case CLIENT_PDV -> clientPdvRepository.findById(d.getProprietaireId())
                         .map(ClientPdv::getNom).orElse(null);
+                case FOURNISSEUR_PDV -> fournisseurPdvRepository.findById(d.getProprietaireId())
+                        .map(tg.parcauto.api.pointdevente.fournisseur.Fournisseur::getNom).orElse(null);
             };
         } catch (ResourceNotFoundException e) {
             return null;

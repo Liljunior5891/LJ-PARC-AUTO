@@ -6,6 +6,10 @@ import { PdvService } from '../../../core/services/pdv.service';
 import { ChampQuantite } from '../../../shared/champ-quantite';
 import { Modale } from '../../../shared/modale';
 import { normaliserCodeBarres } from '../../../shared/code-barres';
+import { Fournisseur } from '../../../core/models/achats';
+import { AchatsService } from '../../../core/services/achats.service';
+import { FormulaireFournisseurPdv } from '../../../shared/formulaire-fournisseur-pdv';
+import { OptionSelect, SelectRecherche } from '../../../shared/select-recherche';
 
 /** Produit sur la commande en cours de saisie. */
 interface LigneSaisie {
@@ -21,12 +25,13 @@ interface LigneSaisie {
  */
 @Component({
   selector: 'app-formulaire-commande',
-  imports: [DecimalPipe, FormsModule, Modale, ChampQuantite],
+  imports: [DecimalPipe, FormsModule, Modale, ChampQuantite, SelectRecherche, FormulaireFournisseurPdv],
   templateUrl: './formulaire-commande.html',
   styleUrl: './formulaire-commande.scss'
 })
 export class FormulaireCommande implements OnInit {
   private readonly service = inject(PdvService);
+  private readonly achats = inject(AchatsService);
 
   /** Commande a modifier ; absente pour une nouvelle commande. */
   readonly commande = input<CommandeFournisseurDetail | null>(null);
@@ -36,13 +41,22 @@ export class FormulaireCommande implements OnInit {
   readonly ferme = output<void>();
 
   readonly articles = signal<ArticlePdv[]>([]);
-  readonly fournisseursConnus = signal<string[]>([]);
+  /** Fournisseurs enregistres (actifs), proposes dans la liste. */
+  readonly fournisseurs = signal<Fournisseur[]>([]);
+  readonly nouveauFournisseur = signal(false);
+  readonly optionsFournisseurs = computed<OptionSelect[]>(() => this.fournisseurs().map((f) => ({
+    valeur: f.id, libelle: f.nom,
+    detail: [f.code, f.telephone, f.ville].filter(Boolean).join(' · '),
+    monogramme: f.nom.slice(0, 2).toUpperCase()
+  })));
   readonly lignes = signal<LigneSaisie[]>([]);
   readonly recherche = signal('');
   readonly erreur = signal<string | null>(null);
   readonly envoi = signal(false);
 
-  fournisseur = '';
+  fournisseurId: number | null = null;
+  /** Nom du fournisseur d'une commande dont la fiche est archivee. */
+  private nomInitial = '';
   dateCommande = new Date().toISOString().slice(0, 10);
   livraisonPrevue = '';
   note = '';
@@ -65,13 +79,23 @@ export class FormulaireCommande implements OnInit {
   );
 
   ngOnInit(): void {
-    this.service.fournisseurs().subscribe({ next: (f) => this.fournisseursConnus.set(f) });
+    this.achats.fournisseursActifs().subscribe({
+      next: (liste) => {
+        const c = this.commande();
+        // Fiche archivee depuis la commande : elle reste proposee pour ne pas perdre le choix.
+        if (c?.resume.fournisseurId && !liste.some((f) => f.id === c.resume.fournisseurId)) {
+          liste = [{ id: c.resume.fournisseurId, nom: c.resume.fournisseur, code: '', actif: false, commandes: 0, du: 0, enRetard: 0 }, ...liste];
+        }
+        this.fournisseurs.set(liste);
+      }
+    });
     this.service.articles({ actif: true, size: 1000 }).subscribe({
       next: (p) => {
         this.articles.set(p.content);
         const c = this.commande();
         if (c) {
-          this.fournisseur = c.resume.fournisseur;
+          this.fournisseurId = c.resume.fournisseurId ?? null;
+          this.nomInitial = c.resume.fournisseur;
           this.dateCommande = c.resume.dateCommande;
           this.livraisonPrevue = c.resume.livraisonPrevue ?? '';
           this.note = c.note ?? '';
@@ -85,6 +109,14 @@ export class FormulaireCommande implements OnInit {
         }
       }
     });
+  }
+
+  /** Nouveau fournisseur enregistre depuis la commande : il rejoint la liste et devient le fournisseur choisi. */
+  fournisseurCree(f: Fournisseur): void {
+    this.nouveauFournisseur.set(false);
+    this.fournisseurs.update((l) => [...l.filter((x) => x.id !== f.id), f].sort((a, b) => a.nom.localeCompare(b.nom)));
+    this.fournisseurId = f.id;
+    this.erreur.set(null);
   }
 
   ajouter(article: ArticlePdv): void {
@@ -110,8 +142,9 @@ export class FormulaireCommande implements OnInit {
   }
 
   enregistrer(): void {
-    if (!this.fournisseur.trim()) {
-      this.erreur.set('Indiquez le fournisseur.');
+    const choisi = this.fournisseurs().find((f) => f.id === this.fournisseurId);
+    if (!choisi) {
+      this.erreur.set('Choisissez le fournisseur, ou enregistrez-le avec le bouton +.');
       return;
     }
     if (!this.valide()) {
@@ -119,7 +152,8 @@ export class FormulaireCommande implements OnInit {
       return;
     }
     const requete = {
-      fournisseur: this.fournisseur.trim(),
+      fournisseurId: choisi.id,
+      fournisseur: choisi.nom || this.nomInitial,
       dateCommande: this.dateCommande || undefined,
       livraisonPrevue: this.livraisonPrevue || null,
       note: this.note.trim() || undefined,

@@ -46,6 +46,7 @@ public class CommandeFournisseurService {
     private final StockService stockService;
     private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
     private final NumerotationService numerotation;
+    private final tg.parcauto.api.pointdevente.fournisseur.FournisseurService fournisseurService;
 
     public record LigneRequete(
             @NotNull Long articleId,
@@ -54,6 +55,8 @@ public class CommandeFournisseurService {
     }
 
     public record Requete(
+            /** Fiche du fournisseur ; a defaut, celle qui porte ce nom, creee au besoin. */
+            Long fournisseurId,
             @NotBlank @Size(max = 150) String fournisseur,
             LocalDate dateCommande,
             LocalDate livraisonPrevue,
@@ -88,21 +91,25 @@ public class CommandeFournisseurService {
 
     public record Resume(Long id, String numero, String fournisseur, LocalDate dateCommande,
                          LocalDate livraisonPrevue, CommandeFournisseur.Statut statut, int produits,
-                         BigDecimal total, Instant recueLe) {
+                         BigDecimal total, Instant recueLe, Long fournisseurId, BigDecimal montantRecu,
+                         LocalDate echeance) {
 
         static Resume de(CommandeFournisseur c) {
             return new Resume(c.getId(), c.getNumero(), c.getFournisseur(), c.getDateCommande(),
-                    c.getLivraisonPrevue(), c.getStatut(), c.getLignes().size(), montant(c.total()), c.getRecueLe());
+                    c.getLivraisonPrevue(), c.getStatut(), c.getLignes().size(), montant(c.total()), c.getRecueLe(),
+                    c.getFiche() == null ? null : c.getFiche().getId(), c.getMontantRecu(), c.getEcheance());
         }
     }
 
     public record Detail(Resume resume, String note, String creePar, String recuePar, Instant annuleeLe,
-                         List<Ligne> lignes) {
+                         List<Ligne> lignes,
+                         /** Ce qui a ete paye et ce qu'il reste a payer au fournisseur. */
+                         tg.parcauto.api.pointdevente.fournisseur.FournisseurService.Situation paiement) {
+    }
 
-        static Detail de(CommandeFournisseur c) {
-            return new Detail(Resume.de(c), c.getNote(), c.getCreePar(), c.getRecuePar(), c.getAnnuleeLe(),
-                    c.getLignes().stream().map(Ligne::de).toList());
-        }
+    private Detail detailDe(CommandeFournisseur c) {
+        return new Detail(Resume.de(c), c.getNote(), c.getCreePar(), c.getRecuePar(), c.getAnnuleeLe(),
+                c.getLignes().stream().map(Ligne::de).toList(), fournisseurService.situation(c));
     }
 
     @Transactional(readOnly = true)
@@ -115,26 +122,27 @@ public class CommandeFournisseurService {
 
     @Transactional(readOnly = true)
     public Detail detail(Long id) {
-        return Detail.de(charger(id));
+        return detailDe(charger(id));
     }
 
     @Transactional(readOnly = true)
     public List<String> fournisseurs() {
-        return repository.fournisseurs();
+        return fournisseurService.actifs().stream()
+                .map(tg.parcauto.api.pointdevente.fournisseur.FournisseurService.Reponse::nom).toList();
     }
 
     public Detail creer(Requete r) {
         CommandeFournisseur commande = new CommandeFournisseur();
         commande.setNumero(numerotation.prochainNumero("BC"));
         appliquer(commande, r);
-        return Detail.de(repository.saveAndFlush(commande));
+        return detailDe(repository.saveAndFlush(commande));
     }
 
     public Detail modifier(Long id, Requete r) {
         CommandeFournisseur commande = chargerEnCours(id);
         appliquer(commande, r);
         repository.flush();
-        return Detail.de(commande);
+        return detailDe(commande);
     }
 
     /**
@@ -174,18 +182,22 @@ public class CommandeFournisseurService {
         commande.setStatut(CommandeFournisseur.Statut.RECUE);
         commande.setRecueLe(Instant.now());
         commande.setRecuePar(auteur.getNomComplet());
-        return Detail.de(commande);
+        fournisseurService.ouvrirDette(commande);
+        return detailDe(commande);
     }
 
     public Detail annuler(Long id) {
         CommandeFournisseur commande = chargerEnCours(id);
         commande.setStatut(CommandeFournisseur.Statut.ANNULEE);
         commande.setAnnuleeLe(Instant.now());
-        return Detail.de(commande);
+        return detailDe(commande);
     }
 
     private void appliquer(CommandeFournisseur c, Requete r) {
-        c.setFournisseur(r.fournisseur().trim());
+        tg.parcauto.api.pointdevente.fournisseur.Fournisseur fiche =
+                fournisseurService.ficheDeCommande(r.fournisseurId(), r.fournisseur());
+        c.setFiche(fiche);
+        c.setFournisseur(fiche.getNom());
         c.setDateCommande(r.dateCommande() == null ? LocalDate.now() : r.dateCommande());
         c.setLivraisonPrevue(r.livraisonPrevue());
         c.setNote(r.note() == null || r.note().isBlank() ? null : r.note().trim());

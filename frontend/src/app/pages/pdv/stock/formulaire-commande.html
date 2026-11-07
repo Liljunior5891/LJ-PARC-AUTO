@@ -5,13 +5,12 @@
     <div class="grille-formulaire">
       <div class="champ">
         <label for="fournisseur">Fournisseur *</label>
-        <input id="fournisseur" name="fournisseur" required maxlength="150" list="fournisseurs-connus"
-               [(ngModel)]="fournisseur" placeholder="Ex. Brasserie BB Lome" autocomplete="off" />
-        <datalist id="fournisseurs-connus">
-          @for (f of fournisseursConnus(); track f) {
-            <option [value]="f"></option>
-          }
-        </datalist>
+        <!-- Les fournisseurs enregistres et, a cote, de quoi en creer un sans quitter la commande. -->
+        <div class="liste-et-creation">
+          <app-select-recherche name="fournisseur" [(ngModel)]="fournisseurId" [options]="optionsFournisseurs()"
+                                placeholder="Choisir un fournisseur" />
+          <button class="bouton" type="button" title="Enregistrer un nouveau fournisseur" (click)="nouveauFournisseur.set(true)">+</button>
+        </div>
       </div>
       <div class="champ">
         <label for="date-commande">Date de commande</label>
@@ -105,3 +104,8 @@
     </div>
   </form>
 </app-modale>
+
+<!-- Fournisseur cree depuis la commande, qui reste ouverte dessous : il est choisi d'office. -->
+@if (nouveauFournisseur()) {
+  <app-formulaire-fournisseur-pdv (enregistre)="fournisseurCree($event)" (ferme)="nouveauFournisseur.set(false)" />
+}

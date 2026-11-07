@@ -30,6 +30,28 @@
     <div class="message info">Receptionnee le {{ c.resume.recueLe | date: 'dd/MM/yyyy' }} a {{ c.resume.recueLe | date: 'HH:mm' }} par {{ c.recuePar }} :
       les quantites livrees sont entrees en stock.</div>
   }
+  @if (c.resume.statut === 'RECUE' && c.paiement; as p) {
+    @if (p.detteSuivie) {
+      <div class="paiement-commande carte">
+        <div><small>Valeur recue</small><strong>{{ p.montantRecu | number: '1.0-0' }} F</strong></div>
+        <div><small>Deja paye</small><strong>{{ p.regle | number: '1.0-0' }} F</strong></div>
+        <div [class.danger]="p.enRetard" [class.solde]="p.reste === 0">
+          <small>Reste a payer</small><strong>{{ p.reste | number: '1.0-0' }} F</strong>
+        </div>
+        <div [class.danger]="p.enRetard">
+          <small>Echeance</small>
+          <strong>{{ p.echeance ? (p.echeance | date: 'dd/MM/yyyy') : '—' }}{{ p.enRetard ? ' · en retard' : '' }}</strong>
+        </div>
+        @if (p.fournisseurId) {
+          <button class="bouton {{ p.reste > 0 ? 'succes' : 'secondaire info' }}" type="button" (click)="paiementOuvert.set(true)">
+            {{ p.reste > 0 ? 'Payer le fournisseur' : 'Compte du fournisseur' }}
+          </button>
+        }
+      </div>
+    } @else {
+      <p class="note">Receptionnee avant le suivi des dettes fournisseurs : reputee payee.</p>
+    }
+  }
   @if (c.note) {
     <p class="note">📝 {{ c.note }}</p>
   }
@@ -149,4 +171,10 @@
   <a class="bouton" routerLink="/pdv/stock">Retour aux commandes</a>
 } @else {
   <p>Chargement de la commande...</p>
+}
+
+@if (paiementOuvert() && commande()?.paiement?.fournisseurId) {
+  <app-compte-fournisseur-pdv [fournisseurId]="commande()!.paiement!.fournisseurId!"
+                              [commandeAPayer]="(commande()!.paiement!.reste > 0) ? commande()!.resume.id : null"
+                              (ferme)="paiementOuvert.set(false)" (modifie)="paiementModifie()" />
 }

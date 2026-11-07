@@ -259,7 +259,7 @@ export interface AffectationRequete {
   observations?: string;
 }
 
-export type ProprietaireDocument = 'CAMION' | 'CHAUFFEUR' | 'CLIENT' | 'CLIENT_PDV';
+export type ProprietaireDocument = 'CAMION' | 'CHAUFFEUR' | 'CLIENT' | 'CLIENT_PDV' | 'FOURNISSEUR_PDV';
 
 export type TypeDocument =
   | 'CARTE_GRISE'

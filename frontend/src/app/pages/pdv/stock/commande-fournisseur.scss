@@ -73,3 +73,35 @@ form .tableau-conteneur.liste-modale {
   min-height: 220px;
   max-height: none;
 }
+
+/* Situation de paiement d'une commande receptionnee. */
+.paiement-commande {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.6rem;
+  margin-bottom: 1rem;
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+
+    small {
+      color: var(--couleur-texte-doux);
+      font-size: 0.75rem;
+    }
+
+    &.danger strong {
+      color: var(--couleur-danger);
+    }
+
+    &.solde strong {
+      color: #157a37;
+    }
+  }
+
+  .bouton {
+    margin-left: auto;
+  }
+}

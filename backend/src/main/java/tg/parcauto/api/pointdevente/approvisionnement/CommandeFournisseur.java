@@ -66,6 +66,23 @@ public class CommandeFournisseur extends BaseEntity {
     @Column(name = "annulee_le")
     private Instant annuleeLe;
 
+    /** Fiche du fournisseur ; {@link #fournisseur} garde le nom tel qu'il etait a la commande. */
+    @jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "fournisseur_id")
+    private tg.parcauto.api.pointdevente.fournisseur.Fournisseur fiche;
+
+    /** Valeur recue a la reception (quantites recues x cout) : la dette envers le fournisseur. */
+    @Column(name = "montant_recu", precision = 16, scale = 2)
+    private BigDecimal montantRecu;
+
+    /** Date limite de paiement : reception + delai du fournisseur. */
+    @Column
+    private LocalDate echeance;
+
+    /** Faux pour les commandes recues avant le suivi des dettes, reputees payees. */
+    @Column(name = "dette_suivie", nullable = false)
+    private boolean detteSuivie = true;
+
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id")
     private List<LigneCommandeFournisseur> lignes = new ArrayList<>();

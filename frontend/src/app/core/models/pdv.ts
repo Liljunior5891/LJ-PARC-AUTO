@@ -163,6 +163,10 @@ export interface CommandeFournisseurResume {
   produits: number;
   total: number;
   recueLe?: string;
+  fournisseurId?: number;
+  /** Valeur recue a la reception : la dette envers le fournisseur. */
+  montantRecu?: number;
+  echeance?: string;
 }
 
 export interface LigneCommandeFournisseur {
@@ -185,9 +189,12 @@ export interface CommandeFournisseurDetail {
   recuePar?: string;
   annuleeLe?: string;
   lignes: LigneCommandeFournisseur[];
+  /** Ce qui a ete paye au fournisseur et ce qu'il reste a payer. */
+  paiement?: import('./achats').SituationPaiement;
 }
 
 export interface CommandeFournisseurRequete {
+  fournisseurId?: number | null;
   fournisseur: string;
   dateCommande?: string;
   livraisonPrevue?: string | null;
@@ -471,4 +478,15 @@ export interface TableauBordPdv {
   ticketsEnLigne: number;
   chiffreComptoir: number;
   ticketsComptoir: number;
+  /** Depenses valides de la periode ; benefice net = marge brute - depenses. */
+  depenses: number;
+  beneficeNet: number;
+  beneficeNetPourcent: number;
+  depensesParCategorie: { categorieId: number; categorie: string; icone?: string; total: number; nombre: number }[];
+  /** Reste du aux fournisseurs (a l'instant) et part en retard. */
+  detteFournisseurs: number;
+  detteFournisseursEnRetard: number;
+  /** Mois de depenses recurrentes dus et non payes. */
+  depensesAPayer: number;
+  depensesAPayerEnRetard: number;
 }

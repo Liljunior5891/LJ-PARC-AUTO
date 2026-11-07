@@ -1,0 +1,118 @@
+<div class="entete-page">
+  <div>
+    <h1>Fournisseurs</h1>
+    <p class="sous-titre">
+      {{ page()?.totalElements ?? 0 }} fournisseur(s)
+      @if (totaux(); as t) {
+        @if (t.du > 0) {
+          · on leur doit <strong>{{ t.du | number: '1.0-0' }} F</strong>
+          @if (t.enRetard > 0) { dont <strong style="color: var(--couleur-danger)">{{ t.enRetard | number: '1.0-0' }} F en retard</strong> }
+        }
+      }
+    </p>
+  </div>
+  <button class="bouton" type="button" (click)="fiche.set(null)">+ Nouveau fournisseur</button>
+</div>
+
+@if (succes()) {
+  <div class="message succes">{{ succes() }}</div>
+}
+
+<div class="carte">
+  <div class="grille-formulaire">
+    <div class="champ">
+      <label for="recherche">Recherche</label>
+      <input id="recherche" type="search" placeholder="Nom, code, contact, telephone, ville..."
+             [(ngModel)]="recherche" (keyup.enter)="charger()" (search)="charger()" />
+    </div>
+    <div class="champ">
+      <label for="situation">Situation</label>
+      <select id="situation" [(ngModel)]="dettes" (change)="charger()">
+        <option [ngValue]="false">Tous les fournisseurs</option>
+        <option [ngValue]="true">A qui l'on doit de l'argent</option>
+      </select>
+    </div>
+    <div class="champ">
+      <label for="archives">Archives</label>
+      <select id="archives" [(ngModel)]="masquerArchives" (change)="charger()">
+        <option [ngValue]="true">Masquer les fournisseurs archives</option>
+        <option [ngValue]="false">Afficher tous les fournisseurs</option>
+      </select>
+    </div>
+  </div>
+
+  @if (erreur()) {
+    <div class="message erreur" style="margin-top: 1rem">{{ erreur() }}</div>
+  }
+
+  <div class="tableau-conteneur" style="margin-top: 1rem">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Fournisseur</th>
+          <th>Telephone</th>
+          <th>Contact</th>
+          <th>Ville</th>
+          <th class="numerique">Delai</th>
+          <th class="numerique">Commandes</th>
+          <th class="numerique">On lui doit</th>
+          <th>Echeance</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (f of page()?.content ?? []; track f.id) {
+          <tr [style.opacity]="f.actif ? 1 : 0.55">
+            <td>{{ f.code }}</td>
+            <td><strong>{{ f.nom }}</strong></td>
+            <td>{{ f.telephone || '—' }}</td>
+            <td>{{ f.personneContact || '—' }}</td>
+            <td>{{ f.ville || '—' }}</td>
+            <td class="numerique">{{ f.delaiPaiementJours ? f.delaiPaiementJours + ' j' : '—' }}</td>
+            <td class="numerique">{{ f.commandes }}</td>
+            <td class="numerique"><strong>{{ f.du > 0 ? (f.du | number: '1.0-0') : '—' }}</strong></td>
+            <td>
+              @if (f.prochaineEcheance) {
+                <span class="etiquette" [class.immobilise]="f.enRetard > 0" [class.disponible]="f.enRetard === 0">
+                  {{ f.prochaineEcheance | date: 'dd/MM/yyyy' }}{{ f.enRetard > 0 ? ' · retard' : '' }}
+                </span>
+              } @else { — }
+            </td>
+            <td style="white-space: nowrap; text-align: right">
+              <button class="bouton secondaire petit info" type="button" (click)="compteOuvert.set(f.id)">Compte</button>
+              <button class="bouton secondaire petit info" type="button" (click)="fiche.set(f)">Modifier</button>
+              @if (f.actif) {
+                <button class="bouton danger petit" type="button" (click)="archiver(f)">Archiver</button>
+              } @else {
+                <button class="bouton secondaire petit succes" type="button" (click)="reactiver(f)">Reactiver</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="10">
+              <div class="message vide">
+                {{ chargement() ? 'Chargement...' : (dettes ? 'Aucune dette fournisseur : tout est paye.' : 'Aucun fournisseur ne correspond a ces criteres.') }}
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (page(); as p) {
+    @if (p.totalPages > 1) {
+      <app-suite-liste [page]="p" (suite)="changerPage()" />
+    }
+  }
+</div>
+
+@if (fiche() !== undefined) {
+  <app-formulaire-fournisseur-pdv [fournisseur]="fiche() ?? null" (enregistre)="enregistre($event)" (ferme)="fiche.set(undefined)" />
+}
+
+@if (compteOuvert(); as id) {
+  <app-compte-fournisseur-pdv [fournisseurId]="id" (ferme)="compteOuvert.set(null)" (modifie)="charger()" />
+}

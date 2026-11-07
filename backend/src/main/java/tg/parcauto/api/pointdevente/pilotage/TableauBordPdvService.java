@@ -64,6 +64,8 @@ public class TableauBordPdvService {
     private final CommandeRepository commandeRepository;
     private final TableRestaurantRepository tableRepository;
     private final ModuleService moduleService;
+    private final tg.parcauto.api.pointdevente.depense.DepensePdvService depenseService;
+    private final tg.parcauto.api.pointdevente.fournisseur.FournisseurService fournisseurService;
 
     public record ParMode(ModePaiementPdv mode, String libelle, BigDecimal total, long nombre) {
     }
@@ -102,7 +104,14 @@ public class TableauBordPdvService {
             long ruptures, long sousSeuil, long commandesFournisseursEnCours, long commandesFournisseursEnRetard,
             List<CatalogueDto.ArticleReponse> stockBas, Salle salle,
             /** Part du chiffre d'affaires faite en ligne (Marketplace), le reste au comptoir. */
-            BigDecimal chiffreEnLigne, long ticketsEnLigne, BigDecimal chiffreComptoir, long ticketsComptoir) {
+            BigDecimal chiffreEnLigne, long ticketsEnLigne, BigDecimal chiffreComptoir, long ticketsComptoir,
+            /** Depenses valides de la periode et benefice net = marge brute - depenses. */
+            BigDecimal depenses, BigDecimal beneficeNet, BigDecimal beneficeNetPourcent,
+            List<tg.parcauto.api.pointdevente.depense.DepensePdvService.ParCategorie> depensesParCategorie,
+            /** Ce qui reste du aux fournisseurs (a l'instant) et la part en retard. */
+            BigDecimal detteFournisseurs, BigDecimal detteFournisseursEnRetard,
+            /** Mois de depenses recurrentes dus et non payes. */
+            long depensesAPayer, long depensesAPayerEnRetard) {
     }
 
     public TableauBord calculer(Instant debut, Instant fin, ZoneId fuseau) {
@@ -145,6 +154,15 @@ public class TableauBordPdvService {
         List<CatalogueDto.ArticleReponse> stockBas = articleRepository.enStockBas().stream()
                 .map(CatalogueDto.ArticleReponse::de).toList();
 
+        java.time.LocalDate jourDebut = debut.atZone(fuseau).toLocalDate();
+        java.time.LocalDate jourFin = fin.minusNanos(1).atZone(fuseau).toLocalDate();
+        BigDecimal depenses = depenseService.total(jourDebut, jourFin);
+        BigDecimal net = marge.subtract(depenses);
+        BigDecimal netPourcent = chiffre.signum() == 0 ? BigDecimal.ZERO
+                : net.multiply(BigDecimal.valueOf(100)).divide(chiffre, 1, RoundingMode.HALF_UP);
+        var dettes = fournisseurService.totaux();
+        var aPayer = depenseService.aPayer();
+
         return new TableauBord(
                 debut, fin, chiffre, tickets, panier, venteRepository.annuleesPeriode(debut, fin),
                 cout, marge, margePourcent, commandeFournisseurRepository.achatsRecus(debut, fin),
@@ -160,7 +178,9 @@ public class TableauBordPdvService {
                 commandeFournisseurRepository.enRetard(aujourdhui),
                 stockBas.stream().limit(10).toList(),
                 salle(),
-                chiffreEnLigne, ticketsEnLigne, chiffre.subtract(chiffreEnLigne), tickets - ticketsEnLigne);
+                chiffreEnLigne, ticketsEnLigne, chiffre.subtract(chiffreEnLigne), tickets - ticketsEnLigne,
+                depenses, net, netPourcent, depenseService.parCategorie(jourDebut, jourFin),
+                dettes.du(), dettes.enRetard(), aPayer.size(), aPayer.stream().filter(a -> a.enRetard()).count());
     }
 
     /** Un point par jour (ou par mois), periodes creuses comprises : la courbe ne saute pas les jours sans vente. */

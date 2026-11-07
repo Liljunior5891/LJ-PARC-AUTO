@@ -51,14 +51,22 @@ class CommandeFournisseurServiceTest {
             when(repository.detail(50L)).thenReturn(Optional.of(c));
             return c;
         });
+        tg.parcauto.api.pointdevente.fournisseur.FournisseurRepository fiches =
+                mock(tg.parcauto.api.pointdevente.fournisseur.FournisseurRepository.class);
+        when(fiches.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
+        tg.parcauto.api.pointdevente.fournisseur.FournisseurService fournisseurs =
+                new tg.parcauto.api.pointdevente.fournisseur.FournisseurService(fiches,
+                        mock(tg.parcauto.api.pointdevente.fournisseur.ReglementFournisseurRepository.class), repository,
+                        mock(tg.parcauto.api.pointdevente.caisse.CaisseService.class), mock(NumerotationService.class));
         service = new CommandeFournisseurService(repository, articles,
-                new StockService(articles, mouvements, org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class)), org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class), mock(NumerotationService.class));
+                new StockService(articles, mouvements, org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class)), org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class), mock(NumerotationService.class),
+                fournisseurs);
     }
 
     @Test
     @DisplayName("La commande ne touche pas au stock ; la reception y fait entrer les quantites recues")
     void receptionAlimenteLeStock() {
-        service.creer(new CommandeFournisseurService.Requete("Brasserie BB Lome", null, null, null, List.of(
+        service.creer(new CommandeFournisseurService.Requete(null, "Brasserie BB Lome", null, null, null, List.of(
                 new CommandeFournisseurService.LigneRequete(1L, new BigDecimal("24"), new BigDecimal("520")),
                 new CommandeFournisseurService.LigneRequete(2L, new BigDecimal("12"), null))));
         assertThat(biere.getStockActuel()).isEqualByComparingTo("10");
@@ -72,12 +80,16 @@ class CommandeFournisseurServiceTest {
         assertThat(coca.getStockActuel()).isEqualByComparingTo("16");
         assertThat(biere.getPrixAchat()).isEqualByComparingTo("520");
         assertThat(recue.lignes().get(0).quantiteRecue()).isEqualByComparingTo("20");
+        // La valeur recue devient la dette envers le fournisseur : 20 x 520 + 12 x 300.
+        assertThat(recue.resume().montantRecu()).isEqualByComparingTo("14000");
+        assertThat(recue.paiement().reste()).isEqualByComparingTo("14000");
+        assertThat(recue.resume().echeance()).isNotNull();
     }
 
     @Test
     @DisplayName("Une commande receptionnee n'est plus modifiable ni receptionnable")
     void commandeFigee() {
-        service.creer(new CommandeFournisseurService.Requete("Brasserie", null, null, null,
+        service.creer(new CommandeFournisseurService.Requete(null, "Brasserie", null, null, null,
                 List.of(new CommandeFournisseurService.LigneRequete(1L, BigDecimal.ONE, null))));
         service.receptionner(50L, null, gerant());
 
@@ -89,7 +101,7 @@ class CommandeFournisseurServiceTest {
     @Test
     @DisplayName("Un meme produit ne figure qu'une fois sur la commande")
     void doublonRefuse() {
-        assertThatThrownBy(() -> service.creer(new CommandeFournisseurService.Requete("X", null, null, null, List.of(
+        assertThatThrownBy(() -> service.creer(new CommandeFournisseurService.Requete(null, "X", null, null, null, List.of(
                 new CommandeFournisseurService.LigneRequete(1L, BigDecimal.ONE, null),
                 new CommandeFournisseurService.LigneRequete(1L, BigDecimal.TEN, null)))))
                 .isInstanceOf(BusinessException.class)

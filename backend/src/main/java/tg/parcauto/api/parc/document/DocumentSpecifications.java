@@ -23,7 +23,8 @@ public final class DocumentSpecifications {
                 predicats.add(cb.equal(racine.get("proprietaireType"), proprietaireType));
             } else {
                 // Sans proprietaire precise, c'est la liste du parc : les pieces des clients du PDV n'y figurent pas.
-                predicats.add(cb.notEqual(racine.get("proprietaireType"), ProprietaireDocument.CLIENT_PDV));
+                predicats.add(cb.not(racine.get("proprietaireType").in(ProprietaireDocument.CLIENT_PDV,
+                        ProprietaireDocument.FOURNISSEUR_PDV)));
             }
             if (proprietaireId != null) {
                 predicats.add(cb.equal(racine.get("proprietaireId"), proprietaireId));

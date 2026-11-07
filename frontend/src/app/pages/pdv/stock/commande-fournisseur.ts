@@ -13,6 +13,7 @@ import { PdvService } from '../../../core/services/pdv.service';
 import { ChampQuantite } from '../../../shared/champ-quantite';
 import { Modale } from '../../../shared/modale';
 import { FormulaireCommande } from './formulaire-commande';
+import { CompteFournisseurPdv } from '../../../shared/compte-fournisseur-pdv';
 
 /**
  * Une commande fournisseur et ses produits. Tant qu'elle est en cours, elle
@@ -21,7 +22,7 @@ import { FormulaireCommande } from './formulaire-commande';
  */
 @Component({
   selector: 'app-commande-fournisseur-pdv',
-  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink, Modale, FormulaireCommande, ChampQuantite],
+  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink, Modale, FormulaireCommande, ChampQuantite, CompteFournisseurPdv],
   templateUrl: './commande-fournisseur.html',
   styleUrl: './commande-fournisseur.scss'
 })
@@ -39,6 +40,8 @@ export class CommandeFournisseurPdv implements OnInit {
   readonly erreur = signal<string | null>(null);
   readonly succes = signal<string | null>(null);
   readonly edition = signal(false);
+  /** Compte du fournisseur ouvert pour payer cette commande. */
+  readonly paiementOuvert = signal(false);
 
   // Reception : quantite livree et cout par ligne
   readonly reception = signal(false);
@@ -95,7 +98,7 @@ export class CommandeFournisseurPdv implements OnInit {
       next: (detail) => {
         this.commande.set(detail);
         this.reception.set(false);
-        this.succes.set('Commande receptionnee : les quantites livrees sont entrees en stock.');
+        this.succes.set('Commande receptionnee : les quantites livrees sont entrees en stock et la valeur recue est due au fournisseur.');
       },
       error: (e) => this.erreur.set(this.message(e, 'Reception impossible.'))
     });
@@ -119,6 +122,11 @@ export class CommandeFournisseurPdv implements OnInit {
     this.commande.set(detail);
     this.edition.set(false);
     this.succes.set('Commande modifiee.');
+  }
+
+  /** Le paiement a change : la situation de la commande se relit. */
+  paiementModifie(): void {
+    this.charger();
   }
 
   private charger(): void {

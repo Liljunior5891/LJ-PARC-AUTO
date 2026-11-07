@@ -73,6 +73,11 @@ public class RapportPdvService {
     private final ModuleService moduleService;
     private final EcranPreparationRepository ecranRepository;
     private final LigneCommandeRepository ligneCommandeRepository;
+    private final tg.parcauto.api.pointdevente.catalogue.CategorieRepository categorieRepository;
+    private final tg.parcauto.api.pointdevente.depense.DepensePdvRepository depenseRepository;
+    private final tg.parcauto.api.pointdevente.depense.DepensePdvService depenseService;
+    private final tg.parcauto.api.pointdevente.fournisseur.ReglementFournisseurRepository reglementFournisseurRepository;
+    private final tg.parcauto.api.pointdevente.fournisseur.FournisseurService fournisseurService;
 
     public record Catalogue(String type, String libelle, String famille, boolean periode, boolean parArticle,
                             boolean parEcran) {
@@ -109,11 +114,17 @@ public class RapportPdvService {
             case VENTES_VENDEURS -> ventesVendeurs(debut, fin, periode);
             case VENTES_JOURS -> ventesJours(debut, fin, fuseau, periode);
             case PRODUITS -> produits(periode);
+            case CATEGORIES -> categories(periode);
             case STOCK -> stock(periode);
             case FICHE_STOCK -> ficheStock(article, debut, fin, periode);
             case MOUVEMENTS -> mouvements(debut, fin, periode);
             case COMMANDES_FOURNISSEURS -> commandesFournisseurs(debut, fin, fuseau, periode);
             case CAISSES -> caisses(debut, fin, periode);
+            case DETTES_FOURNISSEURS -> dettesFournisseurs(periode);
+            case REGLEMENTS_FOURNISSEURS -> reglementsFournisseurs(jour(debut, fuseau), jourFin(fin, fuseau), periode);
+            case DEPENSES -> depenses(jour(debut, fuseau), jourFin(fin, fuseau), periode);
+            case DEPENSES_CATEGORIES -> depensesCategories(jour(debut, fuseau), jourFin(fin, fuseau), periode);
+            case RESULTAT -> resultat(debut, fin, fuseau, periode);
             case COMMANDES_TABLE -> {
                 exigerRestauration();
                 yield commandesTable(debut, fin, periode);
@@ -376,6 +387,40 @@ public class RapportPdvService {
                 .construire();
     }
 
+    /** Categories du catalogue, dans l'ordre de la caisse, avec le nombre de produits de chacune. */
+    private Rapport categories(String periode) {
+        boolean restauration = restauration();
+        Rapport.Constructeur r = new Rapport.Constructeur("CATEGORIES", "Liste des categories", periode)
+                .colonne("ordre", "Ordre", NOMBRE)
+                .colonne("categorie", "Categorie", TEXTE)
+                .colonne("icone", "Icone", TEXTE)
+                .colonne("couleur", "Couleur", TEXTE);
+        if (restauration) {
+            r.colonne("poste", "Poste de preparation", TEXTE);
+        }
+        r.colonne("produits", "Produits", NOMBRE)
+                .colonne("statut", "Statut", TEXTE);
+        java.util.Map<Long, Long> parCategorie = articleRepository.findAll().stream()
+                .filter(a -> a.getCategorie() != null)
+                .collect(java.util.stream.Collectors.groupingBy(a -> a.getCategorie().getId(),
+                        java.util.stream.Collectors.counting()));
+        List<tg.parcauto.api.pointdevente.catalogue.Categorie> liste = categorieRepository.findAllByOrderByOrdreAscNomAsc();
+        long actives = 0;
+        for (tg.parcauto.api.pointdevente.catalogue.Categorie c : liste) {
+            long produits = parCategorie.getOrDefault(c.getId(), 0L);
+            if (restauration) {
+                r.ligne(c.getOrdre(), c.getNom(), c.getIcone(), c.getCouleur(), c.getPoste().getLibelle(), produits,
+                        c.isActif() ? "Active" : "Inactive");
+            } else {
+                r.ligne(c.getOrdre(), c.getNom(), c.getIcone(), c.getCouleur(), produits, c.isActif() ? "Active" : "Inactive");
+            }
+            actives += c.isActif() ? 1 : 0;
+        }
+        return r.indicateur("Categories", liste.size(), NOMBRE)
+                .indicateur("Actives", actives, NOMBRE)
+                .construire();
+    }
+
     /**
      * Fiche de stock d'un produit : le stock au debut de la periode, chaque
      * entree et sortie avec le solde qui en resulte, puis le stock a la fin.
@@ -506,6 +551,169 @@ public class RapportPdvService {
                 .indicateur("Valeur receptionnee", recu, MONTANT)
                 .indicateur("A receptionner", enCours, NOMBRE)
                 .construire();
+    }
+
+    // ------------------------------------------------- dettes fournisseurs
+
+    /** Ce qui reste du a chaque fournisseur, commande par commande, les echeances depassees d'abord. */
+    private Rapport dettesFournisseurs(String periode) {
+        Rapport.Constructeur r = new Rapport.Constructeur("DETTES_FOURNISSEURS", "Dettes fournisseurs", periode)
+                .colonne("fournisseur", "Fournisseur", TEXTE)
+                .colonne("commande", "Commande", TEXTE)
+                .colonne("recue", "Receptionnee le", DATE_HEURE)
+                .colonne("montant", "Valeur recue", MONTANT)
+                .colonne("regle", "Deja regle", MONTANT)
+                .colonne("reste", "Reste du", MONTANT)
+                .colonne("echeance", "Echeance", DATE)
+                .colonne("situation", "Situation", TEXTE);
+        java.util.Map<Long, String> noms = new java.util.HashMap<>();
+        for (CommandeFournisseur c : commandeFournisseurRepository.dettes(null)) {
+            noms.put(c.getId(), c.getFiche() == null ? c.getFournisseur() : c.getFiche().getNom());
+        }
+        BigDecimal du = BigDecimal.ZERO;
+        BigDecimal retard = BigDecimal.ZERO;
+        List<tg.parcauto.api.pointdevente.fournisseur.FournisseurService.Dette> dettes =
+                new java.util.ArrayList<>(fournisseurService.toutesLesDettes());
+        dettes.sort(java.util.Comparator
+                .comparing((tg.parcauto.api.pointdevente.fournisseur.FournisseurService.Dette d) -> !d.enRetard())
+                .thenComparing(d -> noms.getOrDefault(d.commandeId(), "").toLowerCase()));
+        for (var d : dettes) {
+            r.ligne(noms.getOrDefault(d.commandeId(), ""), d.numero(), d.recueLe(), d.montantRecu(), d.regle(),
+                    d.reste(), d.echeance(), d.enRetard() ? "En retard" : "A echoir");
+            du = du.add(d.reste());
+            if (d.enRetard()) {
+                retard = retard.add(d.reste());
+            }
+        }
+        return r.total("reste", du)
+                .indicateur("Reste du", du, MONTANT)
+                .indicateur("Dont en retard", retard, MONTANT)
+                .indicateur("Commandes a payer", dettes.size(), NOMBRE)
+                .construire();
+    }
+
+    private Rapport reglementsFournisseurs(java.time.LocalDate debut, java.time.LocalDate fin, String periode) {
+        Rapport.Constructeur r = new Rapport.Constructeur("REGLEMENTS_FOURNISSEURS", "Reglements fournisseurs", periode)
+                .colonne("numero", "Reglement", TEXTE)
+                .colonne("date", "Date", DATE)
+                .colonne("fournisseur", "Fournisseur", TEXTE)
+                .colonne("commande", "Commande", TEXTE)
+                .colonne("mode", "Paiement", TEXTE)
+                .colonne("reference", "Reference", TEXTE)
+                .colonne("montant", "Montant", MONTANT)
+                .colonne("auteur", "Par", TEXTE)
+                .colonne("statut", "Statut", TEXTE);
+        BigDecimal total = BigDecimal.ZERO;
+        long nombre = 0;
+        for (var g : reglementFournisseurRepository.periode(debut, fin)) {
+            boolean valide = g.getStatut() == tg.parcauto.api.pointdevente.fournisseur.ReglementFournisseur.Statut.VALIDE;
+            r.ligne(g.getNumero(), g.getDateReglement(), g.getFournisseur().getNom(), g.getCommande().getNumero(),
+                    g.getMode().getLibelle(), g.getReference(), g.getMontant(), g.getAuteurNom(),
+                    valide ? "Valide" : "Annule");
+            if (valide) {
+                total = total.add(g.getMontant());
+                nombre++;
+            }
+        }
+        return r.total("montant", total)
+                .indicateur("Total regle", total, MONTANT)
+                .indicateur("Paiements", nombre, NOMBRE)
+                .construire();
+    }
+
+    // ----------------------------------------------------------- depenses
+
+    private Rapport depenses(java.time.LocalDate debut, java.time.LocalDate fin, String periode) {
+        Rapport.Constructeur r = new Rapport.Constructeur("DEPENSES", "Depenses", periode)
+                .colonne("numero", "Depense", TEXTE)
+                .colonne("date", "Date", DATE)
+                .colonne("categorie", "Categorie", TEXTE)
+                .colonne("libelle", "Libelle", TEXTE)
+                .colonne("beneficiaire", "Beneficiaire", TEXTE)
+                .colonne("mode", "Paiement", TEXTE)
+                .colonne("caisse", "Caisse", TEXTE)
+                .colonne("montant", "Montant", MONTANT)
+                .colonne("auteur", "Saisie par", TEXTE)
+                .colonne("statut", "Statut", TEXTE);
+        BigDecimal total = BigDecimal.ZERO;
+        long nombre = 0;
+        for (var d : depenseRepository.periode(debut, fin)) {
+            boolean valide = d.getStatut() == tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.VALIDE;
+            String beneficiaire = d.getBeneficiaire() != null ? d.getBeneficiaire()
+                    : d.getFournisseur() != null ? d.getFournisseur().getNom() : null;
+            r.ligne(d.getNumero(), d.getDateDepense(), d.getCategorie().getNom(), d.getLibelle(), beneficiaire,
+                    d.getMode().getLibelle(), d.getSession() == null ? null : d.getSession().getCaisse().getNom(),
+                    d.getMontant(), d.getAuteurNom(), valide ? "Valide" : "Annulee");
+            if (valide) {
+                total = total.add(d.getMontant());
+                nombre++;
+            }
+        }
+        return r.total("montant", total)
+                .indicateur("Total des depenses", total, MONTANT)
+                .indicateur("Depenses", nombre, NOMBRE)
+                .construire();
+    }
+
+    private Rapport depensesCategories(java.time.LocalDate debut, java.time.LocalDate fin, String periode) {
+        Rapport.Constructeur r = new Rapport.Constructeur("DEPENSES_CATEGORIES", "Depenses par categorie", periode)
+                .colonne("categorie", "Categorie", TEXTE)
+                .colonne("nombre", "Depenses", NOMBRE)
+                .colonne("montant", "Montant", MONTANT)
+                .colonne("part", "Part", POURCENT);
+        var lignes = depenseService.parCategorie(debut, fin);
+        BigDecimal total = lignes.stream().map(l -> l.total()).reduce(BigDecimal.ZERO, BigDecimal::add);
+        long nombre = 0;
+        for (var l : lignes) {
+            r.ligne(l.categorie(), l.nombre(), l.total(), taux(l.total(), total));
+            nombre += l.nombre();
+        }
+        return r.total("nombre", nombre).total("montant", total)
+                .indicateur("Total des depenses", total, MONTANT)
+                .indicateur("Categories", lignes.size(), NOMBRE)
+                .construire();
+    }
+
+    /**
+     * Compte de resultat simplifie : chiffre d'affaires, cout d'achat des
+     * produits vendus, marge brute, depenses par categorie, benefice net. Les
+     * paiements aux fournisseurs n'y figurent pas : la marchandise compte deja
+     * dans le cout des ventes, au moment ou elle est vendue.
+     */
+    private Rapport resultat(Instant debut, Instant fin, ZoneId fuseau, String periode) {
+        Rapport.Constructeur r = new Rapport.Constructeur("RESULTAT", "Compte de resultat", periode)
+                .colonne("poste", "Poste", TEXTE)
+                .colonne("montant", "Montant", MONTANT)
+                .colonne("part", "Part du chiffre d'affaires", POURCENT);
+        BigDecimal ca = venteRepository.totauxPeriode(debut, fin).stream()
+                .map(l -> (BigDecimal) l[1]).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal cout = venteRepository.coutAchatPeriode(debut, fin);
+        BigDecimal marge = ca.subtract(cout);
+        r.ligne("Chiffre d'affaires", ca, taux(ca, ca));
+        r.ligne("Cout d'achat des produits vendus", cout.negate(), taux(cout, ca));
+        r.ligne("Marge brute", marge, taux(marge, ca));
+        var categories = depenseService.parCategorie(jour(debut, fuseau), jourFin(fin, fuseau));
+        BigDecimal depenses = BigDecimal.ZERO;
+        for (var c : categories) {
+            r.ligne("   Depense : " + c.categorie(), c.total().negate(), taux(c.total(), ca));
+            depenses = depenses.add(c.total());
+        }
+        r.ligne("Total des depenses", depenses.negate(), taux(depenses, ca));
+        BigDecimal net = marge.subtract(depenses);
+        r.ligne("Benefice net", net, taux(net, ca));
+        return r.indicateur("Chiffre d'affaires", ca, MONTANT)
+                .indicateur("Marge brute", marge, MONTANT)
+                .indicateur("Depenses", depenses, MONTANT)
+                .indicateur("Benefice net", net, MONTANT)
+                .construire();
+    }
+
+    private static java.time.LocalDate jour(Instant debut, ZoneId fuseau) {
+        return debut.atZone(fuseau).toLocalDate();
+    }
+
+    private static java.time.LocalDate jourFin(Instant fin, ZoneId fuseau) {
+        return fin.minusNanos(1).atZone(fuseau).toLocalDate();
     }
 
     // ----------------------------------------------------------- caisses

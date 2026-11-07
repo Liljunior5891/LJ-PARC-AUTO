@@ -40,4 +40,20 @@ public interface CommandeFournisseurRepository extends JpaRepository<CommandeFou
     /** Fournisseurs deja utilises, proposes a la saisie d'une nouvelle commande. */
     @Query("select distinct c.fournisseur from CommandeFournisseur c order by c.fournisseur")
     List<String> fournisseurs();
+
+    /** Commandes recues dont la dette est suivie, de toutes les fiches ou d'une seule, les plus anciennes d'abord. */
+    @Query("select c from CommandeFournisseur c left join fetch c.fiche "
+            + "where c.statut = tg.parcauto.api.pointdevente.approvisionnement.CommandeFournisseur.Statut.RECUE "
+            + "and c.detteSuivie = true and (:fournisseurId is null or c.fiche.id = :fournisseurId) "
+            + "order by c.echeance asc nulls last, c.recueLe asc, c.id asc")
+    List<CommandeFournisseur> dettes(@Param("fournisseurId") Long fournisseurId);
+
+    /** [fiche id, nombre de commandes] hors annulees. */
+    @Query("select c.fiche.id, count(c) from CommandeFournisseur c where c.fiche is not null "
+            + "and c.statut <> tg.parcauto.api.pointdevente.approvisionnement.CommandeFournisseur.Statut.ANNULEE "
+            + "group by c.fiche.id")
+    List<Object[]> nombreParFiche();
+
+    @Query("select c from CommandeFournisseur c where c.fiche.id = :id order by c.dateCommande desc, c.id desc")
+    Page<CommandeFournisseur> deLaFiche(@Param("id") Long fournisseurId, Pageable pageable);
 }

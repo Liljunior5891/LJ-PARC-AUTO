@@ -104,3 +104,18 @@
     font-weight: 800;
   }
 }
+
+/* Resultat de la periode : les cartes d'indicateurs des rapports. */
+.indicateurs-resultat {
+  margin-bottom: 1rem;
+
+  .carte-apercu strong {
+    font-size: 1.5rem;
+  }
+
+  .carte-apercu small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
