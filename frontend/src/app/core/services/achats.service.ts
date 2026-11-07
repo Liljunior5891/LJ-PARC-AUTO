@@ -175,6 +175,21 @@ export class AchatsService {
     return this.http.delete<Depense>(`${this.depensesUrl}/${id}/justificatif`);
   }
 
+  ficheDepense(id: number): Observable<Blob> {
+    return this.http.get(`${this.depensesUrl}/${id}/fiche-pdf`, { responseType: 'blob' });
+  }
+
+  bonCommande(id: number): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/pdv/approvisionnement/commandes/${id}/bon-pdf`, { responseType: 'blob' });
+  }
+
+  /** Ouvre un PDF dans un nouvel onglet (impression ou enregistrement par le navigateur). */
+  ouvrirPdf(pdf: Blob): void {
+    const url = URL.createObjectURL(pdf);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+
   categoriesDepense(): Observable<CategorieDepense[]> {
     return this.http.get<CategorieDepense[]>(`${this.depensesUrl}/categories`);
   }

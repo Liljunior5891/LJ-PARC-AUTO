@@ -78,9 +78,14 @@ public class RapportPdvService {
     private final tg.parcauto.api.pointdevente.depense.DepensePdvService depenseService;
     private final tg.parcauto.api.pointdevente.fournisseur.ReglementFournisseurRepository reglementFournisseurRepository;
     private final tg.parcauto.api.pointdevente.fournisseur.FournisseurService fournisseurService;
+    private final tg.parcauto.api.pointdevente.caisse.MouvementCaisseRepository mouvementCaisseRepository;
+    private final tg.parcauto.api.pointdevente.materiaux.ReglementClientRepository reglementClientRepository;
+    private final tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository soldeResteRepository;
+    private final tg.parcauto.api.pointdevente.tresorerie.DegagementCoffreRepository degagementRepository;
+    private final tg.parcauto.api.pointdevente.tresorerie.RemiseCaisseRepository remiseCaisseRepository;
 
     public record Catalogue(String type, String libelle, String famille, boolean periode, boolean parArticle,
-                            boolean parEcran) {
+                            boolean parEcran, boolean parFournisseur) {
     }
 
     /** Rapports proposes a l'etablissement ; les commandes de table seulement en restauration. */
@@ -89,7 +94,7 @@ public class RapportPdvService {
         return java.util.Arrays.stream(TypeRapport.values())
                 .filter(t -> !t.isRestauration() || restauration)
                 .map(t -> new Catalogue(t.name(), t.getLibelle(), t.getFamille(), t.isPeriode(), t.isParArticle(),
-                        t.isParEcran()))
+                        t.isParEcran(), t.isParFournisseur()))
                 .toList();
     }
 
@@ -104,6 +109,12 @@ public class RapportPdvService {
 
     /** {@code ecran} : l'ecran de preparation des rapports de production, ignore par les autres. */
     public Rapport calculer(TypeRapport type, Instant debut, Instant fin, ZoneId fuseau, Long article, Long ecran) {
+        return calculer(type, debut, fin, fuseau, article, ecran, null);
+    }
+
+    /** {@code fournisseur} : filtre facultatif des rapports d'achat, ignore par les autres. */
+    public Rapport calculer(TypeRapport type, Instant debut, Instant fin, ZoneId fuseau, Long article, Long ecran,
+                            Long fournisseur) {
         String periode = type.isPeriode()
                 ? "Du " + JOUR.format(debut.atZone(fuseau)) + " au " + JOUR.format(fin.minusSeconds(1).atZone(fuseau))
                 : "Au " + JOUR.format(Instant.now().atZone(fuseau));
@@ -118,10 +129,13 @@ public class RapportPdvService {
             case STOCK -> stock(periode);
             case FICHE_STOCK -> ficheStock(article, debut, fin, periode);
             case MOUVEMENTS -> mouvements(debut, fin, periode);
-            case COMMANDES_FOURNISSEURS -> commandesFournisseurs(debut, fin, fuseau, periode);
+            case COMMANDES_FOURNISSEURS -> commandesFournisseurs(debut, fin, fuseau, avecFournisseur(periode, fournisseur), fournisseur);
             case CAISSES -> caisses(debut, fin, periode);
-            case DETTES_FOURNISSEURS -> dettesFournisseurs(periode);
-            case REGLEMENTS_FOURNISSEURS -> reglementsFournisseurs(jour(debut, fuseau), jourFin(fin, fuseau), periode);
+            case DETTES_FOURNISSEURS -> dettesFournisseurs(avecFournisseur(periode, fournisseur), fournisseur);
+            case REGLEMENTS_FOURNISSEURS -> reglementsFournisseurs(jour(debut, fuseau), jourFin(fin, fuseau),
+                    avecFournisseur(periode, fournisseur), fournisseur);
+            case JOURNAL_CAISSE -> journalCaisse(debut, fin, periode);
+            case JOURNAL_BANQUE -> journalBanque(debut, fin, fuseau, periode);
             case DEPENSES -> depenses(jour(debut, fuseau), jourFin(fin, fuseau), periode);
             case DEPENSES_CATEGORIES -> depensesCategories(jour(debut, fuseau), jourFin(fin, fuseau), periode);
             case RESULTAT -> resultat(debut, fin, fuseau, periode);
@@ -509,7 +523,7 @@ public class RapportPdvService {
 
     // ------------------------------------------------------------ achats
 
-    private Rapport commandesFournisseurs(Instant debut, Instant fin, ZoneId fuseau, String periode) {
+    private Rapport commandesFournisseurs(Instant debut, Instant fin, ZoneId fuseau, String periode, Long fournisseur) {
         Rapport.Constructeur r = new Rapport.Constructeur("COMMANDES_FOURNISSEURS", "Commandes fournisseurs", periode)
                 .colonne("numero", "Commande", TEXTE)
                 .colonne("date", "Date", DATE)
@@ -524,7 +538,9 @@ public class RapportPdvService {
         BigDecimal recu = BigDecimal.ZERO;
         long enCours = 0;
         List<CommandeFournisseur> commandes = commandeFournisseurRepository.periode(
-                debut.atZone(fuseau).toLocalDate(), fin.minusSeconds(1).atZone(fuseau).toLocalDate());
+                debut.atZone(fuseau).toLocalDate(), fin.minusSeconds(1).atZone(fuseau).toLocalDate()).stream()
+                .filter(c -> fournisseur == null || (c.getFiche() != null && c.getFiche().getId().equals(fournisseur)))
+                .toList();
         for (CommandeFournisseur c : commandes) {
             BigDecimal valeurRecue = c.getLignes().stream()
                     .filter(l -> l.getQuantiteRecue() != null && l.getCoutUnitaire() != null)
@@ -556,7 +572,7 @@ public class RapportPdvService {
     // ------------------------------------------------- dettes fournisseurs
 
     /** Ce qui reste du a chaque fournisseur, commande par commande, les echeances depassees d'abord. */
-    private Rapport dettesFournisseurs(String periode) {
+    private Rapport dettesFournisseurs(String periode, Long fournisseur) {
         Rapport.Constructeur r = new Rapport.Constructeur("DETTES_FOURNISSEURS", "Dettes fournisseurs", periode)
                 .colonne("fournisseur", "Fournisseur", TEXTE)
                 .colonne("commande", "Commande", TEXTE)
@@ -567,13 +583,14 @@ public class RapportPdvService {
                 .colonne("echeance", "Echeance", DATE)
                 .colonne("situation", "Situation", TEXTE);
         java.util.Map<Long, String> noms = new java.util.HashMap<>();
-        for (CommandeFournisseur c : commandeFournisseurRepository.dettes(null)) {
+        for (CommandeFournisseur c : commandeFournisseurRepository.dettes(fournisseur)) {
             noms.put(c.getId(), c.getFiche() == null ? c.getFournisseur() : c.getFiche().getNom());
         }
         BigDecimal du = BigDecimal.ZERO;
         BigDecimal retard = BigDecimal.ZERO;
         List<tg.parcauto.api.pointdevente.fournisseur.FournisseurService.Dette> dettes =
-                new java.util.ArrayList<>(fournisseurService.toutesLesDettes());
+                new java.util.ArrayList<>(fournisseurService.toutesLesDettes().stream()
+                        .filter(d -> noms.containsKey(d.commandeId())).toList());
         dettes.sort(java.util.Comparator
                 .comparing((tg.parcauto.api.pointdevente.fournisseur.FournisseurService.Dette d) -> !d.enRetard())
                 .thenComparing(d -> noms.getOrDefault(d.commandeId(), "").toLowerCase()));
@@ -592,7 +609,8 @@ public class RapportPdvService {
                 .construire();
     }
 
-    private Rapport reglementsFournisseurs(java.time.LocalDate debut, java.time.LocalDate fin, String periode) {
+    private Rapport reglementsFournisseurs(java.time.LocalDate debut, java.time.LocalDate fin, String periode,
+                                           Long fournisseur) {
         Rapport.Constructeur r = new Rapport.Constructeur("REGLEMENTS_FOURNISSEURS", "Reglements fournisseurs", periode)
                 .colonne("numero", "Reglement", TEXTE)
                 .colonne("date", "Date", DATE)
@@ -606,6 +624,9 @@ public class RapportPdvService {
         BigDecimal total = BigDecimal.ZERO;
         long nombre = 0;
         for (var g : reglementFournisseurRepository.periode(debut, fin)) {
+            if (fournisseur != null && !g.getFournisseur().getId().equals(fournisseur)) {
+                continue;
+            }
             boolean valide = g.getStatut() == tg.parcauto.api.pointdevente.fournisseur.ReglementFournisseur.Statut.VALIDE;
             r.ligne(g.getNumero(), g.getDateReglement(), g.getFournisseur().getNom(), g.getCommande().getNumero(),
                     g.getMode().getLibelle(), g.getReference(), g.getMontant(), g.getAuteurNom(),
@@ -706,6 +727,178 @@ public class RapportPdvService {
                 .indicateur("Depenses", depenses, MONTANT)
                 .indicateur("Benefice net", net, MONTANT)
                 .construire();
+    }
+
+    // ----------------------------------------------------------- journaux
+
+    /** Ecriture d'un journal : date, caisse ou origine, piece, libelle, auteur, entree ou sortie. */
+    private record Ecriture(Instant date, String lieu, String piece, String libelle, String par,
+                            BigDecimal entree, BigDecimal sortie) {
+    }
+
+    /**
+     * Journal de caisse : tout ce qui est entre dans les tiroirs et en est sorti,
+     * caisse par caisse et dans l'ordre : fond d'ouverture, ventes et reglements
+     * en especes, remboursements, entrees et sorties (depenses, paiements de
+     * fournisseurs, remises au gerant).
+     */
+    private Rapport journalCaisse(Instant debut, Instant fin, String periode) {
+        Rapport.Constructeur r = new Rapport.Constructeur("JOURNAL_CAISSE", "Journal de caisse", periode)
+                .colonne("date", "Date", DATE_HEURE)
+                .colonne("caisse", "Caisse", TEXTE)
+                .colonne("piece", "Piece", TEXTE)
+                .colonne("libelle", "Operation", TEXTE)
+                .colonne("par", "Par", TEXTE)
+                .colonne("entree", "Entree", MONTANT)
+                .colonne("sortie", "Sortie", MONTANT);
+        List<Ecriture> ecritures = new java.util.ArrayList<>();
+        for (SessionCaisse s : sessionRepository.findByOuverteLeGreaterThanEqualAndOuverteLeLessThanOrderByOuverteLeDesc(debut, fin)) {
+            if (s.getFondInitial().signum() > 0) {
+                ecritures.add(new Ecriture(s.getOuverteLe(), s.getCaisse().getNom(), s.getNumero(), "Fond de caisse a l'ouverture",
+                        s.getCaissierNom(), s.getFondInitial(), null));
+            }
+        }
+        for (Object[] v : venteRepository.encaissements(debut, fin)) {
+            if (v[4] == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.ESPECES) {
+                ecritures.add(new Ecriture((Instant) v[0], (String) v[2], (String) v[1], "Vente en especes", (String) v[3],
+                        (BigDecimal) v[5], null));
+            }
+        }
+        for (Object[] g : reglementClientRepository.journal(debut, fin)) {
+            if (g[4] == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.ESPECES) {
+                ecritures.add(new Ecriture((Instant) g[0], (String) g[2], (String) g[1], "Reglement client : " + g[6],
+                        (String) g[3], (BigDecimal) g[5], null));
+            }
+        }
+        for (Object[] s : soldeResteRepository.journal(debut, fin)) {
+            if (s[4] == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.ESPECES) {
+                ecritures.add(new Ecriture((Instant) s[0], (String) s[2], (String) s[1], "Remboursement au client",
+                        (String) s[3], null, (BigDecimal) s[5]));
+            }
+        }
+        BigDecimal remisesGerant = BigDecimal.ZERO;
+        for (tg.parcauto.api.pointdevente.caisse.MouvementCaisse m : mouvementCaisseRepository.periode(debut, fin)) {
+            boolean entree = m.getType() == tg.parcauto.api.pointdevente.caisse.MouvementCaisse.Type.ENTREE;
+            ecritures.add(new Ecriture(m.getDateMouvement(), m.getSession().getCaisse().getNom(), m.getSession().getNumero(),
+                    m.getMotif(), m.getAuteurNom(), entree ? m.getMontant() : null, entree ? null : m.getMontant()));
+            if (!entree && m.getMotif().startsWith("Remise ")) {
+                remisesGerant = remisesGerant.add(m.getMontant());
+            }
+        }
+        ecritures.sort(java.util.Comparator.comparing(Ecriture::date));
+        BigDecimal entrees = BigDecimal.ZERO;
+        BigDecimal sorties = BigDecimal.ZERO;
+        for (Ecriture e : ecritures) {
+            r.ligne(e.date(), e.lieu(), e.piece(), e.libelle(), e.par(), e.entree(), e.sortie());
+            entrees = entrees.add(e.entree() == null ? BigDecimal.ZERO : e.entree());
+            sorties = sorties.add(e.sortie() == null ? BigDecimal.ZERO : e.sortie());
+        }
+        return r.total("entree", entrees).total("sortie", sorties)
+                .indicateur("Entrees d'especes", entrees, MONTANT)
+                .indicateur("Sorties d'especes", sorties, MONTANT)
+                .indicateur("Dont remises au gerant", remisesGerant, MONTANT)
+                .indicateur("Solde de la periode", entrees.subtract(sorties), MONTANT)
+                .construire();
+    }
+
+    /**
+     * Journal de banque, c'est-a-dire du compte de l'entreprise : depots du coffre
+     * des gerants, remises validees par l'administrateur, ventes et reglements
+     * par mobile money ou carte (un total par jour), puis depenses et paiements
+     * de fournisseurs payes par la banque. Le solde court depuis l'origine.
+     */
+    private Rapport journalBanque(Instant debut, Instant fin, ZoneId fuseau, String periode) {
+        Rapport.Constructeur r = new Rapport.Constructeur("JOURNAL_BANQUE", "Journal de banque", periode)
+                .colonne("date", "Date", DATE_HEURE)
+                .colonne("piece", "Piece", TEXTE)
+                .colonne("libelle", "Operation", TEXTE)
+                .colonne("par", "Par", TEXTE)
+                .colonne("entree", "Credit", MONTANT)
+                .colonne("sortie", "Debit", MONTANT)
+                .colonne("solde", "Solde", MONTANT);
+        Instant origine = Instant.parse("2000-01-01T00:00:00Z");
+        List<Ecriture> ecritures = new java.util.ArrayList<>();
+        for (var d : degagementRepository.findByStatutOrderByTraiteLeDesc(
+                tg.parcauto.api.pointdevente.tresorerie.DegagementCoffre.Statut.VALIDE, org.springframework.data.domain.Pageable.unpaged())) {
+            ecritures.add(new Ecriture(d.getTraiteLe(), null, d.getNumero(), "Depot en banque du coffre de " + d.getGerantNom()
+                    + (d.getReferenceDepot() == null ? "" : " - bordereau " + d.getReferenceDepot()), d.getTraiteParNom(),
+                    d.getMontantValide(), null));
+        }
+        for (var m : remiseCaisseRepository.verseesEntreprise(org.springframework.data.domain.Pageable.unpaged())) {
+            ecritures.add(new Ecriture(m.getTraiteeLe(), null, m.getNumero(), "Remise de " + m.getCaissierNom() + " ("
+                    + m.getSession().getCaisse().getNom() + ")", m.getTraiteeParNom(), m.getMontantValide(), null));
+        }
+        // Mobile money et carte : un total par jour et par moyen, pour ne pas noyer le journal.
+        java.util.Map<String, BigDecimal> parJour = new java.util.TreeMap<>();
+        for (Object[] v : venteRepository.encaissements(origine, fin)) {
+            electronique(parJour, (Instant) v[0], v[4], (BigDecimal) v[5], "Ventes", fuseau);
+        }
+        for (Object[] g : reglementClientRepository.journal(origine, fin)) {
+            electronique(parJour, (Instant) g[0], g[4], (BigDecimal) g[5], "Reglements clients", fuseau);
+        }
+        for (var e : parJour.entrySet()) {
+            String[] cle = e.getKey().split("\\|");
+            java.time.LocalDate jour = java.time.LocalDate.parse(cle[0]);
+            ecritures.add(new Ecriture(jour.atTime(23, 59).atZone(fuseau).toInstant(), null, null,
+                    cle[1] + " du " + JOUR.format(jour), null, e.getValue(), null));
+        }
+        java.time.LocalDate dernierJour = fin.minusSeconds(1).atZone(fuseau).toLocalDate();
+        for (var dp : depenseRepository.payeesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.BANQUE, dernierJour)) {
+            ecritures.add(new Ecriture(dp.getDateDepense().atTime(12, 0).atZone(fuseau).toInstant(), null, dp.getNumero(),
+                    "Depense " + dp.getCategorie().getNom() + " : " + dp.getLibelle(), dp.getAuteurNom(), null, dp.getMontant()));
+        }
+        for (var rf : reglementFournisseurRepository.payesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.BANQUE, dernierJour)) {
+            ecritures.add(new Ecriture(rf.getDateReglement().atTime(12, 0).atZone(fuseau).toInstant(), null, rf.getNumero(),
+                    "Paiement fournisseur " + rf.getFournisseur().getNom() + " (" + rf.getCommande().getNumero() + ")",
+                    rf.getAuteurNom(), null, rf.getMontant()));
+        }
+        ecritures.sort(java.util.Comparator.comparing(Ecriture::date));
+        BigDecimal solde = BigDecimal.ZERO;
+        BigDecimal ouverture = null;
+        BigDecimal credits = BigDecimal.ZERO;
+        BigDecimal debits = BigDecimal.ZERO;
+        for (Ecriture e : ecritures) {
+            if (!e.date().isBefore(fin)) {
+                continue;
+            }
+            if (!e.date().isBefore(debut) && ouverture == null) {
+                ouverture = solde;
+                r.ligne(debut, null, "Solde au debut de la periode", null, null, null, solde);
+            }
+            solde = solde.add(e.entree() == null ? BigDecimal.ZERO : e.entree())
+                    .subtract(e.sortie() == null ? BigDecimal.ZERO : e.sortie());
+            if (!e.date().isBefore(debut)) {
+                r.ligne(e.date(), e.piece(), e.libelle(), e.par(), e.entree(), e.sortie(), solde);
+                credits = credits.add(e.entree() == null ? BigDecimal.ZERO : e.entree());
+                debits = debits.add(e.sortie() == null ? BigDecimal.ZERO : e.sortie());
+            }
+        }
+        if (ouverture == null) {
+            ouverture = solde;
+        }
+        return r.total("entree", credits).total("sortie", debits)
+                .indicateur("Solde au debut", ouverture, MONTANT)
+                .indicateur("Credits", credits, MONTANT)
+                .indicateur("Debits", debits, MONTANT)
+                .indicateur("Solde a la fin", solde, MONTANT)
+                .construire();
+    }
+
+    private static void electronique(java.util.Map<String, BigDecimal> parJour, Instant date, Object mode, BigDecimal montant,
+                                     String nature, ZoneId fuseau) {
+        String libelle = mode == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.MOBILE_MONEY ? nature + " par mobile money"
+                : mode == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.CARTE ? nature + " par carte" : null;
+        if (libelle != null && montant != null && montant.signum() > 0) {
+            parJour.merge(date.atZone(fuseau).toLocalDate() + "|" + libelle, montant, BigDecimal::add);
+        }
+    }
+
+    /** Sous-titre du rapport, complete du fournisseur filtre. */
+    private String avecFournisseur(String periode, Long fournisseur) {
+        if (fournisseur == null) {
+            return periode;
+        }
+        return periode + " · " + fournisseurService.parId(fournisseur).nom();
     }
 
     private static java.time.LocalDate jour(Instant debut, ZoneId fuseau) {

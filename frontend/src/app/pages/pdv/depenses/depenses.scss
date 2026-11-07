@@ -189,3 +189,12 @@ tr.annulee td {
     }
   }
 }
+
+/* Bandeau qui propose la fiche de depense juste apres la saisie. */
+.bandeau-piece {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}

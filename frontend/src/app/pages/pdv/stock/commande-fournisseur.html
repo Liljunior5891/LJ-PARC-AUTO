@@ -11,17 +11,24 @@
         @if (c.creePar) { · par {{ c.creePar }} }
       </p>
     </div>
+    <div class="actions-entete">
+      <button class="bouton secondaire info" type="button" (click)="imprimerBon()">🖨 Bon de commande</button>
     @if (enCours()) {
-      <div class="actions-entete">
         <button class="bouton danger" type="button" (click)="annuler()">Annuler la commande</button>
         <button class="bouton secondaire info" type="button" (click)="edition.set(true)">Modifier</button>
         <button class="bouton succes" type="button" (click)="ouvrirReception()">Receptionner</button>
-      </div>
     }
+    </div>
   </div>
 
   @if (erreur() && !reception()) {
     <div class="message erreur">{{ erreur() }}</div>
+  }
+  @if (nouvelle()) {
+    <div class="message succes bandeau-piece">
+      <span>Commande {{ c.resume.numero }} enregistree. Remettez le bon de commande au fournisseur.</span>
+      <button class="bouton petit succes" type="button" (click)="imprimerBon()">🖨 Imprimer le bon de commande</button>
+    </div>
   }
   @if (succes()) {
     <div class="message succes">{{ succes() }}</div>

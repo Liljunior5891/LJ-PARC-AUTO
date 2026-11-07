@@ -36,6 +36,7 @@ import java.util.List;
 public class CommandeFournisseurController {
 
     private final CommandeFournisseurService service;
+    private final tg.parcauto.api.pointdevente.depense.PiecesAchatPdf pieces;
 
     @GetMapping
     @Operation(summary = "Commandes fournisseurs, des plus recentes aux plus anciennes")
@@ -77,6 +78,19 @@ public class CommandeFournisseurController {
                                                           @Valid @RequestBody(required = false) CommandeFournisseurService.Reception reception,
                                                           @AuthenticationPrincipal UtilisateurPrincipal principal) {
         return service.receptionner(id, reception, principal);
+    }
+
+    @GetMapping("/{id}/bon-pdf")
+    @Operation(summary = "Bon de commande a remettre au fournisseur")
+    public org.springframework.http.ResponseEntity<byte[]> bon(@PathVariable Long id) {
+        return pdf(pieces.bonCommande(id), pieces.nomBonCommande(id));
+    }
+
+    private static org.springframework.http.ResponseEntity<byte[]> pdf(byte[] contenu, String nom) {
+        return org.springframework.http.ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nom + "\"")
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(contenu);
     }
 
     @PostMapping("/{id}/annulation")

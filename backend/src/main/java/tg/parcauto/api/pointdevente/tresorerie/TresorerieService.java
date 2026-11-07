@@ -56,6 +56,14 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
     private final ReglagePdvService reglages;
     private final NumerotationService numerotation;
     private final UtilisateurRepository utilisateurs;
+    private final tg.parcauto.api.pointdevente.depense.DepensePdvRepository depenses;
+    private final tg.parcauto.api.pointdevente.fournisseur.ReglementFournisseurRepository reglementsFournisseurs;
+    private final tg.parcauto.api.pointdevente.vente.VenteRepository ventes;
+    private final tg.parcauto.api.pointdevente.materiaux.ReglementClientRepository reglementsClients;
+    private final tg.parcauto.api.parc.document.StockageFichierService stockage;
+
+    private static final long TAILLE_MAX_PIECE = 15L * 1024 * 1024;
+    private static final Instant ORIGINE = Instant.parse("2000-01-01T00:00:00Z");
 
     // ------------------------------------------------------------------ dto
 
@@ -69,6 +77,17 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
     }
 
     public record Refus(@NotBlank @Size(max = 2000) String motif) {
+    }
+
+    /** Degagement du coffre = depot en banque : billettage du gerant et references du bordereau. */
+    public record EnvoiDepot(@NotNull List<@Valid Ligne> billettage, @Size(max = 2000) String justification,
+                             @Size(max = 100) String banque, @NotBlank @Size(max = 80) String referenceDepot,
+                             @NotNull java.time.LocalDate dateDepot) {
+    }
+
+    /** L'administrateur confirme le montant porte sur le bordereau, apres verification de la piece. */
+    public record ValidationDepot(@NotNull @jakarta.validation.constraints.Positive BigDecimal montantValide,
+                                  @Size(max = 2000) String commentaire) {
     }
 
     public record CoupureDto(BigDecimal valeur, int quantite, BigDecimal montant) {
@@ -86,7 +105,8 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
                                 BigDecimal montantDeclare, BigDecimal montantValide, BigDecimal ecartDeclare,
                                 BigDecimal ecartVerification, String justification, DegagementCoffre.Statut statut,
                                 Instant envoyeLe, String traiteParNom, Instant traiteLe, String commentaire,
-                                List<CoupureDto> declare, List<CoupureDto> verifie) {
+                                List<CoupureDto> declare, List<CoupureDto> verifie, String banque,
+                                String referenceDepot, java.time.LocalDate dateDepot, boolean piece, String pieceNom) {
     }
 
     /** Ce que voit le caissier sur sa session : la somme a remettre et sa remise en cours. */
@@ -106,6 +126,7 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
     }
 
     public record CompteEntreprise(BigDecimal solde, BigDecimal parDegagements, BigDecimal parRemisesDirectes,
+                                   BigDecimal ventesElectroniques, BigDecimal sortiesBanque,
                                    List<SoldeCoffre> coffres, List<MouvementCoffre> entrees) {
     }
 
@@ -218,8 +239,12 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
         return coffreDe(gerant.getId(), gerant.getNomComplet());
     }
 
-    /** Le gerant degage son coffre vers l'administrateur, avec son billettage. */
-    public DegagementDto envoyerDegagement(Envoi envoi, UtilisateurPrincipal gerant) {
+    /**
+     * Le gerant depose les especes de son coffre en banque : son billettage, la
+     * banque, la reference et la date du bordereau. La piece (bordereau ou releve)
+     * se joint ensuite ; sans elle, l'administrateur ne peut pas valider.
+     */
+    public DegagementDto envoyerDegagement(EnvoiDepot envoi, UtilisateurPrincipal gerant) {
         reglages.exigerCircuit();
         if (estAdministrateur(gerant)) {
             throw new BusinessException("L'administrateur n'a pas de coffre a degager : ses remises vont au compte de l'entreprise");
@@ -227,14 +252,20 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
         if (degagements.findFirstByGerantIdAndStatut(gerant.getId(), DegagementCoffre.Statut.EN_ATTENTE).isPresent()) {
             throw new BusinessException("Un degagement attend deja la validation de l'administrateur");
         }
+        if (envoi.dateDepot().isAfter(java.time.LocalDate.now(java.time.ZoneId.of("Africa/Lome")))) {
+            throw new BusinessException("La date du depot ne peut pas etre dans le futur");
+        }
         List<CoupureTresorerie> coupures = coupures(envoi.billettage(), CoupureTresorerie.Moment.DECLARE);
         BigDecimal declare = total(coupures);
         if (declare.signum() <= 0) {
-            throw new BusinessException("Comptez les billets et les pieces a degager");
+            throw new BusinessException("Comptez les billets et les pieces deposes en banque");
         }
         BigDecimal solde = solde(gerant.getId());
+        if (declare.compareTo(solde) > 0) {
+            throw new BusinessException("Le coffre ne contient que " + entier(solde) + " F");
+        }
         String justification = exigerJustification(declare.subtract(solde), envoi.justification(),
-                "Le billettage differe du solde du coffre : justifiez l'ecart");
+                "Le depot differe du solde du coffre : justifiez l'ecart");
         DegagementCoffre d = new DegagementCoffre();
         d.setNumero(numerotation.prochainNumero("DEG"));
         d.setGerantId(gerant.getId());
@@ -242,9 +273,68 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
         d.setMontantAttendu(solde);
         d.setMontantDeclare(declare);
         d.setJustification(justification);
+        d.setBanque(envoi.banque() == null || envoi.banque().isBlank() ? null : envoi.banque().trim());
+        d.setReferenceDepot(envoi.referenceDepot().trim());
+        d.setDateDepot(envoi.dateDepot());
         d.setEnvoyeLe(Instant.now());
         d.getBillettage().addAll(coupures);
         return dto(degagements.save(d));
+    }
+
+    /** Bordereau de versement ou releve de banque, joint par le gerant tant que le degagement attend. */
+    public DegagementDto joindrePiece(Long id, org.springframework.web.multipart.MultipartFile fichier,
+                                      UtilisateurPrincipal gerant) {
+        DegagementCoffre d = degagementEnAttente(id);
+        if (!d.getGerantId().equals(gerant.getId()) && !estAdministrateur(gerant)) {
+            throw new BusinessException("Seul le gerant qui a fait le depot peut joindre sa piece");
+        }
+        if (fichier == null || fichier.isEmpty()) {
+            throw new BusinessException("Fichier vide");
+        }
+        if (fichier.getSize() > TAILLE_MAX_PIECE) {
+            throw new BusinessException("La piece depasse 15 Mo");
+        }
+        String ancien = d.getPieceChemin();
+        d.setPieceChemin(stockage.enregistrer(fichier, "pdv-degagements/" + d.getId()));
+        d.setPieceNom(fichier.getOriginalFilename() == null ? "piece" : fichier.getOriginalFilename());
+        d.setPieceType(fichier.getContentType());
+        stockage.supprimer(ancien);
+        return dto(d);
+    }
+
+    @Transactional(readOnly = true)
+    public DegagementCoffre degagementAvecPiece(Long id) {
+        DegagementCoffre d = degagements.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Degagement", id));
+        if (d.getPieceChemin() == null) {
+            throw new ResourceNotFoundException("Aucune piece jointe au degagement " + d.getNumero());
+        }
+        return d;
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.core.io.Resource piece(DegagementCoffre d) {
+        return stockage.charger(d.getPieceChemin());
+    }
+
+    /**
+     * Paiement d'une depense ou d'un fournisseur depuis le coffre : le gerant
+     * connecte paie avec son propre coffre, dans la limite de son solde.
+     * Renvoie l'identifiant du coffre debite.
+     */
+    @Transactional(readOnly = true)
+    public Long exigerCoffre(UtilisateurPrincipal payeur, BigDecimal montant) {
+        if (!reglages.lire().circuitCaisseActif()) {
+            throw new BusinessException("Le coffre du gerant n'existe qu'avec le circuit des especes, active dans les reglages");
+        }
+        boolean gerant = payeur.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals(Role.GERANT.authority()));
+        if (!gerant || estAdministrateur(payeur)) {
+            throw new BusinessException("Seul un gerant paie depuis son coffre : choisissez la caisse ou la banque");
+        }
+        BigDecimal solde = solde(payeur.getId());
+        if (montant.compareTo(solde) > 0) {
+            throw new BusinessException("Votre coffre ne contient que " + entier(solde) + " F");
+        }
+        return payeur.getId();
     }
 
     // ----------------------------------------------------- administrateur
@@ -261,17 +351,20 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
         return degagements.findAllByOrderByEnvoyeLeDesc(PageRequest.of(page, 30)).map(this::dto);
     }
 
-    public DegagementDto validerDegagement(Long id, Validation validation, UtilisateurPrincipal admin) {
+    /**
+     * L'administrateur verifie le bordereau joint (banque, reference, date,
+     * montant) et confirme le montant depose : il quitte le coffre du gerant et
+     * arrive sur le compte de l'entreprise.
+     */
+    public DegagementDto validerDegagement(Long id, ValidationDepot validation, UtilisateurPrincipal admin) {
         reglages.exigerCircuit();
         DegagementCoffre d = degagementEnAttente(id);
-        List<CoupureTresorerie> verifie = coupures(validation.billettage(), CoupureTresorerie.Moment.VERIFIE);
-        BigDecimal valide = total(verifie);
-        if (valide.signum() <= 0) {
-            throw new BusinessException("Le recompte est vide : refusez plutot le degagement");
+        if (d.getPieceChemin() == null) {
+            throw new BusinessException("Le bordereau ou le releve de banque n'est pas joint : impossible de valider le depot");
         }
+        BigDecimal valide = validation.montantValide().setScale(2, RoundingMode.HALF_UP);
         String commentaire = exigerJustification(valide.subtract(d.getMontantDeclare()), validation.commentaire(),
-                "Le recompte differe du billettage du gerant : indiquez l'ecart constate");
-        d.getBillettage().addAll(verifie);
+                "Le montant du bordereau differe du depot declare : indiquez l'ecart constate");
         d.setMontantValide(valide);
         d.setStatut(DegagementCoffre.Statut.VALIDE);
         d.setTraiteParId(admin.getId());
@@ -300,20 +393,44 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
         List<MouvementCoffre> entrees = new ArrayList<>();
         for (DegagementCoffre d : degagements.findByStatutOrderByTraiteLeDesc(DegagementCoffre.Statut.VALIDE,
                 PageRequest.of(0, 100))) {
-            entrees.add(new MouvementCoffre(d.getTraiteLe(), d.getNumero(), "Degagement du coffre de " + d.getGerantNom(),
-                    d.getMontantValide(), null));
+            entrees.add(new MouvementCoffre(d.getTraiteLe(), d.getNumero(), "Depot en banque du coffre de " + d.getGerantNom()
+                    + (d.getReferenceDepot() == null ? "" : " (" + d.getReferenceDepot() + ")"), d.getMontantValide(), null));
         }
         for (RemiseCaisse r : remises.verseesEntreprise(PageRequest.of(0, 100))) {
             entrees.add(new MouvementCoffre(r.getTraiteeLe(), r.getNumero(), "Remise de " + r.getCaissierNom()
                     + " (" + r.getSession().getCaisse().getNom() + ")", r.getMontantValide(), null));
+        }
+        BigDecimal electroniques = BigDecimal.ZERO;
+        for (Object[] v : ventes.encaissements(ORIGINE, Instant.now().plusSeconds(60))) {
+            if (electronique(v[4])) {
+                electroniques = electroniques.add((BigDecimal) v[5]);
+            }
+        }
+        for (Object[] r : reglementsClients.journal(ORIGINE, Instant.now().plusSeconds(60))) {
+            if (electronique(r[4])) {
+                electroniques = electroniques.add((BigDecimal) r[5]);
+            }
+        }
+        BigDecimal sorties = BigDecimal.ZERO;
+        java.time.LocalDate aujourdhui = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Lome"));
+        for (var dp : depenses.payeesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.BANQUE, aujourdhui)) {
+            sorties = sorties.add(dp.getMontant());
+            entrees.add(new MouvementCoffre(dp.getDateDepense().atStartOfDay(java.time.ZoneId.of("Africa/Lome")).toInstant(),
+                    dp.getNumero(), "Depense : " + dp.getCategorie().getNom() + " - " + dp.getLibelle(), null, dp.getMontant()));
+        }
+        for (var rf : reglementsFournisseurs.payesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.BANQUE, aujourdhui)) {
+            sorties = sorties.add(rf.getMontant());
+            entrees.add(new MouvementCoffre(rf.getDateReglement().atStartOfDay(java.time.ZoneId.of("Africa/Lome")).toInstant(),
+                    rf.getNumero(), "Paiement " + rf.getFournisseur().getNom() + " (" + rf.getCommande().getNumero() + ")",
+                    null, rf.getMontant()));
         }
         entrees.sort(Comparator.comparing(MouvementCoffre::date).reversed());
         List<SoldeCoffre> coffres = gerants().stream()
                 .map(g -> new SoldeCoffre((Long) g[0], (String) g[1], solde((Long) g[0])))
                 .sorted(Comparator.comparing(SoldeCoffre::solde).reversed())
                 .toList();
-        return new CompteEntreprise(parDegagements.add(parRemises), parDegagements, parRemises, coffres,
-                entrees.size() > 100 ? entrees.subList(0, 100) : entrees);
+        return new CompteEntreprise(parDegagements.add(parRemises).add(electroniques).subtract(sorties), parDegagements,
+                parRemises, electroniques, sorties, coffres, entrees.size() > 150 ? entrees.subList(0, 150) : entrees);
     }
 
     @Transactional(readOnly = true)
@@ -353,7 +470,22 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
         for (DegagementCoffre d : degagements.findByGerantIdOrderByEnvoyeLeDesc(gerantId, PageRequest.of(0, 100))) {
             if (d.getStatut() == DegagementCoffre.Statut.VALIDE) {
                 mouvements.add(new MouvementCoffre(d.getTraiteLe(), d.getNumero(),
-                        "Degagement vers l'entreprise, valide par " + d.getTraiteParNom(), null, d.getMontantValide()));
+                        "Depot en banque" + (d.getReferenceDepot() == null ? "" : " (" + d.getReferenceDepot() + ")")
+                                + ", valide par " + d.getTraiteParNom(), null, d.getMontantValide()));
+            }
+        }
+        java.time.ZoneId zone = java.time.ZoneId.of("Africa/Lome");
+        java.time.LocalDate aujourdhui = java.time.LocalDate.now(zone);
+        for (var dp : depenses.payeesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.COFFRE, aujourdhui)) {
+            if (gerantId.equals(dp.getCoffreId())) {
+                mouvements.add(new MouvementCoffre(dp.getCreeLe() != null ? dp.getCreeLe() : dp.getDateDepense().atStartOfDay(zone).toInstant(),
+                        dp.getNumero(), "Depense : " + dp.getCategorie().getNom() + " - " + dp.getLibelle(), null, dp.getMontant()));
+            }
+        }
+        for (var rf : reglementsFournisseurs.payesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.COFFRE, aujourdhui)) {
+            if (gerantId.equals(rf.getCoffreId())) {
+                mouvements.add(new MouvementCoffre(rf.getCreeLe() != null ? rf.getCreeLe() : rf.getDateReglement().atStartOfDay(zone).toInstant(),
+                        rf.getNumero(), "Paiement " + rf.getFournisseur().getNom(), null, rf.getMontant()));
             }
         }
         mouvements.sort(Comparator.comparing(MouvementCoffre::date).reversed());
@@ -363,8 +495,15 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
                 mouvements);
     }
 
-    private BigDecimal solde(Long gerantId) {
-        return remises.recuParCoffre(gerantId).subtract(degagements.sortiParCoffre(gerantId));
+    /** Remises recues − depots en banque valides − depenses et paiements payes depuis le coffre. */
+    public BigDecimal solde(Long gerantId) {
+        return remises.recuParCoffre(gerantId).subtract(degagements.sortiParCoffre(gerantId))
+                .subtract(depenses.sortiDuCoffre(gerantId)).subtract(reglementsFournisseurs.sortiDuCoffre(gerantId));
+    }
+
+    private static boolean electronique(Object mode) {
+        return mode == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.MOBILE_MONEY
+                || mode == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.CARTE;
     }
 
     /** [id, nom] des gerants qui ont un coffre : ceux qui ont deja recu des remises, et les comptes GERANT actifs. */
@@ -470,7 +609,8 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
                 d.getMontantValide() == null ? null : d.getMontantValide().subtract(d.getMontantDeclare()),
                 d.getJustification(), d.getStatut(), d.getEnvoyeLe(), d.getTraiteParNom(), d.getTraiteLe(),
                 d.getCommentaire(), coupuresDto(d.getBillettage(), CoupureTresorerie.Moment.DECLARE),
-                coupuresDto(d.getBillettage(), CoupureTresorerie.Moment.VERIFIE));
+                coupuresDto(d.getBillettage(), CoupureTresorerie.Moment.VERIFIE), d.getBanque(), d.getReferenceDepot(),
+                d.getDateDepot(), d.getPieceChemin() != null, d.getPieceNom());
     }
 
     private static String entier(BigDecimal v) {

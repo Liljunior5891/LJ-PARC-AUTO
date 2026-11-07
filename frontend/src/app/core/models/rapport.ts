@@ -12,6 +12,8 @@ export interface RapportCatalogue {
   parArticle: boolean;
   /** Vrai pour un rapport sur un ecran de preparation (bons, produits). */
   parEcran: boolean;
+  /** Rapport d'achat filtrable par fournisseur. */
+  parFournisseur?: boolean;
 }
 
 export interface Rapport {

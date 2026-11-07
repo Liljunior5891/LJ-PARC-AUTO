@@ -25,4 +25,14 @@ public interface SoldeResteRepository extends JpaRepository<SoldeReste, Long> {
             group by s.modeRemboursement
             """)
     List<Object[]> remboursementsSession(@Param("sessionId") Long sessionId);
+
+    /** [date, numero, caisse, auteur, mode, montant rembourse] des remboursements valides de la periode (journaux). */
+    @Query("""
+            select s.dateSolde, s.numero, c.nom, s.auteurNom, s.modeRemboursement, s.montantRembourse from SoldeReste s
+            left join s.session ss left join ss.caisse c
+            where s.dateSolde >= :debut and s.dateSolde < :fin and s.montantRembourse > 0
+              and s.statut = tg.parcauto.api.pointdevente.materiaux.SoldeReste.Statut.VALIDE
+            order by s.dateSolde, s.id
+            """)
+    List<Object[]> journal(@Param("debut") java.time.Instant debut, @Param("fin") java.time.Instant fin);
 }

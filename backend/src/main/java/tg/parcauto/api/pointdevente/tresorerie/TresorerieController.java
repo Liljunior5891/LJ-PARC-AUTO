@@ -102,8 +102,8 @@ public class TresorerieController {
     @PostMapping("/degagements")
     @PreAuthorize("hasRole('GERANT')")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Degage le coffre vers l'administrateur, avec billettage")
-    public TresorerieService.DegagementDto envoyerDegagement(@Valid @RequestBody TresorerieService.Envoi envoi,
+    @Operation(summary = "Depose le coffre en banque : billettage et references du bordereau")
+    public TresorerieService.DegagementDto envoyerDegagement(@Valid @RequestBody TresorerieService.EnvoiDepot envoi,
                                                              @AuthenticationPrincipal UtilisateurPrincipal principal) {
         return service.envoyerDegagement(envoi, principal);
     }
@@ -124,11 +124,33 @@ public class TresorerieController {
 
     @PostMapping("/degagements/{id}/validation")
     @PreAuthorize(Autorisations.ADMINISTRATION)
-    @Operation(summary = "Valide un degagement apres recompte : l'argent arrive sur le compte de l'entreprise")
+    @Operation(summary = "Valide un depot apres verification du bordereau : l'argent arrive sur le compte de l'entreprise")
     public TresorerieService.DegagementDto validerDegagement(@PathVariable Long id,
-                                                             @Valid @RequestBody TresorerieService.Validation validation,
+                                                             @Valid @RequestBody TresorerieService.ValidationDepot validation,
                                                              @AuthenticationPrincipal UtilisateurPrincipal principal) {
         return service.validerDegagement(id, validation, principal);
+    }
+
+    @PostMapping(value = "/degagements/{id}/piece", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize(Autorisations.PDV_GESTION)
+    @Operation(summary = "Joint le bordereau de versement ou le releve de banque du depot")
+    public TresorerieService.DegagementDto joindrePiece(@PathVariable Long id,
+                                                        @org.springframework.web.bind.annotation.RequestPart("fichier") org.springframework.web.multipart.MultipartFile fichier,
+                                                        @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.joindrePiece(id, fichier, principal);
+    }
+
+    @GetMapping("/degagements/{id}/piece")
+    @PreAuthorize(Autorisations.PDV_GESTION)
+    @Operation(summary = "Affiche la piece jointe du depot")
+    public org.springframework.http.ResponseEntity<org.springframework.core.io.Resource> piece(@PathVariable Long id) {
+        DegagementCoffre d = service.degagementAvecPiece(id);
+        String nom = d.getPieceNom() == null ? "depot-" + d.getNumero() : d.getPieceNom();
+        return org.springframework.http.ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nom.replace("\"", "") + "\"")
+                .contentType(d.getPieceType() == null ? org.springframework.http.MediaType.APPLICATION_OCTET_STREAM
+                        : org.springframework.http.MediaType.parseMediaType(d.getPieceType()))
+                .body(service.piece(d));
     }
 
     @PostMapping("/degagements/{id}/refus")

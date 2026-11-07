@@ -73,3 +73,22 @@ td.positif {
     grid-template-columns: 1fr;
   }
 }
+
+span.negatif {
+  color: var(--couleur-danger);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.lien-piece {
+  margin-left: 0.3rem;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.titre-section small {
+  color: var(--couleur-texte-doux);
+  font-size: 0.75rem;
+  font-weight: 400;
+}

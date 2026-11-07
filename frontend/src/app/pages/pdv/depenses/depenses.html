@@ -13,7 +13,12 @@
 </div>
 
 @if (succes()) {
-  <div class="message succes">{{ succes() }}</div>
+  <div class="message succes bandeau-piece">
+    <span>{{ succes() }}</span>
+    @if (derniere(); as d) {
+      <button class="bouton petit succes" type="button" (click)="imprimerFiche(d)">🖨 Imprimer la fiche de depense</button>
+    }
+  </div>
 }
 @if (erreur() && modele() === undefined && categorieOuverte() === undefined && !aAnnuler()) {
   <div class="message erreur">{{ erreur() }}</div>
@@ -141,6 +146,7 @@
                   } @else { — }
                 </td>
                 <td style="white-space: nowrap; text-align: right">
+                  <button class="bouton secondaire petit" type="button" title="Fiche de depense (PDF)" (click)="imprimerFiche(d)">🖨 Fiche</button>
                   @if (d.statut === 'VALIDE') {
                     <button class="bouton secondaire petit info" type="button" (click)="formulaire.set(d)">Corriger</button>
                     <button class="bouton danger petit" type="button" (click)="aAnnuler.set(d); motif = ''">Annuler</button>

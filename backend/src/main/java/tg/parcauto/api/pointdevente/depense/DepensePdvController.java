@@ -43,6 +43,7 @@ import java.util.List;
 public class DepensePdvController {
 
     private final DepensePdvService service;
+    private final PiecesAchatPdf pieces;
 
     // ------------------------------------------------------------- depenses
 
@@ -114,6 +115,12 @@ public class DepensePdvController {
                 .body(fichier);
     }
 
+    @GetMapping("/{id}/fiche-pdf")
+    @Operation(summary = "Fiche de depense a imprimer et a signer")
+    public ResponseEntity<byte[]> fiche(@PathVariable Long id) {
+        return pdf(pieces.ficheDepense(id), pieces.nomFicheDepense(id));
+    }
+
     @DeleteMapping("/{id}/justificatif")
     @Operation(summary = "Retire le justificatif")
     public DepensePdvService.Reponse retirerJustificatif(@PathVariable Long id) {
@@ -179,6 +186,13 @@ public class DepensePdvController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void supprimerRecurrente(@PathVariable Long id) {
         service.supprimerRecurrente(id);
+    }
+
+    private static org.springframework.http.ResponseEntity<byte[]> pdf(byte[] contenu, String nom) {
+        return org.springframework.http.ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nom + "\"")
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(contenu);
     }
 
     /** Type du justificatif d'apres son extension, pour l'afficher dans le navigateur. */

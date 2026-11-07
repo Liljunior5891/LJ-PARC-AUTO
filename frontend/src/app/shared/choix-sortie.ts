@@ -1,40 +1,52 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, OnInit, computed, effect, inject, model } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../core/auth/auth.service';
 import { MODES_SORTIE, ModeSortie } from '../core/models/achats';
+import { OptionsPdvService } from '../core/services/options-pdv.service';
 import { SessionTravailService } from '../core/services/session-travail.service';
 
 /**
- * Moyen de paiement d'une depense ou d'un fournisseur. En « Caisse », la
- * caisse ouverte d'ou sortent les especes est choisie ici (la seule ouverte
- * est prise d'office), avec les especes attendues dans son tiroir.
+ * Moyen de paiement d'une depense ou d'un fournisseur : la caisse (la caisse
+ * ouverte d'ou sortent les especes est choisie ici), le coffre du gerant (avec
+ * le circuit des especes, pour un gerant, dans la limite de son solde) ou la
+ * banque, c'est-a-dire le compte de l'entreprise.
  */
 @Component({
   selector: 'app-choix-sortie',
   imports: [FormsModule, DecimalPipe],
   template: `
     <div class="moyens" role="radiogroup" aria-label="Moyen de paiement">
-      @for (m of modes; track m.valeur) {
+      @for (m of modes(); track m.valeur) {
         <button type="button" class="moyen" [class.actif]="mode() === m.valeur" [title]="m.aide"
                 role="radio" [attr.aria-checked]="mode() === m.valeur" (click)="mode.set(m.valeur)">
           <span aria-hidden="true">{{ m.icone }}</span> {{ m.libelle }}
         </button>
       }
     </div>
-    @if (mode() === 'CAISSE') {
-      @let liste = ouvertes() ?? [];
-      @if (liste.length === 0) {
-        <div class="message avertissement">Aucune caisse ouverte : ouvrez une session ou choisissez un autre moyen de paiement.</div>
-      } @else {
-        <div class="champ">
-          <label for="choix-sortie-session">Caisse d'ou sortent les especes *</label>
-          <select id="choix-sortie-session" name="sessionSortie" [ngModel]="sessionId()" (ngModelChange)="sessionId.set($event)">
-            <option [ngValue]="null" disabled>Choisissez la caisse</option>
-            @for (s of liste; track s.id) {
-              <option [ngValue]="s.id">{{ s.caisseNom }} · {{ s.numero }} — {{ s.especesAttendues | number: '1.0-0' }} F en caisse</option>
-            }
-          </select>
-        </div>
+    @switch (mode()) {
+      @case ('CAISSE') {
+        @let liste = ouvertes() ?? [];
+        @if (liste.length === 0) {
+          <div class="message avertissement">Aucune caisse ouverte : ouvrez une session ou choisissez un autre moyen de paiement.</div>
+        } @else {
+          <div class="champ">
+            <label for="choix-sortie-session">Caisse d'ou sortent les especes *</label>
+            <select id="choix-sortie-session" name="sessionSortie" [ngModel]="sessionId()" (ngModelChange)="sessionId.set($event)">
+              <option [ngValue]="null" disabled>Choisissez la caisse</option>
+              @for (s of liste; track s.id) {
+                <option [ngValue]="s.id">{{ s.caisseNom }} · {{ s.numero }} — {{ s.especesAttendues | number: '1.0-0' }} F en caisse</option>
+              }
+            </select>
+          </div>
+        }
+      }
+      @case ('COFFRE') {
+        <p class="info-moyen">🔐 Paye avec les especes de votre coffre
+          @if (soldeCoffre() !== null) { — solde : <strong>{{ soldeCoffre() | number: '1.0-0' }} F</strong> }</p>
+      }
+      @case ('BANQUE') {
+        <p class="info-moyen">🏦 Paye par le compte de l'entreprise (virement ou cheque) : indiquez la reference.</p>
       }
     }
   `,
@@ -46,15 +58,23 @@ import { SessionTravailService } from '../core/services/session-travail.service'
       background: var(--couleur-surface); font: inherit; cursor: pointer;
     }
     .moyen.actif { border-color: #1e9e4a; background: #e3f5ea; color: #157a37; font-weight: 600; }
+    .info-moyen { margin: 0; padding: 0.55rem 0.75rem; border-radius: 10px; background: #f5f7fa;
+      color: var(--couleur-texte-doux); font-size: 0.85rem; }
   `
 })
 export class ChoixSortie implements OnInit {
   private readonly sessions = inject(SessionTravailService);
+  private readonly options = inject(OptionsPdvService);
+  private readonly auth = inject(AuthService);
 
   readonly mode = model<ModeSortie>('CAISSE');
   readonly sessionId = model<number | null>(null);
 
-  readonly modes = MODES_SORTIE;
+  /** Le coffre n'existe qu'avec le circuit des especes, et seul un gerant paie depuis le sien. */
+  private readonly aUnCoffre = computed(() =>
+    this.options.circuitActif() && this.auth.aRole('GERANT') && !this.auth.aRole('ADMIN'));
+  readonly modes = computed(() => MODES_SORTIE.filter((m) => m.valeur !== 'COFFRE' || this.aUnCoffre()));
+  readonly soldeCoffre = signal<number | null>(null);
   readonly ouvertes = this.sessions.ouvertes;
   private readonly seule = computed(() => {
     const liste = this.ouvertes() ?? [];
@@ -69,9 +89,18 @@ export class ChoixSortie implements OnInit {
         this.sessionId.set(seule);
       }
     });
+    // Le solde du coffre, lu quand le coffre est choisi.
+    effect(() => {
+      if (this.mode() === 'COFFRE' && this.soldeCoffre() === null) {
+        this.options.coffre().subscribe({ next: (c) => this.soldeCoffre.set(c.solde), error: () => this.soldeCoffre.set(null) });
+      }
+    });
   }
 
   ngOnInit(): void {
     this.sessions.rafraichir();
+    if (!this.options.reglages()) {
+      this.options.charger();
+    }
   }
 }

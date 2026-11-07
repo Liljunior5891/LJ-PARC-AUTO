@@ -72,6 +72,26 @@ public class DegagementCoffre extends BaseEntity {
     @Column(columnDefinition = "text")
     private String commentaire;
 
+    /** Depot en banque : banque, reference et date du bordereau. */
+    @Column(length = 100)
+    private String banque;
+
+    @Column(name = "reference_depot", length = 80)
+    private String referenceDepot;
+
+    @Column(name = "date_depot")
+    private java.time.LocalDate dateDepot;
+
+    /** Bordereau de versement ou releve de banque, exige avant la validation. */
+    @Column(name = "piece_chemin", length = 255)
+    private String pieceChemin;
+
+    @Column(name = "piece_nom", length = 255)
+    private String pieceNom;
+
+    @Column(name = "piece_type", length = 100)
+    private String pieceType;
+
     @ElementCollection
     @CollectionTable(name = "pdv_degagement_coupure", joinColumns = @JoinColumn(name = "degagement_id"))
     private List<CoupureTresorerie> billettage = new ArrayList<>();

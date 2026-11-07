@@ -54,7 +54,8 @@ class DepensePdvServiceTest {
         when(categories.findById(4L)).thenReturn(Optional.of(loyer));
         when(repository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
         service = new DepensePdvService(repository, categories, recurrentes, mock(FournisseurRepository.class), caisse,
-                mock(StockageFichierService.class), numerotation);
+                mock(StockageFichierService.class), numerotation,
+                mock(tg.parcauto.api.pointdevente.tresorerie.TresorerieService.class));
     }
 
     @Test

@@ -73,6 +73,8 @@ export class DepensesPdv implements OnInit {
   readonly formulaire = signal<Depense | null | undefined>(undefined);
   readonly moisAPayer = signal<DepenseAPayer | null>(null);
   readonly aAnnuler = signal<Depense | null>(null);
+  /** Derniere depense enregistree : sa fiche est proposee a l'impression. */
+  readonly derniere = signal<Depense | null>(null);
   motif = '';
 
   // --------------------------------------------------------- a payer
@@ -177,6 +179,7 @@ export class DepensesPdv implements OnInit {
 
   enregistree(d: Depense): void {
     const correction = this.formulaire() !== null && this.formulaire() !== undefined;
+    this.derniere.set(correction ? null : d);
     this.formulaire.set(undefined);
     this.moisAPayer.set(null);
     this.succes.set(correction ? `Depense ${d.numero} corrigee.`
@@ -203,6 +206,13 @@ export class DepensesPdv implements OnInit {
         this.chargerAPayer();
       },
       error: (e) => this.erreur.set(e?.error?.message ?? 'Annulation impossible.')
+    });
+  }
+
+  imprimerFiche(d: Depense): void {
+    this.service.ficheDepense(d.id).subscribe({
+      next: (pdf) => this.service.ouvrirPdf(pdf),
+      error: () => this.erreur.set('Fiche de depense indisponible.')
     });
   }
 

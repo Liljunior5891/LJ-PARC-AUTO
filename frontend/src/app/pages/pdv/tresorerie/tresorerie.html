@@ -1,11 +1,11 @@
 <div class="entete-page">
   <div>
     <h1>Remises et coffre</h1>
-    <p class="sous-titre">Caisse → coffre du gerant → compte de l'entreprise. Seules les especes suivent ce circuit.</p>
+    <p class="sous-titre">Caisse → coffre du gerant → banque (compte de l'entreprise). Le depot en banque est atteste par le bordereau.</p>
   </div>
   @if (aUnCoffre && onglet() === 'coffre') {
     <button class="bouton" type="button" [disabled]="!coffre() || !!coffre()?.degagementEnAttente || (coffre()?.solde ?? 0) <= 0"
-            (click)="envoiDegagement.set(true)">Degager vers l'administration</button>
+            (click)="envoiDegagement.set(true)">Deposer en banque</button>
   }
 </div>
 
@@ -64,11 +64,11 @@
         <div class="carte-apercu violet">
           <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2" /><circle cx="12" cy="12.5" r="3" /><path d="M12 9.5v.01M7 20v1.5M17 20v1.5" /></svg></span>
           <span class="textes"><span class="libelle">Solde du coffre</span><strong>{{ c.solde | number: '1.0-0' }}<em> F</em></strong>
-            <small>remises validees − degagements valides</small></span>
+            <small>remises − depots en banque − depenses et paiements</small></span>
         </div>
         <div class="carte-apercu {{ c.degagementEnAttente ? 'orange' : 'vert' }}">
           <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z" /><path d="M8 7V5h8v2M12 16v-5M9.5 13.5L12 11l2.5 2.5" /></svg></span>
-          <span class="textes"><span class="libelle">Degagement</span>
+          <span class="textes"><span class="libelle">Depot en banque</span>
             <strong>{{ c.degagementEnAttente ? (c.degagementEnAttente.montantDeclare | number: '1.0-0') : '—' }}@if (c.degagementEnAttente) {<em> F</em>}</strong>
             <small>{{ c.degagementEnAttente ? c.degagementEnAttente.numero + ' attend l\'administrateur' : 'aucun en attente' }}</small></span>
         </div>
@@ -99,29 +99,30 @@
 
   @case ('degagements') {
     <div class="carte">
-      <p class="aide">Recomptez chaque degagement : valide, la somme recomptee quitte le coffre du gerant et arrive sur le compte de l'entreprise.</p>
+      <p class="aide">Verifiez chaque depot avec son bordereau ou releve de banque : valide, le montant quitte le coffre du gerant et arrive sur le compte de l'entreprise.</p>
       <div class="tableau-conteneur">
         <table class="tableau">
           <thead>
-            <tr><th>Degagement</th><th>Gerant</th><th>Envoye</th><th class="numerique">Solde du coffre</th>
-              <th class="numerique">Declare</th><th class="numerique">Ecart</th><th></th></tr>
+            <tr><th>Depot</th><th>Gerant</th><th>Bordereau</th><th>Date du depot</th>
+              <th class="numerique">Declare</th><th>Piece</th><th></th></tr>
           </thead>
           <tbody>
             @for (d of degagements(); track d.id) {
               <tr>
                 <td><strong>{{ d.numero }}</strong></td>
                 <td>{{ d.gerantNom }}</td>
-                <td>{{ d.envoyeLe | date: 'dd/MM HH:mm' }}</td>
-                <td class="numerique">{{ d.montantAttendu | number: '1.0-0' }}</td>
+                <td>{{ d.referenceDepot || '—' }}@if (d.banque) { <br /><small>{{ d.banque }}</small> }</td>
+                <td>{{ d.dateDepot ? (d.dateDepot | date: 'dd/MM/yyyy') : '—' }}</td>
                 <td class="numerique"><strong>{{ d.montantDeclare | number: '1.0-0' }}</strong></td>
-                <td class="numerique" [class.negatif]="d.ecartDeclare < 0" [class.positif]="d.ecartDeclare > 0">
-                  {{ d.ecartDeclare | number: '1.0-0' }}
-                  @if (d.justification) { <br /><small>{{ d.justification }}</small> }
+                <td>
+                  @if (d.piece) {
+                    <button class="bouton secondaire petit info" type="button" (click)="voirPiece(d)">📎 Ouvrir</button>
+                  } @else { <span class="negatif">Manquante</span> }
                 </td>
-                <td style="text-align: right"><button class="bouton petit succes" type="button" (click)="degagementOuvert.set(d)">Recompter</button></td>
+                <td style="text-align: right"><button class="bouton petit succes" type="button" (click)="degagementOuvert.set(d)">Verifier</button></td>
               </tr>
             } @empty {
-              <tr><td colspan="7"><div class="message vide">Aucun degagement en attente.</div></td></tr>
+              <tr><td colspan="7"><div class="message vide">Aucun depot a verifier.</div></td></tr>
             }
           </tbody>
         </table>
@@ -134,18 +135,23 @@
       <section class="cartes-apercu indicateurs">
         <div class="carte-apercu vert">
           <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" /></svg></span>
-          <span class="textes"><span class="libelle">Compte de l'entreprise</span><strong>{{ c.solde | number: '1.0-0' }}<em> F</em></strong>
-            <small>especes recues par le circuit</small></span>
+          <span class="textes"><span class="libelle">Solde du compte</span><strong>{{ c.solde | number: '1.0-0' }}<em> F</em></strong>
+            <small>entrees − sorties par la banque</small></span>
         </div>
         <div class="carte-apercu bleu">
           <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z" /><path d="M8 7V5h8v2M12 16v-5M9.5 13.5L12 11l2.5 2.5" /></svg></span>
-          <span class="textes"><span class="libelle">Par degagements</span><strong>{{ c.parDegagements | number: '1.0-0' }}<em> F</em></strong>
-            <small>coffres des gerants</small></span>
+          <span class="textes"><span class="libelle">Depots des coffres</span><strong>{{ c.parDegagements + c.parRemisesDirectes | number: '1.0-0' }}<em> F</em></strong>
+            <small>dont {{ c.parRemisesDirectes | number: '1.0-0' }} F remis directement a l'admin</small></span>
         </div>
-        <div class="carte-apercu orange">
-          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.5" /></svg></span>
-          <span class="textes"><span class="libelle">Remises validees par l'admin</span><strong>{{ c.parRemisesDirectes | number: '1.0-0' }}<em> F</em></strong>
-            <small>directement des caisses</small></span>
+        <div class="carte-apercu violet">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></svg></span>
+          <span class="textes"><span class="libelle">Mobile money et carte</span><strong>{{ c.ventesElectroniques | number: '1.0-0' }}<em> F</em></strong>
+            <small>ventes et reglements arrives directement</small></span>
+        </div>
+        <div class="carte-apercu rouge">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z" /><path d="M12 11v5M9.5 13.5L12 16l2.5-2.5" /></svg></span>
+          <span class="textes"><span class="libelle">Sorties par la banque</span><strong>{{ c.sortiesBanque | number: '1.0-0' }}<em> F</em></strong>
+            <small>depenses et paiements de fournisseurs</small></span>
         </div>
       </section>
       <div class="deux-colonnes">
@@ -163,16 +169,17 @@
           </table>
         </div>
         <div class="carte">
-          <h3 class="titre-section">Dernieres entrees</h3>
+          <h3 class="titre-section">Derniers mouvements <small>(journal complet dans Rapports → Journal de banque)</small></h3>
           <div class="tableau-conteneur">
             <table class="tableau">
-              <thead><tr><th>Date</th><th>Piece</th><th>Origine</th><th class="numerique">Montant</th></tr></thead>
+              <thead><tr><th>Date</th><th>Piece</th><th>Operation</th><th class="numerique">Credit</th><th class="numerique">Debit</th></tr></thead>
               <tbody>
                 @for (m of c.entrees; track m.piece) {
-                  <tr><td>{{ m.date | date: 'dd/MM/yyyy HH:mm' }}</td><td><strong>{{ m.piece }}</strong></td><td>{{ m.libelle }}</td>
-                    <td class="numerique positif">{{ m.entree | number: '1.0-0' }}</td></tr>
+                  <tr><td>{{ m.date | date: 'dd/MM/yyyy' }}</td><td><strong>{{ m.piece }}</strong></td><td>{{ m.libelle }}</td>
+                    <td class="numerique positif">{{ m.entree ? (m.entree | number: '1.0-0') : '' }}</td>
+                    <td class="numerique negatif">{{ m.sortie ? (m.sortie | number: '1.0-0') : '' }}</td></tr>
                 } @empty {
-                  <tr><td colspan="4"><div class="message vide">Aucune entree pour l'instant.</div></td></tr>
+                  <tr><td colspan="5"><div class="message vide">Aucun mouvement pour l'instant.</div></td></tr>
                 }
               </tbody>
             </table>
@@ -209,14 +216,15 @@
       </div>
     </div>
     <div class="carte">
-      <h3 class="titre-section">Degagements des coffres</h3>
+      <h3 class="titre-section">Depots en banque des coffres</h3>
       <div class="tableau-conteneur">
         <table class="tableau">
-          <thead><tr><th>Degagement</th><th>Gerant</th><th>Envoye</th><th class="numerique">Declare</th><th class="numerique">Valide</th><th>Statut</th></tr></thead>
+          <thead><tr><th>Depot</th><th>Gerant</th><th>Bordereau</th><th class="numerique">Declare</th><th class="numerique">Valide</th><th>Statut</th></tr></thead>
           <tbody>
             @for (d of historiqueDegagements(); track d.id) {
               <tr>
-                <td><strong>{{ d.numero }}</strong></td><td>{{ d.gerantNom }}</td><td>{{ d.envoyeLe | date: 'dd/MM/yy HH:mm' }}</td>
+                <td><strong>{{ d.numero }}</strong><br /><small>{{ d.envoyeLe | date: 'dd/MM/yy HH:mm' }}</small></td><td>{{ d.gerantNom }}</td>
+                <td>{{ d.referenceDepot || '—' }}@if (d.piece) { <button class="lien-piece" type="button" title="Ouvrir la piece" (click)="voirPiece(d)">📎</button> }</td>
                 <td class="numerique">{{ d.montantDeclare | number: '1.0-0' }}</td>
                 <td class="numerique">{{ d.montantValide != null ? (d.montantValide | number: '1.0-0') : '—' }}</td>
                 <td><span class="statut {{ d.statut.toLowerCase() }}">{{ libelles[d.statut] }}</span>
@@ -242,16 +250,9 @@
                            (ferme)="remiseOuverte.set(null)" (traite)="remiseTraitee(r, $event)" />
 }
 @if (degagementOuvert(); as d) {
-  <app-recompte-billettage [titre]="'Degagement ' + d.numero" [sousTitre]="'Coffre de ' + d.gerantNom"
-                           [expediteur]="d.gerantNom" libelleAttendu="Solde du coffre" [attendu]="d.montantAttendu"
-                           [declare]="d.montantDeclare" [coupures]="d.declare" [justificationExpediteur]="d.justification"
-                           destination="le compte de l'entreprise" [tolerance]="tolerance()"
-                           [validerVers]="validerDegagementVers(d)" [refuserVers]="refuserDegagementVers(d)"
-                           (ferme)="degagementOuvert.set(null)" (traite)="degagementTraite(d, $event)" />
+  <app-verification-depot [depot]="d" [tolerance]="tolerance()" (ferme)="degagementOuvert.set(null)"
+                          (traite)="degagementTraite(d, $event)" />
 }
 @if (envoiDegagement() && coffre(); as c) {
-  <app-envoi-billettage titre="Degager mon coffre" sousTitre="Vers l'administration, qui recomptera et validera"
-                        consigne="Comptez les especes du coffre a remettre a l'administrateur."
-                        libelleAttendu="Solde du coffre" libelleAction="Envoyer" [attendu]="c.solde" [tolerance]="tolerance()"
-                        [envoyerVers]="envoyerDegagementVers" (ferme)="envoiDegagement.set(false)" (envoye)="degagementEnvoye()" />
+  <app-depot-banque [solde]="c.solde" [tolerance]="tolerance()" (ferme)="envoiDegagement.set(false)" (envoye)="degagementEnvoye()" />
 }

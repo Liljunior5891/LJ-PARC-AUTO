@@ -77,4 +77,21 @@ public interface DepensePdvRepository extends JpaRepository<DepensePdv, Long> {
     long countByCategorieId(Long categorieId);
 
     long countByRecurrenteId(Long recurrenteId);
+
+    /** Total des depenses valides payees depuis le coffre d'un gerant. */
+    @Query("""
+            select coalesce(sum(d.montant), 0) from DepensePdv d
+            where d.coffreId = :gerant and d.mode = tg.parcauto.api.pointdevente.depense.ModeSortie.COFFRE
+              and d.statut = tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.VALIDE
+            """)
+    BigDecimal sortiDuCoffre(@Param("gerant") Long gerantId);
+
+    /** Depenses valides d'un moyen de paiement, payees jusqu'a une date (journaux de banque et du coffre). */
+    @Query("""
+            select d from DepensePdv d join fetch d.categorie
+            where d.mode = :mode and d.dateDepense <= :fin
+              and d.statut = tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.VALIDE
+            order by d.dateDepense, d.id
+            """)
+    List<DepensePdv> payeesPar(@Param("mode") ModeSortie mode, @Param("fin") LocalDate fin);
 }

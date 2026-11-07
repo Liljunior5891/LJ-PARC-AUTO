@@ -1,12 +1,13 @@
 /** Fournisseurs et depenses du point de vente (toutes les variantes). */
 
-export type ModeSortie = 'CAISSE' | 'ESPECES' | 'BANQUE' | 'MOBILE_MONEY';
+/** ESPECES et MOBILE_MONEY ne sont plus proposes : ils restent lisibles sur les pieces anciennes. */
+export type ModeSortie = 'CAISSE' | 'COFFRE' | 'BANQUE' | 'ESPECES' | 'MOBILE_MONEY';
 
+/** Moyens proposes a la saisie : la caisse, le coffre du gerant ou la banque (compte de l'entreprise). */
 export const MODES_SORTIE: { valeur: ModeSortie; libelle: string; icone: string; aide: string }[] = [
   { valeur: 'CAISSE', libelle: 'Caisse', icone: '🗄', aide: 'Sortie d\'especes du tiroir d\'une caisse ouverte' },
-  { valeur: 'ESPECES', libelle: 'Especes hors caisse', icone: '💵', aide: 'Coffre, poche du gerant...' },
-  { valeur: 'BANQUE', libelle: 'Banque', icone: '🏦', aide: 'Virement ou cheque' },
-  { valeur: 'MOBILE_MONEY', libelle: 'Mobile money', icone: '📱', aide: 'Flooz, T-Money...' }
+  { valeur: 'COFFRE', libelle: 'Coffre', icone: '🔐', aide: 'Especes du coffre du gerant (circuit des especes)' },
+  { valeur: 'BANQUE', libelle: 'Banque', icone: '🏦', aide: 'Compte de l\'entreprise : virement ou cheque' }
 ];
 
 // ---------------------------------------------------------------- fournisseurs

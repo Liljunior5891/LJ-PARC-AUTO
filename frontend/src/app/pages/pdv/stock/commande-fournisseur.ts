@@ -14,6 +14,7 @@ import { ChampQuantite } from '../../../shared/champ-quantite';
 import { Modale } from '../../../shared/modale';
 import { FormulaireCommande } from './formulaire-commande';
 import { CompteFournisseurPdv } from '../../../shared/compte-fournisseur-pdv';
+import { AchatsService } from '../../../core/services/achats.service';
 
 /**
  * Une commande fournisseur et ses produits. Tant qu'elle est en cours, elle
@@ -42,6 +43,9 @@ export class CommandeFournisseurPdv implements OnInit {
   readonly edition = signal(false);
   /** Compte du fournisseur ouvert pour payer cette commande. */
   readonly paiementOuvert = signal(false);
+  private readonly achats = inject(AchatsService);
+  /** Commande tout juste creee : le bon de commande est propose a l'impression. */
+  readonly nouvelle = signal(false);
 
   // Reception : quantite livree et cout par ligne
   readonly reception = signal(false);
@@ -62,6 +66,7 @@ export class CommandeFournisseurPdv implements OnInit {
     if (this.auth.estMateriaux()) {
       this.lieuxService.chargerEtat();
     }
+    this.nouvelle.set(this.route.snapshot.queryParamMap.get('nouvelle') === '1');
     this.charger();
   }
 
@@ -125,6 +130,17 @@ export class CommandeFournisseurPdv implements OnInit {
   }
 
   /** Le paiement a change : la situation de la commande se relit. */
+  imprimerBon(): void {
+    const c = this.commande();
+    if (!c) {
+      return;
+    }
+    this.achats.bonCommande(c.resume.id).subscribe({
+      next: (pdf) => this.achats.ouvrirPdf(pdf),
+      error: () => this.erreur.set('Bon de commande indisponible.')
+    });
+  }
+
   paiementModifie(): void {
     this.charger();
   }

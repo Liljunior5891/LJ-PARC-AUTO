@@ -43,4 +43,14 @@ public interface ReglementClientRepository extends JpaRepository<ReglementClient
               and r.statut = tg.parcauto.api.pointdevente.materiaux.ReglementClient.Statut.VALIDE
             """)
     java.math.BigDecimal totalPeriode(@Param("debut") Instant debut, @Param("fin") Instant fin);
+
+    /** [date, numero, caisse, caissier, mode, montant, client] des reglements valides de la periode (journaux). */
+    @Query("""
+            select r.dateReglement, r.numero, r.session.caisse.nom, r.caissierNom, r.modePaiement, r.montant, r.client.nom
+            from ReglementClient r
+            where r.dateReglement >= :debut and r.dateReglement < :fin
+              and r.statut = tg.parcauto.api.pointdevente.materiaux.ReglementClient.Statut.VALIDE
+            order by r.dateReglement, r.id
+            """)
+    List<Object[]> journal(@Param("debut") Instant debut, @Param("fin") Instant fin);
 }

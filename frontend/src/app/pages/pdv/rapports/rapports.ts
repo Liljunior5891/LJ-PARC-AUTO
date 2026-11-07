@@ -5,6 +5,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ArticlePdv } from '../../../core/models/pdv';
 import { BilanImport, FormatColonne, Rapport, RapportCatalogue } from '../../../core/models/rapport';
 import { PdvService } from '../../../core/services/pdv.service';
+import { AchatsService } from '../../../core/services/achats.service';
+import { Fournisseur } from '../../../core/models/achats';
 import { RestaurationService } from '../../../core/services/restauration.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { EcranPreparation } from '../../../core/models/restauration';
@@ -76,6 +78,7 @@ function apparence(libelle: string, valeur: number): { couleur: string; icone: I
 export class RapportsPdv implements OnInit {
   private readonly service = inject(RapportService);
   private readonly pdv = inject(PdvService);
+  private readonly achats = inject(AchatsService);
   private readonly restauration = inject(RestaurationService);
   private readonly estRestauration = inject(AuthService).estRestauration();
   private readonly route = inject(ActivatedRoute);
@@ -94,6 +97,9 @@ export class RapportsPdv implements OnInit {
   /** Ecrans de preparation pour les rapports de production, et celui retenu. */
   readonly ecrans = signal<EcranPreparation[]>([]);
   readonly ecran = signal<number | null>(null);
+  /** Fournisseurs proposes pour filtrer les rapports d'achat, et celui retenu (tous si vide). */
+  readonly fournisseurs = signal<Fournisseur[]>([]);
+  readonly fournisseur = signal<number | null>(null);
 
   readonly rapport = signal<Rapport | null>(null);
   readonly chargement = signal(false);
@@ -116,7 +122,10 @@ export class RapportsPdv implements OnInit {
   readonly attendEcran = computed(() => !!this.courant()?.parEcran && !this.ecran());
 
   /** Periode et produit du rapport affiche : servent au calcul comme aux exports. */
-  readonly options = computed<OptionsRapport>(() => ({ ...this.bornes(), article: this.article(), ecran: this.ecran() }));
+  readonly options = computed<OptionsRapport>(() => ({
+    ...this.bornes(), article: this.article(), ecran: this.ecran(),
+    fournisseur: this.courant()?.parFournisseur ? this.fournisseur() : null
+  }));
 
   /** Lignes filtrees par la recherche, sur toutes les colonnes. */
   readonly lignes = computed(() => {
@@ -158,6 +167,7 @@ export class RapportsPdv implements OnInit {
     if (this.estRestauration) {
       this.restauration.ecrans().subscribe({ next: (l) => this.ecrans.set(l.ecrans) });
     }
+    this.achats.fournisseursActifs().subscribe({ next: (f) => this.fournisseurs.set(f) });
     this.pdv.articles({ size: 2000 }).subscribe({
       next: (p) => this.produits.set(p.content.filter((a) => a.suiviStock))
     });
@@ -178,6 +188,11 @@ export class RapportsPdv implements OnInit {
     this.choisi.set(type);
     this.filtre.set('');
     this.rapport.set(null);
+    this.charger();
+  }
+
+  choisirFournisseur(id: number | null): void {
+    this.fournisseur.set(id);
     this.charger();
   }
 

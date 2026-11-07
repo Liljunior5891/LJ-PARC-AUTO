@@ -114,6 +114,12 @@ export interface Degagement {
   commentaire?: string;
   declare: CoupureTresorerie[];
   verifie: CoupureTresorerie[];
+  /** Depot en banque : banque, reference et date du bordereau, piece jointe. */
+  banque?: string;
+  referenceDepot?: string;
+  dateDepot?: string;
+  piece: boolean;
+  pieceNom?: string;
 }
 
 export interface EtatRemiseSession {
@@ -147,6 +153,10 @@ export interface CompteEntreprise {
   solde: number;
   parDegagements: number;
   parRemisesDirectes: number;
+  /** Ventes et reglements par mobile money ou carte, arrives directement sur le compte. */
+  ventesElectroniques: number;
+  /** Depenses et paiements de fournisseurs payes par la banque. */
+  sortiesBanque: number;
   coffres: { gerantId: number; gerantNom: string; solde: number }[];
   entrees: MouvementCoffre[];
 }

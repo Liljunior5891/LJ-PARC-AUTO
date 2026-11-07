@@ -69,7 +69,8 @@ class FournisseurServiceTest {
             enregistres.add(i.getArgument(0));
             return i.getArgument(0);
         });
-        service = new FournisseurService(fiches, reglements, commandes, caisse, numerotation);
+        service = new FournisseurService(fiches, reglements, commandes, caisse, numerotation,
+                mock(tg.parcauto.api.pointdevente.tresorerie.TresorerieService.class));
     }
 
     @Test
@@ -90,7 +91,7 @@ class FournisseurServiceTest {
     @DisplayName("On ne paie pas plus que ce qui est du")
     void montantPlafonne() {
         assertThatThrownBy(() -> service.regler(7L, new FournisseurService.ReglementRequete(
-                new BigDecimal("100001"), ModeSortie.ESPECES, null, null, null, null, null), gerant()))
+                new BigDecimal("100001"), ModeSortie.BANQUE, null, null, null, null, null), gerant()))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("depasse");
     }

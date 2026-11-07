@@ -65,6 +65,7 @@ public class DepensePdvService {
     private final CaisseService caisseService;
     private final StockageFichierService stockage;
     private final NumerotationService numerotation;
+    private final tg.parcauto.api.pointdevente.tresorerie.TresorerieService tresorerie;
 
     // ------------------------------------------------------------------ dto
 
@@ -291,6 +292,12 @@ public class DepensePdvService {
             }
             d.setRecurrente(modele);
             d.setPeriode(periode);
+        }
+        if (!r.mode().propose()) {
+            throw new BusinessException("Choisissez la caisse, le coffre ou la banque");
+        }
+        if (r.mode() == ModeSortie.COFFRE) {
+            d.setCoffreId(tresorerie.exigerCoffre(auteur, d.getMontant()));
         }
         if (r.mode() == ModeSortie.CAISSE) {
             if (r.sessionId() == null) {

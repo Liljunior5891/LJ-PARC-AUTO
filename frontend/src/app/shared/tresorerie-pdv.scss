@@ -22,3 +22,5 @@
 .note-expediteur { margin: 0.6rem 0 0; font-size: 0.82rem; }
 .destination { margin: 0.6rem 0 0; font-size: 0.82rem; color: var(--couleur-texte-doux); }
 @media (max-width: 760px) { .comptage { grid-template-columns: 1fr; } }
+
+.piece-depot { margin-top: 0.8rem; }

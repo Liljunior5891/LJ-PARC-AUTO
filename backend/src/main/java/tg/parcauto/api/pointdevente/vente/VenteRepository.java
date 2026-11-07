@@ -285,4 +285,17 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
               and l.vente.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
             """)
     java.math.BigDecimal coutAchatPeriode(@Param("debut") Instant debut, @Param("fin") Instant fin);
+
+    /**
+     * [date, numero, caisse, caissier, mode, encaisse] de chaque vente validee qui a
+     * fait entrer de l'argent (journaux de caisse et de banque).
+     */
+    @Query("""
+            select v.dateVente, v.numero, c.nom, v.caissierNom, v.modePaiement, v.montantPaye from Vente v
+            left join v.session s left join s.caisse c
+            where v.dateVente >= :debut and v.dateVente < :fin and v.montantPaye > 0
+              and v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
+            order by v.dateVente, v.id
+            """)
+    List<Object[]> encaissements(@Param("debut") Instant debut, @Param("fin") Instant fin);
 }

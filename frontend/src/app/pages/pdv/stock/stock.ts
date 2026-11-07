@@ -134,7 +134,7 @@ export class StockPdv implements OnInit {
 
   commandeEnregistree(detail: CommandeFournisseurDetail): void {
     this.nouvelleCommande.set(null);
-    void this.router.navigate(['/pdv/stock/commandes', detail.resume.id]);
+    void this.router.navigate(['/pdv/stock/commandes', detail.resume.id], { queryParams: { nouvelle: 1 } });
   }
 
   // ------------------------------------------------------------ mouvements

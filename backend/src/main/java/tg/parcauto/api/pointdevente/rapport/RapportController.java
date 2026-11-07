@@ -64,10 +64,11 @@ public class RapportController {
                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fin,
                            @RequestParam(required = false) Long article,
                            @RequestParam(required = false) Long ecran,
+                           @RequestParam(required = false) Long fournisseur,
                            @RequestParam(defaultValue = "Africa/Lome") String fuseau) {
         ZoneId zone = zone(fuseau);
         Instant[] bornes = bornes(debut, fin, zone);
-        return service.calculer(type, bornes[0], bornes[1], zone, article, ecran);
+        return service.calculer(type, bornes[0], bornes[1], zone, article, ecran, fournisseur);
     }
 
     @GetMapping("/{type}/export")
@@ -78,13 +79,15 @@ public class RapportController {
                                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fin,
                                            @RequestParam(required = false) Long article,
                                            @RequestParam(required = false) Long ecran,
+                                           @RequestParam(required = false) Long fournisseur,
                                            @RequestParam(defaultValue = "Africa/Lome") String fuseau) {
         ZoneId zone = zone(fuseau);
         Instant[] bornes = bornes(debut, fin, zone);
-        Rapport rapport = service.calculer(type, bornes[0], bornes[1], zone, article, ecran);
+        Rapport rapport = service.calculer(type, bornes[0], bornes[1], zone, article, ecran, fournisseur);
         String nom = type.name().toLowerCase().replace('_', '-')
                 + (article != null && type.isParArticle() ? "-" + article : "")
-                + (ecran != null && type.isParEcran() ? "-ecran-" + ecran : "") + "-" + LocalDate.now(zone);
+                + (ecran != null && type.isParEcran() ? "-ecran-" + ecran : "")
+                + (fournisseur != null && type.isParFournisseur() ? "-fournisseur-" + fournisseur : "") + "-" + LocalDate.now(zone);
         return fichier(rapport, format, nom, zone);
     }
 

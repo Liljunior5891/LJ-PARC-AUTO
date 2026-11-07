@@ -68,6 +68,10 @@ public class ReglementFournisseur extends BaseEntity {
     @JoinColumn(name = "mouvement_caisse_id")
     private MouvementCaisse mouvementCaisse;
 
+    /** Gerant dont le coffre a paye (mode COFFRE). */
+    @Column(name = "coffre_id")
+    private Long coffreId;
+
     @Column(name = "auteur_nom", nullable = false, length = 150)
     private String auteurNom;
 

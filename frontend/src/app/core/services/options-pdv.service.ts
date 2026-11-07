@@ -1,4 +1,5 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
+import { SANS_SUIVI } from '../operation/operation.interceptor';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -106,8 +107,21 @@ export class OptionsPdvService {
     return this.http.get<Coffre>(`${this.base}/tresorerie/coffre`);
   }
 
-  envoyerDegagement(billettage: Billettage, justification?: string): Observable<Degagement> {
-    return this.http.post<Degagement>(`${this.base}/tresorerie/degagements`, { billettage, justification });
+  envoyerDegagement(depot: { billettage: Billettage; justification?: string; banque?: string | null;
+                      referenceDepot: string; dateDepot: string }): Observable<Degagement> {
+    return this.http.post<Degagement>(`${this.base}/tresorerie/degagements`, depot);
+  }
+
+  /** Bordereau envoye juste apres le depot deja confirme : pas de seconde confirmation. */
+  joindrePieceDegagement(id: number, fichier: File): Observable<Degagement> {
+    const form = new FormData();
+    form.append('fichier', fichier);
+    return this.http.post<Degagement>(`${this.base}/tresorerie/degagements/${id}/piece`, form,
+      { context: new HttpContext().set(SANS_SUIVI, true) });
+  }
+
+  pieceDegagement(id: number): Observable<Blob> {
+    return this.http.get(`${this.base}/tresorerie/degagements/${id}/piece`, { responseType: 'blob' });
   }
 
   degagementsEnAttente(): Observable<Degagement[]> {
@@ -118,8 +132,8 @@ export class OptionsPdvService {
     return this.http.get<Page<Degagement>>(`${this.base}/tresorerie/degagements`, { params: new HttpParams().set('page', page) });
   }
 
-  validerDegagement(id: number, billettage: Billettage, commentaire?: string): Observable<Degagement> {
-    return this.http.post<Degagement>(`${this.base}/tresorerie/degagements/${id}/validation`, { billettage, commentaire })
+  validerDegagement(id: number, montantValide: number, commentaire?: string): Observable<Degagement> {
+    return this.http.post<Degagement>(`${this.base}/tresorerie/degagements/${id}/validation`, { montantValide, commentaire })
       .pipe(tap(() => this.rafraichirEnAttente()));
   }
 

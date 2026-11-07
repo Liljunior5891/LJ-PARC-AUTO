@@ -48,6 +48,17 @@
         </select>
         </div>
       }
+      @if (courant()?.parFournisseur) {
+        <div class="choix-produit">
+        <select class="champ-ligne" data-recherche="toujours" [ngModel]="fournisseur()" (ngModelChange)="choisirFournisseur($event)"
+                aria-label="Fournisseur">
+          <option [ngValue]="null">Tous les fournisseurs</option>
+          @for (f of fournisseurs(); track f.id) {
+            <option [ngValue]="f.id">{{ f.nom }}</option>
+          }
+        </select>
+        </div>
+      }
       @if (courant()?.parEcran) {
         <div class="choix-produit">
         <select class="champ-ligne" [ngModel]="ecran()" (ngModelChange)="choisirEcran($event)" aria-label="Ecran de preparation">

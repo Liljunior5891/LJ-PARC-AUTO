@@ -55,6 +55,7 @@ public class FournisseurService {
     private final CommandeFournisseurRepository commandeRepository;
     private final CaisseService caisseService;
     private final NumerotationService numerotation;
+    private final tg.parcauto.api.pointdevente.tresorerie.TresorerieService tresorerie;
 
     // ------------------------------------------------------------------ dto
 
@@ -306,6 +307,10 @@ public class FournisseurService {
         if (date.isAfter(aujourdhui)) {
             throw new BusinessException("La date du reglement ne peut pas etre dans le futur");
         }
+        if (!demande.mode().propose()) {
+            throw new BusinessException("Choisissez la caisse, le coffre ou la banque");
+        }
+        Long coffre = demande.mode() == ModeSortie.COFFRE ? tresorerie.exigerCoffre(auteur, montant) : null;
         String numero = numerotation.prochainNumero("RF");
         MouvementCaisse sortie = null;
         if (demande.mode() == ModeSortie.CAISSE) {
@@ -332,6 +337,7 @@ public class FournisseurService {
             r.setDateReglement(date);
             r.setSession(sortie == null ? null : sortie.getSession());
             r.setMouvementCaisse(sortie);
+            r.setCoffreId(coffre);
             r.setAuteurNom(auteur.getNomComplet());
             r.setNote(vide(demande.note()));
             reglementRepository.save(r);

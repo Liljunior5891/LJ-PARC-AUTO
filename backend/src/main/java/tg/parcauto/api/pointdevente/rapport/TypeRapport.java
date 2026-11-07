@@ -19,6 +19,8 @@ public enum TypeRapport {
     DEPENSES("Depenses", "Depenses", true),
     DEPENSES_CATEGORIES("Depenses par categorie", "Depenses", true),
     RESULTAT("Compte de resultat (benefice net)", "Depenses", true),
+    JOURNAL_CAISSE("Journal de caisse", "Tresorerie", true),
+    JOURNAL_BANQUE("Journal de banque (compte de l'entreprise)", "Tresorerie", true),
     CAISSES("Sessions de caisse", "Caisses", true),
     COMMANDES_TABLE("Commandes de table", "Restaurant", true),
     PREPARATION_BONS("Bons par ecran de preparation", "Restaurant", true, false, true),
@@ -56,6 +58,11 @@ public enum TypeRapport {
     /** Rapports propres aux bars et restaurants. */
     public boolean isRestauration() {
         return this == COMMANDES_TABLE || parEcran;
+    }
+
+    /** Rapports d'achat filtrables par fournisseur. */
+    public boolean isParFournisseur() {
+        return this == COMMANDES_FOURNISSEURS || this == DETTES_FOURNISSEURS || this == REGLEMENTS_FOURNISSEURS;
     }
 
     public boolean isParArticle() {

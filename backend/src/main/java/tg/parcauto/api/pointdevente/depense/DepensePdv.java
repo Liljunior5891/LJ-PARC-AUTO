@@ -72,6 +72,10 @@ public class DepensePdv extends BaseEntity {
     @JoinColumn(name = "mouvement_caisse_id")
     private MouvementCaisse mouvementCaisse;
 
+    /** Gerant dont le coffre a paye (mode COFFRE). */
+    @Column(name = "coffre_id")
+    private Long coffreId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recurrente_id")
     private DepenseRecurrente recurrente;

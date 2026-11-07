@@ -20,6 +20,7 @@ export interface OptionsRapport {
   fin?: string;
   article?: number | null;
   ecran?: number | null;
+  fournisseur?: number | null;
 }
 
 /** Rapports, exports CSV / Excel / PDF et imports du point de vente. */
@@ -74,6 +75,9 @@ export class RapportService {
     }
     if (options.ecran) {
       params = params.set('ecran', options.ecran);
+    }
+    if (options.fournisseur) {
+      params = params.set('fournisseur', options.fournisseur);
     }
     return options.article ? params.set('article', options.article) : params;
   }

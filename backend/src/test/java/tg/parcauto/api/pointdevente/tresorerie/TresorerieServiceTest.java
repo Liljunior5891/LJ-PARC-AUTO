@@ -64,8 +64,15 @@ class TresorerieServiceTest {
         when(caisse.especesDuTiroir(3L)).thenReturn(new BigDecimal("100000"));
         when(caisse.retraitRemise(eq(3L), any(), anyString(), any())).thenReturn(new MouvementCaisse());
 
+        var depenses = mock(tg.parcauto.api.pointdevente.depense.DepensePdvRepository.class);
+        when(depenses.sortiDuCoffre(any())).thenReturn(BigDecimal.ZERO);
+        var paiements = mock(tg.parcauto.api.pointdevente.fournisseur.ReglementFournisseurRepository.class);
+        when(paiements.sortiDuCoffre(any())).thenReturn(BigDecimal.ZERO);
         service = new TresorerieService(remises, degagements, caisse, reglages, numerotation,
-                mock(UtilisateurRepository.class));
+                mock(UtilisateurRepository.class), depenses, paiements,
+                mock(tg.parcauto.api.pointdevente.vente.VenteRepository.class),
+                mock(tg.parcauto.api.pointdevente.materiaux.ReglementClientRepository.class),
+                mock(tg.parcauto.api.parc.document.StockageFichierService.class));
     }
 
     @Test
@@ -128,12 +135,56 @@ class TresorerieServiceTest {
         when(degagements.sortiParCoffre(2L)).thenReturn(BigDecimal.ZERO);
         when(degagements.findFirstByGerantIdAndStatut(2L, DegagementCoffre.Statut.EN_ATTENTE)).thenReturn(Optional.empty());
 
-        TresorerieService.DegagementDto d = service.envoyerDegagement(envoi(8, null), utilisateur(2L, Role.GERANT));
+        TresorerieService.DegagementDto d = service.envoyerDegagement(depot(8), utilisateur(2L, Role.GERANT));
 
         assertThat(d.montantAttendu()).isEqualByComparingTo("80000");
         assertThat(d.statut()).isEqualTo(DegagementCoffre.Statut.EN_ATTENTE);
-        assertThatThrownBy(() -> service.envoyerDegagement(envoi(8, null), utilisateur(1L, Role.ADMIN)))
+        assertThat(d.referenceDepot()).isEqualTo("BV-2026-118");
+        assertThatThrownBy(() -> service.envoyerDegagement(depot(8), utilisateur(1L, Role.ADMIN)))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("Un depot en banque ne se valide qu'avec le bordereau joint")
+    void depotSansPiece() {
+        DegagementCoffre d = new DegagementCoffre();
+        d.setId(70L);
+        d.setNumero("DEG-2026-0001");
+        d.setGerantId(2L);
+        d.setGerantNom("Gerant");
+        d.setMontantAttendu(new BigDecimal("80000"));
+        d.setMontantDeclare(new BigDecimal("80000"));
+        d.setEnvoyeLe(java.time.Instant.now());
+        when(degagements.findById(70L)).thenReturn(Optional.of(d));
+        TresorerieService.ValidationDepot validation = new TresorerieService.ValidationDepot(new BigDecimal("80000"), null);
+
+        assertThatThrownBy(() -> service.validerDegagement(70L, validation, utilisateur(1L, Role.ADMIN)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("bordereau");
+
+        d.setPieceChemin("pdv-degagements/70/bordereau.pdf");
+        TresorerieService.DegagementDto valide = service.validerDegagement(70L, validation, utilisateur(1L, Role.ADMIN));
+        assertThat(valide.statut()).isEqualTo(DegagementCoffre.Statut.VALIDE);
+        assertThat(valide.montantValide()).isEqualByComparingTo("80000");
+    }
+
+    @Test
+    @DisplayName("Seul un gerant paie depuis son coffre, dans la limite de son solde")
+    void paiementDepuisLeCoffre() {
+        when(remises.recuParCoffre(2L)).thenReturn(new BigDecimal("50000"));
+        when(degagements.sortiParCoffre(2L)).thenReturn(BigDecimal.ZERO);
+
+        assertThat(service.exigerCoffre(utilisateur(2L, Role.GERANT), new BigDecimal("30000"))).isEqualTo(2L);
+        assertThatThrownBy(() -> service.exigerCoffre(utilisateur(2L, Role.GERANT), new BigDecimal("60000")))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("ne contient que");
+        assertThatThrownBy(() -> service.exigerCoffre(utilisateur(1L, Role.ADMIN), BigDecimal.TEN))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    private static TresorerieService.EnvoiDepot depot(int billetsDe10000) {
+        return new TresorerieService.EnvoiDepot(List.of(new TresorerieService.Ligne(new BigDecimal("10000"), billetsDe10000)),
+                null, "Ecobank", "BV-2026-118", java.time.LocalDate.now());
     }
 
     private RemiseCaisse enAttente() {

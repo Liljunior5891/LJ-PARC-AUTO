@@ -4,7 +4,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { Billettage } from '../../../core/models/pdv';
 import { Coffre, CompteEntreprise, Degagement, LIBELLES_STATUT_REMISE, Remise } from '../../../core/models/options-pdv';
 import { OptionsPdvService } from '../../../core/services/options-pdv.service';
-import { EnvoiBillettage, RecompteBillettage } from '../../../shared/tresorerie-pdv';
+import { DepotBanque, RecompteBillettage, VerificationDepot } from '../../../shared/tresorerie-pdv';
 
 type Onglet = 'remises' | 'coffre' | 'degagements' | 'compte' | 'historique';
 
@@ -15,7 +15,7 @@ type Onglet = 'remises' | 'coffre' | 'degagements' | 'compte' | 'historique';
  */
 @Component({
   selector: 'app-tresorerie-pdv',
-  imports: [DatePipe, DecimalPipe, EnvoiBillettage, RecompteBillettage],
+  imports: [DatePipe, DecimalPipe, DepotBanque, RecompteBillettage, VerificationDepot],
   templateUrl: './tresorerie.html',
   styleUrl: './tresorerie.scss'
 })
@@ -32,8 +32,8 @@ export class TresoreriePdv implements OnInit {
     { id: 'remises' as Onglet, libelle: 'Remises a valider', icone: '📥', compte: this.remises().length },
     ...(this.aUnCoffre ? [{ id: 'coffre' as Onglet, libelle: 'Mon coffre', icone: '🔐', compte: 0 }] : []),
     ...(this.estAdmin ? [
-      { id: 'degagements' as Onglet, libelle: 'Degagements a valider', icone: '📤', compte: this.degagements().length },
-      { id: 'compte' as Onglet, libelle: "Compte de l'entreprise", icone: '🏦', compte: 0 }
+      { id: 'degagements' as Onglet, libelle: 'Depots a verifier', icone: '📤', compte: this.degagements().length },
+      { id: 'compte' as Onglet, libelle: "Banque (compte de l'entreprise)", icone: '🏦', compte: 0 }
     ] : []),
     { id: 'historique' as Onglet, libelle: 'Historique', icone: '🕘', compte: 0 }
   ]);
@@ -111,29 +111,30 @@ export class TresoreriePdv implements OnInit {
     this.chargerRemises();
   }
 
-  validerDegagementVers(d: Degagement) {
-    return (b: Billettage, commentaire?: string) => this.options.validerDegagement(d.id, b, commentaire);
-  }
-
-  refuserDegagementVers(d: Degagement) {
-    return (motif: string) => this.options.refuserDegagement(d.id, motif);
-  }
-
   degagementTraite(d: Degagement, resultat: 'valide' | 'refuse'): void {
     this.degagementOuvert.set(null);
     this.succes.set(resultat === 'valide'
-      ? `Degagement ${d.numero} valide : l'argent est arrive sur le compte de l'entreprise.`
-      : `Degagement ${d.numero} refuse.`);
+      ? `Depot ${d.numero} valide : l'argent est arrive sur le compte de l'entreprise.`
+      : `Depot ${d.numero} refuse.`);
     this.chargerDegagements();
     this.options.rafraichirEnAttente();
   }
 
-  readonly envoyerDegagementVers = (b: Billettage, justification?: string) => this.options.envoyerDegagement(b, justification);
-
   degagementEnvoye(): void {
     this.envoiDegagement.set(false);
-    this.succes.set("Degagement envoye : il attend la validation de l'administrateur.");
+    this.succes.set("Depot envoye avec son bordereau : il attend la verification de l'administrateur.");
     this.chargerCoffre();
+  }
+
+  voirPiece(d: Degagement): void {
+    this.options.pieceDegagement(d.id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: () => this.erreur.set('Piece introuvable.')
+    });
   }
 
   private echec(e: unknown): void {
