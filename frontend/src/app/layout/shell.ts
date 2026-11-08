@@ -256,6 +256,28 @@ export class Shell {
       ]
     },
     {
+      // Agences multiservices : soldes centralises, agences, catalogue et reglages.
+      id: 'agences', libelle: 'Agences', module: 'AGENCES',
+      entrees: [
+        { libelle: 'Tableau de bord', route: '/agences/tableau-bord', description: 'Tresorerie, commissions et activite', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+        { libelle: 'Nouvelle transaction', route: '/agences/operation', description: 'Depot, retrait, envoi, paiement, recharge' },
+        { libelle: 'Historique', route: '/agences/transactions', description: 'Transactions, recherche et annulations' },
+        { libelle: 'Caisses des caissiers', route: '/agences/caisses', description: 'Ouverture, fermeture et billettage', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+        { libelle: 'Mouvements', route: '/agences/mouvements', description: 'Approvisionnements, banque, regularisations', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+        { libelle: 'Cartes prepayees', route: '/agences/cartes', description: 'Vendre, recharger, stock et rentabilite' },
+        { libelle: 'Depenses', route: '/agences/depenses', description: 'Charges, suivi mensuel et charges recurrentes' },
+        { libelle: 'Credits et dettes', route: '/agences/credits', description: 'Credits, apports, avances et remboursements', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+        { libelle: 'Cloture de caisse', route: '/agences/cloture', description: 'Soldes reels, ecarts et verrouillage du jour' },
+        { libelle: 'Soldes et tresorerie', route: '/agences/soldes', description: 'Cash, floats, banque et registre des mouvements', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+        { libelle: 'Agences', route: '/agences/agences', description: 'Agences, adresses et personnel rattache' },
+        { libelle: 'Services et operations', route: '/agences/services', description: 'Operateurs, reseaux et regles de mouvement' },
+        { libelle: 'Baremes de commission', route: '/agences/baremes', description: 'Fixe, pourcentage ou tranches, simulateur', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+        { libelle: 'Rapports', route: '/agences/rapports', description: 'Journalier a annuel, exports Excel, PDF, CSV', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+        { libelle: 'Journal d\'audit', route: '/agences/audit', description: 'Qui a fait quoi, avant et apres', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+        { libelle: 'Reglages et droits', route: '/agences/reglages', description: 'Journee de caisse, plafonds, droits des profils', roles: ['ADMIN'] }
+      ]
+    },
+    {
       // Seul pour une entreprise qui n'a que la Marketplace ; sinon ses ecrans rejoignent le module de base.
       id: 'marketplace', libelle: 'Marketplace', module: 'MARKETPLACE', sansModules: ['POINT_DE_VENTE', 'GESTION_PARC'],
       entrees: [

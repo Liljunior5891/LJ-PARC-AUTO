@@ -1,0 +1,336 @@
+<div class="entete-page">
+  <div>
+    <h1>Soldes et tresorerie</h1>
+    <p class="sous-titre">
+      Chaque solde est calcule a partir du registre des mouvements : il ne se saisit pas et ne se modifie pas a la main.
+      @if (etat(); as e) { Journee de caisse du {{ e.journee | date: 'dd/MM/yyyy' }}. }
+    </p>
+  </div>
+  @if (!interdit()) {
+    <div class="actions-entete">
+      @if (plusieurs()) {
+        <select class="choix-agence" [ngModel]="agenceId" (ngModelChange)="choisirAgence($event)" aria-label="Agence affichee">
+          <option [ngValue]="null">Toutes les agences</option>
+          @for (a of service.moi()?.agences ?? []; track a.id) {
+            <option [ngValue]="a.id">{{ a.nom }}{{ a.actif ? '' : ' (fermee)' }}</option>
+          }
+        </select>
+      }
+      @if (agence()) {
+        @if (service.peut('SOLDES_INITIAUX') && comptesOuvrables().length) {
+          <button class="bouton" type="button" (click)="ouvrirSaisieOuverture()">Soldes d'ouverture</button>
+        }
+        @if (service.peut('PARAMETRAGE')) {
+          <button class="bouton secondaire" type="button" (click)="nouveauCompte()">+ Compte bancaire</button>
+        }
+        @if (service.peut('SOLDES_INITIAUX')) {
+          <button class="bouton secondaire" type="button" (click)="verifier()"
+                  title="Recalcule chaque solde a partir du registre">Verifier les soldes</button>
+        }
+      }
+    </div>
+  }
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+@if (verification(); as v) {
+  @if (v.length) {
+    <div class="message erreur">
+      {{ v.length }} ecart(s) entre le solde enregistre et le registre, corrige(s) d'apres le registre et note(s) au journal d'audit :
+      @for (x of v; track x.compteId) {
+        <span class="ecart">{{ x.libelle }} : {{ x.soldeEnregistre | number: '1.0-0' }} → {{ x.soldeRegistre | number: '1.0-0' }} F</span>
+      }
+    </div>
+  }
+}
+
+@if (interdit()) {
+  <div class="carte vide">Votre profil ne donne pas acces aux soldes. Demandez a l'administrateur si vous en avez besoin.</div>
+} @else if (chargement() && !etat()) {
+  <p class="vide">Chargement des soldes...</p>
+} @else if (etat(); as e) {
+  @if (!e.agences.length) {
+    <div class="carte vide">
+      Aucune agence pour l'instant.
+      @if (service.peut('AGENCES_GERER')) { <a routerLink="/agences/agences">Creez votre premiere agence</a> : sa caisse et ses floats seront crees d'office. }
+    </div>
+  } @else {
+    @let t = agence()?.totaux ?? e.totaux;
+    <div class="grille-indicateurs">
+      <div class="carte indicateur succes">
+        <span class="libelle">Tresorerie disponible</span>
+        <span class="valeur numerique">{{ t.tresorerie | number: '1.0-0' }} F</span>
+        <span class="detail">Cash + virtuel + banque, hors comptes bloques</span>
+      </div>
+      <div class="carte indicateur">
+        <span class="libelle">Cash</span>
+        <span class="valeur numerique">{{ t.cash | number: '1.0-0' }} F</span>
+        <span class="detail">Especes en caisse</span>
+      </div>
+      <div class="carte indicateur">
+        <span class="libelle">Virtuel</span>
+        <span class="valeur numerique">{{ t.virtuel | number: '1.0-0' }} F</span>
+        <span class="detail">Floats des services et recharge</span>
+      </div>
+      <div class="carte indicateur">
+        <span class="libelle">Banque</span>
+        <span class="valeur numerique">{{ t.banque | number: '1.0-0' }} F</span>
+        <span class="detail">Comptes bancaires</span>
+      </div>
+      <div class="carte indicateur commissions">
+        <span class="libelle">Commissions</span>
+        <span class="valeur numerique">{{ t.commissions | number: '1.0-0' }} F</span>
+        <span class="detail">Sous-compte des commissions</span>
+      </div>
+    </div>
+
+    @if (!agence()) {
+      <!-- Vue centralisee : une ligne par agence. -->
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead>
+            <tr>
+              <th>Agence</th>
+              <th class="montant">Cash</th>
+              <th class="montant">Virtuel</th>
+              <th class="montant">Banque</th>
+              <th class="montant">Tresorerie</th>
+              <th class="montant">Commissions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of e.agences; track a.id) {
+              <tr class="cliquable" (click)="choisirAgence(a.id)" [class.inactive]="!a.actif">
+                <td><strong>{{ a.nom }}</strong> <small class="code">{{ a.code }}</small>@if (!a.actif) { <span class="etiquette">Fermee</span> }</td>
+                <td class="montant numerique">{{ a.totaux.cash | number: '1.0-0' }}</td>
+                <td class="montant numerique">{{ a.totaux.virtuel | number: '1.0-0' }}</td>
+                <td class="montant numerique">{{ a.totaux.banque | number: '1.0-0' }}</td>
+                <td class="montant numerique"><strong>{{ a.totaux.tresorerie | number: '1.0-0' }}</strong></td>
+                <td class="montant numerique">{{ a.totaux.commissions | number: '1.0-0' }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <th>Total entreprise</th>
+              <th class="montant numerique">{{ e.totaux.cash | number: '1.0-0' }}</th>
+              <th class="montant numerique">{{ e.totaux.virtuel | number: '1.0-0' }}</th>
+              <th class="montant numerique">{{ e.totaux.banque | number: '1.0-0' }}</th>
+              <th class="montant numerique">{{ e.totaux.tresorerie | number: '1.0-0' }}</th>
+              <th class="montant numerique">{{ e.totaux.commissions | number: '1.0-0' }}</th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    } @else {
+      @let a = agence()!;
+      @if (comptesOuvrables().length && service.peut('SOLDES_INITIAUX') && comptesOuvrables().length === a.comptes.length) {
+        <div class="message info-ouverture">
+          Premiere utilisation de {{ a.nom }} : saisissez les <button type="button" class="lien" (click)="ouvrirSaisieOuverture()">soldes d'ouverture</button>
+          (cash et float de chaque service) avant les premieres operations.
+        </div>
+      }
+      <div class="tableau-conteneur">
+        <table class="tableau comptes">
+          <thead>
+            <tr>
+              <th>Compte</th>
+              <th class="montant">Ouverture</th>
+              <th class="montant">Entrees</th>
+              <th class="montant">Sorties</th>
+              <th class="montant">Solde actuel</th>
+              <th class="montant">Decouvert tolere</th>
+              <th class="actions"></th>
+            </tr>
+          </thead>
+          @for (f of famillesPresentes(); track f) {
+            <tbody>
+              <tr class="famille">
+                <th colspan="4">{{ familles[f] }}</th>
+                <th class="montant numerique">{{ totalFamille(f) | number: '1.0-0' }}</th>
+                <th colspan="2"></th>
+              </tr>
+              @for (c of comptesDe(f); track c.id) {
+                <tr [class.inactive]="!c.actif || !c.serviceActif">
+                  <td>
+                    <strong>{{ c.libelle }}</strong>
+                    <small class="sous-ligne">
+                      {{ c.categorie ?? c.typeLibelle }}
+                      @if (c.banque) { · {{ c.banque }} }
+                      @if (c.numeroCompte) { · {{ c.numeroCompte }} }
+                    </small>
+                    @if (c.bloque) { <span class="etiquette bloque">Bloque</span> }
+                    @if (!c.actif) { <span class="etiquette">Desactive</span> }
+                    @if (!c.serviceActif) { <span class="etiquette">Service desactive</span> }
+                  </td>
+                  <td class="montant numerique">{{ c.ouverture | number: '1.0-0' }}</td>
+                  <td class="montant numerique positif">{{ c.entrees ? '+' + (c.entrees | number: '1.0-0') : '—' }}</td>
+                  <td class="montant numerique negatif">{{ c.sorties ? '−' + (c.sorties | number: '1.0-0') : '—' }}</td>
+                  <td class="montant numerique solde" [class.negatif]="c.solde < 0"><strong>{{ c.solde | number: '1.0-0' }}</strong></td>
+                  <td class="montant numerique">{{ c.decouvertAutorise ? (c.decouvertAutorise | number: '1.0-0') : '—' }}</td>
+                  <td class="actions">
+                    <button class="bouton secondaire petit" type="button" (click)="ouvrirRegistre(c)">Registre</button>
+                    @if (service.peut('PARAMETRAGE')) {
+                      <button class="bouton secondaire petit" type="button" (click)="modifierCompte(c)" title="Decouvert, blocage, banque">Regler</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          }
+        </table>
+      </div>
+    }
+  }
+}
+
+<!-- ============================================================ registre -->
+@if (compteRegistre(); as c) {
+  <app-modale [titre]="'Registre - ' + c.libelle" [sousTitre]="'Solde actuel : ' + (c.solde | number: '1.0-0') + ' F'"
+              largeur="1000px" [erreur]="erreurModale()" (ferme)="compteRegistre.set(null); erreurModale.set(null)">
+    <div class="filtres-registre">
+      <div class="champ">
+        <label for="du">Du</label>
+        <input id="du" type="date" [(ngModel)]="filtreDu" (change)="filtrerRegistre()" />
+      </div>
+      <div class="champ">
+        <label for="au">Au</label>
+        <input id="au" type="date" [(ngModel)]="filtreAu" (change)="filtrerRegistre()" />
+      </div>
+      <div class="champ reconstitution">
+        <label for="jour">Solde reconstitue a la fin du</label>
+        <div class="ligne">
+          <input id="jour" type="date" [(ngModel)]="jourReconstitue" />
+          <button class="bouton secondaire petit" type="button" [disabled]="!jourReconstitue" (click)="reconstituer()">Calculer</button>
+        </div>
+        @if (soldeReconstitue(); as s) {
+          <small><strong class="numerique">{{ s.solde | number: '1.0-0' }} F</strong> au {{ s.jour | date: 'dd/MM/yyyy' }}</small>
+        }
+      </div>
+    </div>
+    @if (lignes(); as p) {
+      <div class="tableau-conteneur registre">
+        <table class="tableau">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Ecriture</th>
+              <th>Libelle</th>
+              <th class="montant">Mouvement</th>
+              <th class="montant">Solde apres</th>
+              <th>Par</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of p.content; track l.id) {
+              <tr [class.annulation]="l.annulation">
+                <td>{{ l.date | date: 'dd/MM/yyyy HH:mm' }}<small class="sous-ligne">Journee du {{ l.journee | date: 'dd/MM' }}</small></td>
+                <td>{{ l.numero }}<small class="sous-ligne">{{ l.natureLibelle }}</small></td>
+                <td>{{ l.libelle }}@if (l.motif) { <small class="sous-ligne">{{ l.motif }}</small> }</td>
+                <td class="montant numerique" [class.positif]="l.montant > 0" [class.negatif]="l.montant < 0">
+                  {{ l.montant > 0 ? '+' : '−' }}{{ (l.montant < 0 ? -l.montant : l.montant) | number: '1.0-0' }}
+                </td>
+                <td class="montant numerique">{{ l.soldeApres | number: '1.0-0' }}</td>
+                <td>{{ l.auteurNom ?? '—' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="vide">Aucun mouvement{{ filtreDu || filtreAu ? ' sur cette periode' : '' }}.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-suite-liste [page]="p" (suite)="suiteRegistre()" />
+    } @else {
+      <p class="vide">Chargement du registre...</p>
+    }
+  </app-modale>
+}
+
+<!-- ================================================== soldes d'ouverture -->
+@if (ouverture() && agence(); as a) {
+  <app-modale [titre]="'Soldes d\'ouverture - ' + a.nom" largeur="700px" [erreur]="erreurModale()" (ferme)="ouverture.set(false)">
+    <form (ngSubmit)="enregistrerOuverture()">
+      <p class="aide">Comptez le cash et relevez le solde de chaque float chez l'operateur. Chaque solde est enregistre une seule fois,
+        comme ecriture d'ouverture horodatee ; ensuite, seule une regularisation tracee le change. Laissez vide un compte a zero.</p>
+      <div class="lignes-ouverture">
+        @for (c of comptesOuvrables(); track c.id) {
+          <label class="ligne-ouverture">
+            <span><strong>{{ c.libelle }}</strong><small>{{ familles[c.famille] }}</small></span>
+            <span class="saisie-montant">
+              <input type="number" min="0" step="1" inputmode="numeric" [name]="'m' + c.id" [(ngModel)]="montantsOuverture[c.id]" placeholder="0" />
+              <span>F</span>
+            </span>
+          </label>
+        }
+      </div>
+      <p class="total-ouverture">Total : <strong class="numerique">{{ totalOuverture() | number: '1.0-0' }} F</strong></p>
+      <div class="champ">
+        <label for="observation">Observation</label>
+        <input id="observation" name="observation" maxlength="500" [(ngModel)]="observationOuverture" placeholder="Ex. Inventaire du 07/11 au matin" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="ouverture.set(false)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!totalOuverture()">Enregistrer les soldes</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+<!-- ============================================================= compte -->
+@if (compteEdite(); as edition) {
+  <app-modale [titre]="edition === 'nouveau' ? 'Nouveau compte' : 'Regler ' + edition.libelle" largeur="620px"
+              [erreur]="erreurModale()" (ferme)="compteEdite.set(null)">
+    <form (ngSubmit)="enregistrerCompte()">
+      @if (edition === 'nouveau') {
+        <div class="champ">
+          <label for="type">Type de compte</label>
+          <select id="type" name="type" [(ngModel)]="formulaireCompte.type">
+            <option value="BANQUE">Compte bancaire</option>
+            <option value="FONDS_EXPLOITATION">Fonds d'exploitation</option>
+          </select>
+        </div>
+      }
+      @if (edition === 'nouveau' || edition.manuel) {
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label for="libelle">Nom du compte *</label>
+            <input id="libelle" name="libelle" required maxlength="120" [(ngModel)]="formulaireCompte.libelle" placeholder="Ex. Ecobank courant" />
+          </div>
+          <div class="champ">
+            <label for="banque">Banque</label>
+            <input id="banque" name="banque" maxlength="120" [(ngModel)]="formulaireCompte.banque" />
+          </div>
+          <div class="champ">
+            <label for="numero">Numero de compte</label>
+            <input id="numero" name="numero" maxlength="60" [(ngModel)]="formulaireCompte.numeroCompte" />
+          </div>
+        </div>
+      }
+      <div class="champ">
+        <label for="decouvert">Solde negatif tolere (F)</label>
+        <input id="decouvert" name="decouvert" type="number" min="0" step="1" [(ngModel)]="formulaireCompte.decouvertAutorise" />
+        <small class="aide">0 : toute operation qui ferait passer le compte sous zero est bloquee.</small>
+      </div>
+      <div class="champ">
+        <label for="seuil">Seuil d'alerte (F)</label>
+        <input id="seuil" name="seuil" type="number" min="0" step="1" [(ngModel)]="formulaireCompte.seuilAlerte" placeholder="Pas d'alerte" />
+        <small class="aide">En dessous de ce solde, une alerte « cash » ou « virtuel insuffisant » s'affiche au tableau de bord.</small>
+      </div>
+      <label class="case">
+        <input type="checkbox" name="bloque" [(ngModel)]="formulaireCompte.bloque" />
+        Compte bloque (exclu de la tresorerie disponible)
+      </label>
+      @if (edition !== 'nouveau' && edition.manuel) {
+        <label class="case">
+          <input type="checkbox" name="actif" [(ngModel)]="formulaireCompte.actif" />
+          Compte actif (un compte se desactive seulement a solde nul)
+        </label>
+      }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="compteEdite.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="(edition === 'nouveau' || edition.manuel) && !formulaireCompte.libelle?.trim()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}

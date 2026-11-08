@@ -1,0 +1,263 @@
+<div class="entete-page">
+  <div>
+    <h1>Depenses</h1>
+    <p class="sous-titre">Chaque depense debite un compte de l'agence et compte comme charge dans le resultat net.
+      {{ caissierSeul ? 'Vous payez depuis votre caisse ouverte, dans la limite du plafond regle.' : '' }}</p>
+  </div>
+  <div class="actions-entete">
+    @if (agences().length > 1) {
+      <select [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
+        @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+      </select>
+    }
+    @if (service.peut('DEPENSE_SAISIR')) {
+      <button class="bouton" type="button" (click)="nouvelle()">+ Nouvelle depense</button>
+    }
+  </div>
+</div>
+
+<div class="onglets">
+  <button type="button" [class.actif]="onglet === 'liste'" (click)="changerOnglet('liste')">Depenses</button>
+  @if (service.peut('SOLDES_CONSULTER')) {
+    <button type="button" [class.actif]="onglet === 'suivi'" (click)="changerOnglet('suivi')">Suivi mensuel</button>
+  }
+  <button type="button" [class.actif]="onglet === 'recurrentes'" (click)="changerOnglet('recurrentes')">Charges recurrentes</button>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+@switch (onglet) {
+  @case ('liste') {
+    <div class="filtres">
+      <input type="date" [(ngModel)]="filtre.du" (change)="charger()" aria-label="Du" />
+      <input type="date" [(ngModel)]="filtre.au" (change)="charger()" aria-label="Au" />
+      <select [(ngModel)]="filtre.categorieId" (ngModelChange)="charger()" aria-label="Categorie">
+        <option [ngValue]="null">Toutes les categories</option>
+        @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.nom }}</option> }
+      </select>
+      <select [(ngModel)]="filtre.statut" (ngModelChange)="charger()" aria-label="Statut">
+        <option value="">Tous statuts</option>
+        <option value="VALIDEE">Validees</option>
+        <option value="ANNULEE">Annulees</option>
+      </select>
+      <input type="search" [(ngModel)]="filtre.q" (keyup.enter)="charger()" (search)="charger()" placeholder="Numero, libelle, beneficiaire" />
+    </div>
+    @if (page(); as p) {
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Date</th><th>Numero</th><th>Categorie</th><th>Libelle</th><th>Paye par</th><th class="montant">Montant</th><th>Statut</th></tr></thead>
+          <tbody>
+            @for (d of p.content; track d.id) {
+              <tr class="cliquable" [class.annulee]="d.statut === 'ANNULEE'" (click)="detail.set(d)">
+                <td>{{ d.dateDepense | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td>{{ d.numero }}</td>
+                <td>{{ d.categorieNom }}</td>
+                <td>{{ d.libelle }}@if (d.justificatifNom) { <span title="Justificatif"> 📎</span> }</td>
+                <td>{{ d.compteNom }}</td>
+                <td class="montant numerique">{{ d.montant | number: '1.0-0' }}</td>
+                <td><span class="etiquette" [class.actif]="d.statut === 'VALIDEE'">{{ d.statut === 'VALIDEE' ? 'Validee' : 'Annulee' }}</span></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="vide">Aucune depense.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-suite-liste [page]="p" (suite)="suiteListe()" />
+    }
+  }
+
+  @case ('suivi') {
+    <div class="filtres">
+      <label>Mois <input type="month" [(ngModel)]="mois" (change)="charger()" /></label>
+    </div>
+    @if (synthese(); as s) {
+      <div class="grille-suivi">
+        <section class="carte">
+          <h2>Total des charges : {{ s.total | number: '1.0-0' }} F</h2>
+          @for (c of s.parCategorie; track c.categorieId) {
+            <div class="ligne-barre">
+              <span class="nom">{{ c.categorie }}</span>
+              <span class="piste"><span class="remplissage" [style.width.%]="(c.total / (s.total || 1)) * 100"></span></span>
+              <span class="valeur numerique">{{ c.total | number: '1.0-0' }} F</span>
+            </div>
+          } @empty {
+            <p class="vide">Aucune depense ce mois-ci.</p>
+          }
+        </section>
+        <section class="carte">
+          <h2>Comparaison des mois</h2>
+          @for (m of s.mois6; track m.mois) {
+            <div class="ligne-barre" [class.courant]="m.mois === s.mois">
+              <span class="nom">{{ m.libelle }}</span>
+              <span class="piste"><span class="remplissage" [style.width.%]="(m.total / maxMois()) * 100"></span></span>
+              <span class="valeur numerique">{{ m.total | number: '1.0-0' }} F</span>
+            </div>
+          }
+        </section>
+      </div>
+    }
+  }
+
+  @case ('recurrentes') {
+    <section class="carte">
+      <div class="tete-recurrentes">
+        <div class="generation">
+          <label>Mois <input type="month" [(ngModel)]="moisGeneration" (change)="charger()" /></label>
+          @if (!caissierSeul) {
+            <label>Payer depuis
+              <select [(ngModel)]="compteGeneration">
+                @for (c of comptes(); track c.id) { <option [ngValue]="c.id">{{ c.libelle }} ({{ c.solde | number: '1.0-0' }} F)</option> }
+              </select>
+            </label>
+          }
+          <button class="bouton" type="button" [disabled]="!totalARegler()" (click)="generer()">
+            Regler les charges du mois ({{ totalARegler() | number: '1.0-0' }} F)
+          </button>
+        </div>
+        @if (service.peut('PARAMETRAGE')) {
+          <button class="bouton secondaire" type="button" (click)="editerCharge('nouvelle')">+ Charge recurrente</button>
+        }
+      </div>
+      <p class="aide">Une charge deja reglee pour le mois n'est jamais reglee une deuxieme fois.</p>
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Charge</th><th>Categorie</th><th>Echeance</th><th class="montant">Montant</th><th>Ce mois</th><th></th></tr></thead>
+          <tbody>
+            @for (r of recurrentes(); track r.id) {
+              <tr [class.inactive]="!r.actif">
+                <td>{{ r.libelle }}</td>
+                <td>{{ r.categorieNom }}</td>
+                <td>le {{ r.jourEcheance }}</td>
+                <td class="montant numerique">{{ r.montant | number: '1.0-0' }}</td>
+                <td>@if (!r.actif) { <span class="etiquette">Desactivee</span> } @else if (r.regleeCeMois) { <span class="etiquette actif">Reglee</span> } @else { <span class="etiquette a-regler">A regler</span> }</td>
+                <td class="actions">@if (service.peut('PARAMETRAGE')) { <button class="bouton secondaire petit" type="button" (click)="editerCharge(r)">Modifier</button> }</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="vide">Aucune charge recurrente : ajoutez le loyer, l'internet, le transport...</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+}
+
+@if (saisie()) {
+  <app-modale titre="Nouvelle depense" largeur="680px" [erreur]="erreurModale()" (ferme)="saisie.set(false)">
+    <form (ngSubmit)="enregistrer()">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="categorie">Categorie *</label>
+          <select id="categorie" name="categorie" [(ngModel)]="f.categorieId">
+            <option [ngValue]="null">—</option>
+            @for (c of categories(); track c.id) { @if (c.actif) { <option [ngValue]="c.id">{{ c.nom }}</option> } }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="montant">Montant (F) *</label>
+          <input id="montant" name="montant" type="number" min="1" step="1" [(ngModel)]="f.montant" />
+        </div>
+        <div class="champ large">
+          <label for="libelle">Libelle *</label>
+          <input id="libelle" name="libelle" maxlength="255" [(ngModel)]="f.libelle" placeholder="Ex. Facture d'electricite d'octobre" />
+        </div>
+        @if (!caissierSeul) {
+          <div class="champ">
+            <label for="compte">Paye depuis *</label>
+            <select id="compte" name="compte" [(ngModel)]="f.compteId">
+              @for (c of comptes(); track c.id) { <option [ngValue]="c.id">{{ c.libelle }} ({{ c.solde | number: '1.0-0' }} F)</option> }
+            </select>
+          </div>
+        }
+        <div class="champ">
+          <label for="beneficiaire">Beneficiaire</label>
+          <input id="beneficiaire" name="beneficiaire" maxlength="150" [(ngModel)]="f.beneficiaire" />
+        </div>
+        <div class="champ">
+          <label for="reference">Reference (facture, recu)</label>
+          <input id="reference" name="reference" maxlength="80" [(ngModel)]="f.reference" />
+        </div>
+        <div class="champ">
+          <label for="piece">Justificatif (photo ou PDF)</label>
+          <input id="piece" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,image/*,application/pdf" (change)="choisirFichier($event)" />
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="saisie.set(false)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!f.categorieId || !f.libelle.trim() || !f.montant">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (charge(); as c) {
+  <app-modale [titre]="c === 'nouvelle' ? 'Nouvelle charge recurrente' : 'Modifier ' + c.libelle" largeur="600px" [erreur]="erreurModale()" (ferme)="charge.set(null)">
+    <form (ngSubmit)="enregistrerCharge()">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="c-libelle">Libelle *</label>
+          <input id="c-libelle" name="libelle" maxlength="120" [(ngModel)]="fc.libelle" placeholder="Ex. Loyer" />
+        </div>
+        <div class="champ">
+          <label for="c-categorie">Categorie *</label>
+          <select id="c-categorie" name="categorie" [(ngModel)]="fc.categorieId">
+            @for (x of categories(); track x.id) { <option [ngValue]="x.id">{{ x.nom }}</option> }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="c-montant">Montant mensuel (F) *</label>
+          <input id="c-montant" name="montant" type="number" min="1" step="1" [(ngModel)]="fc.montant" />
+        </div>
+        <div class="champ">
+          <label for="c-jour">Jour d'echeance</label>
+          <input id="c-jour" name="jour" type="number" min="1" max="28" [(ngModel)]="fc.jourEcheance" />
+        </div>
+      </div>
+      @if (c !== 'nouvelle') {
+        <label class="case"><input type="checkbox" name="actif" [(ngModel)]="fc.actif" /> Charge active</label>
+      }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="charge.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!fc.libelle.trim() || !fc.montant || !fc.categorieId">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (detail(); as d) {
+  <app-modale [titre]="d.numero + ' - ' + d.categorieNom" largeur="600px" (ferme)="detail.set(null)">
+    <dl class="fiche">
+      <dt>Date</dt><dd>{{ d.dateDepense | date: 'dd/MM/yyyy HH:mm' }} par {{ d.auteurNom }}</dd>
+      <dt>Libelle</dt><dd>{{ d.libelle }}</dd>
+      <dt>Montant</dt><dd class="numerique"><strong>{{ d.montant | number: '1.0-0' }} F</strong></dd>
+      <dt>Paye depuis</dt><dd>{{ d.compteNom }}</dd>
+      @if (d.beneficiaire) { <dt>Beneficiaire</dt><dd>{{ d.beneficiaire }}</dd> }
+      @if (d.reference) { <dt>Reference</dt><dd>{{ d.reference }}</dd> }
+      @if (d.periode) { <dt>Charge du mois</dt><dd>{{ d.periode }}</dd> }
+      @if (d.justificatifNom) { <dt>Justificatif</dt><dd><button type="button" class="lien" (click)="ouvrirJustificatif(d)">{{ d.justificatifNom }}</button></dd> }
+      @if (d.statut === 'ANNULEE') { <dt>Annulation</dt><dd>{{ d.annuleeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ d.annuleeParNom }} : {{ d.motifAnnulation }}</dd> }
+    </dl>
+    @if (d.annulable) {
+      <div class="actions-formulaire">
+        <button class="bouton danger" type="button" (click)="demanderAnnulation(d)">Annuler la depense</button>
+      </div>
+    }
+  </app-modale>
+}
+
+@if (aAnnuler(); as d) {
+  <app-modale [titre]="'Annuler ' + d.numero" largeur="500px" [erreur]="erreurModale()" (ferme)="aAnnuler.set(null)">
+    <form (ngSubmit)="annuler()">
+      <div class="champ">
+        <label for="motif">Motif *</label>
+        <input id="motif" name="motif" maxlength="500" [(ngModel)]="motif" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="aAnnuler.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motif.trim()">Annuler la depense</button>
+      </div>
+    </form>
+  </app-modale>
+}

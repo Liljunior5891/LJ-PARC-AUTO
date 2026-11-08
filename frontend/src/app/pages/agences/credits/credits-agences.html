@@ -1,0 +1,235 @@
+<div class="entete-page">
+  <div>
+    <h1>Credits et dettes</h1>
+    <p class="sous-titre">Credits recus, apports, avances et dettes. L'argent recu n'est pas un revenu ; le capital rembourse n'est pas
+      une charge, seuls les interets et frais financiers le sont.</p>
+  </div>
+  <div class="actions-entete">
+    @if (agences().length > 1) {
+      <select [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
+        @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+      </select>
+    }
+    <select [(ngModel)]="filtreStatut" (ngModelChange)="charger()" aria-label="Statut">
+      <option value="EN_COURS">En cours</option>
+      <option value="SOLDE">Soldes</option>
+      <option value="">Tous</option>
+    </select>
+    @if (service.peut('CREDIT_GERER')) {
+      <button class="bouton" type="button" (click)="nouveau()">+ Nouveau</button>
+    }
+  </div>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+<div class="grille-indicateurs">
+  <div class="carte indicateur" [class.alerte]="totalDettes() > 0">
+    <span class="libelle">Dettes restantes</span>
+    <span class="valeur numerique">{{ totalDettes() | number: '1.0-0' }} F</span>
+    <span class="detail">Credits, apports remboursables et dettes en cours</span>
+  </div>
+  <div class="carte indicateur">
+    <span class="libelle">Avances a recuperer</span>
+    <span class="valeur numerique">{{ totalCreances() | number: '1.0-0' }} F</span>
+  </div>
+</div>
+
+<div class="tableau-conteneur">
+  <table class="tableau">
+    <thead>
+      <tr><th>Numero</th><th>Type</th><th>Tiers</th><th>Libelle</th><th class="montant">Initial</th><th class="montant">Restant</th><th>Prochaine echeance</th><th></th></tr>
+    </thead>
+    <tbody>
+      @for (c of credits(); track c.id) {
+        <tr class="cliquable" (click)="fiche.set(c)">
+          <td>{{ c.numero }}</td>
+          <td>{{ c.typeLibelle }}</td>
+          <td>{{ c.tiersNom }}</td>
+          <td>{{ c.libelle }}</td>
+          <td class="montant numerique">{{ c.montantInitial | number: '1.0-0' }}</td>
+          <td class="montant numerique"><strong>{{ c.capitalRestant | number: '1.0-0' }}</strong></td>
+          <td [class.retard]="c.enRetard">
+            @if (c.prochaineEcheance) { {{ c.prochaineEcheance | date: 'dd/MM/yyyy' }} · {{ c.montantProchaineEcheance | number: '1.0-0' }} F{{ c.enRetard ? ' (en retard)' : '' }} }
+            @else { {{ c.statut === 'SOLDE' ? 'Solde' : '—' }} }
+          </td>
+          <td class="actions" (click)="$event.stopPropagation()">
+            @if (c.statut === 'EN_COURS' && c.remboursable && service.peut('CREDIT_GERER')) {
+              <button class="bouton petit" type="button" (click)="demanderRemboursement(c)">{{ c.dette ? 'Rembourser' : 'Encaisser' }}</button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="8" class="vide">Aucun credit ni dette.</td></tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (saisie()) {
+  <app-modale titre="Nouveau credit ou dette" largeur="760px" [erreur]="erreurModale()" (ferme)="saisie.set(false)">
+    <form (ngSubmit)="enregistrer()">
+      <div class="choix-type">
+        @for (t of types; track t.code) {
+          <label [class.choisi]="f.type === t.code"><input type="radio" name="type" [value]="t.code" [(ngModel)]="f.type" /> {{ t.libelle }}</label>
+        }
+      </div>
+      <p class="aide">{{ aideType() }}</p>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="tiers">{{ f.type === 'AVANCE' ? 'Beneficiaire' : 'Preteur / creancier' }} *</label>
+          <input id="tiers" name="tiers" maxlength="150" [(ngModel)]="f.tiersNom" />
+        </div>
+        <div class="champ">
+          <label for="tel">Telephone</label>
+          <input id="tel" name="tel" maxlength="30" [(ngModel)]="f.tiersTelephone" />
+        </div>
+        <div class="champ large">
+          <label for="libelle">Libelle *</label>
+          <input id="libelle" name="libelle" maxlength="255" [(ngModel)]="f.libelle" placeholder="Ex. Pret pour le fonds de roulement" />
+        </div>
+        <div class="champ">
+          <label for="montant">Montant (F) *</label>
+          <input id="montant" name="montant" type="number" min="1" step="1" [(ngModel)]="f.montant" />
+        </div>
+        <div class="champ">
+          <label for="compte">{{ f.type === 'AVANCE' ? 'Verse depuis' : 'Recu sur' }}{{ f.type === 'DETTE' ? ' (facultatif)' : ' *' }}</label>
+          <select id="compte" name="compte" [(ngModel)]="f.compteId">
+            @if (f.type === 'DETTE') { <option [ngValue]="null">Aucun mouvement d'argent</option> }
+            @for (c of comptes(); track c.id) { <option [ngValue]="c.id">{{ c.libelle }} ({{ c.solde | number: '1.0-0' }} F)</option> }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="debut">Date</label>
+          <input id="debut" name="debut" type="date" [(ngModel)]="f.dateDebut" />
+        </div>
+        <div class="champ">
+          <label for="echeance">Echeance finale</label>
+          <input id="echeance" name="echeance" type="date" [(ngModel)]="f.dateEcheance" />
+        </div>
+        <div class="champ">
+          <label for="taux">Taux d'interet (%)</label>
+          <input id="taux" name="taux" type="number" min="0" step="0.01" [(ngModel)]="f.tauxInteret" />
+        </div>
+      </div>
+      @if (f.type === 'APPORT') {
+        <label class="case"><input type="checkbox" name="remboursable" [(ngModel)]="f.remboursable" /> Apport remboursable</label>
+      }
+      <fieldset class="echeancier">
+        <legend>Echeancier (facultatif)</legend>
+        @for (e of echeances; track $index; let i = $index) {
+          <div class="ligne-echeance">
+            <input type="date" [name]="'ed' + i" [(ngModel)]="e.datePrevue" />
+            <input type="number" min="1" step="1" [name]="'em' + i" [(ngModel)]="e.montant" placeholder="Montant" />
+            <button type="button" class="retirer" (click)="retirerEcheance(i)" aria-label="Retirer">×</button>
+          </div>
+        }
+        <button type="button" class="lien" (click)="ajouterEcheance()">+ Echeance</button>
+      </fieldset>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="saisie.set(false)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!f.libelle.trim() || !f.tiersNom.trim() || !f.montant">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (fiche(); as c) {
+  <app-modale [titre]="c.numero + ' - ' + c.typeLibelle" [sousTitre]="c.tiersNom" largeur="760px" (ferme)="fiche.set(null)">
+    <div class="resume-credit">
+      <div><small>Montant initial</small><strong class="numerique">{{ c.montantInitial | number: '1.0-0' }} F</strong></div>
+      <div><small>Capital rembourse</small><strong class="numerique">{{ c.capitalRembourse | number: '1.0-0' }} F</strong></div>
+      <div><small>Restant du</small><strong class="numerique">{{ c.capitalRestant | number: '1.0-0' }} F</strong></div>
+      @if (c.dette) { <div><small>Interets et frais payes</small><strong class="numerique">{{ c.interetsPayes | number: '1.0-0' }} F</strong></div> }
+    </div>
+    <p class="aide">{{ c.libelle }} · depuis le {{ c.dateDebut | date: 'dd/MM/yyyy' }}{{ c.dateEcheance ? ' · echeance ' + (c.dateEcheance | date: 'dd/MM/yyyy') : '' }}
+      {{ c.compteNom ? ' · compte ' + c.compteNom : '' }}{{ c.tauxInteret ? ' · ' + c.tauxInteret + ' %' : '' }}</p>
+    @if (c.echeances.length) {
+      <h3>Echeancier</h3>
+      <table class="tableau compact">
+        <tbody>
+          @for (e of c.echeances; track e.datePrevue) {
+            <tr><td>{{ e.datePrevue | date: 'dd/MM/yyyy' }}</td><td class="montant numerique">{{ e.montant | number: '1.0-0' }} F</td></tr>
+          }
+        </tbody>
+      </table>
+    }
+    <h3>Remboursements</h3>
+    <table class="tableau compact">
+      <thead><tr><th>Date</th><th class="montant">Capital</th><th class="montant">Interets</th><th>Compte</th><th></th></tr></thead>
+      <tbody>
+        @for (r of c.remboursements; track r.id) {
+          <tr [class.annulee]="r.statut === 'ANNULE'">
+            <td>{{ r.date | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td class="montant numerique">{{ r.capital | number: '1.0-0' }}</td>
+            <td class="montant numerique">{{ r.interets | number: '1.0-0' }}</td>
+            <td>{{ r.compteNom }}</td>
+            <td class="actions">
+              @if (r.statut === 'VALIDE' && service.peut('CREDIT_GERER')) {
+                <button class="bouton secondaire petit" type="button" (click)="demanderAnnulation(r)">Annuler</button>
+              } @else if (r.statut === 'ANNULE') { <small>Annule : {{ r.motifAnnulation }}</small> }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5" class="vide">Aucun remboursement.</td></tr>
+        }
+      </tbody>
+    </table>
+    @if (c.statut === 'EN_COURS' && c.remboursable && service.peut('CREDIT_GERER')) {
+      <div class="actions-formulaire">
+        <button class="bouton" type="button" (click)="demanderRemboursement(c)">{{ c.dette ? 'Enregistrer un remboursement' : 'Encaisser un remboursement' }}</button>
+      </div>
+    }
+  </app-modale>
+}
+
+@if (remboursement(); as c) {
+  <app-modale [titre]="(c.dette ? 'Rembourser ' : 'Encaisser ') + c.numero" [sousTitre]="'Restant du : ' + (c.capitalRestant | number: '1.0-0') + ' F'"
+              largeur="560px" [erreur]="erreurModale()" (ferme)="remboursement.set(null)">
+    <form (ngSubmit)="rembourser()">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="capital">Capital (F)</label>
+          <input id="capital" name="capital" type="number" min="0" step="1" [(ngModel)]="fr.capital" />
+        </div>
+        @if (c.dette) {
+          <div class="champ">
+            <label for="interets">Interets et frais (F)</label>
+            <input id="interets" name="interets" type="number" min="0" step="1" [(ngModel)]="fr.interets" />
+          </div>
+        }
+        <div class="champ">
+          <label for="r-compte">{{ c.dette ? 'Paye depuis' : 'Recu sur' }} *</label>
+          <select id="r-compte" name="compte" [(ngModel)]="fr.compteId">
+            @for (x of comptes(); track x.id) { <option [ngValue]="x.id">{{ x.libelle }} ({{ x.solde | number: '1.0-0' }} F)</option> }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="r-obs">Observations</label>
+          <input id="r-obs" name="obs" maxlength="500" [(ngModel)]="fr.observations" />
+        </div>
+      </div>
+      @if (c.dette) { <p class="aide">Le capital reduit la dette ; les interets et frais sont comptes comme charge (frais financiers).</p> }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="remboursement.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!(fr.capital || fr.interets) || fr.compteId == null">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (aAnnuler(); as r) {
+  <app-modale titre="Annuler le remboursement" largeur="480px" [erreur]="erreurModale()" (ferme)="aAnnuler.set(null)">
+    <form (ngSubmit)="annulerRemboursement()">
+      <div class="champ">
+        <label for="motif">Motif *</label>
+        <input id="motif" name="motif" maxlength="500" [(ngModel)]="motif" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="aAnnuler.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motif.trim()">Annuler le remboursement</button>
+      </div>
+    </form>
+  </app-modale>
+}

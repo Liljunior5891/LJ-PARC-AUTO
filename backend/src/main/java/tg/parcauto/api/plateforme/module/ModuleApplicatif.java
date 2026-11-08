@@ -56,6 +56,13 @@ public enum ModuleApplicatif {
             true,
             // Gerant (point de vente) et gestionnaire de parc (demandes de location) y travaillent aussi.
             EnumSet.of(Role.ADMIN, Role.GERANT, Role.GESTIONNAIRE_PARC),
+            List.of()),
+    AGENCES(
+            "Agences multiservices",
+            "Mobile Money, transferts d'argent, services financiers et cartes prepayees : soldes cash et virtuels "
+                    + "par agence, commissions, clotures et tresorerie centralisee.",
+            true,
+            EnumSet.of(Role.ADMIN, Role.SUPERVISEUR_AGENCE, Role.CAISSIER_AGENCE),
             List.of());
 
     /** Declinaison d'un module, choisie par l'entreprise. */

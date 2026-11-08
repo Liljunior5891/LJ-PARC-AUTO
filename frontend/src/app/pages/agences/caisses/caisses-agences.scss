@@ -1,0 +1,189 @@
+.choix-agence {
+  min-width: 200px;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 8px;
+  font: inherit;
+  background: var(--couleur-surface);
+}
+
+.grille-caissiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.caissier {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-top: 4px solid var(--couleur-bordure);
+
+  &.ouverte {
+    border-top-color: var(--couleur-succes);
+  }
+
+  > header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+
+    h2 {
+      margin: 0;
+      font-size: 1.02rem;
+    }
+
+    small {
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  .avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--couleur-primaire) 12%, #fff);
+    color: var(--couleur-primaire);
+    font-weight: 700;
+  }
+
+  .bouton {
+    justify-content: center;
+    margin-top: auto;
+  }
+}
+
+.etat {
+  align-self: flex-start;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--couleur-fond);
+  color: var(--couleur-texte-doux);
+  font-size: 0.8rem;
+  font-weight: 600;
+
+  &.ouverte {
+    background: color-mix(in srgb, var(--couleur-succes) 12%, #fff);
+    color: var(--couleur-succes);
+  }
+}
+
+.chiffres {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.2rem 1rem;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+
+  dt {
+    color: var(--couleur-texte-doux);
+  }
+
+  dd {
+    margin: 0;
+    text-align: right;
+  }
+
+  .total {
+    padding-top: 0.3rem;
+    border-top: 1px solid var(--couleur-bordure);
+    color: var(--couleur-texte);
+    font-weight: 700;
+  }
+}
+
+.plus {
+  color: var(--couleur-succes);
+}
+
+.moins {
+  color: var(--couleur-danger);
+}
+
+.historique h2 {
+  font-size: 1rem;
+}
+
+table.tableau {
+  .montant {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  tr.cliquable {
+    cursor: pointer;
+
+    &:hover td {
+      background: #f2f7fd;
+    }
+  }
+}
+
+.attendu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  margin-bottom: 0.8rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  background: #eef3f9;
+  font-variant-numeric: tabular-nums;
+}
+
+.ecart {
+  margin: 0.8rem 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  background: #fff6e0;
+  color: #7a5200;
+
+  &.nul {
+    background: #e3f5ea;
+    color: var(--couleur-succes);
+  }
+
+  &.negatif {
+    background: #fce9e9;
+    color: var(--couleur-danger);
+  }
+}
+
+.fiche {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 0.45rem 0.8rem;
+  margin: 0;
+
+  dt {
+    color: var(--couleur-texte-doux);
+    font-size: 0.85rem;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.coupure {
+  display: inline-block;
+  margin: 0 0.4rem 0.2rem 0;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  background: var(--couleur-fond);
+  font-size: 0.82rem;
+}
+
+.aide {
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}
+
+.vide {
+  padding: 2rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}

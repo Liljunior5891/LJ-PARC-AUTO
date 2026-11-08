@@ -32,7 +32,11 @@ public enum Role {
      * de la marge des produits auxquels il est rattache. Pour d'autres ecrans,
      * l'administrateur lui ajoute d'autres profils.
      */
-    ASSOCIE("Associe");
+    ASSOCIE("Associe"),
+    /** Agences multiservices : controle les agences qui lui sont confiees (annulations, mouvements, clotures). */
+    SUPERVISEUR_AGENCE("Superviseur d'agence"),
+    /** Agences multiservices : saisit les operations de son agence sur sa propre caisse. */
+    CAISSIER_AGENCE("Caissier d'agence");
 
     private final String libelle;
 

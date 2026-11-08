@@ -98,6 +98,10 @@ export class AuthService {
       }
       return '/pdv/caisse';
     }
+    if (module === 'AGENCES') {
+      // Le caissier d'agence arrive directement sur la saisie.
+      return this.aRole('ADMIN', 'SUPERVISEUR_AGENCE') ? '/agences/tableau-bord' : '/agences/operation';
+    }
     return module === 'GESTION_PARC' ? '/tableau-bord' : '/modules';
   }
 
@@ -139,7 +143,7 @@ export class AuthService {
     if (this.estSuperAdmin()) {
       return '/plateforme';
     }
-    const module = (['GESTION_PARC', 'POINT_DE_VENTE'] as CodeModule[]).find((m) => this.peutUtiliser(m));
+    const module = (['GESTION_PARC', 'POINT_DE_VENTE', 'AGENCES'] as CodeModule[]).find((m) => this.peutUtiliser(m));
     if (module) {
       return this.accueilModule(module);
     }

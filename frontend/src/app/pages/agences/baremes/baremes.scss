@@ -1,0 +1,281 @@
+.actions-entete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.message.attention {
+  background: #fff6e0;
+  color: #7a5200;
+  border: 1px solid #f2dca4;
+}
+
+.simulateur {
+  margin-bottom: 1.25rem;
+  border-left: 4px solid var(--couleur-accent);
+
+  h2 {
+    font-size: 1rem;
+  }
+}
+
+.ligne-simulation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+
+  .champ {
+    margin: 0;
+    min-width: 160px;
+  }
+}
+
+.resultat-simulation {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  background: #e3f5ea;
+
+  .libelle {
+    color: var(--couleur-texte-doux);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  strong {
+    font-size: 1.4rem;
+    color: var(--couleur-succes);
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+  }
+
+  &.sans {
+    background: #f4f6f9;
+
+    strong {
+      color: var(--couleur-texte-doux);
+    }
+  }
+}
+
+.services {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.service {
+  > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+
+    h2 {
+      margin: 0;
+      font-size: 1.05rem;
+
+      small {
+        margin-left: 0.4rem;
+        color: var(--couleur-texte-doux);
+        font-size: 0.8rem;
+        font-weight: 500;
+      }
+    }
+  }
+
+  .tableau-conteneur {
+    max-height: none;
+  }
+}
+
+table.tableau {
+  .montant {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .actions {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .periode {
+    white-space: nowrap;
+    font-size: 0.85rem;
+  }
+
+  tr.passe td {
+    opacity: 0.55;
+  }
+
+  .tranches {
+    margin: 0.25rem 0 0;
+    padding-left: 1.1rem;
+    font-size: 0.82rem;
+  }
+
+  .juste {
+    color: var(--couleur-succes);
+    font-weight: 700;
+  }
+
+  .faux {
+    color: var(--couleur-danger);
+    font-weight: 700;
+  }
+}
+
+.etiquette {
+  margin-left: 0.35rem;
+
+  &.EN_COURS {
+    background: #e3f5ea;
+    color: var(--couleur-succes);
+  }
+
+  &.A_VENIR {
+    background: #e7f0fd;
+    color: var(--couleur-info);
+  }
+
+  &.exemple {
+    background: #fff2df;
+    color: #a8650a;
+  }
+}
+
+.aucun {
+  margin: 0;
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}
+
+.aide {
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}
+
+.controle h2 {
+  font-size: 1rem;
+}
+
+.choix-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  border: none;
+
+  legend {
+    margin-bottom: 0.4rem;
+    color: var(--couleur-texte-doux);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    cursor: pointer;
+
+    &.choisi {
+      border-color: var(--couleur-primaire);
+      background: color-mix(in srgb, var(--couleur-primaire) 6%, #fff);
+    }
+  }
+}
+
+.champ.etroit {
+  max-width: 260px;
+}
+
+.saisie-tranches {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    padding: 0.3rem;
+    color: var(--couleur-texte-doux);
+    font-size: 0.78rem;
+    text-align: left;
+  }
+
+  td {
+    padding: 0.25rem 0.3rem;
+  }
+
+  input,
+  select {
+    width: 100%;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 6px;
+    font: inherit;
+  }
+
+  .retirer {
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 6px;
+    background: #fde8e4;
+    color: var(--couleur-danger);
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+}
+
+.ajout {
+  margin: 0.4rem 0 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--couleur-primaire);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.apercu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: #eef3f9;
+
+  input {
+    width: 140px;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 6px;
+    font: inherit;
+  }
+}
+
+.vide {
+  padding: 2rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .saisie-tranches {
+    font-size: 0.85rem;
+  }
+}

@@ -1,0 +1,131 @@
+<div class="entete-page">
+  <div>
+    <h1>Agences</h1>
+    <p class="sous-titre">Chaque agence a sa propre caisse, ses floats et son personnel ; l'administrateur les suit toutes depuis son compte.</p>
+  </div>
+  @if (gestion()) {
+    <div class="actions-entete">
+      <button class="bouton" type="button" (click)="nouvelle()">+ Nouvelle agence</button>
+    </div>
+  }
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+@if (chargement()) {
+  <p class="vide">Chargement des agences...</p>
+} @else {
+  <div class="grille-caisses liste-defilante">
+    @for (a of agences(); track a.id) {
+      <article class="carte caisse" [class.inactive]="!a.actif">
+        <header>
+          <span class="icone" aria-hidden="true">🏦</span>
+          <div>
+            <h2>{{ a.nom }}</h2>
+            <small>{{ a.code }}@if (lieu(a); as l) { · {{ l }} }</small>
+          </div>
+          @if (!a.actif) { <span class="etiquette">Fermee</span> }
+        </header>
+        @if (a.adresse || a.telephone) {
+          <p class="coordonnees">{{ a.adresse }}@if (a.adresse && a.telephone) { · }{{ a.telephone }}</p>
+        }
+        <div class="affectes">
+          <small>Responsable : <strong>{{ a.responsableNom ?? 'aucun' }}</strong></small>
+        </div>
+        <div class="affectes">
+          <small>Personnel :</small>
+          @for (u of a.utilisateurs; track u.id) {
+            <span class="puce" [title]="u.roles.join(', ')">{{ u.nomComplet }}</span>
+          } @empty {
+            <span class="aucun">Personne : seul l'administrateur y travaille</span>
+          }
+        </div>
+        @if (gestion()) {
+          <footer class="actions-carte">
+            <button type="button" class="action bleu" (click)="modifier(a)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>
+              <span>Modifier</span>
+            </button>
+          </footer>
+        }
+      </article>
+    } @empty {
+      <div class="carte vide">
+        Aucune agence.
+        @if (gestion()) { Creez la premiere : sa caisse generale, un float par service et le compte des commissions seront crees d'office. }
+      </div>
+    }
+  </div>
+}
+
+@if (edition(); as e) {
+  <app-modale [titre]="e === 'nouvelle' ? 'Nouvelle agence' : 'Modifier ' + e.nom" largeur="720px"
+              [erreur]="erreurFormulaire()" (ferme)="edition.set(null)">
+    <form (ngSubmit)="enregistrer()">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="nom">Nom de l'agence *</label>
+          <input id="nom" name="nom" required maxlength="120" [(ngModel)]="formulaire.nom" placeholder="Ex. LJ-Agoe" />
+        </div>
+        <div class="champ">
+          <label for="code">Code court *</label>
+          <input id="code" name="code" required maxlength="20" [(ngModel)]="formulaire.code" placeholder="Ex. AGO" class="majuscules" />
+        </div>
+        <div class="champ">
+          <label for="ville">Ville</label>
+          <input id="ville" name="ville" maxlength="80" [(ngModel)]="formulaire.ville" placeholder="Ex. Lome" />
+        </div>
+        <div class="champ">
+          <label for="quartier">Quartier</label>
+          <input id="quartier" name="quartier" maxlength="80" [(ngModel)]="formulaire.quartier" placeholder="Ex. Agoe-Nyive" />
+        </div>
+        <div class="champ">
+          <label for="adresse">Adresse</label>
+          <input id="adresse" name="adresse" maxlength="255" [(ngModel)]="formulaire.adresse" />
+        </div>
+        <div class="champ">
+          <label for="telephone">Telephone</label>
+          <input id="telephone" name="telephone" maxlength="30" [(ngModel)]="formulaire.telephone" />
+        </div>
+      </div>
+
+      <div class="champ">
+        <label for="responsable">Superviseur responsable</label>
+        <select id="responsable" name="responsable" [(ngModel)]="formulaire.responsableId">
+          <option [ngValue]="null">Aucun</option>
+          @for (s of superviseurs(); track s.id) { <option [ngValue]="s.id">{{ s.nomComplet }}</option> }
+        </select>
+      </div>
+
+      <fieldset class="personnel">
+        <legend>Personnel rattache a l'agence</legend>
+        @for (m of personnel(); track m.id) {
+          @if (m.actif) {
+            <label class="membre" [class.choisi]="choisis().has(m.id) || formulaire.responsableId === m.id">
+              <input type="checkbox" [checked]="choisis().has(m.id) || formulaire.responsableId === m.id"
+                     [disabled]="formulaire.responsableId === m.id" (change)="basculer(m)" />
+              <span><strong>{{ m.nomComplet }}</strong><small>{{ m.roles.join(', ') }}</small></span>
+            </label>
+          }
+        } @empty {
+          <p class="aucun">Aucun superviseur ni caissier d'agence : creez les comptes depuis l'ecran Utilisateurs, avec le profil
+            « Superviseur d'agence » ou « Caissier d'agence ».</p>
+        }
+      </fieldset>
+      <p class="aide">Le superviseur et le caissier ne voient que les agences ou ils sont rattaches.</p>
+
+      @if (e !== 'nouvelle') {
+        <label class="case">
+          <input type="checkbox" name="actif" [(ngModel)]="formulaire.actif" />
+          Agence ouverte (decochez pour la fermer sans perdre son historique)
+        </label>
+      }
+
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="edition.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!formulaire.nom.trim() || !formulaire.code.trim()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}

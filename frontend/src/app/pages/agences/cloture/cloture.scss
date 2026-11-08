@@ -1,0 +1,144 @@
+.actions-entete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  select,
+  input {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font: inherit;
+    background: var(--couleur-surface);
+  }
+}
+
+.message.attention {
+  background: #fff6e0;
+  color: #7a5200;
+  border: 1px solid #f2dca4;
+}
+
+.a-faire {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.puce-jour {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid #e6c97a;
+  border-radius: 999px;
+  background: #fff;
+  color: #7a5200;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.carte {
+  margin-bottom: 1.25rem;
+}
+
+.tete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.etiquette {
+  &.SOUMISE {
+    background: #fff2df;
+    color: #a8650a;
+  }
+
+  &.VALIDEE {
+    background: #e3f5ea;
+    color: var(--couleur-succes);
+  }
+
+  &.REJETEE,
+  &.ROUVERTE {
+    background: #fce9e9;
+    color: var(--couleur-danger);
+  }
+}
+
+table.tableau {
+  .montant {
+    text-align: right;
+    white-space: nowrap;
+
+    input {
+      width: 140px;
+      text-align: right;
+    }
+  }
+
+  .justif {
+    width: 100%;
+    min-width: 200px;
+  }
+
+  .sous-ligne {
+    display: block;
+    color: var(--couleur-texte-doux);
+    font-size: 0.75rem;
+  }
+
+  .plus {
+    color: var(--couleur-succes);
+  }
+
+  .moins {
+    color: var(--couleur-danger);
+  }
+
+  tr.cliquable {
+    cursor: pointer;
+
+    &:hover td {
+      background: #f2f7fd;
+    }
+  }
+}
+
+.lien {
+  margin-left: 0.3rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--couleur-primaire);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.historique h2 {
+  font-size: 1rem;
+}
+
+.aide {
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}
+
+.vide {
+  padding: 2rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}

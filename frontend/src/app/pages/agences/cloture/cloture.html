@@ -1,0 +1,164 @@
+<div class="entete-page">
+  <div>
+    <h1>Cloture de caisse</h1>
+    <p class="sous-titre">Comptez le cash, relevez le solde de chaque float chez l'operateur et justifiez les ecarts. Une cloture validee
+      verrouille la journee : plus aucune saisie sans reouverture autorisee.</p>
+  </div>
+  <div class="actions-entete">
+    @if (agences().length > 1) {
+      <select [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
+        @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+      </select>
+    }
+    <input type="date" [ngModel]="journee" (ngModelChange)="choisirJournee($event)" aria-label="Journee a cloturer" />
+  </div>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+@if (aFaire().length) {
+  <div class="message attention a-faire">
+    <strong>{{ aFaire().length }} journee(s) avec activite non cloturee(s) :</strong>
+    @for (a of aFaire(); track a.agenceId + a.journee) {
+      <button type="button" class="puce-jour" (click)="choisirJournee(a.journee)">{{ a.journee | date: 'dd/MM' }} · {{ statuts[a.statut] }}</button>
+    }
+  </div>
+}
+
+@if (preparation(); as p) {
+  <section class="carte">
+    <header class="tete">
+      <div>
+        <h2>{{ p.agenceNom }} — journee du {{ p.journee | date: 'dd/MM/yyyy' }}</h2>
+        <small>{{ p.ecritures }} ecriture(s) au registre ce jour-la{{ p.journee === p.journeeCourante ? ' · journee en cours' : '' }}</small>
+      </div>
+      @if (p.cloture; as c) {
+        <span class="etiquette statut" [class]="'etiquette statut ' + c.statut">{{ statuts[c.statut] }}</span>
+      }
+    </header>
+
+    @if (p.cloture; as c) {
+      @if (c.statut === 'REJETEE') { <div class="message erreur">Rejetee par {{ c.valideeParNom }} : {{ c.motifRejet }}</div> }
+      @if (c.statut === 'ROUVERTE') { <div class="message attention">Rouverte par {{ c.rouverteParNom }} le {{ c.rouverteLe | date: 'dd/MM HH:mm' }} : {{ c.motifReouverture }}</div> }
+    }
+
+    @if (saisissable()) {
+      @if (p.caissesOuvertes.length) {
+        <div class="message erreur">Fermez d'abord les caisses ouvertes : {{ p.caissesOuvertes.join(', ') }}.</div>
+      }
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead>
+            <tr><th>Compte</th><th class="montant">Theorique</th><th class="montant">Reel</th><th class="montant">Ecart</th><th>Justification</th></tr>
+          </thead>
+          <tbody>
+            @for (c of p.comptes; track c.compteId) {
+              @let e = ecart(c.compteId, c.soldeTheorique);
+              <tr>
+                <td>{{ c.libelle }}<small class="sous-ligne">{{ familles[c.famille] }}{{ c.obligatoire ? ' · obligatoire' : '' }}</small></td>
+                <td class="montant numerique">
+                  {{ c.soldeTheorique | number: '1.0-0' }}
+                  <button type="button" class="lien" (click)="reprendreTheorique(c.compteId, c.soldeTheorique)" title="Le compte est juste">= juste</button>
+                </td>
+                <td class="montant"><input type="number" step="1" inputmode="numeric" [(ngModel)]="reels[c.compteId]" [attr.aria-label]="'Solde reel ' + c.libelle" /></td>
+                <td class="montant numerique" [class.moins]="(e ?? 0) < 0" [class.plus]="(e ?? 0) > 0">
+                  {{ e == null ? '—' : (e > 0 ? '+' : '') + (e | number: '1.0-0') }}
+                </td>
+                <td>
+                  @if (e != null && e !== 0) {
+                    <input class="justif" maxlength="500" [(ngModel)]="justifications[c.compteId]" placeholder="Justification obligatoire" />
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="champ">
+        <label for="obs">Observations</label>
+        <input id="obs" maxlength="1000" [(ngModel)]="observations" />
+      </div>
+      @if (service.peut('CLOTURE_SOUMETTRE')) {
+        <div class="actions-formulaire">
+          <button class="bouton" type="button" [disabled]="!peutSoumettre()" (click)="soumettre()">Soumettre la cloture</button>
+        </div>
+      }
+    } @else if (p.cloture; as c) {
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Compte</th><th class="montant">Theorique</th><th class="montant">Reel</th><th class="montant">Ecart</th><th>Justification</th></tr></thead>
+          <tbody>
+            @for (l of c.lignes; track l.compteId) {
+              <tr>
+                <td>{{ l.libelle }}<small class="sous-ligne">{{ familles[l.famille] }}</small></td>
+                <td class="montant numerique">{{ l.soldeTheorique | number: '1.0-0' }}</td>
+                <td class="montant numerique">{{ l.soldeReel != null ? (l.soldeReel | number: '1.0-0') : 'non controle' }}</td>
+                <td class="montant numerique" [class.moins]="(l.ecart ?? 0) < 0" [class.plus]="(l.ecart ?? 0) > 0">{{ l.ecart != null ? (l.ecart | number: '1.0-0') : '' }}</td>
+                <td>{{ l.justification ?? '' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="aide">Soumise le {{ c.soumiseLe | date: 'dd/MM/yyyy HH:mm' }} par {{ c.soumiseParNom }}
+        @if (c.valideeLe && c.statut === 'VALIDEE') { · validee le {{ c.valideeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ c.valideeParNom }} }
+        · ecart total {{ c.ecartTotal | number: '1.0-0' }} F
+        @if (c.observations) { · {{ c.observations }} }</p>
+      <div class="actions-formulaire">
+        @if (c.statut === 'SOUMISE' && service.peut('CLOTURE_VALIDER')) {
+          <button class="bouton secondaire" type="button" (click)="demander(c, 'rejet')">Rejeter</button>
+          <button class="bouton" type="button" (click)="valider(c)">Valider et verrouiller la journee</button>
+        }
+        @if (c.statut === 'VALIDEE' && administrateur) {
+          <button class="bouton danger" type="button" (click)="demander(c, 'reouverture')">Rouvrir la journee</button>
+        }
+      </div>
+    }
+  </section>
+}
+
+<section class="carte historique">
+  <h2>Clotures precedentes</h2>
+  @if (historique(); as h) {
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead><tr><th>Journee</th><th>Agence</th><th>Statut</th><th>Soumise par</th><th>Validee par</th><th class="montant">Ecart total</th></tr></thead>
+        <tbody>
+          @for (c of h.content; track c.id) {
+            <tr class="cliquable" (click)="choisirJournee(c.journee)">
+              <td>{{ c.journee | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ c.agenceNom }}</td>
+              <td><span [class]="'etiquette statut ' + c.statut">{{ statuts[c.statut] }}</span></td>
+              <td>{{ c.soumiseParNom }}</td>
+              <td>{{ c.statut === 'VALIDEE' ? c.valideeParNom : '' }}</td>
+              <td class="montant numerique">{{ c.ecartTotal | number: '1.0-0' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="vide">Aucune cloture.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-suite-liste [page]="h" (suite)="suiteHistorique()" />
+  }
+</section>
+
+@if (decision(); as d) {
+  <app-modale [titre]="d.action === 'rejet' ? 'Rejeter la cloture' : 'Rouvrir la journee du ' + (d.c.journee | date: 'dd/MM/yyyy')" largeur="520px"
+              [erreur]="erreurModale()" (ferme)="decision.set(null)">
+    <form (ngSubmit)="confirmer()">
+      @if (d.action === 'reouverture') {
+        <p class="aide">La journee recevra de nouveau des saisies et des annulations ; la cloture sera a refaire. La reouverture est notee au journal d'audit.</p>
+      }
+      <div class="champ">
+        <label for="motif">Motif *</label>
+        <input id="motif" name="motif" maxlength="500" [(ngModel)]="motifDecision" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="decision.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motifDecision.trim()">{{ d.action === 'rejet' ? 'Rejeter' : 'Rouvrir' }}</button>
+      </div>
+    </form>
+  </app-modale>
+}

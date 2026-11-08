@@ -1,0 +1,12 @@
+/* Memes cartes et choix du personnel que les caisses du point de vente. */
+@use '../../pdv/caisses/caisses';
+
+.coordonnees {
+  margin: 0;
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}
+
+.majuscules {
+  text-transform: uppercase;
+}

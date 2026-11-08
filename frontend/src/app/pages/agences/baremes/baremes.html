@@ -1,0 +1,361 @@
+<div class="entete-page">
+  <div>
+    <h1>Baremes de commission</h1>
+    <p class="sous-titre">Montant fixe, pourcentage ou tranches, par service et au besoin par operation ou par reseau : le bareme le plus
+      precis l'emporte. La commission d'une operation est figee a sa validation ; changer un bareme ne recalcule jamais le passe.</p>
+  </div>
+  <div class="actions-entete">
+    <button class="bouton secondaire" type="button" (click)="basculerHistorique()">{{ historique ? 'Masquer l\'historique' : 'Voir l\'historique' }}</button>
+    @if (modifiable()) {
+      <button class="bouton secondaire" type="button" (click)="chargerExemples()"
+              title="Baremes qui reproduisent les exemples du cahier des charges">Charger les exemples du cahier</button>
+      <button class="bouton" type="button" (click)="nouveau()">+ Nouveau bareme</button>
+    }
+  </div>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+@if (exemplesPresents()) {
+  <div class="message attention">Des baremes d'exemple sont en vigueur : ils reproduisent les chiffres du cahier des charges et doivent
+    etre remplaces par les baremes reels de vos operateurs.</div>
+}
+
+<!-- ============================================================ simulateur -->
+<section class="carte simulateur">
+  <h2>Simulateur</h2>
+  <div class="ligne-simulation">
+    <div class="champ">
+      <label for="sim-service">Service</label>
+      <select id="sim-service" [(ngModel)]="simService" (ngModelChange)="changerServiceSimule()">
+        @for (s of catalogue(); track s.id) {
+          @if (s.actif) { <option [ngValue]="s.id">{{ s.nom }}</option> }
+        }
+      </select>
+    </div>
+    @if (serviceDe(simService); as s) {
+      <div class="champ">
+        <label for="sim-type">Operation</label>
+        <select id="sim-type" [(ngModel)]="simType" (ngModelChange)="simuler()">
+          @for (t of s.types; track t.id) {
+            @if (t.actif) { <option [ngValue]="t.id">{{ t.libelle }}</option> }
+          }
+        </select>
+      </div>
+      @if (s.reseaux.length) {
+        <div class="champ">
+          <label for="sim-reseau">Reseau</label>
+          <select id="sim-reseau" [(ngModel)]="simReseau" (ngModelChange)="simuler()">
+            <option [ngValue]="null">—</option>
+            @for (r of s.reseaux; track r.id) {
+              @if (r.actif) { <option [ngValue]="r.id">{{ r.nom }}</option> }
+            }
+          </select>
+        </div>
+      }
+    }
+    <div class="champ">
+      <label for="sim-montant">Montant (F)</label>
+      <input id="sim-montant" type="number" min="1" step="1" inputmode="numeric" [(ngModel)]="simMontant" (ngModelChange)="simuler()" />
+    </div>
+    <div class="resultat-simulation" [class.sans]="simulation() && !simulation()!.baremeId">
+      @if (simulation(); as r) {
+        <span class="libelle">Commission</span>
+        <strong class="numerique">{{ r.commission | number: '1.0-0' }} F</strong>
+        <small>{{ r.baremeLibelle ? r.baremeLibelle + ' · ' : '' }}{{ r.detail }}</small>
+      } @else {
+        <small>Choisissez une operation et un montant.</small>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== baremes -->
+@if (chargement()) {
+  <p class="vide">Chargement des baremes...</p>
+} @else {
+  <div class="liste-defilante services">
+    @for (g of parService(); track g.service.id) {
+      <section class="carte service">
+        <header>
+          <h2>{{ g.service.nom }} <small>{{ g.service.categorie }}</small></h2>
+          @if (modifiable() && g.service.actif) {
+            <button class="bouton secondaire petit" type="button" (click)="nouveau(g.service.id)">+ Bareme</button>
+          }
+        </header>
+        @if (g.baremes.length) {
+          <div class="tableau-conteneur">
+            <table class="tableau">
+              <thead>
+                <tr>
+                  <th>S'applique a</th>
+                  <th>Bareme</th>
+                  <th>Calcul</th>
+                  <th>Credite sur</th>
+                  <th>Periode</th>
+                  <th class="actions"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (b of g.baremes; track b.id) {
+                  <tr [class.passe]="b.statut === 'TERMINE' || b.statut === 'DESACTIVE'">
+                    <td>{{ b.portee }}</td>
+                    <td>
+                      <strong>{{ b.libelle }}</strong>
+                      <span class="etiquette statut" [class]="'etiquette statut ' + b.statut">{{ statuts[b.statut] }}</span>
+                      @if (b.exemple) { <span class="etiquette exemple">Exemple</span> }
+                    </td>
+                    <td>
+                      {{ b.resume }}
+                      @if (b.mode === 'TRANCHES') {
+                        <ul class="tranches">
+                          @for (t of b.tranches; track $index) {
+                            <li>
+                              {{ t.montantMin | number: '1.0-0' }}
+                              {{ t.montantMax != null ? 'a ' + (t.montantMax | number: '1.0-0') : 'et plus' }} :
+                              <strong>{{ t.mode === 'FIXE' ? (t.valeurFixe | number: '1.0-0') + ' F' : (t.taux | number: '1.0-4') + ' %' }}</strong>
+                            </li>
+                          }
+                        </ul>
+                      }
+                    </td>
+                    <td>{{ b.compteCredit === 'FLOAT' ? 'Float du service' : 'Commissions' }}</td>
+                    <td class="periode">
+                      du {{ b.dateDebut | date: 'dd/MM/yyyy' }}
+                      @if (b.dateFin) { <br />au {{ b.dateFin | date: 'dd/MM/yyyy' }} } @else { <br /><small>sans fin</small> }
+                    </td>
+                    <td class="actions">
+                      @if (modifiable() && (b.statut === 'EN_COURS' || b.statut === 'A_VENIR')) {
+                        <button class="bouton secondaire petit" type="button" (click)="modifier(b)">Modifier</button>
+                        <button class="bouton secondaire petit" type="button" (click)="demanderFin(b)">Arreter</button>
+                      }
+                      @if (b.precedentId || historique) {
+                        <button class="bouton secondaire petit" type="button" (click)="voirHistorique(b)">Versions</button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="aucun">Aucun bareme : ses operations auront une commission de 0 F.</p>
+        }
+      </section>
+    }
+  </div>
+
+  @if (controle().length) {
+    <section class="carte controle">
+      <h2>Exemples du cahier des charges</h2>
+      <p class="aide">Commissions relevees dans le cahier, comparees a ce que donnent vos baremes actuels.</p>
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead>
+            <tr><th>Service</th><th>Operation</th><th class="montant">Montant</th><th class="montant">Attendue</th><th class="montant">Calculee</th><th>Bareme applique</th></tr>
+          </thead>
+          <tbody>
+            @for (c of controle(); track $index) {
+              <tr>
+                <td>{{ c.reseau ?? c.service }}</td>
+                <td>{{ c.operation }}</td>
+                <td class="montant numerique">{{ c.montant | number: '1.0-0' }}</td>
+                <td class="montant numerique">{{ c.attendue | number: '1.0-0' }}</td>
+                <td class="montant numerique">
+                  @if (c.calculee == null) { <span class="aucun">aucun bareme</span> }
+                  @else { <span [class.juste]="c.calculee === c.attendue" [class.faux]="c.calculee !== c.attendue">{{ c.calculee | number: '1.0-0' }} {{ c.calculee === c.attendue ? '✓' : '≠' }}</span> }
+                </td>
+                <td><small>{{ c.bareme ?? '—' }}</small></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+}
+
+<!-- ============================================================ formulaire -->
+@if (edition(); as e) {
+  <app-modale [titre]="e === 'nouveau' ? 'Nouveau bareme' : 'Modifier ' + e.libelle" largeur="820px"
+              [erreur]="erreurModale()" (ferme)="edition.set(null)">
+    <form (ngSubmit)="enregistrer()">
+      @if (e !== 'nouveau') {
+        @if (nouvelleVersion(e)) {
+          <p class="message attention">Ce bareme est en vigueur depuis le {{ e.dateDebut | date: 'dd/MM/yyyy' }} : vos changements formeront une
+            nouvelle version a partir de la date d'effet, et l'ancienne s'arretera la veille. Les operations deja faites gardent leur commission.</p>
+        }
+      }
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="service">Service *</label>
+          <select id="service" name="service" [(ngModel)]="f.serviceId" (ngModelChange)="changerService()" [disabled]="e !== 'nouveau'">
+            @for (s of catalogue(); track s.id) {
+              @if (s.actif) { <option [ngValue]="s.id">{{ s.nom }}</option> }
+            }
+          </select>
+        </div>
+        @if (serviceDe(f.serviceId); as s) {
+          <div class="champ">
+            <label for="type">Operation</label>
+            <select id="type" name="type" [(ngModel)]="f.typeOperationId" (ngModelChange)="proposerLibelle()" [disabled]="e !== 'nouveau'">
+              <option [ngValue]="null">Toutes les operations</option>
+              @for (t of s.types; track t.id) { <option [ngValue]="t.id">{{ t.libelle }}</option> }
+            </select>
+          </div>
+          @if (s.reseaux.length) {
+            <div class="champ">
+              <label for="reseau">Reseau</label>
+              <select id="reseau" name="reseau" [(ngModel)]="f.reseauId" (ngModelChange)="proposerLibelle()" [disabled]="e !== 'nouveau'">
+                <option [ngValue]="null">Tous les reseaux</option>
+                @for (r of s.reseaux; track r.id) { <option [ngValue]="r.id">{{ r.nom }}</option> }
+              </select>
+            </div>
+          }
+        }
+        <div class="champ">
+          <label for="libelle">Nom du bareme *</label>
+          <input id="libelle" name="libelle" required maxlength="120" [(ngModel)]="f.libelle" />
+        </div>
+      </div>
+
+      <fieldset class="choix-mode">
+        <legend>Calcul de la commission</legend>
+        <label [class.choisi]="f.mode === 'FIXE'"><input type="radio" name="mode" value="FIXE" [ngModel]="f.mode" (ngModelChange)="changerMode($event)" /> Montant fixe</label>
+        <label [class.choisi]="f.mode === 'POURCENTAGE'"><input type="radio" name="mode" value="POURCENTAGE" [ngModel]="f.mode" (ngModelChange)="changerMode($event)" /> Pourcentage du montant</label>
+        <label [class.choisi]="f.mode === 'TRANCHES'"><input type="radio" name="mode" value="TRANCHES" [ngModel]="f.mode" (ngModelChange)="changerMode($event)" /> Par tranche de montant</label>
+      </fieldset>
+
+      @switch (f.mode) {
+        @case ('FIXE') {
+          <div class="champ etroit">
+            <label for="fixe">Commission par operation (F) *</label>
+            <input id="fixe" name="fixe" type="number" min="0" step="1" [(ngModel)]="f.valeurFixe" />
+          </div>
+        }
+        @case ('POURCENTAGE') {
+          <div class="grille-formulaire">
+            <div class="champ">
+              <label for="taux">Pourcentage (%) *</label>
+              <input id="taux" name="taux" type="number" min="0" max="100" step="0.0001" [(ngModel)]="f.taux" placeholder="Ex. 0,25" />
+            </div>
+            <div class="champ">
+              <label for="minimum">Minimum (F)</label>
+              <input id="minimum" name="minimum" type="number" min="0" step="1" [(ngModel)]="f.minimum" />
+            </div>
+            <div class="champ">
+              <label for="maximum">Maximum (F)</label>
+              <input id="maximum" name="maximum" type="number" min="0" step="1" [(ngModel)]="f.maximum" />
+            </div>
+          </div>
+        }
+        @case ('TRANCHES') {
+          <table class="saisie-tranches">
+            <thead><tr><th>De (F)</th><th>Jusqu'a (F)</th><th>Commission</th><th>Valeur</th><th></th></tr></thead>
+            <tbody>
+              @for (t of f.tranches; track $index; let i = $index) {
+                <tr>
+                  <td><input type="number" min="0" step="1" [name]="'min' + i" [(ngModel)]="t.montantMin" /></td>
+                  <td><input type="number" min="0" step="1" [name]="'max' + i" [(ngModel)]="t.montantMax" placeholder="sans limite" /></td>
+                  <td>
+                    <select [name]="'mode' + i" [(ngModel)]="t.mode">
+                      <option value="POURCENTAGE">Pourcentage</option>
+                      <option value="FIXE">Montant fixe</option>
+                    </select>
+                  </td>
+                  <td>
+                    @if (t.mode === 'FIXE') {
+                      <input type="number" min="0" step="1" [name]="'fixe' + i" [(ngModel)]="t.valeurFixe" placeholder="F" />
+                    } @else {
+                      <input type="number" min="0" max="100" step="0.0001" [name]="'taux' + i" [(ngModel)]="t.taux" placeholder="%" />
+                    }
+                  </td>
+                  <td>
+                    @if (f.tranches.length > 1) {
+                      <button type="button" class="retirer" (click)="retirerTranche(i)" aria-label="Retirer la tranche">×</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <button type="button" class="ajout" (click)="ajouterTranche()">+ Tranche</button>
+          <p class="aide">Laissez « jusqu'a » vide pour la derniere tranche. Un montant hors de toutes les tranches n'a pas de commission.</p>
+        }
+      }
+
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="compte">Commission creditee sur</label>
+          <select id="compte" name="compte" [(ngModel)]="f.compteCredit">
+            <option value="COMMISSIONS">Sous-compte des commissions</option>
+            <option value="FLOAT">Float du service</option>
+          </select>
+        </div>
+        @if (e === 'nouveau' || !nouvelleVersion(e)) {
+          <div class="champ">
+            <label for="debut">Valable a partir du</label>
+            <input id="debut" name="debut" type="date" [(ngModel)]="f.dateDebut" />
+          </div>
+        } @else {
+          <div class="champ">
+            <label for="effet">Date d'effet de la nouvelle version</label>
+            <input id="effet" name="effet" type="date" [(ngModel)]="f.dateEffet" />
+          </div>
+        }
+        <div class="champ">
+          <label for="fin">Jusqu'au (facultatif)</label>
+          <input id="fin" name="fin" type="date" [(ngModel)]="f.dateFin" />
+        </div>
+      </div>
+
+      <div class="apercu">
+        <label for="test">Essai : pour une operation de</label>
+        <input id="test" name="test" type="number" min="1" step="1" [(ngModel)]="montantTest" />
+        <span>F, la commission est de <strong>{{ apercu() }}</strong></span>
+      </div>
+
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="edition.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!f.serviceId || !f.libelle.trim()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (versions(); as v) {
+  <app-modale [titre]="'Versions - ' + (v[0]?.libelle ?? '')" largeur="760px" (ferme)="versions.set(null)">
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead><tr><th>Periode</th><th>Calcul</th><th>Credite sur</th><th>Etat</th></tr></thead>
+        <tbody>
+          @for (b of v; track b.id) {
+            <tr>
+              <td>du {{ b.dateDebut | date: 'dd/MM/yyyy' }} {{ b.dateFin ? 'au ' + (b.dateFin | date: 'dd/MM/yyyy') : '(sans fin)' }}</td>
+              <td>{{ b.resume }}</td>
+              <td>{{ b.compteCredit === 'FLOAT' ? 'Float du service' : 'Commissions' }}</td>
+              <td><span [class]="'etiquette statut ' + b.statut">{{ statuts[b.statut] }}</span></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </app-modale>
+}
+
+@if (aTerminer(); as b) {
+  <app-modale [titre]="'Arreter ' + b.libelle" largeur="520px" [erreur]="erreurModale()" (ferme)="aTerminer.set(null)">
+    <form (ngSubmit)="terminer()">
+      <div class="champ">
+        <label for="date-fin">Dernier jour d'application</label>
+        <input id="date-fin" name="dateFin" type="date" [(ngModel)]="dateFinTerminer" />
+      </div>
+      <p class="aide">Apres cette date, les operations de cette portee prendront le bareme moins precis qui reste (ou 0 F s'il n'y en a pas).
+        Un bareme qui n'a pas encore commence est simplement desactive.</p>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="aTerminer.set(null)">Annuler</button>
+        <button class="bouton danger" type="submit">Arreter le bareme</button>
+      </div>
+    </form>
+  </app-modale>
+}

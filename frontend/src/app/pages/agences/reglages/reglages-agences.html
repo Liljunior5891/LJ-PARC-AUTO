@@ -1,0 +1,88 @@
+<div class="entete-page">
+  <div>
+    <h1>Reglages et droits</h1>
+    <p class="sous-titre">Regles communes a toutes vos agences et droits de chaque profil. Chaque changement est note au journal d'audit.</p>
+  </div>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+@if (reglages(); as r) {
+  <form class="carte bloc" (ngSubmit)="enregistrerReglages()">
+    <h2>Regles des agences</h2>
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="bascule">Debut de la journee de caisse</label>
+        <select id="bascule" name="bascule" [(ngModel)]="r.heureBascule">
+          @for (h of heures; track h) { <option [ngValue]="h">{{ libelleHeure(h) }}</option> }
+        </select>
+        <small class="aide">Une operation faite avant cette heure compte pour la veille (agence ouverte tard le soir).</small>
+      </div>
+      <div class="champ">
+        <label for="doublon">Delai de detection des doublons (minutes)</label>
+        <input id="doublon" name="doublon" type="number" min="0" max="1440" step="1" [(ngModel)]="r.delaiDoublonMinutes" />
+        <small class="aide">Meme service, operation, montant et client dans ce delai : confirmation demandee.</small>
+      </div>
+      <div class="champ">
+        <label for="max">Montant maximal d'une transaction (F)</label>
+        <input id="max" name="max" type="number" min="1" step="1" [(ngModel)]="r.montantMaxTransaction" />
+      </div>
+      <div class="champ">
+        <label for="seuil">Validation d'un mouvement par un superviseur au-dela de (F)</label>
+        <input id="seuil" name="seuil" type="number" min="0" step="1" [(ngModel)]="r.seuilValidationMouvement" />
+      </div>
+      <div class="champ">
+        <label for="plafond">Plafond de depense d'un caissier (F)</label>
+        <input id="plafond" name="plafond" type="number" min="0" step="1" [(ngModel)]="r.plafondDepenseCaissier" />
+      </div>
+      <div class="champ">
+        <label for="echeance">Alerte avant l'echeance d'un credit (jours)</label>
+        <input id="echeance" name="echeance" type="number" min="0" max="90" step="1" [(ngModel)]="r.joursAlerteEcheance" />
+        <small class="aide">Les seuils de cash et de virtuel se reglent compte par compte, dans « Soldes et tresorerie ».</small>
+      </div>
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton" type="submit">Enregistrer les reglages</button>
+    </div>
+  </form>
+}
+
+@if (administrateur && droits(); as d) {
+  <section class="carte bloc">
+    <h2>Droits des profils</h2>
+    <p class="aide">L'administrateur a tous les droits. Cochez ce que peuvent faire le superviseur et le caissier ;
+      le controle est fait par le serveur, pas seulement a l'ecran.</p>
+    <div class="tableau-conteneur">
+      <table class="tableau droits">
+        <thead>
+          <tr>
+            <th>Droit</th>
+            @for (p of d.profils; track p.role) { <th class="profil">{{ p.libelle }}</th> }
+            <th class="profil">Administrateur</th>
+          </tr>
+        </thead>
+        @for (g of groupes(); track g.groupe) {
+          <tbody>
+            <tr class="groupe"><th [attr.colspan]="d.profils.length + 2">{{ g.groupe }}</th></tr>
+            @for (perm of g.permissions; track perm.code) {
+              <tr>
+                <td>{{ perm.libelle }}</td>
+                @for (p of d.profils; track p.role) {
+                  <td class="profil">
+                    <input type="checkbox" [checked]="estCoche(p.role, perm.code)" (change)="basculer(p.role, perm.code)"
+                           [attr.aria-label]="perm.libelle + ' - ' + p.libelle" />
+                  </td>
+                }
+                <td class="profil"><input type="checkbox" checked disabled aria-label="Toujours accorde a l'administrateur" /></td>
+              </tr>
+            }
+          </tbody>
+        }
+      </table>
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton" type="button" (click)="enregistrerDroits()">Enregistrer les droits</button>
+    </div>
+  </section>
+}

@@ -66,6 +66,18 @@ export const PRESENTATION_MODULES: Record<CodeModule, { icone: string; accueil: 
       'Demandes de location a accepter ou refuser',
       'Achat sans compte, avec un lien de suivi pour le client'
     ]
+  },
+  AGENCES: {
+    icone: '🏦',
+    accueil: '/agences/tableau-bord',
+    fonctionnalites: [
+      'Plusieurs agences, gerees chacune a part et centralisees chez l\'administrateur',
+      'Mobile Money, transferts d\'argent, services financiers, Rapid Transfer et cartes prepayees',
+      'Services, reseaux et operations parametrables, avec leur effet sur le cash et le virtuel',
+      'Soldes cash et virtuels tires d\'un registre de mouvements que personne ne peut modifier',
+      'Tresorerie disponible par agence et pour toute l\'entreprise',
+      'Droits du superviseur et du caissier reglables, journal d\'audit'
+    ]
   }
 };
 
@@ -92,7 +104,8 @@ export const FONCTIONNALITES_VARIANTES: Record<string, string[]> = {
 export const PROFILS_MODULES: Record<CodeModule, Role[]> = {
   GESTION_PARC: ['ADMIN', 'GESTIONNAIRE_PARC', 'CHAUFFEUR'],
   POINT_DE_VENTE: ['ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'PREPARATEUR', 'MAGASINIER', 'ASSOCIE'],
-  MARKETPLACE: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC']
+  MARKETPLACE: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC'],
+  AGENCES: ['ADMIN', 'SUPERVISEUR_AGENCE', 'CAISSIER_AGENCE']
 };
 
 export interface DemandeInscription {

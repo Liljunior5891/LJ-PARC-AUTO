@@ -1,0 +1,100 @@
+<div class="entete-page">
+  <div>
+    <h1>Rapports</h1>
+    <p class="sous-titre">Choisissez un rapport et une periode : il s'affiche ici et s'exporte a l'identique en Excel, PDF ou CSV, avec
+      l'agence, la periode et la date de generation.</p>
+  </div>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+
+<div class="mise-en-page">
+  <nav class="liste-rapports carte" aria-label="Rapports">
+    @for (r of catalogue(); track r.code) {
+      <button type="button" [class.actif]="type === r.code" [disabled]="!r.autorise" (click)="choisir(r.code)"
+              [title]="r.autorise ? r.description : 'Reserve aux profils ayant les rapports financiers complets'">
+        <strong>{{ r.titre }}</strong>
+        <small>{{ r.autorise ? r.description : 'Non accessible a votre profil' }}</small>
+      </button>
+    }
+  </nav>
+
+  <section class="contenu">
+    <div class="carte filtres">
+      <div class="champ">
+        <label for="periodicite">Rapport</label>
+        <select id="periodicite" [(ngModel)]="periodicite" (ngModelChange)="changerPeriodicite()">
+          <option value="JOUR">Journalier (aujourd'hui)</option>
+          <option value="SEMAINE">Hebdomadaire (cette semaine)</option>
+          <option value="MOIS">Mensuel (ce mois)</option>
+          <option value="ANNEE">Annuel (cette annee)</option>
+          <option value="LIBRE">Periode libre</option>
+        </select>
+      </div>
+      <div class="champ">
+        <label for="du">Du</label>
+        <input id="du" type="date" [(ngModel)]="du" (change)="periodicite = 'LIBRE'; charger()" />
+      </div>
+      <div class="champ">
+        <label for="au">Au</label>
+        <input id="au" type="date" [(ngModel)]="au" (change)="periodicite = 'LIBRE'; charger()" />
+      </div>
+      @if ((service.moi()?.agences?.length ?? 0) > 1) {
+        <div class="champ">
+          <label for="agence">Agence</label>
+          <select id="agence" [(ngModel)]="agenceId" (ngModelChange)="charger()">
+            <option [ngValue]="null">Toutes</option>
+            @for (a of service.moi()?.agences ?? []; track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+          </select>
+        </div>
+      }
+      <div class="exports">
+        <button class="bouton secondaire" type="button" [disabled]="!rapport() || !!exportEnCours()" (click)="exporter('xlsx')">{{ exportEnCours() === 'xlsx' ? '...' : '⤓ Excel' }}</button>
+        <button class="bouton secondaire" type="button" [disabled]="!rapport() || !!exportEnCours()" (click)="exporter('pdf')">{{ exportEnCours() === 'pdf' ? '...' : '⤓ PDF' }}</button>
+        <button class="bouton secondaire" type="button" [disabled]="!rapport() || !!exportEnCours()" (click)="exporter('csv')">{{ exportEnCours() === 'csv' ? '...' : '⤓ CSV' }}</button>
+      </div>
+    </div>
+
+    @if (chargement()) {
+      <p class="vide">Calcul du rapport...</p>
+    } @else if (rapport(); as r) {
+      <header class="titre-rapport">
+        <h2>{{ r.titre }}</h2>
+        <small>{{ r.sousTitre }}</small>
+      </header>
+      @if (r.indicateurs.length) {
+        <div class="grille-indicateurs">
+          @for (i of r.indicateurs; track i.libelle) {
+            <div class="carte indicateur">
+              <span class="libelle">{{ i.libelle }}</span>
+              <span class="valeur numerique">{{ texte(i.valeur, i.format) }}</span>
+            </div>
+          }
+        </div>
+      }
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead>
+            <tr>@for (c of r.colonnes; track c.cle) { <th [class.montant]="numerique(c.format)">{{ c.libelle }}</th> }</tr>
+          </thead>
+          <tbody>
+            @for (l of r.lignes; track $index) {
+              <tr>@for (c of r.colonnes; track c.cle) { <td [class.montant]="numerique(c.format)" [class.numerique]="numerique(c.format)">{{ texte(l[c.cle], c.format) }}</td> }</tr>
+            } @empty {
+              <tr><td [attr.colspan]="r.colonnes.length" class="vide">Aucune donnee sur cette periode.</td></tr>
+            }
+          </tbody>
+          @if (r.lignes.length && (r.totaux | keyvalue).length) {
+            <tfoot>
+              <tr>
+                @for (c of r.colonnes; track c.cle; let premier = $first) {
+                  <th [class.montant]="numerique(c.format)">{{ premier && r.totaux[c.cle] === undefined ? 'TOTAL' : texte(r.totaux[c.cle], c.format) }}</th>
+                }
+              </tr>
+            </tfoot>
+          }
+        </table>
+      </div>
+    }
+  </section>
+</div>

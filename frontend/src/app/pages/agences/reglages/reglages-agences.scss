@@ -1,0 +1,40 @@
+.bloc {
+  margin-bottom: 1.25rem;
+
+  h2 {
+    font-size: 1.1rem;
+  }
+}
+
+.aide {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--couleur-texte-doux);
+  font-size: 0.8rem;
+}
+
+table.droits {
+  .profil {
+    width: 150px;
+    text-align: center;
+  }
+
+  tr.groupe th {
+    background: #eef3f9;
+    color: var(--couleur-primaire);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: left;
+  }
+
+  input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+}

@@ -1,0 +1,152 @@
+<div class="entete-page">
+  <div>
+    <h1>Caisses des caissiers</h1>
+    <p class="sous-titre">Ouvrez la caisse de chaque caissier avec son fond, pris sur la caisse generale ; a la fermeture, comptez le tiroir :
+      l'argent revient a la caisse generale et l'ecart se justifie.</p>
+  </div>
+  @if (agences().length > 1) {
+    <select class="choix-agence" [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
+      @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+    </select>
+  }
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+@if (etat(); as e) {
+  <div class="grille-indicateurs">
+    <div class="carte indicateur">
+      <span class="libelle">Caisse generale de {{ e.agenceNom }}</span>
+      <span class="valeur numerique">{{ e.caisseGenerale | number: '1.0-0' }} F</span>
+      <span class="detail">Les fonds de caisse en sortent, les remises y reviennent</span>
+    </div>
+  </div>
+
+  <div class="grille-caissiers">
+    @for (c of e.caissiers; track c.id) {
+      <article class="carte caissier" [class.ouverte]="!!c.session">
+        <header>
+          <span class="avatar" aria-hidden="true">{{ c.nomComplet.slice(0, 1) }}</span>
+          <div>
+            <h2>{{ c.nomComplet }}</h2>
+            <small>{{ c.roles.join(', ') }}</small>
+          </div>
+        </header>
+        @if (c.session; as s) {
+          <span class="etat ouverte">● Ouverte depuis {{ s.ouverteLe | date: 'dd/MM HH:mm' }} par {{ s.ouverteParNom }}</span>
+          <dl class="chiffres">
+            <dt>Fond</dt><dd>{{ s.fondInitial | number: '1.0-0' }}</dd>
+            <dt>Encaisse</dt><dd class="plus">+{{ s.encaisse | number: '1.0-0' }}</dd>
+            <dt>Decaisse</dt><dd class="moins">−{{ s.decaisse | number: '1.0-0' }}</dd>
+            @if (s.autresMouvements) { <dt>Autres mouvements</dt><dd>{{ s.autresMouvements > 0 ? '+' : '' }}{{ s.autresMouvements | number: '1.0-0' }}</dd> }
+            <dt class="total">En caisse</dt><dd class="total">{{ s.soldeCaisse | number: '1.0-0' }} F</dd>
+          </dl>
+          <small class="aide">{{ s.nombreTransactions }} transaction(s), {{ s.commissions | number: '1.0-0' }} F de commissions</small>
+          <button class="bouton danger" type="button" (click)="demanderFermeture(s)">Fermer la caisse</button>
+        } @else if (c.ailleurs) {
+          <span class="etat">{{ c.ailleurs }}</span>
+        } @else {
+          <span class="etat">Fermee : aucune transaction possible pour ce caissier</span>
+          <button class="bouton" type="button" [disabled]="!c.actif" (click)="demanderOuverture(c)">Ouvrir la caisse</button>
+        }
+      </article>
+    } @empty {
+      <div class="carte vide">Aucun caissier rattache a cette agence : rattachez-les depuis l'ecran Agences.</div>
+    }
+  </div>
+
+  <section class="carte historique">
+    <h2>Historique des caisses</h2>
+    @if (historique(); as p) {
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead>
+            <tr>
+              <th>Numero</th><th>Caissier</th><th>Ouverture</th><th>Fermeture</th>
+              <th class="montant">Fond</th><th class="montant">Attendu</th><th class="montant">Compte</th><th class="montant">Ecart</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of p.content; track s.id) {
+              <tr class="cliquable" (click)="detail.set(s)">
+                <td>{{ s.numero }}</td>
+                <td>{{ s.caissierNom }}</td>
+                <td>{{ s.ouverteLe | date: 'dd/MM HH:mm' }}</td>
+                <td>{{ s.fermeeLe ? (s.fermeeLe | date: 'dd/MM HH:mm') : 'ouverte' }}</td>
+                <td class="montant numerique">{{ s.fondInitial | number: '1.0-0' }}</td>
+                <td class="montant numerique">{{ (s.montantTheorique ?? s.soldeCaisse) | number: '1.0-0' }}</td>
+                <td class="montant numerique">{{ s.montantCompte != null ? (s.montantCompte | number: '1.0-0') : '—' }}</td>
+                <td class="montant numerique" [class.moins]="(s.ecart ?? 0) < 0" [class.plus]="(s.ecart ?? 0) > 0">
+                  {{ s.ecart ? ((s.ecart > 0 ? '+' : '') + (s.ecart | number: '1.0-0')) : (s.statut === 'FERMEE' ? '0' : '') }}
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="8" class="vide">Aucune session de caisse.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-suite-liste [page]="p" (suite)="suiteHistorique()" />
+    }
+  </section>
+}
+
+@if (aOuvrir(); as c) {
+  <app-modale [titre]="'Ouvrir la caisse de ' + c.nomComplet" largeur="720px" [erreur]="erreurModale()" (ferme)="aOuvrir.set(null)">
+    <p class="aide">Comptez le fond remis au caissier : il sort de la caisse generale ({{ etat()?.caisseGenerale | number: '1.0-0' }} F disponibles)
+      et entre dans sa caisse. Un fond nul est possible.</p>
+    <app-saisie-billettage [(quantites)]="quantites" />
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="aOuvrir.set(null)">Annuler</button>
+      <button class="bouton" type="button" (click)="ouvrir()">Ouvrir avec {{ totalCompte() | number: '1.0-0' }} F</button>
+    </div>
+  </app-modale>
+}
+
+@if (aFermer(); as s) {
+  <app-modale [titre]="'Fermer la caisse de ' + s.caissierNom" [sousTitre]="s.numero" largeur="760px" [erreur]="erreurModale()"
+              (ferme)="aFermer.set(null)">
+    <div class="attendu">
+      <span>Fond {{ s.fondInitial | number: '1.0-0' }}</span>
+      <span>+ encaisse {{ s.encaisse | number: '1.0-0' }}</span>
+      <span>− decaisse {{ s.decaisse | number: '1.0-0' }}</span>
+      @if (s.autresMouvements) { <span>{{ s.autresMouvements > 0 ? '+' : '−' }} autres {{ (s.autresMouvements < 0 ? -s.autresMouvements : s.autresMouvements) | number: '1.0-0' }}</span> }
+      <strong>= attendu {{ s.soldeCaisse | number: '1.0-0' }} F</strong>
+    </div>
+    <app-saisie-billettage [(quantites)]="quantites" />
+    <div class="ecart" [class.nul]="ecart() === 0" [class.negatif]="ecart() < 0">
+      Ecart : <strong>{{ ecart() > 0 ? '+' : '' }}{{ ecart() | number: '1.0-0' }} F</strong>
+      {{ ecart() === 0 ? '(la caisse est juste)' : ecart() < 0 ? '(il manque de l\'argent)' : '(il y a trop d\'argent)' }}
+    </div>
+    @if (ecart() !== 0) {
+      <div class="champ">
+        <label for="justif">Justification de l'ecart *</label>
+        <input id="justif" maxlength="1000" [(ngModel)]="justification" placeholder="Ex. Erreur de monnaie rendue" />
+      </div>
+    }
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="aFermer.set(null)">Annuler</button>
+      <button class="bouton danger" type="button" [disabled]="ecart() !== 0 && !justification.trim()" (click)="fermer()">
+        Fermer et remettre {{ totalCompte() | number: '1.0-0' }} F
+      </button>
+    </div>
+  </app-modale>
+}
+
+@if (detail(); as s) {
+  <app-modale [titre]="s.numero + ' - ' + s.caissierNom" largeur="600px" (ferme)="detail.set(null)">
+    <dl class="fiche">
+      <dt>Ouverture</dt><dd>{{ s.ouverteLe | date: 'dd/MM/yyyy HH:mm' }} par {{ s.ouverteParNom }}, fond {{ s.fondInitial | number: '1.0-0' }} F</dd>
+      <dt>Transactions</dt><dd>{{ s.nombreTransactions }} · encaisse {{ s.encaisse | number: '1.0-0' }} F · decaisse {{ s.decaisse | number: '1.0-0' }} F</dd>
+      <dt>Commissions</dt><dd>{{ s.commissions | number: '1.0-0' }} F</dd>
+      @if (s.fermeeLe) {
+        <dt>Fermeture</dt><dd>{{ s.fermeeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ s.fermeeParNom }}</dd>
+        <dt>Attendu / compte</dt><dd>{{ s.montantTheorique | number: '1.0-0' }} F / {{ s.montantCompte | number: '1.0-0' }} F</dd>
+        <dt>Ecart</dt><dd>{{ s.ecart | number: '1.0-0' }} F @if (s.justification) { — {{ s.justification }} }</dd>
+        <dt>Billettage</dt>
+        <dd>@for (l of s.billettageFermeture; track l.valeur) { <span class="coupure">{{ l.quantite }} × {{ l.valeur | number: '1.0-0' }}</span> }</dd>
+      }
+    </dl>
+  </app-modale>
+}

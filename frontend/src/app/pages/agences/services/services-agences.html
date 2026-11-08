@@ -1,0 +1,187 @@
+<div class="entete-page">
+  <div>
+    <h1>Services et operations</h1>
+    <p class="sous-titre">Services proposes au guichet, reseaux et operations. La regle de chaque operation dit comment bougent le cash
+      et le compte electronique ; elle se change ici, sans developpement.</p>
+  </div>
+  @if (modifiable()) {
+    <div class="actions-entete">
+      <button class="bouton" type="button" (click)="nouveauService()">+ Nouveau service</button>
+    </div>
+  }
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+@if (chargement()) {
+  <p class="vide">Chargement du catalogue...</p>
+} @else {
+  <div class="liste-defilante catalogue">
+    @for (g of parCategorie(); track g.categorie) {
+      <section class="categorie">
+        <h2 class="titre-categorie">{{ g.categorie }}</h2>
+        <div class="grille-services">
+          @for (s of g.services; track s.id) {
+            <article class="carte service" [class.inactif]="!s.actif">
+              <header>
+                <div>
+                  <h3>{{ s.nom }}</h3>
+                  @if (!s.actif) { <span class="etiquette">Desactive</span> }
+                </div>
+                @if (modifiable()) {
+                  <button class="bouton secondaire petit" type="button" (click)="modifierService(s)">Modifier</button>
+                }
+              </header>
+
+              @if (s.reseaux.length || modifiable()) {
+                <div class="reseaux">
+                  <small>Reseaux</small>
+                  @for (r of s.reseaux; track r.id) {
+                    <button type="button" class="puce-reseau" [class.inactif]="!r.actif" [disabled]="!modifiable()"
+                            (click)="modifierReseau(s, r)" [title]="modifiable() ? 'Modifier le reseau' : r.nom">{{ r.nom }}</button>
+                  } @empty {
+                    <span class="aucun">Aucun (un seul reseau)</span>
+                  }
+                  @if (modifiable()) {
+                    <button type="button" class="ajout" (click)="nouveauReseau(s)">+ Reseau</button>
+                  }
+                </div>
+                @if (s.reseaux.length > 1) {
+                  <p class="note">Les reseaux partagent le float de {{ s.nom }}, mais leurs operations se consultent a part.</p>
+                }
+              }
+
+              <table class="operations">
+                <thead>
+                  <tr><th>Operation</th><th>Cash</th><th>Virtuel</th><th></th></tr>
+                </thead>
+                <tbody>
+                  @for (t of s.types; track t.id) {
+                    <tr [class.inactif]="!t.actif">
+                      <td>
+                        {{ t.libelle }}
+                        @if (t.nature === 'VENTE_CARTE') { <span class="etiquette vente">Chiffre d'affaires</span> }
+                        @if (!t.actif) { <span class="etiquette">Desactivee</span> }
+                      </td>
+                      <td><span class="sens" [class.plus]="t.effetCash > 0" [class.moins]="t.effetCash < 0">{{ sens(t.effetCash) }}</span></td>
+                      <td>
+                        @if (t.compteVirtuel === 'AUCUN') {
+                          <span class="aucun">—</span>
+                        } @else {
+                          <span class="sens" [class.plus]="t.effetVirtuel > 0" [class.moins]="t.effetVirtuel < 0">{{ sens(t.effetVirtuel) }}</span>
+                          <small>{{ t.compteVirtuel === 'FLOAT' ? 'float' : 'recharge' }}</small>
+                        }
+                      </td>
+                      <td class="action">
+                        @if (modifiable()) {
+                          <button class="lien" type="button" (click)="modifierType(s, t)">Modifier</button>
+                        }
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="4" class="aucun">Aucune operation : le service n'apparaitra pas a la saisie.</td></tr>
+                  }
+                </tbody>
+              </table>
+              @if (modifiable()) {
+                <button type="button" class="ajout" (click)="nouveauType(s)">+ Operation</button>
+              }
+            </article>
+          }
+        </div>
+      </section>
+    }
+  </div>
+}
+
+@if (edition(); as e) {
+  <app-modale [titre]="titre(e)" largeur="620px" [erreur]="erreurFormulaire()" (ferme)="edition.set(null)">
+    <form (ngSubmit)="enregistrer()">
+      @switch (e.genre) {
+        @case ('service') {
+          <div class="grille-formulaire">
+            <div class="champ">
+              <label for="nom">Nom du service *</label>
+              <input id="nom" name="nom" required maxlength="120" [(ngModel)]="formService.nom" placeholder="Ex. Flooz" />
+            </div>
+            <div class="champ">
+              <label for="categorie">Categorie *</label>
+              <input id="categorie" name="categorie" required maxlength="60" list="categories" [(ngModel)]="formService.categorie"
+                     placeholder="Ex. Mobile Money" />
+              <datalist id="categories">
+                @for (c of categories(); track c) { <option [value]="c"></option> }
+              </datalist>
+            </div>
+          </div>
+          @if (e.id) {
+            <label class="case"><input type="checkbox" name="actif" [(ngModel)]="formService.actif" /> Service actif (propose a la saisie)</label>
+          } @else {
+            <p class="aide">Ajoutez ensuite ses operations : le float du service est cree dans chaque agence des qu'une operation le touche.</p>
+          }
+          <div class="actions-formulaire">
+            <button class="bouton secondaire annuler" type="button" (click)="edition.set(null)">Annuler</button>
+            <button class="bouton" type="submit" [disabled]="!formService.nom.trim() || !formService.categorie.trim()">Enregistrer</button>
+          </div>
+        }
+        @case ('reseau') {
+          <div class="champ">
+            <label for="reseau">Nom du reseau *</label>
+            <input id="reseau" name="reseau" required maxlength="120" [(ngModel)]="formReseau.nom" placeholder="Ex. Western Union" />
+          </div>
+          @if (e.id) {
+            <label class="case"><input type="checkbox" name="actif" [(ngModel)]="formReseau.actif" /> Reseau actif</label>
+          }
+          <div class="actions-formulaire">
+            <button class="bouton secondaire annuler" type="button" (click)="edition.set(null)">Annuler</button>
+            <button class="bouton" type="submit" [disabled]="!formReseau.nom.trim()">Enregistrer</button>
+          </div>
+        }
+        @case ('type') {
+          <div class="champ">
+            <label for="libelle">Nom de l'operation *</label>
+            <input id="libelle" name="libelle" required maxlength="120" [(ngModel)]="formType.libelle" placeholder="Ex. Depot" />
+          </div>
+
+          <fieldset class="choix">
+            <legend>Le cash de la caisse...</legend>
+            <label><input type="radio" name="cash" [value]="1" [(ngModel)]="formType.effetCash" /> augmente du montant</label>
+            <label><input type="radio" name="cash" [value]="-1" [(ngModel)]="formType.effetCash" /> diminue du montant</label>
+            <label><input type="radio" name="cash" [value]="0" [(ngModel)]="formType.effetCash" /> ne bouge pas</label>
+          </fieldset>
+
+          <fieldset class="choix">
+            <legend>Compte electronique touche</legend>
+            <label><input type="radio" name="compte" value="FLOAT" [ngModel]="formType.compteVirtuel" (ngModelChange)="changerCompte($event)" /> Float du service</label>
+            <label><input type="radio" name="compte" value="RECHARGE" [ngModel]="formType.compteVirtuel" (ngModelChange)="changerCompte($event)" /> Compte de recharge</label>
+            <label><input type="radio" name="compte" value="AUCUN" [ngModel]="formType.compteVirtuel" (ngModelChange)="changerCompte($event)" /> Aucun</label>
+          </fieldset>
+
+          @if (formType.compteVirtuel !== 'AUCUN') {
+            <fieldset class="choix">
+              <legend>Ce compte electronique...</legend>
+              <label><input type="radio" name="virtuel" [value]="1" [(ngModel)]="formType.effetVirtuel" /> augmente du montant</label>
+              <label><input type="radio" name="virtuel" [value]="-1" [(ngModel)]="formType.effetVirtuel" /> diminue du montant</label>
+            </fieldset>
+          }
+
+          <fieldset class="choix">
+            <legend>Nature de l'argent encaisse</legend>
+            <label><input type="radio" name="nature" value="TRANSIT" [(ngModel)]="formType.nature" /> Il ne fait que passer (depot, retrait, transfert)</label>
+            <label><input type="radio" name="nature" value="VENTE_CARTE" [(ngModel)]="formType.nature" /> Vente de carte : le prix est un chiffre d'affaires</label>
+          </fieldset>
+
+          <p class="exemple">Pour une operation de 100 000 F : <strong>{{ exemple() }}</strong>. La commission va sur le sous-compte des commissions.</p>
+
+          @if (e.id) {
+            <label class="case"><input type="checkbox" name="actif" [(ngModel)]="formType.actif" /> Operation active (proposee a la saisie)</label>
+          }
+          <div class="actions-formulaire">
+            <button class="bouton secondaire annuler" type="button" (click)="edition.set(null)">Annuler</button>
+            <button class="bouton" type="submit" [disabled]="!formType.libelle.trim()">Enregistrer</button>
+          </div>
+        }
+      }
+    </form>
+  </app-modale>
+}

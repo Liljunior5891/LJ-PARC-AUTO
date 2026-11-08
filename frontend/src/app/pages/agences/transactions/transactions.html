@@ -1,0 +1,191 @@
+<div class="entete-page">
+  <div>
+    <h1>Historique des transactions</h1>
+    <p class="sous-titre">{{ service.peut('HISTORIQUE_COMPLET') ? 'Toutes les transactions de vos agences.' : 'Les transactions que vous avez saisies.' }}
+      Une transaction validee ne se modifie pas : une erreur se corrige par une annulation motivee.</p>
+  </div>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+<section class="carte filtres">
+  <div class="raccourcis-periode">
+    <button type="button" class="bouton secondaire petit" (click)="periode(0)">Aujourd'hui</button>
+    <button type="button" class="bouton secondaire petit" (click)="periode(-1)">Hier</button>
+    <button type="button" class="bouton secondaire petit" (click)="periode(-6)">7 jours</button>
+    <button type="button" class="bouton secondaire petit" (click)="periode('mois')">Ce mois</button>
+  </div>
+  <div class="grille-filtres">
+    @if ((service.moi()?.agences?.length ?? 0) > 1) {
+      <div class="champ">
+        <label for="agence">Agence</label>
+        <select id="agence" [(ngModel)]="f.agenceId" (ngModelChange)="filtrer()">
+          <option [ngValue]="null">Toutes</option>
+          @for (a of service.moi()?.agences ?? []; track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+        </select>
+      </div>
+    }
+    <div class="champ">
+      <label for="du">Du</label>
+      <input id="du" type="date" [(ngModel)]="f.du" (change)="filtrer()" />
+    </div>
+    <div class="champ">
+      <label for="au">Au</label>
+      <input id="au" type="date" [(ngModel)]="f.au" (change)="filtrer()" />
+    </div>
+    <div class="champ">
+      <label for="service">Service</label>
+      <select id="service" [(ngModel)]="f.serviceId" (ngModelChange)="changerService()">
+        <option [ngValue]="null">Tous</option>
+        @for (s of catalogue(); track s.id) { <option [ngValue]="s.id">{{ s.nom }}</option> }
+      </select>
+    </div>
+    @if (serviceFiltre(); as s) {
+      <div class="champ">
+        <label for="type">Operation</label>
+        <select id="type" [(ngModel)]="f.typeOperationId" (ngModelChange)="filtrer()">
+          <option [ngValue]="null">Toutes</option>
+          @for (t of s.types; track t.id) { <option [ngValue]="t.id">{{ t.libelle }}</option> }
+        </select>
+      </div>
+      @if (s.reseaux.length) {
+        <div class="champ">
+          <label for="reseau">Reseau</label>
+          <select id="reseau" [(ngModel)]="f.reseauId" (ngModelChange)="filtrer()">
+            <option [ngValue]="null">Tous</option>
+            @for (r of s.reseaux; track r.id) { <option [ngValue]="r.id">{{ r.nom }}</option> }
+          </select>
+        </div>
+      }
+    }
+    <div class="champ">
+      <label for="statut">Statut</label>
+      <select id="statut" [(ngModel)]="f.statut" (ngModelChange)="filtrer()">
+        <option value="">Tous</option>
+        <option value="VALIDEE">Validees</option>
+        <option value="ANNULEE">Annulees</option>
+      </select>
+    </div>
+    <div class="champ">
+      <label for="min">Montant de</label>
+      <input id="min" type="number" min="0" [(ngModel)]="f.montantMin" (change)="filtrer()" />
+    </div>
+    <div class="champ">
+      <label for="max">a</label>
+      <input id="max" type="number" min="0" [(ngModel)]="f.montantMax" (change)="filtrer()" />
+    </div>
+    <div class="champ recherche">
+      <label for="q">Reference, client</label>
+      <input id="q" type="search" [(ngModel)]="f.q" (keyup.enter)="filtrer()" (search)="filtrer()" placeholder="TX-..., ref. operateur, telephone" />
+    </div>
+  </div>
+</section>
+
+@if (resume(); as r) {
+  <div class="grille-indicateurs">
+    <div class="carte indicateur">
+      <span class="libelle">Transactions validees</span>
+      <span class="valeur numerique">{{ r.nombre | number: '1.0-0' }}</span>
+      @if (r.annulees) { <span class="detail">{{ r.annulees }} annulee(s) en plus</span> }
+    </div>
+    <div class="carte indicateur">
+      <span class="libelle">Volume</span>
+      <span class="valeur numerique">{{ r.volume | number: '1.0-0' }} F</span>
+      <span class="detail">Argent qui a transite (ce n'est pas un revenu)</span>
+    </div>
+    <div class="carte indicateur succes">
+      <span class="libelle">Commissions</span>
+      <span class="valeur numerique">{{ r.commissions | number: '1.0-0' }} F</span>
+      <span class="detail">Revenu de l'agence</span>
+    </div>
+  </div>
+}
+
+@if (page(); as p) {
+  <div class="tableau-conteneur">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Reference</th>
+          <th>Operation</th>
+          <th class="montant">Montant</th>
+          <th class="montant">Commission</th>
+          <th>Client</th>
+          <th>Caissier</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (t of p.content; track t.id) {
+          <tr class="cliquable" [class.annulee]="t.statut === 'ANNULEE'" (click)="detail.set(t)">
+            <td>{{ t.dateOperation | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td>{{ t.reference }}@if (t.referenceOperateur) { <small class="sous-ligne">{{ t.referenceOperateur }}</small> }</td>
+            <td>{{ t.typeLibelle }} <strong>{{ t.reseauNom ?? t.serviceNom }}</strong>
+              @if ((service.moi()?.agences?.length ?? 0) > 1) { <small class="sous-ligne">{{ t.agenceNom }}</small> }</td>
+            <td class="montant numerique">{{ t.montant | number: '1.0-0' }}</td>
+            <td class="montant numerique">{{ t.commission | number: '1.0-0' }}@if (t.commissionModifiee) { <span title="Commission modifiee"> ✎</span> }</td>
+            <td>{{ t.clientNom ?? '' }}@if (t.clientTelephone) { <small class="sous-ligne">{{ t.clientTelephone }}</small> }</td>
+            <td>{{ t.caissierNom }}</td>
+            <td><span class="etiquette" [class.actif]="t.statut === 'VALIDEE'">{{ t.statut === 'VALIDEE' ? 'Validee' : 'Annulee' }}</span></td>
+          </tr>
+        } @empty {
+          <tr><td colspan="8" class="vide">Aucune transaction pour ces criteres.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <app-suite-liste [page]="p" (suite)="suiteListe()" />
+} @else {
+  <p class="vide">Chargement...</p>
+}
+
+@if (detail(); as t) {
+  <app-modale [titre]="t.reference" [sousTitre]="t.typeLibelle + ' ' + (t.reseauNom ?? t.serviceNom) + ' · ' + (t.statut === 'VALIDEE' ? 'validee' : 'annulee')"
+              largeur="640px" (ferme)="detail.set(null)">
+    <dl class="fiche">
+      <dt>Date</dt><dd>{{ t.dateOperation | date: 'dd/MM/yyyy HH:mm' }} (journee du {{ t.journee | date: 'dd/MM/yyyy' }})</dd>
+      <dt>Agence</dt><dd>{{ t.agenceNom }}</dd>
+      <dt>Montant</dt><dd class="numerique"><strong>{{ t.montant | number: '1.0-0' }} F</strong></dd>
+      <dt>Effet</dt>
+      <dd>Cash {{ t.effetCash > 0 ? '+' : t.effetCash < 0 ? '−' : '=' }}{{ t.effetCash ? (t.montant | number: '1.0-0') : '' }}
+        @if (t.compteVirtuel !== 'AUCUN') { · {{ t.compteVirtuel === 'FLOAT' ? 'float' : 'recharge' }} {{ t.effetVirtuel > 0 ? '+' : '−' }}{{ t.montant | number: '1.0-0' }} }</dd>
+      <dt>Commission</dt>
+      <dd>{{ t.commission | number: '1.0-0' }} F ({{ t.compteCommission === 'FLOAT' ? 'float du service' : 'compte des commissions' }})
+        @if (t.commissionModifiee) { <br /><small>Proposee : {{ t.commissionProposee | number: '1.0-0' }} F — {{ t.motifCommission }}</small> }</dd>
+      @if (t.referenceOperateur) { <dt>Ref. operateur</dt><dd>{{ t.referenceOperateur }}</dd> }
+      @if (t.clientTelephone || t.clientNom) { <dt>Client</dt><dd>{{ t.clientNom }} {{ t.clientTelephone }}</dd> }
+      @if (t.clientTypePiece || t.clientNumeroPiece) { <dt>Piece</dt><dd>{{ t.clientTypePiece }} {{ t.clientNumeroPiece }}</dd> }
+      @if (t.carteMasquee) { <dt>Carte</dt><dd>{{ t.carteMasquee }}</dd> }
+      @if (t.observations) { <dt>Observations</dt><dd>{{ t.observations }}</dd> }
+      <dt>Caissier</dt><dd>{{ t.caissierNom }}</dd>
+      @if (t.doublonConfirme) { <dt>Doublon</dt><dd>Enregistree malgre l'avertissement de doublon</dd> }
+      @if (t.statut === 'ANNULEE') {
+        <dt>Annulation</dt><dd>Le {{ t.annuleeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ t.annuleeParNom }} : {{ t.motifAnnulation }}</dd>
+      }
+    </dl>
+    @if (t.annulable) {
+      <div class="actions-formulaire">
+        <button class="bouton danger" type="button" (click)="demanderAnnulation(t)">Annuler la transaction</button>
+      </div>
+    }
+  </app-modale>
+}
+
+@if (aAnnuler(); as t) {
+  <app-modale [titre]="'Annuler ' + t.reference" largeur="520px" [erreur]="erreurModale()" (ferme)="aAnnuler.set(null)">
+    <form (ngSubmit)="annuler()">
+      <p class="aide">L'annulation passe l'ecriture inverse au registre : le cash, le virtuel et la commission reviennent a leur etat
+        d'avant. Elle est definitive et notee au journal d'audit.</p>
+      <div class="champ">
+        <label for="motif">Motif *</label>
+        <input id="motif" name="motif" required maxlength="500" [(ngModel)]="motif" placeholder="Ex. Erreur de montant" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="aAnnuler.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motif.trim()">Annuler la transaction</button>
+      </div>
+    </form>
+  </app-modale>
+}

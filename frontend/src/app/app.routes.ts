@@ -433,6 +433,96 @@ export const routes: Routes = [
         ]
       },
 
+      // --- Module Agences multiservices -----------------------------------------
+      {
+        path: 'agences',
+        canActivate: [moduleGuard('AGENCES')],
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'tableau-bord' },
+          {
+            path: 'tableau-bord',
+            loadComponent: () => import('./pages/agences/tableau-bord/tableau-bord-agences').then((m) => m.TableauBordAgencesPage),
+            title: 'Tableau de bord des agences — LJ SaaS'
+          },
+          {
+            path: 'cartes',
+            loadComponent: () => import('./pages/agences/cartes/cartes-agences').then((m) => m.CartesAgences),
+            title: 'Cartes prepayees — LJ SaaS'
+          },
+          {
+            path: 'depenses',
+            loadComponent: () => import('./pages/agences/depenses/depenses-agences').then((m) => m.DepensesAgences),
+            title: 'Depenses des agences — LJ SaaS'
+          },
+          {
+            path: 'credits',
+            loadComponent: () => import('./pages/agences/credits/credits-agences').then((m) => m.CreditsAgences),
+            title: 'Credits et dettes — LJ SaaS'
+          },
+          {
+            path: 'rapports',
+            loadComponent: () => import('./pages/agences/rapports/rapports-agences').then((m) => m.RapportsAgences),
+            title: 'Rapports des agences — LJ SaaS'
+          },
+          {
+            path: 'cloture',
+            loadComponent: () => import('./pages/agences/cloture/cloture').then((m) => m.ClotureAgencePage),
+            title: 'Cloture de caisse — LJ SaaS'
+          },
+          {
+            path: 'audit',
+            loadComponent: () => import('./pages/agences/audit/audit-agences').then((m) => m.AuditAgences),
+            title: 'Journal d\'audit — LJ SaaS'
+          },
+          {
+            path: 'operation',
+            loadComponent: () => import('./pages/agences/operation/operation').then((m) => m.OperationAgence),
+            title: 'Nouvelle transaction — LJ SaaS'
+          },
+          {
+            path: 'transactions',
+            loadComponent: () => import('./pages/agences/transactions/transactions').then((m) => m.TransactionsAgences),
+            title: 'Historique des transactions — LJ SaaS'
+          },
+          {
+            path: 'caisses',
+            loadComponent: () => import('./pages/agences/caisses/caisses-agences').then((m) => m.CaissesAgences),
+            title: 'Caisses des caissiers — LJ SaaS'
+          },
+          {
+            path: 'mouvements',
+            loadComponent: () => import('./pages/agences/mouvements/mouvements').then((m) => m.MouvementsAgences),
+            title: 'Mouvements entre comptes — LJ SaaS'
+          },
+          {
+            path: 'soldes',
+            loadComponent: () => import('./pages/agences/soldes/soldes').then((m) => m.SoldesAgences),
+            title: 'Soldes et tresorerie — LJ SaaS'
+          },
+          {
+            path: 'agences',
+            loadComponent: () => import('./pages/agences/liste/agences-liste').then((m) => m.AgencesListe),
+            title: 'Agences — LJ SaaS'
+          },
+          {
+            path: 'services',
+            loadComponent: () => import('./pages/agences/services/services-agences').then((m) => m.ServicesAgences),
+            title: 'Services et operations — LJ SaaS'
+          },
+          {
+            path: 'baremes',
+            loadComponent: () => import('./pages/agences/baremes/baremes').then((m) => m.BaremesAgences),
+            title: 'Baremes de commission — LJ SaaS'
+          },
+          {
+            path: 'reglages',
+            canActivate: [roleGuard('ADMIN')],
+            loadComponent: () => import('./pages/agences/reglages/reglages-agences').then((m) => m.ReglagesAgencesPage),
+            title: 'Reglages des agences — LJ SaaS'
+          }
+        ]
+      },
+
       // --- Module Marketplace ------------------------------------------------
       {
         path: 'marketplace',

@@ -1,0 +1,200 @@
+<div class="entete-page">
+  <div>
+    <h1>Mouvements entre comptes</h1>
+    <p class="sous-titre">Approvisionnements, versements et retraits bancaires, transferts internes, regularisations. Ils ne creent ni recette
+      ni depense ; au-dela du seuil regle, une autre personne habilitee les valide.</p>
+  </div>
+  @if (service.peut('MOUVEMENT_SAISIR')) {
+    <div class="actions-entete">
+      <button class="bouton" type="button" (click)="nouveau()">+ Nouveau mouvement</button>
+    </div>
+  }
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+<div class="filtres">
+  @if (agences().length > 1) {
+    <select [(ngModel)]="filtreAgence" (ngModelChange)="filtrer()" aria-label="Agence">
+      <option [ngValue]="null">Toutes les agences</option>
+      @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+    </select>
+  }
+  <div class="onglets-statut" role="tablist">
+    <button type="button" [class.actif]="filtreStatut === ''" (click)="filtreStatut = ''; filtrer()">Tous</button>
+    <button type="button" [class.actif]="filtreStatut === 'EN_ATTENTE'" (click)="filtreStatut = 'EN_ATTENTE'; filtrer()">En attente</button>
+    <button type="button" [class.actif]="filtreStatut === 'VALIDE'" (click)="filtreStatut = 'VALIDE'; filtrer()">Valides</button>
+    <button type="button" [class.actif]="filtreStatut === 'REJETE'" (click)="filtreStatut = 'REJETE'; filtrer()">Rejetes</button>
+    <button type="button" [class.actif]="filtreStatut === 'ANNULE'" (click)="filtreStatut = 'ANNULE'; filtrer()">Annules</button>
+  </div>
+</div>
+
+@if (page(); as p) {
+  <div class="tableau-conteneur">
+    <table class="tableau">
+      <thead>
+        <tr>
+          <th>Date</th><th>Reference</th><th>Type</th><th>De</th><th>Vers</th><th class="montant">Montant</th><th>Motif</th><th>Statut</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (m of p.content; track m.id) {
+          <tr class="cliquable" (click)="detail.set(m)" [class.passe]="m.statut === 'REJETE' || m.statut === 'ANNULE'">
+            <td>{{ m.dateMouvement | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td>{{ m.reference }}@if (agences().length > 1) { <small class="sous-ligne">{{ m.agenceNom }}</small> }</td>
+            <td>{{ m.typeLibelle }}</td>
+            <td>{{ m.compteSource ?? '—' }}</td>
+            <td>{{ m.compteDestination ?? '—' }}</td>
+            <td class="montant numerique">{{ m.montant | number: '1.0-0' }}</td>
+            <td>{{ m.motif }}@if (m.pieceNom) { <span title="Piece jointe"> 📎</span> }</td>
+            <td><span class="etiquette" [class]="'etiquette ' + m.statut">{{ statuts[m.statut] }}</span></td>
+            <td class="actions" (click)="$event.stopPropagation()">
+              @if (m.validable) {
+                <button class="bouton petit" type="button" (click)="valider(m)">Valider</button>
+                <button class="bouton secondaire petit" type="button" (click)="demander(m, 'rejet')">Rejeter</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="9" class="vide">Aucun mouvement.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <app-suite-liste [page]="p" (suite)="suiteListe()" />
+} @else {
+  <p class="vide">Chargement...</p>
+}
+
+@if (saisie()) {
+  <app-modale titre="Nouveau mouvement" largeur="720px" [erreur]="erreurModale()" (ferme)="saisie.set(false)">
+    <form (ngSubmit)="enregistrer()">
+      <div class="grille-formulaire">
+        @if (agences().length > 1) {
+          <div class="champ">
+            <label for="agence">Agence</label>
+            <select id="agence" name="agence" [(ngModel)]="f.agenceId" (ngModelChange)="chargerComptes()">
+              @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+            </select>
+          </div>
+        }
+        <div class="champ">
+          <label for="type">Type de mouvement</label>
+          <select id="type" name="type" [(ngModel)]="f.type">
+            @for (t of types; track t.code) { <option [value]="t.code">{{ t.libelle }}</option> }
+          </select>
+          <small class="aide">{{ aideType() }}</small>
+        </div>
+      </div>
+
+      @if (f.type === 'REGULARISATION') {
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label for="compte">Compte a corriger *</label>
+            <select id="compte" name="compte" [(ngModel)]="f.compte">
+              <option [ngValue]="null">—</option>
+              @for (c of comptesActifs(); track c.id) { <option [ngValue]="c.id">{{ c.libelle }} ({{ c.solde | number: '1.0-0' }} F)</option> }
+            </select>
+          </div>
+          <div class="champ">
+            <label for="sens">Correction</label>
+            <select id="sens" name="sens" [(ngModel)]="f.sens">
+              <option value="AUGMENTER">Augmenter le solde</option>
+              <option value="DIMINUER">Diminuer le solde</option>
+            </select>
+          </div>
+        </div>
+      } @else {
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label for="source">De (compte debite) *</label>
+            <select id="source" name="source" [(ngModel)]="f.source">
+              <option [ngValue]="null">—</option>
+              @for (c of comptesActifs(); track c.id) { <option [ngValue]="c.id">{{ c.libelle }} ({{ c.solde | number: '1.0-0' }} F)</option> }
+            </select>
+          </div>
+          <div class="champ">
+            <label for="destination">Vers (compte credite) *</label>
+            <select id="destination" name="destination" [(ngModel)]="f.destination">
+              <option [ngValue]="null">—</option>
+              @for (c of comptesActifs(); track c.id) {
+                @if (c.id !== f.source) { <option [ngValue]="c.id">{{ c.libelle }} ({{ c.solde | number: '1.0-0' }} F)</option> }
+              }
+            </select>
+          </div>
+        </div>
+      }
+
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="montant">Montant (F) *</label>
+          <input id="montant" name="montant" type="number" min="1" step="1" [(ngModel)]="f.montant" />
+        </div>
+        <div class="champ">
+          <label for="motif">Motif *</label>
+          <input id="motif" name="motif" maxlength="255" [(ngModel)]="f.motif" placeholder="Ex. Achat de float chez l'operateur" />
+        </div>
+        <div class="champ large">
+          <label for="justification">Justification</label>
+          <input id="justification" name="justification" maxlength="1000" [(ngModel)]="f.justification" placeholder="Numero de bordereau, explication..." />
+        </div>
+        <div class="champ large">
+          <label for="piece">Piece justificative (photo ou PDF)</label>
+          <input id="piece" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,image/*,application/pdf" (change)="choisirFichier($event)" />
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="saisie.set(false)">Annuler</button>
+        <button class="bouton" type="submit"
+                [disabled]="!f.montant || !f.motif.trim() || (f.type === 'REGULARISATION' ? !f.compte : (!f.source || !f.destination))">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (detail(); as m) {
+  <app-modale [titre]="m.reference + ' - ' + m.typeLibelle" [sousTitre]="statuts[m.statut]" largeur="620px" (ferme)="detail.set(null)">
+    <dl class="fiche">
+      <dt>Date</dt><dd>{{ m.dateMouvement | date: 'dd/MM/yyyy HH:mm' }} par {{ m.auteurNom }}</dd>
+      <dt>Agence</dt><dd>{{ m.agenceNom }}</dd>
+      <dt>De</dt><dd>{{ m.compteSource ?? '—' }}</dd>
+      <dt>Vers</dt><dd>{{ m.compteDestination ?? '—' }}</dd>
+      <dt>Montant</dt><dd class="numerique"><strong>{{ m.montant | number: '1.0-0' }} F</strong></dd>
+      <dt>Motif</dt><dd>{{ m.motif }}</dd>
+      @if (m.justification) { <dt>Justification</dt><dd>{{ m.justification }}</dd> }
+      @if (m.pieceNom) { <dt>Piece</dt><dd><button type="button" class="lien" (click)="ouvrirPiece(m)">{{ m.pieceNom }}</button></dd> }
+      @if (m.valideLe) { <dt>{{ m.statut === 'REJETE' ? 'Rejete' : 'Valide' }}</dt><dd>{{ m.valideLe | date: 'dd/MM/yyyy HH:mm' }} par {{ m.valideParNom }}</dd> }
+      @if (m.motifRejet) { <dt>Motif du rejet</dt><dd>{{ m.motifRejet }}</dd> }
+      @if (m.motifAnnulation) { <dt>Annulation</dt><dd>{{ m.motifAnnulation }}</dd> }
+    </dl>
+    <div class="actions-formulaire">
+      @if (m.validable) {
+        <button class="bouton secondaire" type="button" (click)="demander(m, 'rejet')">Rejeter</button>
+        <button class="bouton" type="button" (click)="valider(m)">Valider</button>
+      }
+      @if (m.annulable) {
+        <button class="bouton danger" type="button" (click)="demander(m, 'annulation')">Annuler le mouvement</button>
+      }
+    </div>
+  </app-modale>
+}
+
+@if (decision(); as d) {
+  <app-modale [titre]="(d.action === 'rejet' ? 'Rejeter ' : 'Annuler ') + d.m.reference" largeur="520px" [erreur]="erreurModale()"
+              (ferme)="decision.set(null)">
+    <form (ngSubmit)="confirmerDecision()">
+      @if (d.action === 'annulation') {
+        <p class="aide">L'annulation passe l'ecriture inverse : les deux comptes reviennent a leur solde d'avant le mouvement.</p>
+      }
+      <div class="champ">
+        <label for="motif-decision">Motif *</label>
+        <input id="motif-decision" name="motif" maxlength="500" [(ngModel)]="motifDecision" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="decision.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motifDecision.trim()">{{ d.action === 'rejet' ? 'Rejeter' : 'Annuler le mouvement' }}</button>
+      </div>
+    </form>
+  </app-modale>
+}

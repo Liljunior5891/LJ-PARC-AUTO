@@ -21,10 +21,14 @@ export type Role =
   | 'PREPARATEUR'
   | 'MAGASINIER'
   /** Point de vente, option « benefices des associes » : toujours accompagne du profil ADMIN. */
-  | 'ASSOCIE';
+  | 'ASSOCIE'
+  /** Agences multiservices : superviseur des agences qui lui sont confiees. */
+  | 'SUPERVISEUR_AGENCE'
+  /** Agences multiservices : caissier d'une agence. */
+  | 'CAISSIER_AGENCE';
 
 /** Modules de la plateforme ; une entreprise n'accede qu'a ceux qu'elle a actives. */
-export type CodeModule = 'GESTION_PARC' | 'POINT_DE_VENTE' | 'MARKETPLACE';
+export type CodeModule = 'GESTION_PARC' | 'POINT_DE_VENTE' | 'MARKETPLACE' | 'AGENCES';
 
 export interface UtilisateurCourant {
   id: number;

@@ -1,0 +1,253 @@
+<div class="entete-page">
+  <div>
+    <h1>Tableau de bord des agences</h1>
+    <p class="sous-titre">Tresorerie du moment, activite et revenus de la periode. Le volume des transactions n'est pas un revenu :
+      seules les commissions et les ventes de cartes forment le chiffre d'affaires.</p>
+  </div>
+</div>
+
+<!-- Filtres : une seule rangee au-dessus des graphiques. -->
+<div class="carte filtres">
+  <div class="champ">
+    <label for="periode">Periode</label>
+    <select id="periode" [(ngModel)]="periode" (ngModelChange)="changerPeriode()">
+      @for (p of periodes; track p.valeur) { <option [value]="p.valeur">{{ p.libelle }}</option> }
+    </select>
+  </div>
+  @if (periode === 'PERSONNALISEE') {
+    <div class="champ">
+      <label for="du">Du</label>
+      <input id="du" type="date" [(ngModel)]="du" (change)="charger()" />
+    </div>
+    <div class="champ">
+      <label for="au">Au</label>
+      <input id="au" type="date" [(ngModel)]="au" (change)="charger()" />
+    </div>
+  }
+  @if ((service.moi()?.agences?.length ?? 0) > 1) {
+    <div class="champ">
+      <label for="agence">Agence</label>
+      <select id="agence" [(ngModel)]="agenceId" (ngModelChange)="charger()">
+        <option [ngValue]="null">Toutes</option>
+        @for (a of service.moi()?.agences ?? []; track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+      </select>
+    </div>
+  }
+  <div class="champ">
+    <label for="service">Service</label>
+    <select id="service" [(ngModel)]="serviceId" (ngModelChange)="changerService()">
+      <option [ngValue]="null">Tous</option>
+      @for (s of catalogue(); track s.id) { <option [ngValue]="s.id">{{ s.nom }}</option> }
+    </select>
+  </div>
+  @if (serviceChoisi()?.reseaux?.length) {
+    <div class="champ">
+      <label for="reseau">Reseau</label>
+      <select id="reseau" [(ngModel)]="reseauId" (ngModelChange)="charger()">
+        <option [ngValue]="null">Tous</option>
+        @for (r of serviceChoisi()!.reseaux; track r.id) { <option [ngValue]="r.id">{{ r.nom }}</option> }
+      </select>
+    </div>
+  }
+  <div class="champ">
+    <label for="caissier">Caissier</label>
+    <select id="caissier" [(ngModel)]="caissierId" (ngModelChange)="charger()">
+      <option [ngValue]="null">Tous</option>
+      @for (c of caissiers(); track c.id) { <option [ngValue]="c.id">{{ c.nom }}</option> }
+    </select>
+  </div>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+
+@if (donnees(); as d) {
+  @if (alertes().length) {
+    <section class="carte bloc-alertes">
+      <h2>Alertes <small>{{ alertes().length }}</small></h2>
+      <ul>
+        @for (a of alertes(); track $index) {
+          <li [class]="'alerte-' + a.niveau">
+            <span class="niveau">{{ a.niveau === 'CRITIQUE' ? '⛔' : a.niveau === 'ATTENTION' ? '⚠' : 'ℹ' }} {{ a.categorie }}</span>
+            <span class="texte">@if (a.agence) { <strong>{{ a.agence }}</strong> · } {{ a.message }}</span>
+            @if (a.lien) { <a [routerLink]="a.lien">Voir</a> }
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  <h2 class="titre-section">Tresorerie maintenant</h2>
+  <div class="grille-indicateurs">
+    <div class="carte indicateur succes">
+      <span class="libelle">Tresorerie disponible</span>
+      <span class="valeur numerique">{{ d.tresorerie.tresorerie | number: '1.0-0' }} F</span>
+      <span class="detail">Cash + virtuel + banque</span>
+    </div>
+    <div class="carte indicateur">
+      <span class="libelle">Cash</span>
+      <span class="valeur numerique">{{ d.tresorerie.cash | number: '1.0-0' }} F</span>
+    </div>
+    <div class="carte indicateur">
+      <span class="libelle">Virtuel</span>
+      <span class="valeur numerique">{{ d.tresorerie.virtuel | number: '1.0-0' }} F</span>
+    </div>
+    <div class="carte indicateur">
+      <span class="libelle">Banque</span>
+      <span class="valeur numerique">{{ d.tresorerie.banque | number: '1.0-0' }} F</span>
+    </div>
+  </div>
+
+  <h2 class="titre-section">Activite du {{ d.du | date: 'dd/MM/yyyy' }}{{ d.du !== d.au ? ' au ' + (d.au | date: 'dd/MM/yyyy') : '' }}</h2>
+  <div class="grille-indicateurs">
+    <div class="carte indicateur">
+      <span class="libelle">Transactions</span>
+      <span class="valeur numerique">{{ d.nombre | number: '1.0-0' }}</span>
+      <span class="detail">Volume {{ d.volume | number: '1.0-0' }} F (argent qui transite)</span>
+    </div>
+    <div class="carte indicateur succes">
+      <span class="libelle">Chiffre d'affaires</span>
+      <span class="valeur numerique">{{ d.chiffreAffaires | number: '1.0-0' }} F</span>
+      <span class="detail">Commissions {{ d.commissions | number: '1.0-0' }} F + ventes de cartes {{ d.ventesCartes | number: '1.0-0' }} F</span>
+    </div>
+    <div class="carte indicateur">
+      <span class="libelle">Depenses</span>
+      <span class="valeur numerique">{{ d.depenses | number: '1.0-0' }} F</span>
+      <span class="detail">Frais financiers (interets) : {{ d.fraisFinanciers | number: '1.0-0' }} F</span>
+    </div>
+    <div class="carte indicateur" [class.alerte]="d.resultatNet < 0" [class.succes]="d.resultatNet > 0">
+      <span class="libelle">Resultat net</span>
+      <span class="valeur numerique">{{ d.resultatNet | number: '1.0-0' }} F</span>
+      <span class="detail">CA − cout des cartes ({{ d.coutCartes | number: '1.0-0' }} F) − depenses − frais financiers</span>
+    </div>
+    <div class="carte indicateur" [class.alerte]="d.dettes > 0">
+      <span class="libelle">Dettes restantes</span>
+      <span class="valeur numerique">{{ d.dettes | number: '1.0-0' }} F</span>
+      @if (d.creances) { <span class="detail">Avances a recuperer : {{ d.creances | number: '1.0-0' }} F</span> }
+    </div>
+  </div>
+
+  <div class="grille-graphiques">
+    <!-- Commissions par jour : une seule serie, barres fines posees sur l'axe. -->
+    <section class="carte graphique">
+      <h3>Commissions par jour</h3>
+      <div class="zone">
+        <svg [attr.viewBox]="'0 0 ' + L + ' ' + H" role="img" aria-label="Commissions par jour"
+             (mousemove)="survoler($event, 'jour')" (mouseleave)="survolJour.set(null)">
+          @for (g of graduations(maxCommission()); track g.y) {
+            <line class="grille" [attr.x1]="M.gauche" [attr.x2]="L - M.droite" [attr.y1]="g.y" [attr.y2]="g.y" />
+            <text class="axe" [attr.x]="M.gauche - 8" [attr.y]="g.y + 4" text-anchor="end">{{ abrege(g.valeur) }}</text>
+          }
+          @for (b of barresJour(); track $index; let i = $index) {
+            @if (b.hauteur > 0) { <path class="barre" [class.estompe]="survolJour() !== null && survolJour() !== i" [attr.d]="b.chemin" /> }
+          }
+          @for (e of etiquettesJours(); track e.x) {
+            <text class="axe" [attr.x]="e.x" [attr.y]="H - 8" text-anchor="middle">{{ e.texte }}</text>
+          }
+        </svg>
+        @if (survolJour() !== null) {
+          @let p = d.parJour[survolJour()!];
+          @let b = barresJour()[survolJour()!];
+          <div class="infobulle" [style.left.%]="pourcent(b.x + b.largeur / 2)">
+            <strong>{{ p.jour | date: 'EEEE dd/MM' }}</strong>
+            <span>Commissions <b>{{ p.commissions | number: '1.0-0' }} F</b></span>
+            <span>{{ p.nombre }} transaction(s), {{ p.volume | number: '1.0-0' }} F</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- Tresorerie en fin de journee : une ligne de 2 px, survol avec repere vertical. -->
+    <section class="carte graphique">
+      <h3>Tresorerie disponible en fin de journee</h3>
+      <div class="zone">
+        <svg [attr.viewBox]="'0 0 ' + L + ' ' + H" role="img" aria-label="Evolution de la tresorerie"
+             (mousemove)="survoler($event, 'tresorerie')" (mouseleave)="survolTresorerie.set(null)">
+          @for (g of graduations(echelleTresorerie().max, echelleTresorerie().min); track g.y) {
+            <line class="grille" [attr.x1]="M.gauche" [attr.x2]="L - M.droite" [attr.y1]="g.y" [attr.y2]="g.y" />
+            <text class="axe" [attr.x]="M.gauche - 8" [attr.y]="g.y + 4" text-anchor="end">{{ abrege(g.valeur) }}</text>
+          }
+          <path class="ligne" [attr.d]="cheminTresorerie()" />
+          @if (pointsTresorerie().length === 1) {
+            <circle class="point" [attr.cx]="pointsTresorerie()[0].x" [attr.cy]="pointsTresorerie()[0].y" r="4" />
+          }
+          @if (survolTresorerie() !== null) {
+            @let pt = pointsTresorerie()[survolTresorerie()!];
+            <line class="repere" [attr.x1]="pt.x" [attr.x2]="pt.x" [attr.y1]="M.haut" [attr.y2]="H - M.bas" />
+            <circle class="point" [attr.cx]="pt.x" [attr.cy]="pt.y" r="4" />
+          }
+          @for (e of etiquettesJours(); track e.x) {
+            <text class="axe" [attr.x]="e.x" [attr.y]="H - 8" text-anchor="middle">{{ e.texte }}</text>
+          }
+        </svg>
+        @if (survolTresorerie() !== null) {
+          @let s = d.tresorerieParJour[survolTresorerie()!];
+          <div class="infobulle" [style.left.%]="pourcent(pointsTresorerie()[survolTresorerie()!].x)">
+            <strong>{{ s.jour | date: 'EEEE dd/MM' }}</strong>
+            <span>Tresorerie <b>{{ s.solde | number: '1.0-0' }} F</b></span>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+
+  <div class="grille-graphiques">
+    <!-- Rentabilite par service : barres horizontales triees, valeur affichee au bout. -->
+    <section class="carte graphique">
+      <h3>Rentabilite par service (commissions)</h3>
+      @for (s of d.parService; track s.id) {
+        <div class="ligne-service" [title]="s.nombre + ' transaction(s), volume ' + (s.volume | number: '1.0-0') + ' F'">
+          <span class="nom">{{ s.nom }}</span>
+          <span class="piste"><span class="remplissage" [style.width.%]="largeurService(s.commissions)"></span></span>
+          <span class="valeur numerique">{{ s.commissions | number: '1.0-0' }} F</span>
+        </div>
+      } @empty {
+        <p class="vide">Aucune transaction sur la periode.</p>
+      }
+    </section>
+
+    <section class="carte graphique">
+      <h3>Repartition des transactions</h3>
+      <table class="tableau compact">
+        <thead><tr><th>Service</th><th class="montant">Nombre</th><th class="montant">Volume</th><th class="montant">Commissions</th></tr></thead>
+        <tbody>
+          @for (s of d.parService; track s.id) {
+            <tr><td>{{ s.nom }}</td><td class="montant numerique">{{ s.nombre }}</td><td class="montant numerique">{{ s.volume | number: '1.0-0' }}</td><td class="montant numerique">{{ s.commissions | number: '1.0-0' }}</td></tr>
+          } @empty {
+            <tr><td colspan="4" class="vide">—</td></tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <div class="grille-graphiques">
+    <section class="carte graphique">
+      <h3>Activite par reseau</h3>
+      <table class="tableau compact">
+        <thead><tr><th>Reseau</th><th class="montant">Nombre</th><th class="montant">Volume</th><th class="montant">Commissions</th></tr></thead>
+        <tbody>
+          @for (r of d.parReseau; track r.id) {
+            <tr><td>{{ r.nom }}</td><td class="montant numerique">{{ r.nombre }}</td><td class="montant numerique">{{ r.volume | number: '1.0-0' }}</td><td class="montant numerique">{{ r.commissions | number: '1.0-0' }}</td></tr>
+          } @empty {
+            <tr><td colspan="4" class="vide">Aucune operation sur un reseau (Western Union, MoneyGram...).</td></tr>
+          }
+        </tbody>
+      </table>
+    </section>
+    <section class="carte graphique">
+      <h3>Activite par caissier</h3>
+      <table class="tableau compact">
+        <thead><tr><th>Caissier</th><th class="montant">Nombre</th><th class="montant">Volume</th><th class="montant">Commissions</th></tr></thead>
+        <tbody>
+          @for (c of d.parCaissier; track c.id) {
+            <tr><td>{{ c.nom }}</td><td class="montant numerique">{{ c.nombre }}</td><td class="montant numerique">{{ c.volume | number: '1.0-0' }}</td><td class="montant numerique">{{ c.commissions | number: '1.0-0' }}</td></tr>
+          } @empty {
+            <tr><td colspan="4" class="vide">—</td></tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  </div>
+} @else if (!erreur()) {
+  <p class="vide">Chargement...</p>
+}

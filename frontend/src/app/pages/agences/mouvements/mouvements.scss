@@ -1,0 +1,129 @@
+.filtres {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  select {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font: inherit;
+    background: var(--couleur-surface);
+  }
+}
+
+.onglets-statut {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+
+  button {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 999px;
+    background: var(--couleur-surface);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--couleur-texte-doux);
+    cursor: pointer;
+
+    &.actif {
+      border-color: var(--couleur-primaire);
+      background: var(--couleur-primaire);
+      color: #fff;
+    }
+  }
+}
+
+table.tableau {
+  .montant {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .actions {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .sous-ligne {
+    display: block;
+    color: var(--couleur-texte-doux);
+    font-size: 0.75rem;
+  }
+
+  tr.cliquable {
+    cursor: pointer;
+
+    &:hover td {
+      background: #f2f7fd;
+    }
+  }
+
+  tr.passe td {
+    opacity: 0.6;
+  }
+}
+
+.etiquette {
+  &.EN_ATTENTE {
+    background: #fff2df;
+    color: #a8650a;
+  }
+
+  &.VALIDE {
+    background: #e3f5ea;
+    color: var(--couleur-succes);
+  }
+
+  &.REJETE,
+  &.ANNULE {
+    background: #fce9e9;
+    color: var(--couleur-danger);
+  }
+}
+
+.champ.large {
+  grid-column: 1 / -1;
+}
+
+.fiche {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 0.45rem 0.8rem;
+  margin: 0 0 1rem;
+
+  dt {
+    color: var(--couleur-texte-doux);
+    font-size: 0.85rem;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.lien {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--couleur-primaire);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.aide {
+  color: var(--couleur-texte-doux);
+  font-size: 0.82rem;
+}
+
+.vide {
+  padding: 2rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}

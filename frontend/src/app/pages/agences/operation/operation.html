@@ -1,0 +1,236 @@
+<div class="entete-page">
+  <div>
+    <h1>Nouvelle transaction</h1>
+    <p class="sous-titre">Choisissez le service, l'operation et le montant : le resume montre l'effet sur la caisse et le virtuel avant validation.</p>
+  </div>
+  @if (agences().length > 1) {
+    <select class="choix-agence" [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
+      @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+    </select>
+  }
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (validee(); as t) {
+  <div class="message succes validee">
+    <strong>{{ t.reference }} validee</strong> · {{ t.typeLibelle }} {{ t.reseauNom ?? t.serviceNom }} de
+    {{ t.montant | number: '1.0-0' }} F · commission {{ t.commission | number: '1.0-0' }} F
+  </div>
+}
+@if (caisseLue() && agences().length) {
+  @if (maCaisse(); as c) {
+    <div class="bandeau-caisse ouverte">
+      <span>Votre caisse <strong>{{ c.numero }}</strong>, ouverte a {{ c.ouverteLe | date: 'HH:mm' }} par {{ c.ouverteParNom }}</span>
+      <span>En caisse : <strong class="numerique">{{ c.soldeCaisse | number: '1.0-0' }} F</strong></span>
+    </div>
+  } @else if (caissierSeul) {
+    <div class="bandeau-caisse fermee">Votre caisse n'est pas ouverte dans cette agence : demandez a votre superviseur de l'ouvrir avec votre fond.</div>
+  } @else {
+    <div class="bandeau-caisse">Vous n'avez pas de caisse ouverte : vos operations passent par la caisse generale de l'agence.</div>
+  }
+}
+@if (!agences().length && service.moi()) {
+  <div class="carte vide">Vous n'etes rattache a aucune agence ouverte : demandez a l'administrateur de vous y affecter.</div>
+} @else {
+  <div class="saisie">
+    <section class="carte formulaire">
+      <!-- Service -->
+      <div class="etape">
+        <span class="numero">1</span>
+        <div class="contenu-etape">
+          <h2>Service</h2>
+          @for (g of parCategorie(); track g.categorie) {
+            <div class="groupe-services">
+              <small>{{ g.categorie }}</small>
+              <div class="tuiles">
+                @for (s of g.services; track s.id) {
+                  <button type="button" class="tuile" [class.choisie]="serviceChoisi()?.id === s.id" (click)="choisirService(s)">{{ s.nom }}</button>
+                }
+              </div>
+            </div>
+          } @empty {
+            <p class="aide">Aucun service actif : l'administrateur les regle dans « Services et operations ».</p>
+          }
+        </div>
+      </div>
+
+      @if (serviceChoisi(); as s) {
+        <!-- Operation et reseau -->
+        <div class="etape">
+          <span class="numero">2</span>
+          <div class="contenu-etape">
+            <h2>Operation</h2>
+            <div class="tuiles">
+              @for (t of typesDe(s); track t.id) {
+                <button type="button" class="tuile operation" [class.choisie]="typeChoisi()?.id === t.id" (click)="choisirType(t)">{{ t.libelle }}</button>
+              }
+            </div>
+            @if (reseauxActifs().length) {
+              <h3>Reseau</h3>
+              <div class="tuiles">
+                @for (r of reseauxActifs(); track r.id) {
+                  <button type="button" class="tuile reseau" [class.choisie]="reseauId === r.id" (click)="choisirReseau(r.id)">{{ r.nom }}</button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Montant -->
+        <div class="etape">
+          <span class="numero">3</span>
+          <div class="contenu-etape">
+            <h2><label for="montant">Montant</label></h2>
+            <div class="champ-montant-principal">
+              <input id="montant" type="number" min="1" step="1" inputmode="numeric" [(ngModel)]="montant" (ngModelChange)="changerMontant()"
+                     placeholder="0" autocomplete="off" />
+              <span>F</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Client et details -->
+        <div class="etape">
+          <span class="numero">4</span>
+          <div class="contenu-etape">
+            <h2>Client <small>{{ estTransfert() ? '(piece d\'identite conseillee pour un transfert)' : '(facultatif)' }}</small></h2>
+            <div class="grille-formulaire">
+              <div class="champ client">
+                <label for="tel">Telephone</label>
+                <input id="tel" type="tel" maxlength="30" [(ngModel)]="clientTelephone" (ngModelChange)="chercherClient($event); recalculer()"
+                       autocomplete="off" placeholder="Ex. 90 00 00 00" />
+                @if (suggestions().length) {
+                  <ul class="suggestions" role="listbox">
+                    @for (c of suggestions(); track c.id) {
+                      <li><button type="button" (click)="choisirClient(c)"><strong>{{ c.telephone }}</strong> {{ c.nom }}</button></li>
+                    }
+                  </ul>
+                }
+              </div>
+              <div class="champ">
+                <label for="nom">Nom</label>
+                <input id="nom" maxlength="150" [(ngModel)]="clientNom" (ngModelChange)="chercherClient($event)" autocomplete="off" />
+              </div>
+              @if (estTransfert() || detailsOuverts) {
+                <div class="champ">
+                  <label for="piece">Piece</label>
+                  <select id="piece" [(ngModel)]="clientTypePiece">
+                    <option value="">—</option>
+                    @for (p of pieces; track p) { <option [value]="p">{{ p }}</option> }
+                  </select>
+                </div>
+                <div class="champ">
+                  <label for="numero-piece">Numero de piece</label>
+                  <input id="numero-piece" maxlength="60" [(ngModel)]="clientNumeroPiece" />
+                </div>
+              }
+              @if (estRecharge()) {
+                <div class="champ">
+                  <label for="carte">Numero de la carte</label>
+                  <input id="carte" maxlength="30" inputmode="numeric" [(ngModel)]="carte" placeholder="Seuls les 4 derniers chiffres sont gardes" />
+                </div>
+              }
+              <div class="champ">
+                <label for="ref-op">Reference operateur</label>
+                <input id="ref-op" maxlength="80" [(ngModel)]="referenceOperateur" placeholder="Code recu de l'operateur" />
+              </div>
+              @if (detailsOuverts) {
+                <div class="champ large">
+                  <label for="obs">Observations</label>
+                  <input id="obs" maxlength="500" [(ngModel)]="observations" />
+                </div>
+              }
+            </div>
+            @if (!detailsOuverts) {
+              <button type="button" class="lien" (click)="detailsOuverts = true">+ Piece d'identite et observations</button>
+            }
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- ============================================================ resume -->
+    <aside class="carte resume">
+      <h2>Resume</h2>
+      @if (erreurApercu()) {
+        <div class="message erreur">{{ erreurApercu() }}</div>
+      }
+      @if (apercu(); as a) {
+        <div class="ligne-commission">
+          <span>Commission</span>
+          @if (a.commissionModifiable) {
+            <span class="saisie-commission">
+              <input type="number" min="0" step="1" [ngModel]="commission ?? a.commissionProposee"
+                     (ngModelChange)="commission = $event; recalculer()" aria-label="Commission" />
+              <span>F</span>
+            </span>
+          } @else {
+            <strong class="numerique">{{ a.commission | number: '1.0-0' }} F</strong>
+          }
+        </div>
+        <small class="detail">{{ a.baremeLibelle ? a.baremeLibelle + ' · ' : '' }}{{ a.detailCommission }}</small>
+        @if (a.baremeExemple) { <small class="exemple">Bareme d'exemple : a remplacer par le bareme reel.</small> }
+        @if (commissionModifiee()) {
+          <div class="champ motif">
+            <label for="motif">Pourquoi modifier la commission ({{ a.commissionProposee | number: '1.0-0' }} F proposes) ? *</label>
+            <input id="motif" maxlength="255" [(ngModel)]="motifCommission" />
+          </div>
+        }
+
+        <table class="effets">
+          <thead><tr><th>Compte</th><th class="montant">Avant</th><th class="montant">Mouvement</th><th class="montant">Apres</th></tr></thead>
+          <tbody>
+            @for (e of a.effets; track e.compteId) {
+              <tr [class.insuffisant]="e.insuffisant">
+                <td>{{ e.compte }}<small>{{ e.role }}</small></td>
+                <td class="montant numerique">{{ e.soldeActuel | number: '1.0-0' }}</td>
+                <td class="montant numerique" [class.plus]="e.variation > 0" [class.moins]="e.variation < 0">
+                  {{ e.variation > 0 ? '+' : '−' }}{{ (e.variation < 0 ? -e.variation : e.variation) | number: '1.0-0' }}
+                </td>
+                <td class="montant numerique"><strong>{{ e.soldeApres | number: '1.0-0' }}</strong></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        @for (b of a.blocages; track b) {
+          <div class="message erreur">{{ b }}</div>
+        }
+        @if (a.doublon; as d) {
+          <div class="message attention">
+            Doublon possible : {{ d.texte }}.
+            <label class="case"><input type="checkbox" [(ngModel)]="confirmerDoublon" /> Ce n'est pas une erreur, je confirme</label>
+          </div>
+        }
+        <button class="bouton valider" type="button" [disabled]="!peutValider()" (click)="valider()">
+          {{ envoi() ? 'Validation...' : 'Valider la transaction' }}
+        </button>
+      } @else if (!erreurApercu()) {
+        <p class="aide">Le resume apparait des que le service, l'operation{{ reseauxActifs().length ? ', le reseau' : '' }} et le montant sont choisis.</p>
+      }
+    </aside>
+  </div>
+
+  @if (recentes().length) {
+    <section class="carte recentes">
+      <header>
+        <h2>Operations du jour</h2>
+        <a routerLink="/agences/transactions">Tout l'historique</a>
+      </header>
+      <table class="tableau">
+        <tbody>
+          @for (t of recentes(); track t.id) {
+            <tr [class.annulee]="t.statut === 'ANNULEE'">
+              <td>{{ t.dateOperation | date: 'HH:mm' }}</td>
+              <td>{{ t.reference }}</td>
+              <td>{{ t.typeLibelle }} {{ t.reseauNom ?? t.serviceNom }}</td>
+              <td class="montant numerique">{{ t.montant | number: '1.0-0' }}</td>
+              <td class="montant numerique">{{ t.commission | number: '1.0-0' }}</td>
+              <td>{{ t.statut === 'ANNULEE' ? 'Annulee' : '' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+}

@@ -1,0 +1,191 @@
+.actions-entete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.choix-agence {
+  min-width: 220px;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 8px;
+  font: inherit;
+  background: var(--couleur-surface);
+}
+
+.carte.indicateur.commissions {
+  border-left-color: var(--couleur-accent);
+}
+
+.ecart {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.message.info-ouverture {
+  background: #fff6e0;
+  color: #7a5200;
+  border: 1px solid #f2dca4;
+
+  .lien {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-weight: 700;
+    color: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
+table.tableau {
+  .montant {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .actions {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .positif {
+    color: var(--couleur-succes);
+  }
+
+  .negatif {
+    color: var(--couleur-danger);
+  }
+
+  tr.cliquable {
+    cursor: pointer;
+
+    &:hover td {
+      background: #f2f7fd;
+    }
+  }
+
+  tr.inactive td {
+    opacity: 0.55;
+  }
+
+  tr.famille th {
+    background: #eef3f9;
+    color: var(--couleur-primaire);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  tr.annulation td {
+    background: #fdf3f3;
+  }
+
+  tfoot th {
+    background: #f4f6f9;
+  }
+
+  .code {
+    color: var(--couleur-texte-doux);
+  }
+
+  .sous-ligne {
+    display: block;
+    color: var(--couleur-texte-doux);
+    font-size: 0.75rem;
+  }
+
+  .etiquette {
+    margin-left: 0.35rem;
+
+    &.bloque {
+      background: #fce9e9;
+      color: var(--couleur-danger);
+    }
+  }
+}
+
+.filtres-registre {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+
+  .champ {
+    margin: 0;
+  }
+
+  .reconstitution {
+    margin-left: auto;
+
+    .ligne {
+      display: flex;
+      gap: 0.4rem;
+    }
+  }
+}
+
+.tableau-conteneur.registre {
+  max-height: 52vh;
+}
+
+.lignes-ouverture {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+}
+
+.ligne-ouverture {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 8px;
+
+  > span:first-child {
+    display: flex;
+    flex-direction: column;
+
+    small {
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  .saisie-montant {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+
+    input {
+      width: 160px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+.total-ouverture {
+  text-align: right;
+}
+
+.aide {
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .filtres-registre .reconstitution {
+    margin-left: 0;
+  }
+
+  .ligne-ouverture .saisie-montant input {
+    width: 120px;
+  }
+}

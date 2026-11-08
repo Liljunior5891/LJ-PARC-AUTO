@@ -1,0 +1,160 @@
+.actions-entete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  select {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font: inherit;
+    background: var(--couleur-surface);
+  }
+}
+
+table.tableau {
+  .montant {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .actions {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .retard {
+    color: var(--couleur-danger);
+    font-weight: 600;
+  }
+
+  tr.cliquable {
+    cursor: pointer;
+
+    &:hover td {
+      background: #f2f7fd;
+    }
+  }
+
+  tr.annulee td {
+    color: var(--couleur-texte-doux);
+    text-decoration: line-through;
+  }
+}
+
+table.compact {
+  width: 100%;
+  margin-bottom: 0.8rem;
+  font-size: 0.88rem;
+}
+
+.choix-type {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    cursor: pointer;
+
+    &.choisi {
+      border-color: var(--couleur-primaire);
+      background: color-mix(in srgb, var(--couleur-primaire) 6%, #fff);
+    }
+  }
+}
+
+.echeancier {
+  margin: 0.8rem 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 8px;
+
+  legend {
+    padding: 0 0.3rem;
+    color: var(--couleur-texte-doux);
+    font-size: 0.85rem;
+  }
+}
+
+.ligne-echeance {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+
+  input {
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 6px;
+    font: inherit;
+  }
+
+  .retirer {
+    width: 2rem;
+    border: none;
+    border-radius: 6px;
+    background: #fde8e4;
+    color: var(--couleur-danger);
+    cursor: pointer;
+  }
+}
+
+.resume-credit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+
+  div {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0.7rem;
+    border-radius: 8px;
+    background: var(--couleur-fond);
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+  }
+}
+
+h3 {
+  margin: 0.8rem 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.champ.large {
+  grid-column: 1 / -1;
+}
+
+.lien {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--couleur-primaire);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.case {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aide {
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}
+
+.vide {
+  padding: 1.5rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}

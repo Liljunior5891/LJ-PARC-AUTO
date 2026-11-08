@@ -1,0 +1,288 @@
+<div class="entete-page">
+  <div>
+    <h1>Cartes prepayees</h1>
+    <p class="sous-titre">La vente d'une carte est un chiffre d'affaires (marge = prix − cout reel du lot) ; dans une recharge, seule la
+      commission est un revenu.</p>
+  </div>
+  @if (agences().length > 1) {
+    <select class="choix-agence" [(ngModel)]="agenceId" (ngModelChange)="chargerTout()" aria-label="Agence">
+      @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+    </select>
+  }
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+@if (service.peut('TRANSACTION_SAISIR')) {
+  <div class="grands-boutons">
+    <button type="button" class="grand vendre" (click)="ouvrirVente()">
+      <span aria-hidden="true">💳</span> VENDRE UNE CARTE
+    </button>
+    <button type="button" class="grand recharger" [disabled]="!typeRecharge()" (click)="ouvrirRecharge()">
+      <span aria-hidden="true">⚡</span> RECHARGER UNE CARTE
+    </button>
+  </div>
+}
+
+<div class="bandeau-stock">
+  @for (s of stock(); track s.produitId) {
+    <div class="pastille" [class.alerte]="s.alerte">
+      <strong>{{ s.nom }}</strong>
+      <span class="numerique">{{ s.disponible }} en stock</span>
+      <small>{{ s.prixVente | number: '1.0-0' }} F@if (s.disponible) { · marge estimee {{ s.margeUnitaireEstimee | number: '1.0-0' }} F }</small>
+      @if (s.alerte) { <small class="avertir">Stock faible (seuil {{ s.seuilAlerte }})</small> }
+    </div>
+  }
+</div>
+
+<div class="onglets">
+  <button type="button" [class.actif]="onglet === 'ventes'" (click)="changerOnglet('ventes')">Ventes</button>
+  <button type="button" [class.actif]="onglet === 'stock'" (click)="changerOnglet('stock')">Stock et lots</button>
+  <button type="button" [class.actif]="onglet === 'suivi'" (click)="changerOnglet('suivi')">Suivi et rentabilite</button>
+</div>
+
+@switch (onglet) {
+  @case ('ventes') {
+    @if (ventes(); as p) {
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Date</th><th>Reference</th><th>Carte</th><th class="montant">Qte</th><th class="montant">Montant</th><th class="montant">Cout</th><th class="montant">Marge</th><th>Caissier</th></tr></thead>
+          <tbody>
+            @for (v of p.content; track v.id) {
+              <tr class="cliquable" [class.annulee]="v.statut === 'ANNULEE'" (click)="detail.set(v)">
+                <td>{{ v.dateVente | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td>{{ v.reference }}</td>
+                <td>{{ v.produitNom }}</td>
+                <td class="montant numerique">{{ v.quantite }}</td>
+                <td class="montant numerique">{{ v.montant | number: '1.0-0' }}</td>
+                <td class="montant numerique">{{ v.coutTotal | number: '1.0-0' }}</td>
+                <td class="montant numerique">{{ v.marge | number: '1.0-0' }}</td>
+                <td>{{ v.caissierNom }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="8" class="vide">Aucune vente de carte.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-suite-liste [page]="p" (suite)="suiteVentes()" />
+    }
+  }
+  @case ('stock') {
+    @if (service.peut('CARTE_STOCK')) {
+      <div class="actions-stock">
+        <button class="bouton" type="button" (click)="ouvrirEntree()">+ Entree en stock</button>
+      </div>
+    }
+    @for (s of stock(); track s.produitId) {
+      <section class="carte produit">
+        <h2>{{ s.nom }} <small>{{ s.disponible }} disponible(s) · valeur au cout reel {{ s.valeurStock | number: '1.0-0' }} F</small></h2>
+        <table class="tableau compact">
+          <thead><tr><th>Lot</th><th>Entre le</th><th class="montant">Entre</th><th class="montant">Reste</th><th class="montant">Cout unitaire</th><th>Paye par</th><th>Fournisseur</th></tr></thead>
+          <tbody>
+            @for (l of s.lots; track l.id) {
+              <tr [class.epuise]="l.quantiteRestante === 0">
+                <td>{{ l.numero }}</td>
+                <td>{{ l.dateEntree | date: 'dd/MM/yyyy' }}</td>
+                <td class="montant numerique">{{ l.quantiteInitiale }}</td>
+                <td class="montant numerique">{{ l.quantiteRestante }}</td>
+                <td class="montant numerique">{{ l.coutUnitaire | number: '1.0-0' }}</td>
+                <td>{{ l.compteNom }}</td>
+                <td>{{ l.fournisseur ?? '' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="vide">Aucun lot : faites une entree en stock (stock initial ou achat).</td></tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    }
+  }
+  @case ('suivi') {
+    <div class="filtres">
+      <label>Du <input type="date" [(ngModel)]="du" (change)="chargerOnglet()" /></label>
+      <label>Au <input type="date" [(ngModel)]="au" (change)="chargerOnglet()" /></label>
+    </div>
+    @if (suivi(); as s) {
+      <h2 class="titre-section">Vente de cartes</h2>
+      <div class="grille-indicateurs">
+        <div class="carte indicateur"><span class="libelle">Cartes vendues</span><span class="valeur numerique">{{ s.ventes.cartes }}</span><span class="detail">{{ s.ventes.ventes }} vente(s)</span></div>
+        <div class="carte indicateur"><span class="libelle">Chiffre d'affaires</span><span class="valeur numerique">{{ s.ventes.chiffreAffaires | number: '1.0-0' }} F</span></div>
+        <div class="carte indicateur"><span class="libelle">Cout reel des cartes</span><span class="valeur numerique">{{ s.ventes.cout | number: '1.0-0' }} F</span></div>
+        <div class="carte indicateur succes"><span class="libelle">Marge brute</span><span class="valeur numerique">{{ s.ventes.marge | number: '1.0-0' }} F</span></div>
+      </div>
+      <h2 class="titre-section">Recharge de cartes</h2>
+      <div class="grille-indicateurs">
+        <div class="carte indicateur"><span class="libelle">Solde electronique initial</span><span class="valeur numerique">{{ s.recharge.soldeOuverture | number: '1.0-0' }} F</span></div>
+        <div class="carte indicateur"><span class="libelle">Approvisionnements</span><span class="valeur numerique">{{ s.recharge.approvisionnements | number: '1.0-0' }} F</span><span class="detail">Sur la periode</span></div>
+        <div class="carte indicateur"><span class="libelle">Recharges</span><span class="valeur numerique">{{ s.recharge.montantRecharges | number: '1.0-0' }} F</span><span class="detail">{{ s.recharge.nombreRecharges }} recharge(s)</span></div>
+        <div class="carte indicateur"><span class="libelle">Solde disponible</span><span class="valeur numerique">{{ s.recharge.soldeActuel | number: '1.0-0' }} F</span></div>
+        <div class="carte indicateur succes"><span class="libelle">Commissions generees</span><span class="valeur numerique">{{ s.recharge.commissions | number: '1.0-0' }} F</span><span class="detail">Creditees au sous-compte</span></div>
+      </div>
+      <p class="aide">Pour approvisionner le compte de recharge, passez par « Mouvements » (approvisionnement vers le compte de recharge).</p>
+    }
+  }
+}
+
+@if (vente()) {
+  <app-modale titre="Vendre une carte" largeur="560px" [erreur]="erreurModale()" (ferme)="vente.set(false)">
+    <form (ngSubmit)="vendre()">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="produit">Carte</label>
+          <select id="produit" name="produit" [(ngModel)]="fv.produitId" (ngModelChange)="changerProduitVente()">
+            @for (s of stock(); track s.produitId) { <option [ngValue]="s.produitId">{{ s.nom }} ({{ s.disponible }} en stock)</option> }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="quantite">Quantite</label>
+          <input id="quantite" name="quantite" type="number" min="1" step="1" [(ngModel)]="fv.quantite" />
+        </div>
+        <div class="champ">
+          <label for="client">Client</label>
+          <input id="client" name="client" maxlength="150" [(ngModel)]="fv.clientNom" />
+        </div>
+        <div class="champ">
+          <label for="tel">Telephone</label>
+          <input id="tel" name="tel" maxlength="30" [(ngModel)]="fv.clientTelephone" />
+        </div>
+      </div>
+      @if (stockChoisi(); as s) {
+        <div class="total-vente">
+          <span>A encaisser</span>
+          <strong class="numerique">{{ (fv.quantite || 0) * s.prixVente | number: '1.0-0' }} F</strong>
+        </div>
+        @if ((fv.quantite || 0) > s.disponible) {
+          <div class="message erreur">Stock insuffisant : {{ s.disponible }} carte(s) disponible(s).</div>
+        }
+      }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="vente.set(false)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!fv.produitId || !fv.quantite || (fv.quantite > (stockChoisi()?.disponible ?? 0))">Vendre</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (recharge()) {
+  <app-modale titre="Recharger une carte" largeur="620px" [erreur]="erreurModale()" (ferme)="recharge.set(false)">
+    <form (ngSubmit)="recharger()">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="montant">Montant (F) *</label>
+          <input id="montant" name="montant" type="number" min="1" step="1" [(ngModel)]="fr.montant" (ngModelChange)="recalculer()" />
+        </div>
+        <div class="champ">
+          <label for="carte">Numero de la carte</label>
+          <input id="carte" name="carte" maxlength="30" inputmode="numeric" [(ngModel)]="fr.carte" placeholder="Seuls les 4 derniers chiffres sont gardes" />
+        </div>
+        <div class="champ">
+          <label for="ref">Reference operateur</label>
+          <input id="ref" name="ref" maxlength="80" [(ngModel)]="fr.referenceOperateur" />
+        </div>
+        <div class="champ">
+          <label for="r-tel">Telephone du client</label>
+          <input id="r-tel" name="tel" maxlength="30" [(ngModel)]="fr.clientTelephone" />
+        </div>
+      </div>
+      @if (apercu(); as a) {
+        <table class="tableau compact">
+          <tbody>
+            @for (e of a.effets; track e.compteId) {
+              <tr [class.insuffisant]="e.insuffisant">
+                <td>{{ e.compte }}</td>
+                <td class="montant numerique">{{ e.variation > 0 ? '+' : '−' }}{{ (e.variation < 0 ? -e.variation : e.variation) | number: '1.0-0' }}</td>
+                <td class="montant numerique">→ {{ e.soldeApres | number: '1.0-0' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p class="aide">Commission : <strong>{{ a.commission | number: '1.0-0' }} F</strong> · {{ a.detailCommission }}</p>
+        @for (b of a.blocages; track b) { <div class="message erreur">{{ b }}</div> }
+      }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="recharge.set(false)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!apercu() || !!apercu()?.blocages?.length">Recharger</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (entree()) {
+  <app-modale titre="Entree en stock" largeur="620px" [erreur]="erreurModale()" (ferme)="entree.set(false)">
+    <form (ngSubmit)="entrer()">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="e-produit">Carte</label>
+          <select id="e-produit" name="produit" [(ngModel)]="fe.produitId">
+            @for (p of produits(); track p.id) { <option [ngValue]="p.id">{{ p.nom }}</option> }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="e-qte">Quantite *</label>
+          <input id="e-qte" name="qte" type="number" min="1" step="1" [(ngModel)]="fe.quantite" />
+        </div>
+        <div class="champ">
+          <label for="e-cout">Cout d'achat unitaire (F) *</label>
+          <input id="e-cout" name="cout" type="number" min="0" step="1" [(ngModel)]="fe.coutUnitaire" placeholder="Ex. 3300" />
+        </div>
+        <div class="champ">
+          <label for="e-compte">Paye depuis</label>
+          <select id="e-compte" name="compte" [(ngModel)]="fe.compteId">
+            <option [ngValue]="null">Stock initial (deja paye)</option>
+            @for (c of comptes(); track c.id) { <option [ngValue]="c.id">{{ c.libelle }} ({{ c.solde | number: '1.0-0' }} F)</option> }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="e-fournisseur">Fournisseur</label>
+          <input id="e-fournisseur" name="fournisseur" maxlength="150" [(ngModel)]="fe.fournisseur" />
+        </div>
+        <div class="champ">
+          <label for="e-ref">Reference</label>
+          <input id="e-ref" name="ref" maxlength="80" [(ngModel)]="fe.reference" />
+        </div>
+      </div>
+      @if (fe.quantite && fe.coutUnitaire != null) {
+        <p class="aide">Valeur du lot : <strong>{{ fe.quantite * fe.coutUnitaire | number: '1.0-0' }} F</strong>{{ fe.compteId ? ', debitee du compte choisi.' : ' (aucun paiement : stock de depart).' }}</p>
+      }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="entree.set(false)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!fe.produitId || !fe.quantite || fe.coutUnitaire == null">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (detail(); as v) {
+  <app-modale [titre]="v.reference" [sousTitre]="v.quantite + ' ' + v.produitNom" largeur="560px" (ferme)="detail.set(null)">
+    <dl class="fiche">
+      <dt>Date</dt><dd>{{ v.dateVente | date: 'dd/MM/yyyy HH:mm' }} par {{ v.caissierNom }}</dd>
+      <dt>Encaisse</dt><dd>{{ v.montant | number: '1.0-0' }} F dans {{ v.compteNom }}</dd>
+      <dt>Cout reel</dt><dd>{{ v.coutTotal | number: '1.0-0' }} F (lots les plus anciens d'abord)</dd>
+      <dt>Marge brute</dt><dd><strong>{{ v.marge | number: '1.0-0' }} F</strong></dd>
+      @if (v.clientNom || v.clientTelephone) { <dt>Client</dt><dd>{{ v.clientNom }} {{ v.clientTelephone }}</dd> }
+      @if (v.statut === 'ANNULEE') { <dt>Annulation</dt><dd>{{ v.annuleeLe | date: 'dd/MM HH:mm' }} par {{ v.annuleeParNom }} : {{ v.motifAnnulation }}</dd> }
+    </dl>
+    @if (v.annulable) {
+      <div class="actions-formulaire">
+        <button class="bouton danger" type="button" (click)="demanderAnnulation(v)">Annuler la vente</button>
+      </div>
+    }
+  </app-modale>
+}
+
+@if (aAnnuler(); as v) {
+  <app-modale [titre]="'Annuler ' + v.reference" largeur="480px" [erreur]="erreurModale()" (ferme)="aAnnuler.set(null)">
+    <form (ngSubmit)="annuler()">
+      <div class="champ">
+        <label for="motif">Motif *</label>
+        <input id="motif" name="motif" maxlength="500" [(ngModel)]="motif" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="aAnnuler.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motif.trim()">Annuler la vente</button>
+      </div>
+    </form>
+  </app-modale>
+}
