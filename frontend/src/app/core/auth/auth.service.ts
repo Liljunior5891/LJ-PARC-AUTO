@@ -99,8 +99,8 @@ export class AuthService {
       return '/pdv/caisse';
     }
     if (module === 'AGENCES') {
-      // Le caissier d'agence arrive directement sur la saisie.
-      return this.aRole('ADMIN', 'SUPERVISEUR_AGENCE') ? '/agences/tableau-bord' : '/agences/operation';
+      // Superviseur et caissier arrivent sur le tableau de bord de leur agence.
+      return '/agences/tableau-bord';
     }
     return module === 'GESTION_PARC' ? '/tableau-bord' : '/modules';
   }

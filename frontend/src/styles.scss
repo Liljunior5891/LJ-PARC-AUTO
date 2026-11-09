@@ -1417,3 +1417,132 @@ select.invalide + .select2-container .select2-selection--single {
     text-overflow: ellipsis;
   }
 }
+
+/*
+ * Barre de filtres des listes (PDV, agences) : periode, listes Select2 a largeur
+ * fixe portee par leur enveloppe, puis la recherche qui prend le reste.
+ */
+.filtres-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+
+  .choix-periode {
+    flex: 0 0 200px;
+    font-weight: 600;
+  }
+
+  .filtre {
+    flex: 0 0 190px;
+    min-width: 0;
+  }
+
+  .filtre.large {
+    flex-basis: 260px;
+  }
+
+  .recherche {
+    flex: 1 1 200px;
+    min-width: 180px;
+    height: 38px;
+    padding: 0 0.7rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font: inherit;
+  }
+
+  > input[type='date'],
+  > input[type='month'],
+  > label > input[type='month'],
+  > label > input[type='date'] {
+    height: 38px;
+    padding: 0 0.6rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font: inherit;
+  }
+
+  > label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--couleur-texte-doux);
+    font-size: 0.9rem;
+  }
+
+  .case {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .bouton {
+    height: 38px;
+  }
+}
+
+/* La barre de filtres posee seule au-dessus d'un tableau. */
+.carte.barre-filtres {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.dates-periode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+
+  input {
+    height: 38px;
+    padding: 0 0.6rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    font: inherit;
+  }
+
+  &.invalides input {
+    border-color: var(--couleur-danger);
+  }
+}
+
+/* Choix de l'agence en tete d'ecran : liste Select2, l'enveloppe fixe la largeur. */
+.choix-agence-entete {
+  width: 220px;
+  font-weight: 600;
+}
+
+/* Indicateurs en tete d'ecran (cartes d'apercu) : espace sous la rangee. */
+.cartes-apercu.tete-ecran {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 1rem;
+
+  .carte-apercu strong {
+    font-size: 1.5rem;
+  }
+}
+
+/* Chiffres d'une page de depenses (parc, PDV, agences), poses au-dessus du tableau. */
+.cartes-apercu.resume-depenses {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin-bottom: 1rem;
+
+  .carte-apercu strong {
+    font-size: 1.45rem;
+  }
+}
+
+/* Depense ou sortie de caisse en attente des validations (gerant ou superviseur, puis administrateur). */
+.badge.attente-validation {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--couleur-accent) 18%, transparent);
+  color: color-mix(in srgb, var(--couleur-accent) 70%, var(--couleur-texte));
+  white-space: nowrap;
+}

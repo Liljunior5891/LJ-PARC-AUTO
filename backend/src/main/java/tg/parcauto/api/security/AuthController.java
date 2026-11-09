@@ -27,6 +27,8 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final SessionService sessionService;
+    private final tg.parcauto.api.common.audit.JournalActiviteService journal;
+    private final UtilisateurRepository utilisateurs;
 
     public record LoginRequest(
             @NotBlank @Email String email,
@@ -50,9 +52,23 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(summary = "Authentifie un utilisateur et retourne un jeton JWT")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.motDePasse()));
-        return sessionService.ouvrir((UtilisateurPrincipal) authentication.getPrincipal());
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.email(), request.motDePasse()));
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            // Journal d'audit de l'entreprise du compte vise, s'il existe.
+            utilisateurs.findByEmailIgnoreCase(request.email()).filter(u -> u.getEntrepriseId() != null)
+                    .ifPresent(u -> journal.echecConnexion(u.getEntrepriseId(), u.getId(), u.nomComplet(),
+                            e instanceof org.springframework.security.authentication.DisabledException ? "compte desactive" : "mot de passe incorrect"));
+            throw e;
+        }
+        UtilisateurPrincipal principal = (UtilisateurPrincipal) authentication.getPrincipal();
+        LoginResponse reponse = sessionService.ouvrir(principal);
+        if (principal.getEntrepriseId() != null) {
+            journal.connexion(principal);
+        }
+        return reponse;
     }
 
     @GetMapping("/moi")

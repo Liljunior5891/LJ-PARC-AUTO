@@ -7,7 +7,7 @@ const COTE_MAX = 480;
  * Une photo de telephone pese plusieurs Mo ; reduite et recadree au carre ici,
  * elle tombe a quelques dizaines de Ko avant meme de quitter le navigateur.
  */
-export function reduirePhoto(fichier: File): Promise<string> {
+export function reduirePhoto(fichier: File, coteMax = COTE_MAX): Promise<string> {
   return new Promise((resoudre, rejeter) => {
     if (!fichier.type.startsWith('image/')) {
       rejeter(new Error('Choisissez une image (JPEG, PNG ou WebP).'));
@@ -18,7 +18,7 @@ export function reduirePhoto(fichier: File): Promise<string> {
     image.onload = () => {
       // Recadrage carre centre : toutes les cartes de la caisse ont la meme forme.
       const cote = Math.min(image.naturalWidth, image.naturalHeight);
-      const sortie = Math.min(COTE_MAX, cote);
+      const sortie = Math.min(coteMax, cote);
       const toile = document.createElement('canvas');
       toile.width = sortie;
       toile.height = sortie;

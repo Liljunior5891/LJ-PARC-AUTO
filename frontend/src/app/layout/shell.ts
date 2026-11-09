@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
@@ -6,8 +6,10 @@ import { AuthService } from '../core/auth/auth.service';
 import { SocieteService } from '../core/services/societe.service';
 import { ClocheNotifications } from '../shared/cloche-notifications';
 import { IconeDemandesEnLigne } from '../shared/icone-demandes-en-ligne';
-import { MINUTES_INACTIVITE, VerrouService } from '../core/services/verrou.service';
+import { VerrouService } from '../core/services/verrou.service';
+import { AgencesService } from '../core/services/agences.service';
 import { VerrouCaisse } from './verrou-caisse';
+import { EtatHorsLigneAgences } from './etat-hors-ligne-agences';
 import { SansCaisse } from './sans-caisse';
 import { PdvService } from '../core/services/pdv.service';
 import { NotificationsPdv } from './notifications-pdv';
@@ -28,7 +30,7 @@ interface EntreeMenu {
   /** Visible seulement quand l'entreprise a un entrepot. */
   avecLieux?: boolean;
   /** Option du point de vente a activer dans ses reglages pour voir l'entree. */
-  option?: 'associes' | 'circuit';
+  option?: 'associes' | 'circuit' | 'validation';
   /** Profils autorises ; absent, l'entree est visible de tous. */
   roles?: Role[];
   /** Module dont depend l'entree ; absent, elle fait partie du socle commun. */
@@ -60,7 +62,7 @@ interface Onglet {
 @Component({
   selector: 'app-shell',
   host: { '(document:click)': 'clicDocument($event)' },
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, IconeDemandesEnLigne, VerrouCaisse, SansCaisse, NotificationsPdv, AlertesPdv, PanneauCompte],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, EtatHorsLigneAgences, IconeDemandesEnLigne, VerrouCaisse, SansCaisse, NotificationsPdv, AlertesPdv, PanneauCompte],
   templateUrl: './shell.html',
   styleUrl: './shell.scss'
 })
@@ -81,6 +83,12 @@ export class Shell {
   readonly estPoste = this.auth.estPoste();
   /** Le caissier et le serveur levent le verrou de leur ecran avec leur code PIN. */
   readonly avecVerrou = this.estPoste && this.auth.aRole('CAISSIER', 'SERVEUR');
+  /** Le caissier d'agence aussi : verrou apres quelques minutes sans geste, leve par son code PIN. */
+  /** Pastille du travail hors ligne des agences (caissiers et superviseurs). */
+  readonly agencesHorsLigne = !this.estPoste && this.auth.peutUtiliser('AGENCES')
+    && this.auth.aRole('CAISSIER_AGENCE', 'SUPERVISEUR_AGENCE', 'ADMIN');
+  readonly verrouAgence = !this.estPoste && this.auth.peutUtiliser('AGENCES') && this.auth.aRole('CAISSIER_AGENCE')
+    && !this.auth.aRole('ADMIN', 'SUPERVISEUR_AGENCE');
   /** Sons et messages du point de vente : commandes a valider, bons, plats prets, caisse ouverte. */
   readonly notificationsPdv = this.auth.peutUtiliser('POINT_DE_VENTE')
     && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'PREPARATEUR', 'MAGASINIER');
@@ -178,7 +186,8 @@ export class Shell {
       id: 'finances', module: 'GESTION_PARC', libelle: 'Finances',
       entrees: [
         { libelle: 'Recettes', route: '/recettes', description: 'Locations, transports et livraisons' },
-        { libelle: 'Depenses', route: '/depenses', description: 'Charges rattachees a chaque vehicule' },
+        { libelle: 'Depenses', route: '/depenses', description: 'Vehicules, charges generales, recurrentes' },
+        { libelle: 'Fournisseurs', route: '/fournisseurs-parc', description: 'Fiches, dettes et reglements', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Carburant', route: '/carburant', description: 'Pleins et consommation' },
         { libelle: 'Facturation', route: '/facturation', description: 'Factures clients et reglements' },
         // Gestion de parc avec Marketplace : les vehicules reserves en ligne, a valider.
@@ -229,7 +238,8 @@ export class Shell {
           enfants: [
             { libelle: 'Fournisseurs', route: '/pdv/fournisseurs', description: 'Fiches, dettes, echeances et paiements' },
             { libelle: 'Reapprovisionnement', route: '/pdv/stock', description: 'Commandes, receptions, sorties et pertes' },
-            { libelle: 'Depenses', route: '/pdv/depenses', description: 'Salaires, loyer, electricite, recurrentes' }
+            { libelle: 'Depenses', route: '/pdv/depenses', description: 'Salaires, loyer, electricite, recurrentes' },
+            { libelle: 'Depenses de caisse a valider', route: '/pdv/validations-caisse', description: 'Visa du gerant, puis approbation par l\'administrateur', option: 'validation' }
           ]
         },
         {
@@ -259,22 +269,37 @@ export class Shell {
       // Agences multiservices : soldes centralises, agences, catalogue et reglages.
       id: 'agences', libelle: 'Agences', module: 'AGENCES',
       entrees: [
-        { libelle: 'Tableau de bord', route: '/agences/tableau-bord', description: 'Tresorerie, commissions et activite', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
-        { libelle: 'Nouvelle transaction', route: '/agences/operation', description: 'Depot, retrait, envoi, paiement, recharge' },
-        { libelle: 'Historique', route: '/agences/transactions', description: 'Transactions, recherche et annulations' },
-        { libelle: 'Caisses des caissiers', route: '/agences/caisses', description: 'Ouverture, fermeture et billettage', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
-        { libelle: 'Mouvements', route: '/agences/mouvements', description: 'Approvisionnements, banque, regularisations', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+        { libelle: 'Tableau de bord', route: '/agences/tableau-bord', description: 'Tresorerie, commissions et activite de l\'agence' },
+        { libelle: 'Transactions', route: '/agences/transactions', description: 'Liste, recherche, saisie et annulations' },
+        {
+          libelle: 'Agence', description: 'Agences, caisses des caissiers et cloture', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'],
+          enfants: [
+            { libelle: 'Agences', route: '/agences/agences', description: 'Agences, adresses et personnel rattache', roles: ['ADMIN'] },
+            { libelle: 'Caisses des caissiers', route: '/agences/caisses', description: 'Ouverture, fermeture et billettage', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+            { libelle: 'Cloture de caisse', route: '/agences/cloture', description: 'Soldes reels, ecarts et verrouillage du jour' },
+            { libelle: 'Operations hors ligne', route: '/agences/hors-ligne', description: 'Operations refusees a l’envoi, a reprendre', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] }
+          ]
+        },
+        {
+          libelle: 'Finance', description: 'Mouvements, credits, tresorerie et rapprochement', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'],
+          enfants: [
+            { libelle: 'Mouvements', route: '/agences/mouvements', description: 'Approvisionnements, banque, regularisations', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+            { libelle: 'Credits et dettes', route: '/agences/credits', description: 'Credits, apports, avances et remboursements', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+            { libelle: 'Soldes et tresorerie', route: '/agences/soldes', description: 'Cash, floats, banque et registre des mouvements', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+            { libelle: 'Rapprochement', route: '/agences/rapprochement', description: 'Commissions en attente et versements des operateurs', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] }
+          ]
+        },
         { libelle: 'Cartes prepayees', route: '/agences/cartes', description: 'Vendre, recharger, stock et rentabilite' },
         { libelle: 'Depenses', route: '/agences/depenses', description: 'Charges, suivi mensuel et charges recurrentes' },
-        { libelle: 'Credits et dettes', route: '/agences/credits', description: 'Credits, apports, avances et remboursements', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
-        { libelle: 'Cloture de caisse', route: '/agences/cloture', description: 'Soldes reels, ecarts et verrouillage du jour' },
-        { libelle: 'Soldes et tresorerie', route: '/agences/soldes', description: 'Cash, floats, banque et registre des mouvements', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
-        { libelle: 'Agences', route: '/agences/agences', description: 'Agences, adresses et personnel rattache' },
-        { libelle: 'Services et operations', route: '/agences/services', description: 'Operateurs, reseaux et regles de mouvement' },
-        { libelle: 'Baremes de commission', route: '/agences/baremes', description: 'Fixe, pourcentage ou tranches, simulateur', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
         { libelle: 'Rapports', route: '/agences/rapports', description: 'Journalier a annuel, exports Excel, PDF, CSV', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
-        { libelle: 'Journal d\'audit', route: '/agences/audit', description: 'Qui a fait quoi, avant et apres', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
-        { libelle: 'Reglages et droits', route: '/agences/reglages', description: 'Journee de caisse, plafonds, droits des profils', roles: ['ADMIN'] }
+        {
+          libelle: 'Reglages', description: 'Baremes, services et droits des profils', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'],
+          enfants: [
+            { libelle: 'Baremes de commission', route: '/agences/baremes', description: 'Fixe, pourcentage ou tranches, simulateur', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
+            { libelle: 'Services et commissions', route: '/agences/services', description: 'Operateurs, reseaux et regles de mouvement', roles: ['ADMIN'] },
+            { libelle: 'Reglage des droits', route: '/agences/reglages', description: 'Journee de caisse, plafonds, droits des profils', roles: ['ADMIN'] }
+          ]
+        }
       ]
     },
     {
@@ -295,7 +320,8 @@ export class Shell {
         // Point de vente + Marketplace : la boutique se regle ici ; ventes et produits en ligne sont dans le point de vente.
         { libelle: 'Ma boutique', route: '/marketplace/boutique', description: 'Boutique en ligne : vitrine, livraison, paiement et lien', module: 'MARKETPLACE', avecUnDesModules: ['POINT_DE_VENTE', 'GESTION_PARC'], roles: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Utilisateurs', route: '/utilisateurs', description: 'Comptes et profils d\'acces', roles: ['ADMIN'] },
-        { libelle: 'Parametrage', route: '/parametrage', description: 'Societe, logo et referentiels', roles: ['ADMIN'] }
+        { libelle: 'Parametrage', route: '/parametrage', description: 'Societe, logo et referentiels', roles: ['ADMIN'] },
+        { libelle: 'Journal d\'audit', route: '/journal-audit', description: 'Toute l\'entreprise : donnees et connexions', roles: ['ADMIN'] }
       ]
     }
   ];
@@ -320,11 +346,12 @@ export class Shell {
       return this.menuPlateforme;
     }
     const lieuxActifs = this.lieux.actif();
-    const optionsActives = { associes: this.optionsPdv.associesActif(), circuit: this.optionsPdv.circuitActif() };
+    const optionsActives = { associes: this.optionsPdv.associesActif(), circuit: this.optionsPdv.circuitActif(),
+      validation: this.optionsPdv.validationDepensesActive() };
     const varianteCourante = this.auth.variante('POINT_DE_VENTE') ?? '';
     const autorise = (e: { roles?: Role[]; module?: CodeModule; variante?: string | string[]; sansModules?: CodeModule[];
                            avecModules?: CodeModule[]; avecUnDesModules?: CodeModule[]; avecLieux?: boolean;
-                           option?: 'associes' | 'circuit' }) =>
+                           option?: 'associes' | 'circuit' | 'validation' }) =>
       (!e.avecLieux || lieuxActifs) &&
       (!e.option || optionsActives[e.option]) &&
       (!e.roles || this.auth.aRole(...e.roles)) &&
@@ -423,7 +450,8 @@ export class Shell {
     if (this.auth.aModule('POINT_DE_VENTE') && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'ASSOCIE')) {
       this.optionsPdv.charger();
     }
-    if (this.avecVerrou) {
+    if (this.avecVerrou || this.verrouAgence) {
+      this.lireDelaiVerrou();
       this.surveillerInactivite(destroyRef);
     }
     if (this.posteCaissier) {
@@ -508,13 +536,33 @@ export class Shell {
     }
   }
 
-  /** Sans geste pendant quelques minutes, la caisse se verrouille d'elle-meme. */
+  /** Delai de verrouillage regle par l'administrateur : reglages des agences pour le caissier d'agence, du point de vente sinon. */
+  private lireDelaiVerrou(): void {
+    const appliquer = (m?: number | null) => {
+      if (m && m > 0) {
+        this.verrou.minutes.set(m);
+      }
+    };
+    if (this.verrouAgence) {
+      inject(AgencesService).reglages().subscribe({ next: (r) => appliquer(r.minutesVerrouCaisse) });
+    } else {
+      // Les reglages du point de vente sont deja lus au demarrage (options).
+      effect(() => appliquer(this.optionsPdv.reglages()?.minutesVerrouCaisse));
+    }
+  }
+
+  /** Sans geste pendant le delai regle, la caisse se verrouille d'elle-meme. */
   private surveillerInactivite(destroyRef: DestroyRef): void {
     let minuterie = 0;
     const relancer = () => {
       clearTimeout(minuterie);
-      minuterie = window.setTimeout(() => this.verrou.verrouiller(), MINUTES_INACTIVITE * 60_000);
+      minuterie = window.setTimeout(() => this.verrou.verrouiller(), this.verrou.minutes() * 60_000);
     };
+    // Un nouveau delai s'applique tout de suite.
+    effect(() => {
+      this.verrou.minutes();
+      relancer();
+    });
     const evenements = ['pointerdown', 'keydown', 'touchstart'];
     evenements.forEach((e) => document.addEventListener(e, relancer, { passive: true }));
     relancer();

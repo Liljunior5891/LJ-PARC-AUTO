@@ -72,8 +72,15 @@
       @if (demandesEnLigneVisibles()) {
         <app-icone-demandes-en-ligne />
       }
+      @if (agencesHorsLigne) {
+        <app-etat-hors-ligne-agences />
+      }
       @if (clocheVisible()) {
         <app-cloche-notifications />
+      }
+      @if (verrouAgence) {
+        <button type="button" class="outil-verrou" (click)="verrou.verrouiller()" aria-label="Verrouiller l'ecran"
+                title="Verrouiller l'ecran (code PIN)">🔒</button>
       }
       @if (notificationsPdv) {
         <app-alertes-pdv />
@@ -107,6 +114,10 @@
       </div>
     </div>
   </header>
+
+  @if (verrouAgence && verrou.verrouille()) {
+    <app-verrou-caisse (deconnexion)="deconnexion()" />
+  }
 
   <!-- Menu horizontal : des onglets inclines, puis le panneau des pages de l'onglet ouvert. -->
   <nav class="navigation" aria-label="Menu principal">

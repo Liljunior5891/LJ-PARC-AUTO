@@ -666,3 +666,20 @@ button.entree {
     }
   }
 }
+
+/* Verrou de l'ecran du caissier d'agence (code PIN). */
+.outil-verrou {
+  display: inline-grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 10px;
+  background: var(--couleur-surface);
+  font-size: 1rem;
+  cursor: pointer;
+
+  &:hover {
+    background: #eef3f9;
+  }
+}

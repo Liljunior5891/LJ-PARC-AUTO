@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
 import {
   authGuard,
   caisseBoutiqueGuard,
@@ -169,6 +170,12 @@ export const routes: Routes = [
             path: 'depenses',
             loadComponent: () => import('./pages/depenses/depenses').then((m) => m.Depenses),
             title: 'Depenses — LJ SaaS'
+          },
+          {
+            path: 'fournisseurs-parc',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
+            loadComponent: () => import('./pages/fournisseurs-parc/fournisseurs-parc').then((m) => m.FournisseursParc),
+            title: 'Fournisseurs — LJ SaaS'
           },
           {
             path: 'carburant',
@@ -387,6 +394,12 @@ export const routes: Routes = [
                 title: 'Depenses — LJ SaaS'
               },
               {
+                path: 'validations-caisse',
+                canActivate: [roleGuard('ADMIN', 'GERANT')],
+                loadComponent: () => import('./pages/pdv/validations-caisse/validations-caisse').then((m) => m.ValidationsCaissePdv),
+                title: 'Depenses de caisse a valider — LJ SaaS'
+              },
+              {
                 path: 'caisses',
                 loadComponent: () => import('./pages/pdv/caisses/caisses').then((m) => m.CaissesPdv),
                 title: 'Caisses — LJ SaaS'
@@ -460,6 +473,11 @@ export const routes: Routes = [
             title: 'Credits et dettes — LJ SaaS'
           },
           {
+            path: 'rapprochement',
+            loadComponent: () => import('./pages/agences/rapprochement/rapprochement').then((m) => m.RapprochementCommissions),
+            title: 'Rapprochement des commissions — LJ SaaS'
+          },
+          {
             path: 'rapports',
             loadComponent: () => import('./pages/agences/rapports/rapports-agences').then((m) => m.RapportsAgences),
             title: 'Rapports des agences — LJ SaaS'
@@ -475,14 +493,15 @@ export const routes: Routes = [
             title: 'Journal d\'audit — LJ SaaS'
           },
           {
+            // La saisie se fait dans une fenetre de l'ecran des transactions.
             path: 'operation',
-            loadComponent: () => import('./pages/agences/operation/operation').then((m) => m.OperationAgence),
-            title: 'Nouvelle transaction — LJ SaaS'
+            pathMatch: 'full',
+            redirectTo: () => inject(Router).createUrlTree(['/agences/transactions'], { queryParams: { nouvelle: 1 } })
           },
           {
             path: 'transactions',
             loadComponent: () => import('./pages/agences/transactions/transactions').then((m) => m.TransactionsAgences),
-            title: 'Historique des transactions — LJ SaaS'
+            title: 'Transactions des agences — LJ SaaS'
           },
           {
             path: 'caisses',
@@ -498,6 +517,12 @@ export const routes: Routes = [
             path: 'soldes',
             loadComponent: () => import('./pages/agences/soldes/soldes').then((m) => m.SoldesAgences),
             title: 'Soldes et tresorerie — LJ SaaS'
+          },
+          {
+            path: 'hors-ligne',
+            canActivate: [roleGuard('ADMIN', 'SUPERVISEUR_AGENCE')],
+            loadComponent: () => import('./pages/agences/hors-ligne/conflits-hors-ligne').then((m) => m.ConflitsHorsLigne),
+            title: 'Operations hors ligne — LJ SaaS'
           },
           {
             path: 'agences',
@@ -558,6 +583,39 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/modules/modules').then((m) => m.Modules),
         canActivate: [entrepriseGuard, roleGuard('ADMIN')],
         title: 'Modules — LJ SaaS'
+      },
+      // --- Journal d'audit des modules (hors Agences, qui a le sien) ------------
+      {
+        path: 'journal-audit',
+        canActivate: [entrepriseGuard, roleGuard('ADMIN')],
+        children: [
+          {
+            path: '',
+            loadComponent: () => import('./pages/journal-audit/journal-audit').then((m) => m.JournalAudit),
+            title: 'Journal d\'audit — LJ SaaS'
+          },
+          {
+            path: 'parc',
+            canActivate: [moduleGuard('GESTION_PARC')],
+            data: { modules: 'PARC,EXPLOITATION,FINANCES,MAINTENANCE,GPS', titre: 'Journal d\'audit de la gestion de parc' },
+            loadComponent: () => import('./pages/journal-audit/journal-audit').then((m) => m.JournalAudit),
+            title: 'Journal d\'audit du parc — LJ SaaS'
+          },
+          {
+            path: 'pdv',
+            canActivate: [moduleGuard('POINT_DE_VENTE')],
+            data: { modules: 'POINT_DE_VENTE', titre: 'Journal d\'audit du point de vente' },
+            loadComponent: () => import('./pages/journal-audit/journal-audit').then((m) => m.JournalAudit),
+            title: 'Journal d\'audit du point de vente — LJ SaaS'
+          },
+          {
+            path: 'marketplace',
+            canActivate: [moduleGuard('MARKETPLACE')],
+            data: { modules: 'MARKETPLACE', titre: 'Journal d\'audit de la marketplace' },
+            loadComponent: () => import('./pages/journal-audit/journal-audit').then((m) => m.JournalAudit),
+            title: 'Journal d\'audit de la marketplace — LJ SaaS'
+          }
+        ]
       },
       {
         path: 'utilisateurs',
