@@ -363,12 +363,28 @@ export class FermetureSession {
             }
           </ul>
         }
-        <div class="actions-formulaire">
-          <button class="bouton secondaire annuler" type="button" (click)="ferme.emit()">Annuler</button>
-          <button class="bouton" type="submit" [disabled]="envoi() || !montant || montant <= 0 || !motif.trim()">
-            Enregistrer
-          </button>
-        </div>
+        @if (enAttente().length > 0) {
+          <p class="titre-attente">Sorties en attente de validation (encore dans le tiroir)</p>
+          <ul class="historique">
+            @for (a of enAttente(); track a.id) {
+              <li><span class="attente">⏳ {{ a.montant | number: '1.0-0' }} F</span> {{ a.motif }}
+                <small>· {{ a.statut === 'ATTENTE_GERANT' ? 'attend le gerant' : 'attend l\'administrateur' }}</small></li>
+            }
+          </ul>
+        }
+        @if (demandeEnvoyee(); as d) {
+          <div class="message succes">{{ d }}</div>
+          <div class="actions-formulaire">
+            <button class="bouton" type="button" (click)="terminer()">Fermer</button>
+          </div>
+        } @else {
+          <div class="actions-formulaire">
+            <button class="bouton secondaire annuler" type="button" (click)="ferme.emit()">Annuler</button>
+            <button class="bouton" type="submit" [disabled]="envoi() || !montant || montant <= 0 || !motif.trim()">
+              Enregistrer
+            </button>
+          </div>
+        }
       </form>
     </app-modale>
   `,
@@ -384,6 +400,8 @@ export class FermetureSession {
     .historique { margin: 0.4rem 0 0; padding-left: 1.1rem; color: var(--couleur-texte-doux); font-size: 0.85rem; }
     .historique span { font-weight: 700; color: #1f9d6b; }
     .historique span.sortie { color: #b8650a; }
+    .historique span.attente { color: #9a5b00; }
+    .titre-attente { margin: 0.8rem 0 0; font-size: 0.85rem; font-weight: 600; }
   `
 })
 export class MouvementSession {
@@ -397,16 +415,32 @@ export class MouvementSession {
   readonly envoi = signal(false);
   montant: number | null = null;
   motif = '';
+  /** Sortie envoyee pour validation : la fenetre reste ouverte pour le dire. */
+  readonly demandeEnvoyee = signal<string | null>(null);
+  private sessionApres: SessionCaisse | null = null;
+  private readonly sessionAffichee = signal<SessionCaisse | null>(null);
+  readonly enAttente = computed(() => (this.sessionAffichee() ?? this.session()).sortiesEnAttente ?? []);
 
   enregistrer(): void {
-    if (!this.montant || this.montant <= 0 || !this.motif.trim()) {
+    if (!this.montant || this.montant <= 0 || !this.motif.trim() || this.demandeEnvoyee()) {
       return;
     }
     this.envoi.set(true);
     this.erreur.set(null);
+    const avant = new Set((this.session().sortiesEnAttente ?? []).map((a) => a.id));
     this.service.mouvementCaisse(this.session().id, this.type(), this.montant, this.motif.trim()).subscribe({
       next: (s) => {
         this.envoi.set(false);
+        const nouvelle = (s.sortiesEnAttente ?? []).find((a) => !avant.has(a.id));
+        if (nouvelle) {
+          // Validation des depenses de caisse : rien ne sort du tiroir avant l'administrateur.
+          this.sessionApres = s;
+          this.sessionAffichee.set(s);
+          this.demandeEnvoyee.set(`Sortie ${nouvelle.numero} de ${Math.round(nouvelle.montant).toLocaleString('fr-FR')} F envoyee pour validation `
+            + `(${nouvelle.statut === 'ATTENTE_GERANT' ? 'le gerant, puis l\'administrateur' : 'l\'administrateur'}). `
+            + `Ne sortez pas les especes avant l'approbation.`);
+          return;
+        }
         this.enregistre.emit(s);
       },
       error: (e) => {
@@ -414,5 +448,13 @@ export class MouvementSession {
         this.erreur.set(message(e, 'Enregistrement impossible.'));
       }
     });
+  }
+
+  terminer(): void {
+    if (this.sessionApres) {
+      this.enregistre.emit(this.sessionApres);
+    } else {
+      this.ferme.emit();
+    }
   }
 }

@@ -50,6 +50,8 @@ export class ReglagesPdvPage implements OnInit {
   readonly sommaire = computed(() => [
     { id: 'reglage-associes', libelle: 'Benefices des associes', icone: '🤝', groupe: 'Options' },
     { id: 'reglage-circuit', libelle: 'Circuit des especes', icone: '🔐', groupe: 'Options' },
+    { id: 'reglage-validation-depenses', libelle: 'Validation des depenses de caisse', icone: '✅', groupe: 'Options' },
+    { id: 'reglage-verrou', libelle: 'Verrouillage de la caisse', icone: '🔒', groupe: 'Options' },
     ...(this.materiaux ? [
       { id: 'reglage-credit', libelle: 'Vente a credit', icone: '💳', groupe: 'Quincaillerie' },
       { id: 'reglage-devis', libelle: 'Devis', icone: '📄', groupe: 'Quincaillerie' },
@@ -113,7 +115,8 @@ export class ReglagesPdvPage implements OnInit {
     }
     const appels: Observable<unknown>[] = [];
     if (JSON.stringify(f) !== this.enregistre) {
-      appels.push(this.options.modifierReglages({ ...f, ecartTolere: Math.max(0, Number(f.ecartTolere) || 0) }));
+      appels.push(this.options.modifierReglages({ ...f, ecartTolere: Math.max(0, Number(f.ecartTolere) || 0),
+        minutesVerrouCaisse: Math.min(120, Math.max(1, Math.round(Number(f.minutesVerrouCaisse) || 5))) }));
     }
     const materiaux = this.partieMateriaux();
     if (materiaux?.modifie()) {

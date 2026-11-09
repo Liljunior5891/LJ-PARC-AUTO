@@ -74,12 +74,63 @@
           <select [(ngModel)]="statut" (ngModelChange)="charger()" aria-label="Statut">
             <option value="">Valides et annulees</option>
             <option value="VALIDE">Valides</option>
+            <option value="ATTENTE_GERANT">Attendent le gerant</option>
+            <option value="ATTENTE_ADMIN">Attendent l'administrateur</option>
+            <option value="REFUSEE">Refusees</option>
             <option value="ANNULEE">Annulees</option>
           </select>
         </div>
         <input class="recherche" type="search" placeholder="Libelle, beneficiaire, numero..." [(ngModel)]="recherche"
                (keyup.enter)="charger()" (search)="charger()" aria-label="Recherche" />
       </div>
+
+      <!-- Chiffres de la periode, comme pour les transactions des agences. -->
+      @if (synthese(); as s) {
+        <div class="cartes-apercu resume-depenses">
+          <div class="carte-apercu orange">
+            <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M12 9v6M9.5 11.5L12 9l2.5 2.5" /></svg></span>
+            <span class="textes">
+              <span class="libelle">Depenses {{ libellePeriode() }}</span>
+              <strong>{{ s.total | number: '1.0-0' }}<em> F</em></strong>
+              <small>{{ s.nombre }} depense(s) · moyenne {{ (s.nombre ? s.total / s.nombre : 0) | number: '1.0-0' }} F</small>
+            </span>
+          </div>
+          <div class="carte-apercu violet" [class.calme]="!premierPoste()">
+            <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 12.5V4.5h8l9 9-8 8z" /><circle cx="8" cy="9" r="1.5" /></svg></span>
+            <span class="textes">
+              <span class="libelle">Premier poste</span>
+              @if (premierPoste(); as c) {
+                <strong>{{ c.total | number: '1.0-0' }}<em> F</em></strong>
+                <small>{{ c.icone }} {{ c.categorie }} · {{ s.total ? ((c.total / s.total) * 100 | number: '1.0-0') : 0 }} %</small>
+              } @else {
+                <strong>—</strong>
+                <small>aucune depense</small>
+              }
+            </span>
+          </div>
+          <div class="carte-apercu bleu" [class.calme]="!premierMoyen()">
+            <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.6" /></svg></span>
+            <span class="textes">
+              <span class="libelle">Paye surtout par</span>
+              @if (premierMoyen(); as m) {
+                <strong>{{ m.total | number: '1.0-0' }}<em> F</em></strong>
+                <small>{{ m.libelle }} · {{ m.nombre }} depense(s)</small>
+              } @else {
+                <strong>—</strong>
+                <small>aucun paiement</small>
+              }
+            </span>
+          </div>
+          <button type="button" class="carte-apercu rouge" [class.calme]="!aPayer().length" (click)="changerOnglet('a-payer')">
+            <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg></span>
+            <span class="textes">
+              <span class="libelle">A payer ce mois</span>
+              <strong>{{ totalAPayer() | number: '1.0-0' }}<em> F</em></strong>
+              <small>{{ aPayer().length }} recurrente(s){{ aPayerEnRetard() ? ' · ' + aPayerEnRetard() + ' en retard' : '' }}</small>
+            </span>
+          </button>
+        </div>
+      }
 
       @if (synthese(); as s) {
         <div class="synthese">
@@ -119,7 +170,7 @@
           </thead>
           <tbody>
             @for (d of page()?.content ?? []; track d.id) {
-              <tr [class.annulee]="d.statut === 'ANNULEE'">
+              <tr [class.annulee]="d.statut === 'ANNULEE' || d.statut === 'REFUSEE'">
                 <td><strong>{{ d.numero }}</strong><br /><small>{{ d.auteurNom }}</small></td>
                 <td>{{ d.dateDepense | date: 'dd/MM/yyyy' }}</td>
                 <td>{{ d.categorieIcone }} {{ d.categorieNom }}</td>
@@ -127,6 +178,12 @@
                   {{ d.libelle }}
                   @if (d.note) { <br /><small>{{ d.note }}</small> }
                   @if (d.statut === 'ANNULEE') { <br /><small class="motif">Annulee par {{ d.annuleePar }} : {{ d.motifAnnulation }}</small> }
+                  @if (d.statut === 'REFUSEE') { <br /><small class="motif">Refusee par {{ d.refuseePar }} : {{ d.motifRefus }}</small> }
+                  @if (d.statut === 'ATTENTE_GERANT' || d.statut === 'ATTENTE_ADMIN') {
+                    <br /><span class="badge attente-validation">⏳ {{ libellesStatut[d.statut] }}</span>
+                    @if (d.viseePar) { <small> · visee par {{ d.viseePar }}</small> }
+                  }
+                  @if (d.statut === 'VALIDE' && d.approuveePar) { <br /><small>Approuvee par {{ d.approuveePar }}</small> }
                 </td>
                 <td>{{ d.beneficiaire || d.fournisseurNom || '—' }}</td>
                 <td>

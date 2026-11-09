@@ -3,6 +3,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
 import {
+  LIBELLES_STATUT_DEPENSE,
+  StatutDepense,
   CategorieDepense,
   Depense,
   DepenseAPayer,
@@ -66,7 +68,8 @@ export class DepensesPdv implements OnInit {
   readonly datesValides = computed(() => this.portee() !== 'PERSONNALISEE' || this.dateDebut() <= this.dateFin());
   categorieId: number | null = null;
   mode: ModeSortie | '' = '';
-  statut: 'VALIDE' | 'ANNULEE' | '' = '';
+  statut: StatutDepense | '' = '';
+  readonly libellesStatut = LIBELLES_STATUT_DEPENSE;
   recherche = '';
 
   /** Saisie ouverte (null : nouvelle, une depense : correction, undefined : fermee). */
@@ -80,6 +83,10 @@ export class DepensesPdv implements OnInit {
   // --------------------------------------------------------- a payer
   readonly aPayer = signal<DepenseAPayer[]>([]);
   readonly totalAPayer = computed(() => this.aPayer().reduce((s, a) => s + a.montant, 0));
+  readonly aPayerEnRetard = computed(() => this.aPayer().filter((a) => a.enRetard).length);
+  /** Categorie et moyen de paiement qui pesent le plus sur la periode. */
+  readonly premierPoste = computed(() => [...(this.synthese()?.parCategorie ?? [])].sort((a, b) => b.total - a.total)[0]);
+  readonly premierMoyen = computed(() => [...(this.synthese()?.parMode ?? [])].sort((a, b) => b.total - a.total)[0]);
 
   // ------------------------------------------------------ recurrentes
   readonly recurrentes = signal<DepenseRecurrente[]>([]);
@@ -182,8 +189,11 @@ export class DepensesPdv implements OnInit {
     this.derniere.set(correction ? null : d);
     this.formulaire.set(undefined);
     this.moisAPayer.set(null);
+    const montant = Math.round(d.montant).toLocaleString('fr-FR');
     this.succes.set(correction ? `Depense ${d.numero} corrigee.`
-      : `Depense ${d.numero} enregistree : ${Math.round(d.montant).toLocaleString('fr-FR')} F${d.caisseNom ? ', sortis de ' + d.caisseNom : ''}.`);
+      : d.statut === 'ATTENTE_GERANT' || d.statut === 'ATTENTE_ADMIN'
+        ? `Depense ${d.numero} de ${montant} F envoyee pour validation (${LIBELLES_STATUT_DEPENSE[d.statut].toLowerCase()}) : rien ne sort de ${d.caisseNom ?? 'la caisse'} avant l'approbation de l'administrateur.`
+        : `Depense ${d.numero} enregistree : ${montant} F${d.caisseNom ? ', sortis de ' + d.caisseNom : ''}.`);
     this.charger();
     this.chargerAPayer();
   }

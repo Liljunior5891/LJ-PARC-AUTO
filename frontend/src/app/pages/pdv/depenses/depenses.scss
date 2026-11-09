@@ -198,3 +198,13 @@ tr.annulee td {
   justify-content: space-between;
   gap: 0.6rem;
 }
+
+/* Cartes de chiffres au-dessus de la repartition et du tableau. */
+.resume-depenses {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-top: 1rem;
+
+  .carte-apercu strong {
+    font-size: 1.5rem;
+  }
+}

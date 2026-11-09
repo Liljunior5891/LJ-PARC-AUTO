@@ -32,7 +32,18 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class DepensePdv extends BaseEntity {
 
-    public enum Statut { VALIDE, ANNULEE }
+    /**
+     * ATTENTE_GERANT et ATTENTE_ADMIN : depense payee par la caisse, en attente
+     * des validations (reglage du point de vente) ; elle ne compte pas encore et
+     * rien n'est sorti de la caisse. REFUSEE : refusee a l'une des etapes.
+     */
+    public enum Statut {
+        ATTENTE_GERANT, ATTENTE_ADMIN, VALIDE, REFUSEE, ANNULEE;
+
+        public boolean enAttente() {
+            return this == ATTENTE_GERANT || this == ATTENTE_ADMIN;
+        }
+    }
 
     @Column(nullable = false, length = 40)
     private String numero;
@@ -111,4 +122,27 @@ public class DepensePdv extends BaseEntity {
 
     @Column(name = "motif_annulation", length = 255)
     private String motifAnnulation;
+
+    /** Premiere validation (gerant). */
+    @Column(name = "visee_par", length = 150)
+    private String viseePar;
+
+    @Column(name = "visee_le")
+    private Instant viseeLe;
+
+    /** Validation de l'administrateur, qui fait sortir les especes. */
+    @Column(name = "approuvee_par", length = 150)
+    private String approuveePar;
+
+    @Column(name = "approuvee_le")
+    private Instant approuveeLe;
+
+    @Column(name = "refusee_par", length = 150)
+    private String refuseePar;
+
+    @Column(name = "refusee_le")
+    private Instant refuseeLe;
+
+    @Column(name = "motif_refus", length = 255)
+    private String motifRefus;
 }

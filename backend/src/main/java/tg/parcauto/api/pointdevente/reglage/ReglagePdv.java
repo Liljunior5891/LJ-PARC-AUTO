@@ -32,4 +32,15 @@ public class ReglagePdv extends BaseEntity {
     /** Ecart (en valeur absolue) au-dela duquel une justification est exigee. */
     @Column(name = "ecart_tolere", nullable = false, precision = 16, scale = 2)
     private BigDecimal ecartTolere = BigDecimal.ZERO;
+
+    /**
+     * Depenses et sorties d'especes payees par la caisse : validees par le gerant
+     * puis par l'administrateur avant de sortir de la caisse et d'entrer dans les journaux.
+     */
+    @Column(name = "validation_depenses_caisse", nullable = false)
+    private boolean validationDepensesCaisse;
+
+    /** Minutes sans geste apres lesquelles l'ecran de caisse se verrouille (code PIN). */
+    @Column(name = "minutes_verrou_caisse", nullable = false)
+    private int minutesVerrouCaisse = 5;
 }

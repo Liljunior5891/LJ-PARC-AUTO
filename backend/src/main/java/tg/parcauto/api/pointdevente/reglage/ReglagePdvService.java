@@ -22,18 +22,26 @@ public class ReglagePdvService {
     /** Fourni par la tresorerie, qui depend elle-meme des reglages : resolu a l'usage. */
     private final org.springframework.beans.factory.ObjectProvider<ControleOptions> controle;
 
-    public record Reglages(boolean associesActif, boolean circuitCaisseActif, BigDecimal ecartTolere) {
+    public record Reglages(boolean associesActif, boolean circuitCaisseActif, BigDecimal ecartTolere,
+                           boolean validationDepensesCaisse,
+                           /** Minutes sans geste avant le verrouillage de l'ecran de caisse. */
+                           int minutesVerrouCaisse) {
     }
 
     public record Requete(@NotNull Boolean associesActif, @NotNull Boolean circuitCaisseActif,
-                          @NotNull @PositiveOrZero BigDecimal ecartTolere) {
+                          @NotNull @PositiveOrZero BigDecimal ecartTolere,
+                          /** Absent : inchange. */
+                          Boolean validationDepensesCaisse,
+                          /** Absent : inchange. */
+                          @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(120) Integer minutesVerrouCaisse) {
     }
 
     @Transactional(readOnly = true)
     public Reglages lire() {
         return repository.findFirstByOrderByIdAsc()
-                .map(r -> new Reglages(r.isAssociesActif(), r.isCircuitCaisseActif(), r.getEcartTolere()))
-                .orElse(new Reglages(false, false, BigDecimal.ZERO));
+                .map(r -> new Reglages(r.isAssociesActif(), r.isCircuitCaisseActif(), r.getEcartTolere(),
+                        r.isValidationDepensesCaisse(), r.getMinutesVerrouCaisse()))
+                .orElse(new Reglages(false, false, BigDecimal.ZERO, false, 5));
     }
 
     public Reglages modifier(Requete r) {
@@ -48,8 +56,20 @@ public class ReglagePdvService {
         reglage.setAssociesActif(r.associesActif());
         reglage.setCircuitCaisseActif(r.circuitCaisseActif());
         reglage.setEcartTolere(r.ecartTolere());
+        if (r.validationDepensesCaisse() != null) {
+            reglage.setValidationDepensesCaisse(r.validationDepensesCaisse());
+        }
+        if (r.minutesVerrouCaisse() != null) {
+            reglage.setMinutesVerrouCaisse(r.minutesVerrouCaisse());
+        }
         repository.save(reglage);
         return lire();
+    }
+
+    /** Les depenses payees par la caisse passent par le gerant puis l'administrateur. */
+    @Transactional(readOnly = true)
+    public boolean validationDepensesCaisse() {
+        return lire().validationDepensesCaisse();
     }
 
     /** Refuse une action d'une option desactivee. */

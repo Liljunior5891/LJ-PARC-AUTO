@@ -1,0 +1,135 @@
+<div class="entete-page">
+  <div>
+    <h1>Depenses de caisse a valider</h1>
+    <p class="sous-titre">
+      {{ estAdmin ? 'Approuvez : les especes sortent de la caisse et la depense entre dans les journaux.'
+                  : 'Visez ou refusez : l\'administrateur approuve ensuite.' }}
+      Tant qu'elle attend, rien ne sort du tiroir.
+    </p>
+  </div>
+  <button class="bouton secondaire" type="button" (click)="charger()" [disabled]="chargement()">Actualiser</button>
+</div>
+
+@if (!options.validationDepensesActive()) {
+  <div class="message info">La validation des depenses de caisse est desactivee dans les reglages : les nouvelles depenses sortent directement.
+    Celles deja en attente restent a traiter ici.</div>
+}
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+@if (erreur() && !aRefuser()) { <div class="message erreur">{{ erreur() }}</div> }
+
+<section class="cartes-apercu indicateurs">
+  <div class="carte-apercu orange">
+    <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg></span>
+    <span class="textes"><span class="libelle">En attente de {{ estAdmin ? 'votre approbation' : 'votre visa' }}</span>
+      <strong>{{ depenses().length + sorties().length }}</strong>
+      <small>{{ total() | number: '1.0-0' }} F au total</small></span>
+  </div>
+</section>
+
+<div class="carte">
+  <h3 class="titre-section">Depenses payees par la caisse</h3>
+  <div class="tableau-conteneur">
+    <table class="tableau">
+      <thead>
+        <tr><th>Depense</th><th>Categorie et libelle</th><th>Caisse</th><th>Etape</th><th class="numerique">Montant</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (d of depenses(); track d.id) {
+          <tr>
+            <td><strong>{{ d.numero }}</strong><br /><small>{{ d.auteurNom }} · {{ d.creeLe | date: 'dd/MM HH:mm' }}</small></td>
+            <td>{{ d.categorieIcone }} {{ d.categorieNom }}<br /><small>{{ d.libelle }}@if (d.beneficiaire) { · {{ d.beneficiaire }} }</small>
+              @if (d.note) { <br /><small>{{ d.note }}</small> }</td>
+            <td>{{ d.caisseNom ?? '—' }}@if (d.sessionNumero) { <br /><small>{{ d.sessionNumero }}</small> }</td>
+            <td><span class="badge attente-validation">{{ libelles[d.statut] }}</span>
+              @if (d.viseePar) { <br /><small>Visee par {{ d.viseePar }}</small> }</td>
+            <td class="numerique"><strong>{{ d.montant | number: '1.0-0' }}</strong></td>
+            <td class="actions">
+              <button class="bouton petit succes" type="button" [disabled]="!!envoi()" (click)="validerDepense(d)">
+                {{ envoi() === 'depense-' + d.id ? '...' : libelleValidation() }}</button>
+              <button class="bouton petit danger" type="button" [disabled]="!!envoi()"
+                      (click)="ouvrirRefus('depense', d.id, d.numero, d.libelle, d.montant)">Refuser</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="6"><div class="message vide">{{ chargement() ? 'Chargement...' : 'Aucune depense en attente.' }}</div></td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="carte">
+  <h3 class="titre-section">Sorties d'especes demandees a la caisse</h3>
+  <div class="tableau-conteneur">
+    <table class="tableau">
+      <thead>
+        <tr><th>Sortie</th><th>Motif</th><th>Caisse</th><th>Etape</th><th class="numerique">Montant</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (s of sorties(); track s.id) {
+          <tr>
+            <td><strong>{{ s.numero }}</strong><br /><small>{{ s.auteurNom }} · {{ s.demandeeLe | date: 'dd/MM HH:mm' }}</small></td>
+            <td>{{ s.motif }}</td>
+            <td>{{ s.caisseNom }}<br /><small>{{ s.sessionNumero }}</small></td>
+            <td><span class="badge attente-validation">{{ s.statut === 'ATTENTE_GERANT' ? 'Attend le gerant' : 'Attend l\'administrateur' }}</span>
+              @if (s.viseePar) { <br /><small>Visee par {{ s.viseePar }}</small> }</td>
+            <td class="numerique"><strong>{{ s.montant | number: '1.0-0' }}</strong></td>
+            <td class="actions">
+              <button class="bouton petit succes" type="button" [disabled]="!!envoi()" (click)="validerSortie(s)">
+                {{ envoi() === 'sortie-' + s.id ? '...' : libelleValidation() }}</button>
+              <button class="bouton petit danger" type="button" [disabled]="!!envoi()"
+                      (click)="ouvrirRefus('sortie', s.id, s.numero, s.motif, s.montant)">Refuser</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="6"><div class="message vide">{{ chargement() ? 'Chargement...' : 'Aucune sortie en attente.' }}</div></td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (traitees().length) {
+  <div class="carte">
+    <h3 class="titre-section">Dernieres sorties traitees</h3>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead><tr><th>Sortie</th><th>Motif</th><th>Caisse</th><th>Decision</th><th class="numerique">Montant</th></tr></thead>
+        <tbody>
+          @for (s of traitees(); track s.id) {
+            <tr [class.refusee]="s.statut === 'REFUSEE'">
+              <td><strong>{{ s.numero }}</strong><br /><small>{{ s.auteurNom }}</small></td>
+              <td>{{ s.motif }}</td>
+              <td>{{ s.caisseNom }}</td>
+              <td>
+                @if (s.statut === 'VALIDEE') {
+                  Approuvee par {{ s.approuveePar }}<br /><small>{{ s.approuveeLe | date: 'dd/MM HH:mm' }}</small>
+                } @else {
+                  Refusee par {{ s.refuseePar }}<br /><small>{{ s.motifRefus }}</small>
+                }
+              </td>
+              <td class="numerique">{{ s.montant | number: '1.0-0' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+@if (aRefuser(); as r) {
+  <app-modale [titre]="'Refuser ' + r.numero" [sousTitre]="r.libelle + ' · ' + (r.montant | number: '1.0-0') + ' F'"
+              largeur="520px" [erreur]="erreur()" (ferme)="aRefuser.set(null)">
+    <form (ngSubmit)="confirmerRefus()">
+      <div class="message info">Rien n'est sorti de la caisse : un refus ne change ni le tiroir ni les journaux.</div>
+      <div class="champ">
+        <label for="motif-refus">Motif *</label>
+        <input id="motif-refus" name="motif" required maxlength="255" [(ngModel)]="motif" placeholder="Montant trop eleve, piece manquante..." />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="aRefuser.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motif.trim() || !!envoi()">Refuser</button>
+      </div>
+    </form>
+  </app-modale>
+}

@@ -64,13 +64,17 @@ public interface DepensePdvRepository extends JpaRepository<DepensePdv, Long> {
     /** Mois deja payes des depenses recurrentes : [recurrente id, periode]. */
     @Query("""
             select d.recurrente.id, d.periode from DepensePdv d
-            where d.recurrente is not null and d.statut = tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.VALIDE
+            where d.recurrente is not null and d.statut in (tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.VALIDE,
+                  tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_GERANT,
+                  tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_ADMIN)
             """)
     List<Object[]> moisPayes();
 
     @Query("""
             select count(d) > 0 from DepensePdv d where d.recurrente.id = :id and d.periode = :periode
-              and d.statut = tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.VALIDE
+              and d.statut in (tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.VALIDE,
+                  tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_GERANT,
+                  tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_ADMIN)
             """)
     boolean moisDejaPaye(@Param("id") Long recurrenteId, @Param("periode") String periode);
 
@@ -94,4 +98,11 @@ public interface DepensePdvRepository extends JpaRepository<DepensePdv, Long> {
             order by d.dateDepense, d.id
             """)
     List<DepensePdv> payeesPar(@Param("mode") ModeSortie mode, @Param("fin") LocalDate fin);
+
+    /** Depenses en attente d'une validation, les plus anciennes d'abord. */
+    @Query("""
+            select d from DepensePdv d join fetch d.categorie left join fetch d.fournisseur left join fetch d.session
+            where d.statut in :statuts order by d.creeLe, d.id
+            """)
+    List<DepensePdv> enAttente(@Param("statuts") java.util.Collection<DepensePdv.Statut> statuts);
 }

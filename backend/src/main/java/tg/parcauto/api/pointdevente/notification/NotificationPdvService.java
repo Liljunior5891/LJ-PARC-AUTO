@@ -69,6 +69,8 @@ public class NotificationPdvService {
     private final BonRetraitRepository bonsRetrait;
     private final TransfertRepository transferts;
     private final RemiseHorsLigneRepository remises;
+    private final tg.parcauto.api.pointdevente.depense.DepensePdvRepository depenses;
+    private final tg.parcauto.api.pointdevente.caisse.SortieAttenteRepository sortiesAttente;
 
     public List<Evenement> pour(UtilisateurPrincipal u) {
         List<Evenement> evenements = new ArrayList<>();
@@ -96,11 +98,51 @@ public class NotificationPdvService {
         if (aRole(u, Role.PREPARATEUR)) {
             preparation(u, evenements);
         }
+        depensesDeCaisse(u, evenements);
         if (aRole(u, Role.ADMIN, Role.GERANT, Role.MAGASINIER) && lieux.actif()) {
             magasins(u, evenements);
         }
         evenements.sort(Comparator.comparing(Evenement::date, Comparator.nullsLast(Comparator.reverseOrder())));
         return evenements;
+    }
+
+    /**
+     * Validation des depenses de caisse : le gerant voit ce qui attend son visa,
+     * l'administrateur tout ce qui attend ; le demandeur apprend la decision du jour.
+     */
+    private void depensesDeCaisse(UtilisateurPrincipal u, List<Evenement> sortie) {
+        boolean admin = aRole(u, Role.ADMIN);
+        if (admin || aRole(u, Role.GERANT)) {
+            var statutsDepense = admin
+                    ? List.of(tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_GERANT,
+                              tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_ADMIN)
+                    : List.of(tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_GERANT);
+            depenses.enAttente(statutsDepense).forEach(d -> sortie.add(new Evenement(
+                    "depense-attente-" + d.getId() + "-" + d.getStatut(), Type.VALIDATION, "Depense de caisse a valider",
+                    d.getNumero() + " · " + entier(d.getMontant()) + " F · " + d.getLibelle() + " · " + d.getAuteurNom(),
+                    "/pdv/validations-caisse", d.getCreeLe())));
+            var statutsSortie = admin
+                    ? List.of(tg.parcauto.api.pointdevente.caisse.SortieAttente.Statut.ATTENTE_GERANT,
+                              tg.parcauto.api.pointdevente.caisse.SortieAttente.Statut.ATTENTE_ADMIN)
+                    : List.of(tg.parcauto.api.pointdevente.caisse.SortieAttente.Statut.ATTENTE_GERANT);
+            sortiesAttente.parStatuts(statutsSortie).forEach(s -> sortie.add(new Evenement(
+                    "sortie-attente-" + s.getId() + "-" + s.getStatut(), Type.VALIDATION, "Sortie de caisse a valider",
+                    s.getNumero() + " · " + entier(s.getMontant()) + " F · " + s.getSession().getCaisse().getNom()
+                            + " · " + s.getAuteurNom(),
+                    "/pdv/validations-caisse", s.getDemandeeLe())));
+        }
+        for (var s : sortiesAttente.trancheesPour(u.getId(), Instant.now().minus(1, ChronoUnit.DAYS))) {
+            boolean refusee = s.getStatut() == tg.parcauto.api.pointdevente.caisse.SortieAttente.Statut.REFUSEE;
+            sortie.add(new Evenement("sortie-" + s.getStatut() + "-" + s.getId(), Type.CAISSE,
+                    refusee ? "Sortie de caisse refusee" : "Sortie de caisse approuvee",
+                    s.getNumero() + " · " + entier(s.getMontant()) + " F"
+                            + (refusee ? " · " + s.getMotifRefus() : " · les especes peuvent sortir"),
+                    null, refusee ? s.getRefuseeLe() : s.getApprouveeLe()));
+        }
+    }
+
+    private static String entier(BigDecimal montant) {
+        return montant.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString();
     }
 
     /**

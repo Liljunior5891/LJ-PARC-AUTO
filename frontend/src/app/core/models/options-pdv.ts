@@ -5,6 +5,10 @@ export interface ReglagesPdv {
   circuitCaisseActif: boolean;
   /** Ecart (en valeur absolue) au-dela duquel une justification est exigee. */
   ecartTolere: number;
+  /** Depenses et sorties payees par la caisse : visa du gerant puis approbation de l'administrateur. */
+  validationDepensesCaisse: boolean;
+  /** Minutes sans geste avant que l'ecran de caisse se verrouille (code PIN). */
+  minutesVerrouCaisse: number;
 }
 
 // ------------------------------------------------------------------ associes

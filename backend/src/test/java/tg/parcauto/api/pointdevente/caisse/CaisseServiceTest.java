@@ -43,6 +43,9 @@ class CaisseServiceTest {
     private ReglementClientRepository reglementsClients;
     private SessionCaisse session;
     private final List<MouvementCaisse> mouvementsEnregistres = new ArrayList<>();
+    private SortieAttenteRepository sortiesAttente;
+    private tg.parcauto.api.pointdevente.reglage.ReglagePdvService reglages;
+    private final List<SortieAttente> demandes = new ArrayList<>();
 
     @BeforeEach
     void preparer() {
@@ -51,10 +54,18 @@ class CaisseServiceTest {
         ventes = mock(VenteRepository.class);
         commandes = mock(CommandeRepository.class);
         reglementsClients = mock(ReglementClientRepository.class);
+        sortiesAttente = mock(SortieAttenteRepository.class);
+        reglages = mock(tg.parcauto.api.pointdevente.reglage.ReglagePdvService.class);
+        when(sortiesAttente.save(any())).thenAnswer(i -> {
+            demandes.add(i.getArgument(0));
+            return i.getArgument(0);
+        });
+        when(sortiesAttente.findBySessionIdOrderByDemandeeLeAscIdAsc(anyLong())).thenReturn(demandes);
         service = new CaisseService(sessions, mouvements, ventes, reglementsClients, commandes, mock(NumerotationService.class),
                 mock(GestionCaisseService.class), mock(SessionTravailService.class),
                 mock(tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository.class),
-                mock(tg.parcauto.api.pointdevente.tresorerie.RemiseCaisseRepository.class));
+                mock(tg.parcauto.api.pointdevente.tresorerie.RemiseCaisseRepository.class),
+                sortiesAttente, new CircuitDepensesCaisse(reglages, sessions));
 
         Caisse caisse = new Caisse();
         caisse.setId(3L);
@@ -81,6 +92,63 @@ class CaisseServiceTest {
             return i.getArgument(0);
         });
         when(commandes.enCoursPourSession(anyLong(), anyBoolean())).thenReturn(List.of());
+    }
+
+    @Test
+    void avecLaValidationUneSortieDuCaissierAttendEtNeTouchePasAuTiroir() {
+        when(reglages.validationDepensesCaisse()).thenReturn(true);
+
+        CaisseService.Reponse r = service.mouvement(10L, new CaisseService.Mouvement(MouvementCaisse.Type.SORTIE,
+                BigDecimal.valueOf(3000), "Achat de glace"), principal(Role.CAISSIER, 7L));
+
+        assertThat(mouvementsEnregistres).isEmpty();
+        assertThat(demandes).singleElement().satisfies(d -> {
+            assertThat(d.getStatut()).isEqualTo(SortieAttente.Statut.ATTENTE_GERANT);
+            assertThat(d.getMontant()).isEqualByComparingTo("3000");
+        });
+        assertThat(r.sortiesEnAttente()).hasSize(1);
+        // 5 000 de fond + 12 000 de ventes : la sortie demandee ne compte pas encore.
+        assertThat(r.especesAttendues()).isEqualByComparingTo("17000");
+    }
+
+    @Test
+    void avecLaValidationUneSortieDuGerantAttendLAdministrateur() {
+        when(reglages.validationDepensesCaisse()).thenReturn(true);
+
+        service.mouvement(10L, new CaisseService.Mouvement(MouvementCaisse.Type.SORTIE, BigDecimal.valueOf(3000),
+                "Achat de glace"), principal(Role.GERANT, 1L));
+
+        assertThat(mouvementsEnregistres).isEmpty();
+        assertThat(demandes).singleElement().satisfies(d -> {
+            assertThat(d.getStatut()).isEqualTo(SortieAttente.Statut.ATTENTE_ADMIN);
+            assertThat(d.getViseePar()).isNotBlank();
+        });
+    }
+
+    @Test
+    void lAdministrateurSortDirectementMemeAvecLaValidation() {
+        when(reglages.validationDepensesCaisse()).thenReturn(true);
+
+        service.mouvement(10L, new CaisseService.Mouvement(MouvementCaisse.Type.SORTIE, BigDecimal.valueOf(3000),
+                "Achat de glace"), principal(Role.ADMIN, 2L));
+
+        assertThat(mouvementsEnregistres).hasSize(1);
+        assertThat(demandes).isEmpty();
+    }
+
+    @Test
+    void uneSortieApprouveeApresFermetureVaSurLaSessionOuverteDeLaMemeCaisse() {
+        SessionCaisse fermee = new SessionCaisse();
+        fermee.setId(9L);
+        fermee.setNumero("CAI-2026-0000");
+        fermee.setCaisse(session.getCaisse());
+        fermee.setStatut(SessionCaisse.Statut.FERMEE);
+        when(sessions.findByCaisseIdAndStatut(3L, SessionCaisse.Statut.OUVERTE)).thenReturn(Optional.of(session));
+
+        MouvementCaisse m = service.sortieApprouvee(fermee, BigDecimal.valueOf(3000), "Depense DEP-1", principal(Role.ADMIN, 2L));
+
+        assertThat(m.getSession()).isSameAs(session);
+        assertThat(mouvementsEnregistres).hasSize(1);
     }
 
     @Test

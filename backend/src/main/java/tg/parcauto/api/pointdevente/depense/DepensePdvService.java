@@ -18,6 +18,7 @@ import tg.parcauto.api.common.NumerotationService;
 import tg.parcauto.api.common.ResourceNotFoundException;
 import tg.parcauto.api.parc.document.StockageFichierService;
 import tg.parcauto.api.pointdevente.caisse.CaisseService;
+import tg.parcauto.api.pointdevente.caisse.CircuitDepensesCaisse;
 import tg.parcauto.api.pointdevente.caisse.MouvementCaisse;
 import tg.parcauto.api.pointdevente.fournisseur.Fournisseur;
 import tg.parcauto.api.pointdevente.fournisseur.FournisseurRepository;
@@ -66,6 +67,7 @@ public class DepensePdvService {
     private final StockageFichierService stockage;
     private final NumerotationService numerotation;
     private final tg.parcauto.api.pointdevente.tresorerie.TresorerieService tresorerie;
+    private final CircuitDepensesCaisse circuit;
 
     // ------------------------------------------------------------------ dto
 
@@ -110,7 +112,10 @@ public class DepensePdvService {
                           String reference, String sessionNumero, String caisseNom, Long recurrenteId,
                           String periode, String note, boolean justificatif, String justificatifNom,
                           String auteurNom, Instant creeLe, DepensePdv.Statut statut, Instant annuleeLe,
-                          String annuleePar, String motifAnnulation) {
+                          String annuleePar, String motifAnnulation,
+                          /** Circuit de validation des depenses de caisse. */
+                          String viseePar, Instant viseeLe, String approuveePar, Instant approuveeLe,
+                          String refuseePar, Instant refuseeLe, String motifRefus) {
 
         static Reponse de(DepensePdv d) {
             return new Reponse(d.getId(), d.getNumero(), d.getCategorie().getId(), d.getCategorie().getNom(),
@@ -122,7 +127,9 @@ public class DepensePdvService {
                     d.getSession() == null ? null : d.getSession().getCaisse().getNom(),
                     d.getRecurrente() == null ? null : d.getRecurrente().getId(), d.getPeriode(), d.getNote(),
                     d.getJustificatifChemin() != null, d.getJustificatifNom(), d.getAuteurNom(), d.getCreeLe(),
-                    d.getStatut(), d.getAnnuleeLe(), d.getAnnuleePar(), d.getMotifAnnulation());
+                    d.getStatut(), d.getAnnuleeLe(), d.getAnnuleePar(), d.getMotifAnnulation(),
+                    d.getViseePar(), d.getViseeLe(), d.getApprouveePar(), d.getApprouveeLe(),
+                    d.getRefuseePar(), d.getRefuseeLe(), d.getMotifRefus());
         }
     }
 
@@ -164,6 +171,9 @@ public class DepensePdvService {
     }
 
     public record MotifAnnulation(@NotBlank @Size(max = 255) String motif) {
+    }
+
+    public record MotifRefus(@NotBlank @Size(max = 255) String motif) {
     }
 
     // ------------------------------------------------------------ categories
@@ -303,10 +313,22 @@ public class DepensePdvService {
             if (r.sessionId() == null) {
                 throw new BusinessException("Choisissez la caisse ouverte d'ou sortent les especes");
             }
-            MouvementCaisse sortie = caisseService.sortie(r.sessionId(), d.getMontant(),
-                    tronquer("Depense " + d.getNumero() + " - " + categorie.getNom() + " : " + d.getLibelle()), auteur);
-            d.setSession(sortie.getSession());
-            d.setMouvementCaisse(sortie);
+            CircuitDepensesCaisse.Etape etape = circuit.etapeInitiale(auteur);
+            if (etape == CircuitDepensesCaisse.Etape.DIRECTE) {
+                MouvementCaisse sortie = caisseService.sortie(r.sessionId(), d.getMontant(), motifSortie(d), auteur);
+                d.setSession(sortie.getSession());
+                d.setMouvementCaisse(sortie);
+            } else {
+                // Rien ne sort du tiroir avant l'approbation de l'administrateur.
+                d.setSession(caisseService.controlerSortie(r.sessionId(), d.getMontant(), auteur));
+                if (etape == CircuitDepensesCaisse.Etape.ADMIN) {
+                    d.setStatut(DepensePdv.Statut.ATTENTE_ADMIN);
+                    d.setViseePar(auteur.getNomComplet());
+                    d.setViseeLe(Instant.now());
+                } else {
+                    d.setStatut(DepensePdv.Statut.ATTENTE_GERANT);
+                }
+            }
         }
         return Reponse.de(repository.saveAndFlush(d));
     }
@@ -328,6 +350,78 @@ public class DepensePdvService {
         d.setNote(vide(r.note()));
         repository.flush();
         return Reponse.de(d);
+    }
+
+    // ---------------------------------------------------- circuit de validation
+
+    /** Depenses de caisse qui attendent une validation de cet utilisateur (gerant : son visa ; administrateur : tout). */
+    @Transactional(readOnly = true)
+    public List<Reponse> aValider(UtilisateurPrincipal u) {
+        List<DepensePdv.Statut> statuts = CircuitDepensesCaisse.administrateur(u)
+                ? List.of(DepensePdv.Statut.ATTENTE_GERANT, DepensePdv.Statut.ATTENTE_ADMIN)
+                : CircuitDepensesCaisse.gerant(u) ? List.of(DepensePdv.Statut.ATTENTE_GERANT) : List.of();
+        return statuts.isEmpty() ? List.of() : repository.enAttente(statuts).stream().map(Reponse::de).toList();
+    }
+
+    /**
+     * Validation : le gerant vise une depense en attente de son visa ; l'administrateur
+     * l'approuve (a l'une ou l'autre etape), ce qui fait sortir les especes de la caisse.
+     */
+    public Reponse valider(Long id, UtilisateurPrincipal u) {
+        DepensePdv d = charger(id);
+        if (!d.getStatut().enAttente()) {
+            throw new BusinessException("La depense " + d.getNumero() + " n'attend plus de validation");
+        }
+        Instant maintenant = Instant.now();
+        if (!CircuitDepensesCaisse.administrateur(u)) {
+            CircuitDepensesCaisse.exigerVisa(u);
+            if (d.getStatut() != DepensePdv.Statut.ATTENTE_GERANT) {
+                throw new BusinessException("La depense " + d.getNumero() + " attend la validation de l'administrateur");
+            }
+            d.setStatut(DepensePdv.Statut.ATTENTE_ADMIN);
+            d.setViseePar(u.getNomComplet());
+            d.setViseeLe(maintenant);
+            repository.flush();
+            return Reponse.de(d);
+        }
+        if (d.getViseePar() == null) {
+            d.setViseePar(u.getNomComplet());
+            d.setViseeLe(maintenant);
+        }
+        // Les especes sortent maintenant : la depense compte a la date de l'approbation.
+        d.setDateDepense(LocalDate.now(FUSEAU));
+        MouvementCaisse sortie = caisseService.sortieApprouvee(d.getSession(), d.getMontant(), motifSortie(d), u);
+        d.setSession(sortie.getSession());
+        d.setMouvementCaisse(sortie);
+        d.setStatut(DepensePdv.Statut.VALIDE);
+        d.setApprouveePar(u.getNomComplet());
+        d.setApprouveeLe(maintenant);
+        repository.flush();
+        return Reponse.de(d);
+    }
+
+    /** Refus : le gerant a l'etape de son visa, l'administrateur a toute etape. Rien n'est sorti de la caisse. */
+    public Reponse refuser(Long id, String motif, UtilisateurPrincipal u) {
+        DepensePdv d = charger(id);
+        if (!d.getStatut().enAttente()) {
+            throw new BusinessException("La depense " + d.getNumero() + " n'attend plus de validation");
+        }
+        if (!CircuitDepensesCaisse.administrateur(u)) {
+            CircuitDepensesCaisse.exigerVisa(u);
+            if (d.getStatut() != DepensePdv.Statut.ATTENTE_GERANT) {
+                throw new BusinessException("La depense " + d.getNumero() + " attend la decision de l'administrateur");
+            }
+        }
+        d.setStatut(DepensePdv.Statut.REFUSEE);
+        d.setRefuseePar(u.getNomComplet());
+        d.setRefuseeLe(Instant.now());
+        d.setMotifRefus(motif.trim());
+        repository.flush();
+        return Reponse.de(d);
+    }
+
+    private static String motifSortie(DepensePdv d) {
+        return tronquer("Depense " + d.getNumero() + " - " + d.getCategorie().getNom() + " : " + d.getLibelle());
     }
 
     /** Annulation : la depense ne compte plus ; payee depuis la caisse, sa sortie est retiree de la session. */
@@ -509,6 +603,9 @@ public class DepensePdvService {
         DepensePdv d = charger(id);
         if (d.getStatut() == DepensePdv.Statut.ANNULEE) {
             throw new BusinessException("La depense " + d.getNumero() + " est annulee");
+        }
+        if (d.getStatut() == DepensePdv.Statut.REFUSEE) {
+            throw new BusinessException("La depense " + d.getNumero() + " a ete refusee");
         }
         return d;
     }

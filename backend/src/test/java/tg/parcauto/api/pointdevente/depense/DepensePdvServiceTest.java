@@ -39,6 +39,7 @@ class DepensePdvServiceTest {
     private DepenseRecurrenteRepository recurrentes;
     private CaisseService caisse;
     private CategorieDepensePdv loyer;
+    private tg.parcauto.api.pointdevente.reglage.ReglagePdvService reglages;
 
     @BeforeEach
     void preparer() {
@@ -53,9 +54,67 @@ class DepensePdvServiceTest {
         loyer.setNom("Loyer");
         when(categories.findById(4L)).thenReturn(Optional.of(loyer));
         when(repository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
+        reglages = mock(tg.parcauto.api.pointdevente.reglage.ReglagePdvService.class);
         service = new DepensePdvService(repository, categories, recurrentes, mock(FournisseurRepository.class), caisse,
                 mock(StockageFichierService.class), numerotation,
-                mock(tg.parcauto.api.pointdevente.tresorerie.TresorerieService.class));
+                mock(tg.parcauto.api.pointdevente.tresorerie.TresorerieService.class),
+                new tg.parcauto.api.pointdevente.caisse.CircuitDepensesCaisse(reglages,
+                        mock(tg.parcauto.api.pointdevente.caisse.SessionCaisseRepository.class)));
+    }
+
+    @Test
+    @DisplayName("Avec la validation, la depense de caisse du gerant attend l'administrateur sans rien sortir ; approuvee, elle sort")
+    void depenseDeCaisseValideeParLAdministrateur() {
+        when(reglages.validationDepensesCaisse()).thenReturn(true);
+        SessionCaisse session = new SessionCaisse();
+        session.setNumero("CAI-2026-0002");
+        Caisse comptoir = new Caisse();
+        comptoir.setNom("Comptoir");
+        session.setCaisse(comptoir);
+        when(caisse.controlerSortie(eq(5L), any(), any())).thenReturn(session);
+
+        DepensePdvService.Reponse d = service.creer(new DepensePdvService.Requete(4L, "Loyer de novembre", null,
+                null, new BigDecimal("150000"), null, ModeSortie.CAISSE, 5L, null, null, null, null), gerant());
+
+        assertThat(d.statut()).isEqualTo(DepensePdv.Statut.ATTENTE_ADMIN);
+        assertThat(d.viseePar()).isEqualTo("Gerant");
+        verify(caisse, org.mockito.Mockito.never()).sortie(any(), any(), anyString(), any());
+
+        DepensePdv enregistree = new DepensePdv();
+        enregistree.setNumero("DEP-2026-0001");
+        enregistree.setCategorie(loyer);
+        enregistree.setLibelle("Loyer de novembre");
+        enregistree.setMontant(new BigDecimal("150000.00"));
+        enregistree.setMode(ModeSortie.CAISSE);
+        enregistree.setDateDepense(LocalDate.now(ZoneId.of("Africa/Lome")));
+        enregistree.setSession(session);
+        enregistree.setAuteurNom("Gerant");
+        enregistree.setStatut(DepensePdv.Statut.ATTENTE_ADMIN);
+        enregistree.setViseePar("Gerant");
+        when(repository.findById(1L)).thenReturn(Optional.of(enregistree));
+
+        assertThatThrownBy(() -> service.valider(1L, gerant())).isInstanceOf(BusinessException.class);
+
+        MouvementCaisse sortie = new MouvementCaisse();
+        sortie.setSession(session);
+        when(caisse.sortieApprouvee(eq(session), eq(new BigDecimal("150000.00")), anyString(), any())).thenReturn(sortie);
+        DepensePdvService.Reponse validee = service.valider(1L, admin());
+
+        assertThat(validee.statut()).isEqualTo(DepensePdv.Statut.VALIDE);
+        assertThat(validee.approuveePar()).isEqualTo("Admin");
+        assertThat(enregistree.getMouvementCaisse()).isSameAs(sortie);
+    }
+
+    private static UtilisateurPrincipal admin() {
+        Utilisateur u = new Utilisateur();
+        u.setId(1L);
+        u.setEmail("a@test.tg");
+        u.setNom("Admin");
+        u.setMotDePasse("x");
+        u.setRoles(EnumSet.of(Role.ADMIN));
+        u.setActif(true);
+        u.setEntrepriseId(1L);
+        return new UtilisateurPrincipal(u, "Test", true);
     }
 
     @Test

@@ -102,6 +102,50 @@
         }
       </section>
 
+      <!-- ======================================= validation des depenses -->
+      <section class="bloc-reglage" id="reglage-validation-depenses" [class.actif]="f.validationDepensesCaisse">
+        <label class="entete-bloc">
+          <span class="pictogramme" aria-hidden="true">✅</span>
+          <span>
+            <span class="titre-bloc">Validation des depenses de caisse</span>
+            <span class="texte-bloc">Une depense ou une sortie d'especes payee par la caisse est validee par le gerant, puis par l'administrateur, avant de compter.</span>
+          </span>
+          <input class="bascule" type="checkbox" name="validationDepensesCaisse" [(ngModel)]="f.validationDepensesCaisse" aria-label="Activer la validation des depenses de caisse" />
+        </label>
+        @if (f.validationDepensesCaisse) {
+          <div class="corps-bloc">
+            <ol class="etapes-circuit">
+              <li><span class="etape">🗄</span><strong>Demande</strong><small>Le caissier (ou le gerant) saisit la depense ou la sortie</small></li>
+              <li><span class="etape">👔</span><strong>Visa du gerant</strong><small>Il vise ou refuse ; une saisie du gerant vaut son visa</small></li>
+              <li><span class="etape">🛡</span><strong>Administrateur</strong><small>Il approuve : les especes sortent et la depense entre dans les journaux</small></li>
+            </ol>
+            <p class="note-bloc">Tant qu'elle attend, rien ne sort du tiroir : le billettage et les journaux ne bougent pas, et un refus ne change rien.
+              Approuvee apres la fermeture de la caisse, la sortie passe sur la session ouverte suivante de la meme caisse.
+              Les depenses de l'administrateur et celles payees par le coffre ou la banque ne passent pas par ce circuit.</p>
+          </div>
+        }
+      </section>
+
+      <!-- ============================================= verrouillage -->
+      <section class="bloc-reglage actif" id="reglage-verrou">
+        <div class="entete-bloc">
+          <span class="pictogramme" aria-hidden="true">🔒</span>
+          <span>
+            <span class="titre-bloc">Verrouillage automatique de la caisse</span>
+            <span class="texte-bloc">Sans geste pendant ce delai, l'ecran du caissier et du serveur se verrouille : il reprend avec son code PIN.</span>
+          </span>
+        </div>
+        <div class="corps-bloc">
+          <div class="champs-bloc">
+            <div class="champ">
+              <label for="minutes-verrou">Verrouiller apres (minutes)</label>
+              <input id="minutes-verrou" name="minutesVerrouCaisse" type="number" min="1" max="120" step="1" [(ngModel)]="f.minutesVerrouCaisse" />
+              <small>De 1 a 120 minutes. 5 par defaut.</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
       @if (materiaux) {
         <h2 class="titre-groupe">Quincaillerie et materiaux</h2>
         <app-reglages-materiaux />

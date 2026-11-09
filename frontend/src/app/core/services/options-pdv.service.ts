@@ -32,13 +32,14 @@ export class OptionsPdvService {
   readonly reglages = signal<ReglagesPdv | undefined>(undefined);
   readonly associesActif = computed(() => !!this.reglages()?.associesActif);
   readonly circuitActif = computed(() => !!this.reglages()?.circuitCaisseActif);
+  readonly validationDepensesActive = computed(() => !!this.reglages()?.validationDepensesCaisse);
   /** Validations en attente, pour la pastille du menu. */
   readonly enAttente = signal<EnAttenteTresorerie>({ remises: 0, degagements: 0 });
 
   charger(): void {
     this.http.get<ReglagesPdv>(`${this.base}/reglages`).subscribe({
       next: (r) => this.reglages.set(r),
-      error: () => this.reglages.set({ associesActif: false, circuitCaisseActif: false, ecartTolere: 0 })
+      error: () => this.reglages.set({ associesActif: false, circuitCaisseActif: false, ecartTolere: 0, validationDepensesCaisse: false, minutesVerrouCaisse: 5 })
     });
   }
 

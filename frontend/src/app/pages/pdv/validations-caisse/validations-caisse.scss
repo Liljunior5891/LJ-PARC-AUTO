@@ -1,0 +1,31 @@
+/* Validation des depenses de caisse : indicateur, deux tableaux et l'historique. */
+.indicateurs {
+  margin-bottom: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+
+  .carte-apercu strong {
+    font-size: 1.5rem;
+  }
+}
+
+.carte + .carte {
+  margin-top: 1rem;
+}
+
+.titre-section {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+}
+
+td.actions {
+  white-space: nowrap;
+  text-align: right;
+
+  .bouton + .bouton {
+    margin-left: 0.35rem;
+  }
+}
+
+tr.refusee td {
+  color: var(--couleur-texte-doux);
+}
