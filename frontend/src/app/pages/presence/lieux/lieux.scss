@@ -1,0 +1,162 @@
+@use '../presence-commun';
+
+/* Cartes des lieux : meme dessin que les magasins et entrepots du PDV. */
+.grille-lieux {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+}
+
+.lieu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+
+  &.ferme {
+    opacity: 0.6;
+  }
+
+  > header {
+    margin: -1.25rem -1.25rem 0;
+    padding: 0.85rem 1.25rem;
+    background: #eaf3fe;
+    border-bottom: 1px solid #d5e5fb;
+    border-radius: var(--rayon) var(--rayon) 0 0;
+  }
+
+  h2 {
+    margin: 6px 0 2px;
+    font-size: 1.05rem;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+  }
+
+  .etiquette {
+    margin-right: 4px;
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 0;
+
+    dt {
+      font-size: 0.75rem;
+      color: var(--couleur-texte-doux);
+    }
+
+    dd {
+      margin: 0;
+      font-weight: 600;
+    }
+  }
+
+  .details {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  .alerte {
+    color: var(--couleur-danger);
+    font-weight: 600;
+  }
+}
+
+.bornes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--couleur-bordure);
+
+  h3 {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.borne {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 8px;
+  background: #fafbfc;
+
+  &.inactive {
+    opacity: 0.55;
+  }
+
+  .texte {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    font-size: 0.88rem;
+
+    small {
+      font-size: 0.75rem;
+    }
+  }
+
+  .code {
+    color: var(--couleur-primaire);
+    letter-spacing: 0.1em;
+  }
+}
+
+.voyant {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--couleur-bordure);
+
+  &.vert {
+    background: var(--couleur-succes);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--couleur-succes) 25%, transparent);
+  }
+
+  &.orange {
+    background: #e08a00;
+  }
+}
+
+.position {
+  justify-content: flex-end;
+}
+
+.etapes {
+  margin: 0 0 0.5rem;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.code-geant {
+  margin: 0.75rem 0 1rem;
+  padding: 0.9rem 0;
+  border: 1px dashed var(--couleur-primaire);
+  border-radius: var(--rayon);
+  background: #f7fafd;
+  text-align: center;
+  font: 700 2.6rem 'Courier New', monospace;
+  letter-spacing: 0.6rem;
+  color: var(--couleur-primaire);
+}
+
+@media (max-width: 480px) {
+  .grille-lieux {
+    grid-template-columns: 1fr;
+  }
+}

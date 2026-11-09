@@ -28,7 +28,7 @@ export type Role =
   | 'CAISSIER_AGENCE';
 
 /** Modules de la plateforme ; une entreprise n'accede qu'a ceux qu'elle a actives. */
-export type CodeModule = 'GESTION_PARC' | 'POINT_DE_VENTE' | 'MARKETPLACE' | 'AGENCES';
+export type CodeModule = 'GESTION_PARC' | 'POINT_DE_VENTE' | 'MARKETPLACE' | 'AGENCES' | 'PRESENCE';
 
 export interface UtilisateurCourant {
   id: number;

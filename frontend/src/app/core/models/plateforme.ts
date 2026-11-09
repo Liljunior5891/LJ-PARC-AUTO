@@ -78,6 +78,17 @@ export const PRESENTATION_MODULES: Record<CodeModule, { icone: string; accueil: 
       'Tresorerie disponible par agence et pour toute l\'entreprise',
       'Droits du superviseur et du caissier reglables, journal d\'audit'
     ]
+  },
+  PRESENCE: {
+    icone: '🕘',
+    accueil: '/presence/tableau-bord',
+    fonctionnalites: [
+      'Fiches des employes, PIN personnel, conversion d\'un compte utilisateur',
+      'Pointage par code QR qui change toutes les 30 secondes, depuis le telephone ou une borne',
+      'Position GPS controlee autour de chaque lieu de travail',
+      'Retards, absents et ponctualite du jour, en direct',
+      'Historique de chaque employe, consultable aussi par l\'employe avec son PIN'
+    ]
   }
 };
 
@@ -105,7 +116,8 @@ export const PROFILS_MODULES: Record<CodeModule, Role[]> = {
   GESTION_PARC: ['ADMIN', 'GESTIONNAIRE_PARC', 'CHAUFFEUR'],
   POINT_DE_VENTE: ['ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'PREPARATEUR', 'MAGASINIER', 'ASSOCIE'],
   MARKETPLACE: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC'],
-  AGENCES: ['ADMIN', 'SUPERVISEUR_AGENCE', 'CAISSIER_AGENCE']
+  AGENCES: ['ADMIN', 'SUPERVISEUR_AGENCE', 'CAISSIER_AGENCE'],
+  PRESENCE: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC', 'SUPERVISEUR_AGENCE']
 };
 
 export interface DemandeInscription {

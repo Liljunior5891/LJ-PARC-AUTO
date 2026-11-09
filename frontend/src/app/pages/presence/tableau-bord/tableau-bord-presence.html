@@ -1,0 +1,132 @@
+<div class="entete-page">
+  <div>
+    <h1>Presences du jour</h1>
+    @if (jour(); as j) {
+      <p class="sous-titre">
+        @if (j.jourTravaille) {
+          Arrivee prevue a {{ j.heureArrivee.slice(0, 5) }} · tolerance {{ j.toleranceMinutes }} min · absent apres {{ j.heureLimite.slice(0, 5) }}
+        } @else {
+          Jour non travaille
+        }
+      </p>
+    }
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+<div class="carte barre-filtres">
+  <div class="filtres-ligne">
+    <button class="bouton secondaire" type="button" (click)="decaler(-1)" aria-label="Jour precedent">‹</button>
+    <input type="date" [max]="aujourdhui" [ngModel]="date()" (ngModelChange)="changerDate($event)" aria-label="Date" />
+    <button class="bouton secondaire" type="button" (click)="decaler(1)" [disabled]="date() >= aujourdhui" aria-label="Jour suivant">›</button>
+    @if (date() !== aujourdhui) {
+      <button class="bouton secondaire info" type="button" (click)="changerDate(aujourdhui)">Aujourd'hui</button>
+    }
+    @if (lieux().length > 1) {
+      <div class="filtre">
+        <select [ngModel]="lieuId()" (ngModelChange)="changerLieu($event)" aria-label="Lieu">
+          <option [ngValue]="null">Tous les lieux</option>
+          @for (l of lieux(); track l.id) { <option [ngValue]="l.id">{{ l.nom }}</option> }
+        </select>
+      </div>
+    }
+    <input class="recherche" type="search" placeholder="Nom, matricule, fonction..." aria-label="Recherche"
+           [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" />
+  </div>
+</div>
+
+@if (jour(); as j) {
+  <div class="cartes-apercu tete-ecran">
+    <button type="button" class="carte-apercu bleu" [class.active]="filtre() === 'TOUS'" (click)="filtre.set('TOUS')">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" /><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" /><circle cx="17" cy="9" r="2.3" /><path d="M16 14.2c2.4-.3 4.1 1.3 4.5 4.3" /></svg></span>
+      <span class="textes">
+        <span class="libelle">Presents</span>
+        <strong>{{ j.compteurs.presents }}<em> / {{ j.compteurs.attendus }}</em></strong>
+        <small>employe(s) attendu(s)</small>
+      </span>
+      <span class="jauge"><i [style.width.%]="part(j.compteurs.presents)"></i></span>
+    </button>
+    <button type="button" class="carte-apercu vert" [class.calme]="!j.compteurs.aLHeure" [class.active]="filtre() === 'A_L_HEURE'" (click)="filtre.set('A_L_HEURE')">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M8 12.5l2.8 2.8L16.5 9.5" /></svg></span>
+      <span class="textes">
+        <span class="libelle">A l'heure</span>
+        <strong>{{ j.compteurs.aLHeure }}</strong>
+        <small>{{ part(j.compteurs.aLHeure) }} % des attendus</small>
+      </span>
+      <span class="jauge"><i [style.width.%]="part(j.compteurs.aLHeure)"></i></span>
+    </button>
+    <button type="button" class="carte-apercu orange" [class.calme]="!j.compteurs.enRetard" [class.active]="filtre() === 'EN_RETARD'" (click)="filtre.set('EN_RETARD')">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2.5M9 2.5h6" /></svg></span>
+      <span class="textes">
+        <span class="libelle">En retard</span>
+        <strong>{{ j.compteurs.enRetard }}</strong>
+        <small>{{ retardTotal() ? duree(retardTotal()) + ' de retard cumule' : 'aucun retard' }}</small>
+      </span>
+      <span class="jauge"><i [style.width.%]="part(j.compteurs.enRetard)"></i></span>
+    </button>
+    <button type="button" class="carte-apercu violet" [class.calme]="!j.compteurs.pasEncore" [class.active]="filtre() === 'PAS_ENCORE'" (click)="filtre.set('PAS_ENCORE')">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9" /></svg></span>
+      <span class="textes">
+        <span class="libelle">Pas encore arrives</span>
+        <strong>{{ j.compteurs.pasEncore }}</strong>
+        <small>avant l'heure limite</small>
+      </span>
+      <span class="jauge"><i [style.width.%]="part(j.compteurs.pasEncore)"></i></span>
+    </button>
+    <button type="button" class="carte-apercu rouge" [class.calme]="!j.compteurs.absents" [class.active]="filtre() === 'ABSENT'" (click)="filtre.set('ABSENT')">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M9 9l6 6M15 9l-6 6" /></svg></span>
+      <span class="textes">
+        <span class="libelle">Absents</span>
+        <strong>{{ j.compteurs.absents }}</strong>
+        <small>sans pointage apres la limite</small>
+      </span>
+      <span class="jauge"><i [style.width.%]="part(j.compteurs.absents)"></i></span>
+    </button>
+  </div>
+
+  <div class="carte">
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr><th>Employe</th><th>Etat</th><th>Arrivee</th><th>Retard</th><th>Lieu</th><th>Pointe par</th></tr>
+        </thead>
+        <tbody>
+          @for (l of lignes(); track l.employeId) {
+            <tr class="cliquable" [routerLink]="['/presence/employes', l.employeId]">
+              <td>
+                <strong>{{ l.nom }}</strong>
+                <small class="sous-ligne">{{ l.matricule }}{{ l.fonction ? ' · ' + l.fonction : '' }}</small>
+              </td>
+              <td><span class="etiquette {{ etiquettes[l.statut] }}">{{ libelles[l.statut] }}</span></td>
+              <td class="heure">{{ l.arriveeLe ? (l.arriveeLe | date: 'HH:mm') : '—' }}</td>
+              <td>
+                @if (l.retardMinutes > 0) {
+                  <span class="retard">+{{ duree(l.retardMinutes) }}</span>
+                  @if (l.apresLimite) { <small class="sous-ligne">apres l'heure limite</small> }
+                } @else { — }
+              </td>
+              <td>{{ l.lieu ?? '—' }}</td>
+              <td>
+                @if (l.mode) {
+                  {{ modes[l.mode] }}
+                  @if (l.distanceMetres !== null && l.distanceMetres !== undefined) { <small class="sous-ligne">a {{ l.distanceMetres }} m</small> }
+                } @else { — }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6">
+              <p class="message vide">
+                {{ j.lignes.length ? 'Personne dans cette categorie.' : 'Aucun employe : ajoutez-les dans « Employes ».' }}
+              </p>
+            </td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+} @else if (!erreur()) {
+  <p class="message vide">Chargement...</p>
+}

@@ -1,0 +1,6 @@
+@use '../presence-commun';
+
+/* Cinq indicateurs : ils tiennent sur une ligne des que la place le permet. */
+.cartes-apercu.tete-ecran {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}

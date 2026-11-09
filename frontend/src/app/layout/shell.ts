@@ -267,6 +267,16 @@ export class Shell {
       ]
     },
     {
+      // Gestion de presence : pointage des employes par code QR et PIN.
+      id: 'presence', libelle: 'Presence', module: 'PRESENCE',
+      entrees: [
+        { libelle: 'Presences du jour', route: '/presence/tableau-bord', description: 'Arrivees, retards et absents en direct' },
+        { libelle: 'Employes', route: '/presence/employes', description: 'Fiches, PIN et historique de chaque employe' },
+        { libelle: 'Lieux et bornes', route: '/presence/lieux', description: 'Lieux de travail, position GPS, bornes et codes QR' },
+        { libelle: 'Horaire', route: '/presence/reglages', description: 'Heure d\'arrivee, tolerance, jours travailles', roles: ['ADMIN'] }
+      ]
+    },
+    {
       // Agences multiservices : soldes centralises, agences, catalogue et reglages.
       id: 'agences', libelle: 'Agences', module: 'AGENCES',
       entrees: [

@@ -168,6 +168,10 @@
                       (click)="ouvrirReinitialisation(utilisateur)">
                 Mot de passe
               </button>
+              @if (presence) {
+                <a class="bouton secondaire petit" [routerLink]="['/presence/employes']" [queryParams]="{ utilisateur: utilisateur.id }"
+                   title="Creer sa fiche employe pour le pointage">🕘 Fiche employe</a>
+              }
               @if (utilisateur.roles.includes('CAISSIER') || utilisateur.roles.includes('SERVEUR')) {
                 <button class="bouton secondaire petit" type="button" (click)="ouvrirPin(utilisateur)"
                         [title]="utilisateur.pinDefini ? 'Code PIN defini' : 'Aucun code PIN : il le creera a la premiere ouverture'">

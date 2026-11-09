@@ -45,6 +45,17 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/boutique-publique/suivi-commande').then((m) => m.SuiviCommande),
     title: 'Suivi de commande'
   },
+  // Gestion de presence : pointage depuis le telephone (code QR) et borne du lieu, sans compte ni menu.
+  {
+    path: 'pointage/:jeton',
+    loadComponent: () => import('./pages/presence/pointage/pointage').then((m) => m.PointagePage),
+    title: 'Pointage'
+  },
+  {
+    path: 'borne-presence',
+    loadComponent: () => import('./pages/presence/borne/borne').then((m) => m.BornePresencePage),
+    title: 'Borne de pointage'
+  },
   {
     path: 'connexion',
     loadComponent: () => import('./pages/login/login').then((m) => m.Login),
@@ -314,7 +325,7 @@ export const routes: Routes = [
                 path: 'ecrans',
                 canActivate: [roleGuard('ADMIN', 'GERANT')],
                 loadComponent: () => import('./pages/pdv/ecrans/ecrans').then((m) => m.EcransPdv),
-                title: 'Ecrans de preparation — LJ SaaS'
+                title: 'Postes et imprimantes — LJ SaaS'
               },
               {
                 path: 'codes-qr',
@@ -443,6 +454,40 @@ export const routes: Routes = [
             ]
           },
           { path: '', pathMatch: 'full', redirectTo: 'caisse' }
+        ]
+      },
+
+      // --- Module Gestion de presence -------------------------------------------
+      {
+        path: 'presence',
+        canActivate: [moduleGuard('PRESENCE')],
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'tableau-bord' },
+          {
+            path: 'tableau-bord',
+            loadComponent: () => import('./pages/presence/tableau-bord/tableau-bord-presence').then((m) => m.TableauBordPresence),
+            title: 'Presences du jour — LJ SaaS'
+          },
+          {
+            path: 'employes',
+            loadComponent: () => import('./pages/presence/employes/employes').then((m) => m.EmployesPresence),
+            title: 'Employes — LJ SaaS'
+          },
+          {
+            path: 'employes/:id',
+            loadComponent: () => import('./pages/presence/fiche/fiche-employe').then((m) => m.FicheEmploye),
+            title: 'Fiche de presence — LJ SaaS'
+          },
+          {
+            path: 'lieux',
+            loadComponent: () => import('./pages/presence/lieux/lieux').then((m) => m.LieuxPresence),
+            title: 'Lieux et bornes — LJ SaaS'
+          },
+          {
+            path: 'reglages',
+            loadComponent: () => import('./pages/presence/reglages/reglages-presence').then((m) => m.ReglagesPresence),
+            title: 'Horaire — LJ SaaS'
+          }
         ]
       },
 

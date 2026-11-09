@@ -1,0 +1,69 @@
+<main class="borne">
+  <header class="entete">
+    <div>
+      <strong>{{ entreprise() || 'Borne de pointage' }}</strong>
+      @if (lieu()) { <small>📍 {{ lieu() }}</small> }
+    </div>
+    <div class="horloge">
+      <strong>{{ maintenant() | date: 'HH:mm' }}</strong>
+      <small>{{ maintenant() | date: 'EEEE d MMMM' }}</small>
+    </div>
+  </header>
+
+  @if (erreur() && ecran() !== 'pin' && ecran() !== 'appairage') {
+    <div class="message alerte">{{ erreur() }}</div>
+  }
+
+  @switch (ecran()) {
+    @case ('appairage') {
+      <section class="centre">
+        <h1>Appairer cette borne</h1>
+        <p class="aide">Saisissez le code a 6 chiffres affiche au gerant dans « Lieux et bornes ».</p>
+        @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+        <app-clavier-pin [desactive]="enCours()" (valide)="codeSaisi($event)" />
+      </section>
+    }
+    @case ('qr') {
+      <section class="ecran-qr">
+        <div class="bloc-qr">
+          <h1>Scannez pour pointer votre arrivee</h1>
+          <div class="qr" [innerHTML]="qr()"></div>
+          <div class="compte-a-rebours" role="img" [attr.aria-label]="'Nouveau code dans ' + secondes() + ' secondes'">
+            <span [style.width.%]="(secondes() / 30) * 100"></span>
+          </div>
+          <small class="aide">Le code change toutes les 30 secondes.</small>
+        </div>
+        <div class="bloc-actions">
+          <p>Pas de telephone ?</p>
+          <button type="button" class="bouton-geant" (click)="ouvrirPin('pointer')">🔢 Pointer ici avec mon PIN</button>
+          <button type="button" class="lien" (click)="ouvrirPin('historique')">Voir mon historique</button>
+        </div>
+      </section>
+    }
+    @case ('pin') {
+      <section class="centre">
+        <h1>{{ modePin() === 'pointer' ? 'Tapez votre PIN pour pointer' : 'Tapez votre PIN pour voir votre historique' }}</h1>
+        @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+        <app-clavier-pin [desactive]="enCours()" (valide)="pinSaisi($event)" />
+        <button type="button" class="lien" (click)="afficherQr()">‹ Retour</button>
+      </section>
+    }
+    @case ('resultat') {
+      @let r = resultat()!;
+      <section class="centre resultat" [class.retard]="r.retardMinutes > 0" [class.deja]="r.issue === 'DEJA_POINTE'">
+        <span class="grand" aria-hidden="true">{{ r.issue === 'DEJA_POINTE' ? 'ℹ️' : r.retardMinutes > 0 ? '⏰' : '✅' }}</span>
+        <h1>{{ r.issue === 'DEJA_POINTE' ? 'Deja pointe, ' + r.nom : 'Bonjour ' + r.nom }}</h1>
+        <p class="heure">{{ r.arriveeLe | date: 'HH:mm' }}</p>
+        <p>{{ r.message }}</p>
+        <button type="button" class="lien" (click)="afficherQr()">Terminer</button>
+      </section>
+    }
+    @case ('historique') {
+      <section class="historique">
+        <h1>{{ historique()!.nom }} · {{ historique()!.matricule }}</h1>
+        <app-historique-employe [historique]="historique()!" />
+        <button type="button" class="lien" (click)="afficherQr()">Terminer</button>
+      </section>
+    }
+  }
+</main>

@@ -13,7 +13,8 @@ const LIBELLES_MODULES: Record<CodeModule, string> = {
   GESTION_PARC: 'Gestion de parc',
   POINT_DE_VENTE: 'Point de vente',
   MARKETPLACE: 'Marketplace',
-  AGENCES: 'Agences multiservices'
+  AGENCES: 'Agences multiservices',
+  PRESENCE: 'Gestion de presence'
 };
 
 /**

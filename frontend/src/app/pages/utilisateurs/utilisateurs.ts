@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -22,13 +23,15 @@ import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste'
  */
 @Component({
   selector: 'app-utilisateurs',
-  imports: [SuiteListe, FormsModule, DatePipe, Modale],
+  imports: [SuiteListe, FormsModule, DatePipe, Modale, RouterLink],
   templateUrl: './utilisateurs.html',
   styleUrl: './utilisateurs.scss'
 })
 export class Utilisateurs implements OnInit {
   private readonly service = inject(UtilisateurService);
   private readonly auth = inject(AuthService);
+  /** Gestion de presence active : un compte peut devenir un employe qui pointe. */
+  readonly presence = this.auth.peutUtiliser('PRESENCE');
 
   readonly longueurMinimale = LONGUEUR_MOT_DE_PASSE;
   readonly page = signal<Page<Utilisateur> | null>(null);

@@ -15,6 +15,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final ControleModuleInterceptor controleModule;
     private final ContexteTableInterceptor contexteTable;
     private final ContexteBoutiqueInterceptor contexteBoutique;
+    private final tg.parcauto.api.presence.ContextePresenceInterceptor contextePresence;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -23,6 +24,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // Boutique en ligne et suivi de commande : l'entreprise vient de l'adresse ou du jeton de suivi.
         registry.addInterceptor(contexteBoutique)
                 .addPathPatterns("/api/public/boutiques/**", "/api/public/suivi/**").order(0);
+        // Pointage sans compte : l'entreprise vient du jeton du lieu (code QR) ou de la borne.
+        registry.addInterceptor(contextePresence)
+                .addPathPatterns("/api/public/presence/lieux/**", "/api/public/presence/bornes/**").order(0);
         registry.addInterceptor(controleModule).addPathPatterns("/api/**").order(1);
     }
 }

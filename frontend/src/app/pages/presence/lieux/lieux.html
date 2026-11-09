@@ -1,0 +1,175 @@
+<div class="entete-page">
+  <div>
+    <h1>Lieux et bornes</h1>
+    <p class="sous-titre">Chaque lieu a sa borne : une tablette qui affiche le code QR (il change toutes les 30 secondes)
+      et un clavier PIN. Le telephone qui pointe doit se trouver dans le rayon du lieu.</p>
+  </div>
+  @if (gestion) {
+    <div class="actions-entete">
+      <button class="bouton" type="button" (click)="nouveau()">+ Nouveau lieu</button>
+    </div>
+  }
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+@if (lieux().length) {
+  <div class="grille-lieux liste-defilante">
+    @for (l of lieux(); track l.id) {
+      <article class="carte lieu" [class.ferme]="!l.actif">
+        <header>
+          <div>
+            <span class="etiquette">{{ l.employes }} employe(s)</span>
+            @if (!l.actif) { <span class="etiquette inactif">Desactive</span> }
+            @if (l.latitude === null || l.latitude === undefined) { <span class="etiquette en_location">Sans position GPS</span> }
+            <h2>{{ l.nom }}</h2>
+            <small>{{ l.adresse || 'Adresse non renseignee' }}</small>
+          </div>
+        </header>
+
+        <dl>
+          <div>
+            <dt>Position GPS</dt>
+            <dd>
+              @if (l.latitude !== null && l.latitude !== undefined) {
+                {{ l.latitude | number: '1.5-6' }}, {{ l.longitude | number: '1.5-6' }}
+              } @else { — }
+            </dd>
+          </div>
+          <div><dt>Rayon</dt><dd>{{ l.rayonMetres }} m</dd></div>
+        </dl>
+        <p class="details">
+          Responsables :
+          @for (r of l.responsableIds; track r) { {{ nomResponsable(r) }}{{ $last ? '' : ', ' }} } @empty { aucun (admin et gerant seulement) }
+          @if (l.latitude === null || l.latitude === undefined) {
+            <br /><span class="alerte">Le pointage par telephone est refuse tant que la position n'est pas enregistree.</span>
+          }
+        </p>
+
+        <section class="bornes">
+          <h3>Bornes</h3>
+          @for (b of l.bornes; track b.id) {
+            <div class="borne" [class.inactive]="!b.actif">
+              <span class="voyant" [class.vert]="b.actif && enLigne(b)" [class.orange]="b.actif && b.appairee && !enLigne(b)"
+                    [title]="enLigne(b) ? 'En ligne' : b.appairee ? 'Appairee, sans contact recent' : 'Pas encore appairee'"></span>
+              <div class="texte">
+                <strong>{{ b.nom }}</strong>
+                <small>
+                  @if (!b.actif) { Desactivee }
+                  @else if (b.codeAppairage) { Code d'appairage : <strong class="code">{{ b.codeAppairage }}</strong> (jusqu'a {{ b.codeExpireLe | date: 'HH:mm' }}) }
+                  @else if (b.appairee) { {{ enLigne(b) ? 'En ligne' : 'Dernier contact ' + (b.dernierContact ? (b.dernierContact | date: 'dd/MM HH:mm') : '—') }} }
+                  @else { Code expire : generez-en un nouveau }
+                </small>
+              </div>
+              @if (gestion) {
+                <button class="bouton secondaire petit info" type="button" (click)="reappairer(b, l)">{{ b.appairee ? 'Re-appairer' : 'Nouveau code' }}</button>
+                <button class="bouton secondaire petit" type="button" (click)="basculerBorne(b)">{{ b.actif ? 'Desactiver' : 'Reactiver' }}</button>
+              }
+            </div>
+          } @empty {
+            <p class="details">Aucune borne : sans borne, pas de code QR a scanner.</p>
+          }
+        </section>
+
+        @if (gestion) {
+          <footer class="actions-carte">
+            <button class="bouton secondaire" type="button" (click)="modifier(l)"><span class="ico" aria-hidden="true">📝</span><span class="lib">Modifier</span></button>
+            <button class="bouton secondaire info" type="button" (click)="ajouterBorne(l)"><span class="ico" aria-hidden="true">📟</span><span class="lib">Borne</span></button>
+            <button class="bouton secondaire attention" type="button" (click)="renouveler(l)"
+                    title="Les codes QR deja affiches ou photographies ne marcheront plus"><span class="ico" aria-hidden="true">🔄</span><span class="lib">Secret</span></button>
+          </footer>
+        }
+      </article>
+    }
+  </div>
+} @else {
+  <p class="message vide">Aucun lieu. Creez le premier lieu de travail, puis ajoutez sa borne.</p>
+}
+
+@if (edition(); as ed) {
+  <app-modale [titre]="ed === 'nouveau' ? 'Nouveau lieu' : 'Modifier ' + ed.nom" largeur="640px"
+              [erreur]="erreurFormulaire()" (ferme)="edition.set(null)">
+    <form (ngSubmit)="enregistrer()">
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="l-nom">Nom <span class="requis">*</span></label>
+          <input id="l-nom" name="nom" required maxlength="80" [(ngModel)]="formulaire.nom" placeholder="Ex. Siege, Boutique Be" />
+        </div>
+        <div class="champ champ-double">
+          <label for="l-adresse">Adresse</label>
+          <input id="l-adresse" name="adresse" maxlength="255" [(ngModel)]="formulaire.adresse" />
+        </div>
+        <div class="champ">
+          <label for="l-lat">Latitude</label>
+          <input id="l-lat" name="lat" type="number" step="any" [(ngModel)]="formulaire.latitude" />
+        </div>
+        <div class="champ">
+          <label for="l-lng">Longitude</label>
+          <input id="l-lng" name="lng" type="number" step="any" [(ngModel)]="formulaire.longitude" />
+        </div>
+        <div class="champ">
+          <label for="l-rayon">Rayon (m)</label>
+          <input id="l-rayon" name="rayon" type="number" min="10" max="5000" [(ngModel)]="formulaire.rayonMetres" />
+          <small>Distance maximale entre le telephone et le lieu.</small>
+        </div>
+        <div class="champ position">
+          <button class="bouton secondaire" type="button" [disabled]="localisation()" (click)="positionActuelle()">
+            {{ localisation() ? 'Localisation...' : '📍 Utiliser ma position actuelle' }}
+          </button>
+          <small>A faire depuis le lieu, avec un telephone ou une tablette.</small>
+        </div>
+      </div>
+
+      @if (responsables().length) {
+        <fieldset class="choix-multiples">
+          <legend>Responsables du lieu</legend>
+          @for (r of responsables(); track r.id) {
+            <label [class.coche]="responsablesChoisis().has(r.id)">
+              <input type="checkbox" [checked]="responsablesChoisis().has(r.id)" (change)="basculerResponsable(r.id)" />
+              {{ r.prenom ? r.prenom + ' ' : '' }}{{ r.nom }}
+            </label>
+          }
+          <small>Gestionnaires de parc et superviseurs d'agence : ils ne voient que les employes de leurs lieux.</small>
+        </fieldset>
+      }
+
+      @if (ed !== 'nouveau') {
+        <label class="case"><input type="checkbox" name="actif" [(ngModel)]="formulaire.actif" /> Lieu actif</label>
+      }
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="edition.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!formulaire.nom.trim()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (nouvelleBorne(); as l) {
+  <app-modale titre="Nouvelle borne" [sousTitre]="l.nom" largeur="480px" (ferme)="nouvelleBorne.set(null)">
+    <form (ngSubmit)="creerBorne()">
+      <div class="champ">
+        <label for="b-nom">Nom de la borne</label>
+        <input id="b-nom" name="nom" required maxlength="80" [(ngModel)]="nomBorne" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="nouvelleBorne.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="!nomBorne.trim()">Creer et obtenir le code</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (codeAffiche(); as c) {
+  <app-modale titre="Appairer la borne" [sousTitre]="c.borne.nom + ' · ' + c.lieu" largeur="520px" (ferme)="codeAffiche.set(null)">
+    <ol class="etapes aide">
+      <li>Sur la tablette, ouvrez <strong>{{ adresseBorne }}</strong></li>
+      <li>Saisissez ce code (valable 15 minutes) :</li>
+    </ol>
+    <div class="code-geant">{{ c.borne.codeAppairage }}</div>
+    <p class="aide">La tablette affiche ensuite le code QR du lieu. Laissez-la allumee, branchee, en plein ecran.</p>
+    <div class="actions-formulaire">
+      <button class="bouton" type="button" (click)="codeAffiche.set(null)">Fermer</button>
+    </div>
+  </app-modale>
+}

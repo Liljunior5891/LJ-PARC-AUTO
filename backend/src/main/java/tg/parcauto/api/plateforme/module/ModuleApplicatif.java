@@ -63,6 +63,13 @@ public enum ModuleApplicatif {
                     + "par agence, commissions, clotures et tresorerie centralisee.",
             true,
             EnumSet.of(Role.ADMIN, Role.SUPERVISEUR_AGENCE, Role.CAISSIER_AGENCE),
+            List.of()),
+    PRESENCE(
+            "Gestion de presence",
+            "Pointage des arrivees par code QR et PIN, depuis le telephone ou une borne : retards, absents "
+                    + "et historique de chaque employe.",
+            true,
+            EnumSet.of(Role.ADMIN, Role.GERANT, Role.GESTIONNAIRE_PARC, Role.SUPERVISEUR_AGENCE),
             List.of());
 
     /** Declinaison d'un module, choisie par l'entreprise. */

@@ -102,6 +102,9 @@ export class AuthService {
       // Superviseur et caissier arrivent sur le tableau de bord de leur agence.
       return '/agences/tableau-bord';
     }
+    if (module === 'PRESENCE') {
+      return '/presence/tableau-bord';
+    }
     return module === 'GESTION_PARC' ? '/tableau-bord' : '/modules';
   }
 

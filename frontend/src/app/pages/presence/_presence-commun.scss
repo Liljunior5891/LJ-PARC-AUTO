@@ -1,0 +1,115 @@
+/*
+ * Petits elements partages par les ecrans de la Gestion de presence, sur le
+ * modele des autres modules (profils des Utilisateurs, lignes des Depenses).
+ */
+
+/* Choix multiples en pastilles (lieux, responsables, jours travailles) : comme les profils d'un compte. */
+.choix-multiples {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem 1rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: var(--rayon);
+
+  legend {
+    padding: 0 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--couleur-texte-doux);
+  }
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0 0.5rem 0.4rem 0;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    cursor: pointer;
+
+    &.coche {
+      border-color: var(--couleur-primaire);
+      background: #eef4fb;
+      font-weight: 600;
+    }
+  }
+
+  small {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.72rem;
+    color: var(--couleur-texte-doux);
+  }
+
+  .aucun {
+    margin: 0;
+    color: var(--couleur-texte-doux);
+    font-size: 0.85rem;
+  }
+}
+
+.champ small,
+.aide {
+  font-size: 0.72rem;
+  color: var(--couleur-texte-doux);
+}
+
+p.aide {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+}
+
+/* Case a cocher seule sous un formulaire (actif, inactifs). */
+.case {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+/* Deuxieme ligne d'une cellule (matricule, service, distance). */
+.sous-ligne {
+  display: block;
+  color: var(--couleur-texte-doux);
+  font-size: 0.75rem;
+}
+
+.heure {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.retard {
+  color: #b35f00;
+  font-weight: 600;
+}
+
+tr.cliquable {
+  cursor: pointer;
+}
+
+/* Fiche desactivee : lisible mais en retrait, comme un compte desactive. */
+tr.inactif {
+  color: var(--couleur-texte-doux);
+
+  td:first-child {
+    font-style: italic;
+  }
+}
+
+.carte + .carte {
+  margin-top: 1rem;
+}
+
+/* Boutons en bout de ligne, alignes a droite (l'espacement vient de table.tableau .bouton + .bouton). */
+td.actions-ligne {
+  text-align: right;
+
+  a.bouton {
+    text-decoration: none;
+  }
+}

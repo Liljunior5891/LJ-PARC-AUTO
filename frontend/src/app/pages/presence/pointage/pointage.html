@@ -1,0 +1,73 @@
+<main class="pointage">
+  <header class="entete">
+    <span class="logo" aria-hidden="true">🕘</span>
+    <div>
+      <strong>{{ entreprise() || 'Pointage' }}</strong>
+      @if (lieu()) { <small>📍 {{ lieu() }}</small> }
+    </div>
+  </header>
+
+  @switch (etape()) {
+    @case ('chargement') {
+      <p class="info">Chargement...</p>
+    }
+    @case ('erreur') {
+      <section class="carte-centre echec">
+        <span class="grand" aria-hidden="true">⚠️</span>
+        <p>{{ erreur() }}</p>
+      </section>
+    }
+    @case ('resultat') {
+      @let r = resultat()!;
+      <section class="carte-centre" [class.retard]="r.retardMinutes > 0" [class.deja]="r.issue === 'DEJA_POINTE'">
+        <span class="grand" aria-hidden="true">{{ r.issue === 'DEJA_POINTE' ? 'ℹ️' : r.retardMinutes > 0 ? '⏰' : '✅' }}</span>
+        <h1>{{ r.issue === 'DEJA_POINTE' ? 'Deja pointe' : 'Bonjour ' + r.nom }}</h1>
+        <p class="heure">{{ r.arriveeLe | date: 'HH:mm' }}</p>
+        <p>{{ r.message }}</p>
+        @if (r.apresLimite) { <p class="note">Arrivee apres l'heure limite.</p> }
+        <button type="button" class="lien" (click)="changerMode('historique')">Voir mon historique</button>
+      </section>
+    }
+    @case ('historique') {
+      @let h = historique()!;
+      <section class="historique">
+        <h1>{{ h.nom }}</h1>
+        <p class="info">{{ h.matricule }} · mois en cours</p>
+        <app-historique-employe [historique]="h" />
+        <button type="button" class="lien" (click)="changerMode('pointer')">‹ Retour au pointage</button>
+      </section>
+    }
+    @default {
+      <section class="saisie">
+        <div class="onglets" role="tablist">
+          <button type="button" role="tab" [class.actif]="mode() === 'pointer'" (click)="changerMode('pointer')">Pointer mon arrivee</button>
+          <button type="button" role="tab" [class.actif]="mode() === 'historique'" (click)="changerMode('historique')">Mon historique</button>
+        </div>
+
+        @if (mode() === 'pointer') {
+          <p class="date">{{ maintenant | date: 'EEEE d MMMM · HH:mm' }}</p>
+          @if (!codeValide()) {
+            <div class="message alerte">Ce code QR a expire : scannez celui affiche en ce moment sur la borne.</div>
+          }
+          <div class="position" [class.ok]="etatPosition() === 'ok'" [class.ko]="etatPosition() === 'refusee' || etatPosition() === 'indisponible'">
+            @switch (etatPosition()) {
+              @case ('ok') { 📍 Position trouvee (± {{ position()!.coords.accuracy | number: '1.0-0' }} m) }
+              @case ('attente') { 📍 Recherche de votre position... }
+              @case ('refusee') { 📍 Localisation refusee : autorisez-la dans votre navigateur. <button type="button" class="lien" (click)="localiser()">Reessayer</button> }
+              @default { 📍 Position introuvable. <button type="button" class="lien" (click)="localiser()">Reessayer</button> }
+            }
+          </div>
+        } @else {
+          <p class="date">Tapez votre PIN pour voir vos arrivees du mois.</p>
+        }
+
+        @if (erreur()) {
+          <div class="message erreur">{{ erreur() }}</div>
+        }
+        <p class="consigne">Votre PIN a 6 chiffres</p>
+        <app-clavier-pin [desactive]="etape() === 'envoi'" (valide)="pinSaisi($event)" />
+        @if (etape() === 'envoi') { <p class="info">Verification...</p> }
+      </section>
+    }
+  }
+</main>

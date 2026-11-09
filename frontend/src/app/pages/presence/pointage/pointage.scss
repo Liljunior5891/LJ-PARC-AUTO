@@ -1,0 +1,175 @@
+/* Pointage sur le telephone : une colonne, gros elements pour le pouce. */
+:host {
+  display: block;
+  min-height: 100vh;
+  background: var(--couleur-fond);
+}
+
+.pointage {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1rem 16px 2rem;
+}
+
+.entete {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #1f6fd1 0%, #1a5db0 100%);
+  color: #fff;
+
+  .logo {
+    font-size: 1.8rem;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+  }
+
+  small {
+    opacity: 0.85;
+  }
+}
+
+.saisie,
+.historique {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.8rem;
+}
+
+.onglets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--couleur-surface);
+  border: 1px solid var(--couleur-bordure);
+
+  button {
+    padding: 0.6rem;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--couleur-texte-doux);
+    font-weight: 600;
+    cursor: pointer;
+
+    &.actif {
+      background: var(--couleur-primaire);
+      color: #fff;
+    }
+  }
+}
+
+.date {
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.position {
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  background: var(--couleur-surface);
+  border: 1px solid var(--couleur-bordure);
+  font-size: 0.85rem;
+  text-align: center;
+
+  &.ok {
+    border-color: color-mix(in srgb, var(--couleur-succes) 40%, transparent);
+    color: var(--couleur-succes);
+  }
+
+  &.ko {
+    border-color: color-mix(in srgb, var(--couleur-danger) 40%, transparent);
+    color: var(--couleur-danger);
+  }
+}
+
+.consigne {
+  margin: 0.4rem 0 0;
+  text-align: center;
+  color: var(--couleur-texte-doux);
+}
+
+.info {
+  margin: 0;
+  text-align: center;
+  color: var(--couleur-texte-doux);
+}
+
+.carte-centre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 2rem 1.25rem;
+  border-radius: 16px;
+  border-top: 6px solid var(--couleur-succes);
+  background: var(--couleur-surface);
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(16, 40, 30, 0.1);
+
+  &.retard {
+    border-top-color: #e08a00;
+  }
+
+  &.deja {
+    border-top-color: var(--couleur-info);
+  }
+
+  &.echec {
+    border-top-color: var(--couleur-danger);
+  }
+
+  .grand {
+    font-size: 3.2rem;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 1.35rem;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .heure {
+    font-size: 2.4rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .note {
+    color: #b35f00;
+    font-size: 0.85rem;
+  }
+}
+
+.historique h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.lien {
+  align-self: center;
+  margin-top: 0.6rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--couleur-primaire);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}

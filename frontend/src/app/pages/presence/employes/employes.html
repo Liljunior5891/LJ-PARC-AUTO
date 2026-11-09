@@ -1,0 +1,160 @@
+<div class="entete-page">
+  <div>
+    <h1>Employes</h1>
+    <p class="sous-titre">Chaque employe pointe son arrivee avec son PIN personnel a 6 chiffres.</p>
+  </div>
+  <div class="actions-entete">
+    <button class="bouton" type="button" (click)="nouvel()">+ Nouvel employe</button>
+  </div>
+</div>
+
+@if (erreur()) {
+  <div class="message erreur">{{ erreur() }}</div>
+}
+
+<div class="carte barre-filtres">
+  <div class="filtres-ligne">
+    <input class="recherche" type="search" placeholder="Nom, matricule, fonction, telephone..." aria-label="Recherche"
+           [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" />
+    <label class="case"><input type="checkbox" [checked]="voirInactifs()" (change)="voirInactifs.set(!voirInactifs())" /> Voir les inactifs</label>
+  </div>
+</div>
+
+<div class="carte">
+  <div class="tableau-conteneur">
+    <table class="tableau">
+      <thead>
+        <tr><th>Employe</th><th>Fonction</th><th>Lieux</th><th>Compte</th><th>Etat</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (e of filtres(); track e.id) {
+          <tr [class.inactif]="!e.actif">
+            <td>
+              <a [routerLink]="['/presence/employes', e.id]"><strong>{{ e.nomComplet }}</strong></a>
+              <small class="sous-ligne">{{ e.matricule }}{{ e.telephone ? ' · ' + e.telephone : '' }}</small>
+            </td>
+            <td>{{ e.fonction || '—' }}@if (e.service) { <small class="sous-ligne">{{ e.service }}</small> }</td>
+            <td>
+              @for (l of e.lieux; track l.id) { <span class="etiquette-lieu">{{ l.nom }}</span> }
+              @empty { <span class="sous-ligne">Tous les lieux</span> }
+            </td>
+            <td>{{ e.utilisateurEmail || '—' }}</td>
+            <td><span class="etiquette" [class.actif]="e.actif" [class.inactif]="!e.actif">{{ e.actif ? 'Actif' : 'Inactif' }}</span></td>
+            <td class="actions-ligne">
+              <a class="bouton secondaire petit info" [routerLink]="['/presence/employes', e.id]">Historique</a>
+              <button class="bouton secondaire petit info" type="button" (click)="modifier(e)">Modifier</button>
+              <button class="bouton secondaire petit" type="button" (click)="aReinitialiser.set(e)">Nouveau PIN</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="6"><p class="message vide">Aucun employe. Creez-en un, ou convertissez un compte utilisateur.</p></td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (edition(); as ed) {
+  <app-modale [titre]="ed === 'nouvel' ? 'Nouvel employe' : 'Modifier ' + ed.nomComplet" largeur="720px"
+              [erreur]="erreurFormulaire()" (ferme)="edition.set(null)">
+    <form (ngSubmit)="enregistrer()">
+      @if (ed !== 'nouvel' && ed.utilisateurId) {
+        <p class="aide">Relie au compte utilisateur <strong>{{ ed.utilisateurEmail }}</strong>.</p>
+      }
+      <div class="grille-formulaire">
+        @if (ed === 'nouvel' || !ed.utilisateurId) {
+          <div class="champ champ-pleine">
+            <label for="e-compte">Convertir un compte utilisateur</label>
+            <select id="e-compte" name="compte" [ngModel]="formulaire.utilisateurId" (ngModelChange)="compteChoisi($event)">
+              <option [ngValue]="null">Aucun : employe sans compte</option>
+              @for (c of comptes(); track c.id) {
+                <option [ngValue]="c.id">{{ c.prenom ? c.prenom + ' ' : '' }}{{ c.nom }} · {{ c.email }}</option>
+              }
+            </select>
+            <small>La fiche reprend son nom, son e-mail et son telephone. Son PIN de pointage sera different de celui de son compte.</small>
+          </div>
+        }
+        <div class="champ">
+          <label for="e-nom">Nom <span class="requis">*</span></label>
+          <input id="e-nom" name="nom" required maxlength="80" [(ngModel)]="formulaire.nom" />
+        </div>
+        <div class="champ">
+          <label for="e-prenom">Prenom</label>
+          <input id="e-prenom" name="prenom" maxlength="80" [(ngModel)]="formulaire.prenom" />
+        </div>
+        <div class="champ">
+          <label for="e-tel">Telephone</label>
+          <input id="e-tel" name="telephone" maxlength="30" [(ngModel)]="formulaire.telephone" />
+        </div>
+        <div class="champ">
+          <label for="e-email">E-mail</label>
+          <input id="e-email" name="email" type="email" maxlength="150" [(ngModel)]="formulaire.email" />
+        </div>
+        <div class="champ">
+          <label for="e-fonction">Fonction</label>
+          <input id="e-fonction" name="fonction" maxlength="80" [(ngModel)]="formulaire.fonction" placeholder="Ex. Caissier, Chauffeur" />
+        </div>
+        <div class="champ">
+          <label for="e-service">Service</label>
+          <input id="e-service" name="service" maxlength="80" [(ngModel)]="formulaire.service" />
+        </div>
+        <div class="champ">
+          <label for="e-embauche">Date d'embauche</label>
+          <input id="e-embauche" name="embauche" type="date" [(ngModel)]="formulaire.dateEmbauche" />
+          <small>Avant cette date, l'employe n'est pas compte absent.</small>
+        </div>
+      </div>
+
+      <fieldset class="choix-multiples">
+        <legend>Lieux ou il peut pointer</legend>
+        @for (l of lieux(); track l.id) {
+          <label [class.coche]="lieuxChoisis().has(l.id)">
+            <input type="checkbox" [checked]="lieuxChoisis().has(l.id)" (change)="basculerLieu(l.id)" /> {{ l.nom }}
+          </label>
+        } @empty {
+          <p class="aucun">Aucun lieu : creez-en dans « Lieux et bornes ».</p>
+        }
+        @if (peutGererLieux()) {
+          <small>Sans lieu coche, l'employe peut pointer sur tous les lieux.</small>
+        }
+      </fieldset>
+
+      @if (ed !== 'nouvel') {
+        <label class="case"><input type="checkbox" name="actif" [(ngModel)]="formulaire.actif" /> Employe actif (il peut pointer)</label>
+      } @else {
+        <p class="aide">Un PIN a 6 chiffres sera genere et affiche une seule fois apres l'enregistrement.</p>
+      }
+
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="edition.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="enCours() || !formulaire.nom.trim()">
+          {{ enCours() ? 'Enregistrement...' : 'Enregistrer' }}
+        </button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (pinAffiche(); as r) {
+  <app-modale titre="PIN de pointage" [sousTitre]="r.employe.nomComplet + ' · ' + r.employe.matricule" largeur="460px"
+              (ferme)="pinAffiche.set(null)">
+    <div class="pin-affiche">
+      <p>Remettez ce PIN a l'employe. Il ne sera plus affiche ensuite.</p>
+      <div class="pin">{{ r.pin }}</div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire" type="button" (click)="imprimerCarte(r)">🖨 Imprimer la carte</button>
+        <button class="bouton" type="button" (click)="pinAffiche.set(null)">C'est note</button>
+      </div>
+    </div>
+  </app-modale>
+}
+
+@if (aReinitialiser(); as e) {
+  <app-modale titre="Nouveau PIN" [sousTitre]="e.nomComplet" largeur="460px" (ferme)="aReinitialiser.set(null)">
+    <p>L'ancien PIN de {{ e.nomComplet }} ne marchera plus. Un nouveau PIN sera genere et affiche une seule fois.</p>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="aReinitialiser.set(null)">Annuler</button>
+      <button class="bouton" type="button" (click)="reinitialiser()">Generer un nouveau PIN</button>
+    </div>
+  </app-modale>
+}
