@@ -1,13 +1,15 @@
 <div class="entete-page">
   <div>
     <h1>Caisses des caissiers</h1>
-    <p class="sous-titre">Ouvrez la caisse de chaque caissier avec son fond, pris sur la caisse generale ; a la fermeture, comptez le tiroir :
-      l'argent revient a la caisse generale et l'ecart se justifie.</p>
+    <p class="sous-titre">Ouvrez la caisse de chaque caissier avec son fond, pris sur la caisse generale. Le caissier compte son tiroir et
+      soumet sa fermeture ; vous validez (l'argent revient a la caisse generale) ou rejetez pour qu'il recompte.</p>
   </div>
   @if (agences().length > 1) {
-    <select class="choix-agence" [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
-      @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
-    </select>
+    <div class="choix-agence-entete">
+      <select [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
+        @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+      </select>
+    </div>
   }
 </div>
 
@@ -15,26 +17,34 @@
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }
 
 @if (etat(); as e) {
-  <div class="grille-indicateurs">
-    <div class="carte indicateur">
-      <span class="libelle">Caisse generale de {{ e.agenceNom }}</span>
-      <span class="valeur numerique">{{ e.caisseGenerale | number: '1.0-0' }} F</span>
-      <span class="detail">Les fonds de caisse en sortent, les remises y reviennent</span>
+  <div class="cartes-apercu tete-ecran">
+    <div class="carte-apercu bleu">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.6" /></svg></span>
+      <span class="textes">
+        <span class="libelle">Caisse generale de {{ e.agenceNom }}</span>
+        <strong>{{ e.caisseGenerale | number: '1.0-0' }}<em> F</em></strong>
+        <small>Les fonds de caisse en sortent, les remises y reviennent</small>
+      </span>
     </div>
   </div>
 
-  <div class="grille-caissiers">
+  <div class="grille-caisses">
     @for (c of e.caissiers; track c.id) {
-      <article class="carte caissier" [class.ouverte]="!!c.session">
+      <article class="carte caisse" [class.ouverte]="!!c.session" [class.a-valider]="c.session?.statut === 'SOUMISE'" [class.inactive]="!c.actif">
         <header>
           <span class="avatar" aria-hidden="true">{{ c.nomComplet.slice(0, 1) }}</span>
           <div>
             <h2>{{ c.nomComplet }}</h2>
             <small>{{ c.roles.join(', ') }}</small>
           </div>
+          @if (c.session; as s) { <span class="nombre-sessions">{{ s.nombreTransactions }} transaction(s)</span> }
         </header>
         @if (c.session; as s) {
-          <span class="etat ouverte">● Ouverte depuis {{ s.ouverteLe | date: 'dd/MM HH:mm' }} par {{ s.ouverteParNom }}</span>
+          @if (s.statut === 'SOUMISE') {
+            <span class="etat a-valider">⏳ Comptage soumis le {{ s.soumiseLe | date: 'dd/MM HH:mm' }} : a valider</span>
+          } @else {
+            <span class="etat ouverte">● Ouverte depuis {{ s.ouverteLe | date: 'dd/MM HH:mm' }} par {{ s.ouverteParNom }}</span>
+          }
           <dl class="chiffres">
             <dt>Fond</dt><dd>{{ s.fondInitial | number: '1.0-0' }}</dd>
             <dt>Encaisse</dt><dd class="plus">+{{ s.encaisse | number: '1.0-0' }}</dd>
@@ -42,13 +52,43 @@
             @if (s.autresMouvements) { <dt>Autres mouvements</dt><dd>{{ s.autresMouvements > 0 ? '+' : '' }}{{ s.autresMouvements | number: '1.0-0' }}</dd> }
             <dt class="total">En caisse</dt><dd class="total">{{ s.soldeCaisse | number: '1.0-0' }} F</dd>
           </dl>
-          <small class="aide">{{ s.nombreTransactions }} transaction(s), {{ s.commissions | number: '1.0-0' }} F de commissions</small>
-          <button class="bouton danger" type="button" (click)="demanderFermeture(s)">Fermer la caisse</button>
+          <small class="aide">{{ s.commissions | number: '1.0-0' }} F de commissions</small>
+          @if (s.statut === 'SOUMISE') {
+            <div class="comptage-soumis" [class.juste]="!s.ecartSoumis">
+              Compte par le caissier : <strong>{{ s.montantSoumis | number: '1.0-0' }} F</strong>
+              @if (s.ecartSoumis) {
+                · ecart <strong>{{ s.ecartSoumis > 0 ? '+' : '' }}{{ s.ecartSoumis | number: '1.0-0' }} F</strong>
+                @if (s.justificationSoumise) { <br /><em>« {{ s.justificationSoumise }} »</em> }
+              } @else { · caisse juste }
+            </div>
+            <footer class="actions-caisse actions-carte">
+              <button type="button" class="action rouge" (click)="demanderRejet(s)" title="Le caissier devra recompter">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                <span>Rejeter</span>
+              </button>
+              <button type="button" class="action vert" (click)="demanderFermeture(s)" title="Verifier le tiroir et valider la remise">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                <span>Valider</span>
+              </button>
+            </footer>
+          } @else {
+            <footer class="actions-caisse actions-carte">
+              <button type="button" class="action rouge" (click)="demanderFermeture(s)" title="Fermer la caisse sans attendre le caissier">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" /></svg>
+                <span>Fermer la caisse</span>
+              </button>
+            </footer>
+          }
         } @else if (c.ailleurs) {
           <span class="etat">{{ c.ailleurs }}</span>
         } @else {
-          <span class="etat">Fermee : aucune transaction possible pour ce caissier</span>
-          <button class="bouton" type="button" [disabled]="!c.actif" (click)="demanderOuverture(c)">Ouvrir la caisse</button>
+          <span class="etat fermee">Fermee : aucune transaction possible pour ce caissier</span>
+          <footer class="actions-caisse actions-carte">
+            <button type="button" class="action vert" [disabled]="!c.actif" (click)="demanderOuverture(c)" title="Ouvrir la caisse (fond pris sur la caisse generale)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2" /><path d="M8 10.5V7.5a4 4 0 0 1 7.6-1.7" /></svg>
+              <span>Ouvrir la caisse</span>
+            </button>
+          </footer>
         }
       </article>
     } @empty {
@@ -73,7 +113,7 @@
                 <td>{{ s.numero }}</td>
                 <td>{{ s.caissierNom }}</td>
                 <td>{{ s.ouverteLe | date: 'dd/MM HH:mm' }}</td>
-                <td>{{ s.fermeeLe ? (s.fermeeLe | date: 'dd/MM HH:mm') : 'ouverte' }}</td>
+                <td>{{ s.fermeeLe ? (s.fermeeLe | date: 'dd/MM HH:mm') : s.statut === 'SOUMISE' ? 'a valider' : 'ouverte' }}</td>
                 <td class="montant numerique">{{ s.fondInitial | number: '1.0-0' }}</td>
                 <td class="montant numerique">{{ (s.montantTheorique ?? s.soldeCaisse) | number: '1.0-0' }}</td>
                 <td class="montant numerique">{{ s.montantCompte != null ? (s.montantCompte | number: '1.0-0') : '—' }}</td>
@@ -82,7 +122,7 @@
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="8" class="vide">Aucune session de caisse.</td></tr>
+              <tr><td colspan="8"><div class="message vide">Aucune session de caisse.</div></td></tr>
             }
           </tbody>
         </table>
@@ -105,8 +145,12 @@
 }
 
 @if (aFermer(); as s) {
-  <app-modale [titre]="'Fermer la caisse de ' + s.caissierNom" [sousTitre]="s.numero" largeur="760px" [erreur]="erreurModale()"
-              (ferme)="aFermer.set(null)">
+  <app-modale [titre]="(s.statut === 'SOUMISE' ? 'Valider la caisse de ' : 'Fermer la caisse de ') + s.caissierNom" [sousTitre]="s.numero"
+              largeur="760px" [erreur]="erreurModale()" (ferme)="aFermer.set(null)">
+    @if (s.statut === 'SOUMISE') {
+      <p class="aide">Comptage du caissier repris ci-dessous ({{ s.montantSoumis | number: '1.0-0' }} F) : verifiez le tiroir et corrigez
+        les quantites si besoin avant de valider.</p>
+    }
     <div class="attendu">
       <span>Fond {{ s.fondInitial | number: '1.0-0' }}</span>
       <span>+ encaisse {{ s.encaisse | number: '1.0-0' }}</span>
@@ -127,8 +171,8 @@
     }
     <div class="actions-formulaire">
       <button class="bouton secondaire annuler" type="button" (click)="aFermer.set(null)">Annuler</button>
-      <button class="bouton danger" type="button" [disabled]="ecart() !== 0 && !justification.trim()" (click)="fermer()">
-        Fermer et remettre {{ totalCompte() | number: '1.0-0' }} F
+      <button class="bouton" [class.danger]="s.statut !== 'SOUMISE'" type="button" [disabled]="ecart() !== 0 && !justification.trim()" (click)="fermer()">
+        {{ s.statut === 'SOUMISE' ? 'Valider et recevoir' : 'Fermer et remettre' }} {{ totalCompte() | number: '1.0-0' }} F
       </button>
     </div>
   </app-modale>
@@ -140,6 +184,14 @@
       <dt>Ouverture</dt><dd>{{ s.ouverteLe | date: 'dd/MM/yyyy HH:mm' }} par {{ s.ouverteParNom }}, fond {{ s.fondInitial | number: '1.0-0' }} F</dd>
       <dt>Transactions</dt><dd>{{ s.nombreTransactions }} · encaisse {{ s.encaisse | number: '1.0-0' }} F · decaisse {{ s.decaisse | number: '1.0-0' }} F</dd>
       <dt>Commissions</dt><dd>{{ s.commissions | number: '1.0-0' }} F</dd>
+      @if (s.soumiseLe) {
+        <dt>Compte par le caissier</dt>
+        <dd>{{ s.montantSoumis | number: '1.0-0' }} F le {{ s.soumiseLe | date: 'dd/MM/yyyy HH:mm' }}
+          @if (s.ecartSoumis) { (ecart {{ s.ecartSoumis | number: '1.0-0' }} F@if (s.justificationSoumise) { — {{ s.justificationSoumise }} }) }</dd>
+      }
+      @if (s.motifRejet) {
+        <dt>Dernier rejet</dt><dd>{{ s.rejeteeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ s.rejeteeParNom }} : {{ s.motifRejet }}</dd>
+      }
       @if (s.fermeeLe) {
         <dt>Fermeture</dt><dd>{{ s.fermeeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ s.fermeeParNom }}</dd>
         <dt>Attendu / compte</dt><dd>{{ s.montantTheorique | number: '1.0-0' }} F / {{ s.montantCompte | number: '1.0-0' }} F</dd>
@@ -148,5 +200,20 @@
         <dd>@for (l of s.billettageFermeture; track l.valeur) { <span class="coupure">{{ l.quantite }} × {{ l.valeur | number: '1.0-0' }}</span> }</dd>
       }
     </dl>
+  </app-modale>
+}
+
+@if (aRejeter(); as s) {
+  <app-modale [titre]="'Rejeter le comptage de ' + s.caissierNom" [sousTitre]="s.numero" largeur="480px" [erreur]="erreurModale()"
+              (ferme)="aRejeter.set(null)">
+    <p class="aide">La caisse est rouverte au caissier : il voit votre motif et recompte son tiroir.</p>
+    <div class="champ">
+      <label for="motif-rejet">Motif *</label>
+      <input id="motif-rejet" maxlength="500" [(ngModel)]="motifRejet" placeholder="Ex. Il manque un billet de 5 000 F au recomptage" />
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="aRejeter.set(null)">Annuler</button>
+      <button class="bouton danger" type="button" [disabled]="!motifRejet.trim()" (click)="rejeter()">Rejeter le comptage</button>
+    </div>
   </app-modale>
 }

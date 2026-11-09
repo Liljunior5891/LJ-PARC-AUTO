@@ -1,15 +1,13 @@
 <div class="entete-page">
   <div>
     <h1>Baremes de commission</h1>
-    <p class="sous-titre">Montant fixe, pourcentage ou tranches, par service et au besoin par operation ou par reseau : le bareme le plus
-      precis l'emporte. La commission d'une operation est figee a sa validation ; changer un bareme ne recalcule jamais le passe.</p>
+    <p class="sous-titre">Choisissez un service : ses baremes s'affichent a droite et le testeur montre la commission d'une operation.
+      Une operation deja validee garde toujours sa commission.</p>
   </div>
   <div class="actions-entete">
-    <button class="bouton secondaire" type="button" (click)="basculerHistorique()">{{ historique ? 'Masquer l\'historique' : 'Voir l\'historique' }}</button>
+    <button class="bouton secondaire" type="button" (click)="basculerHistorique()">{{ historique ? 'Masquer les baremes termines' : 'Voir les baremes termines' }}</button>
     @if (modifiable()) {
-      <button class="bouton secondaire" type="button" (click)="chargerExemples()"
-              title="Baremes qui reproduisent les exemples du cahier des charges">Charger les exemples du cahier</button>
-      <button class="bouton" type="button" (click)="nouveau()">+ Nouveau bareme</button>
+      <button class="bouton" type="button" (click)="nouveau(serviceActif()?.id)">+ Nouveau bareme</button>
     }
   </div>
 </div>
@@ -21,134 +19,177 @@
     etre remplaces par les baremes reels de vos operateurs.</div>
 }
 
-<!-- ============================================================ simulateur -->
-<section class="carte simulateur">
-  <h2>Simulateur</h2>
-  <div class="ligne-simulation">
-    <div class="champ">
-      <label for="sim-service">Service</label>
-      <select id="sim-service" [(ngModel)]="simService" (ngModelChange)="changerServiceSimule()">
-        @for (s of catalogue(); track s.id) {
-          @if (s.actif) { <option [ngValue]="s.id">{{ s.nom }}</option> }
-        }
-      </select>
-    </div>
-    @if (serviceDe(simService); as s) {
-      <div class="champ">
-        <label for="sim-type">Operation</label>
-        <select id="sim-type" [(ngModel)]="simType" (ngModelChange)="simuler()">
-          @for (t of s.types; track t.id) {
-            @if (t.actif) { <option [ngValue]="t.id">{{ t.libelle }}</option> }
-          }
-        </select>
-      </div>
-      @if (s.reseaux.length) {
-        <div class="champ">
-          <label for="sim-reseau">Reseau</label>
-          <select id="sim-reseau" [(ngModel)]="simReseau" (ngModelChange)="simuler()">
-            <option [ngValue]="null">—</option>
-            @for (r of s.reseaux; track r.id) {
-              @if (r.actif) { <option [ngValue]="r.id">{{ r.nom }}</option> }
-            }
-          </select>
-        </div>
-      }
-    }
-    <div class="champ">
-      <label for="sim-montant">Montant (F)</label>
-      <input id="sim-montant" type="number" min="1" step="1" inputmode="numeric" [(ngModel)]="simMontant" (ngModelChange)="simuler()" />
-    </div>
-    <div class="resultat-simulation" [class.sans]="simulation() && !simulation()!.baremeId">
-      @if (simulation(); as r) {
-        <span class="libelle">Commission</span>
-        <strong class="numerique">{{ r.commission | number: '1.0-0' }} F</strong>
-        <small>{{ r.baremeLibelle ? r.baremeLibelle + ' · ' : '' }}{{ r.detail }}</small>
-      } @else {
-        <small>Choisissez une operation et un montant.</small>
-      }
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================== baremes -->
 @if (chargement()) {
-  <p class="vide">Chargement des baremes...</p>
+  <div class="message vide">Chargement des baremes...</div>
 } @else {
-  <div class="liste-defilante services">
-    @for (g of parService(); track g.service.id) {
-      <section class="carte service">
-        <header>
-          <h2>{{ g.service.nom }} <small>{{ g.service.categorie }}</small></h2>
-          @if (modifiable() && g.service.actif) {
-            <button class="bouton secondaire petit" type="button" (click)="nouveau(g.service.id)">+ Bareme</button>
-          }
-        </header>
-        @if (g.baremes.length) {
-          <div class="tableau-conteneur">
-            <table class="tableau">
-              <thead>
-                <tr>
-                  <th>S'applique a</th>
-                  <th>Bareme</th>
-                  <th>Calcul</th>
-                  <th>Credite sur</th>
-                  <th>Periode</th>
-                  <th class="actions"></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (b of g.baremes; track b.id) {
-                  <tr [class.passe]="b.statut === 'TERMINE' || b.statut === 'DESACTIVE'">
-                    <td>{{ b.portee }}</td>
-                    <td>
-                      <strong>{{ b.libelle }}</strong>
-                      <span class="etiquette statut" [class]="'etiquette statut ' + b.statut">{{ statuts[b.statut] }}</span>
-                      @if (b.exemple) { <span class="etiquette exemple">Exemple</span> }
-                    </td>
-                    <td>
-                      {{ b.resume }}
-                      @if (b.mode === 'TRANCHES') {
-                        <ul class="tranches">
-                          @for (t of b.tranches; track $index) {
-                            <li>
-                              {{ t.montantMin | number: '1.0-0' }}
-                              {{ t.montantMax != null ? 'a ' + (t.montantMax | number: '1.0-0') : 'et plus' }} :
-                              <strong>{{ t.mode === 'FIXE' ? (t.valeurFixe | number: '1.0-0') + ' F' : (t.taux | number: '1.0-4') + ' %' }}</strong>
-                            </li>
-                          }
-                        </ul>
-                      }
-                    </td>
-                    <td>{{ b.compteCredit === 'FLOAT' ? 'Float du service' : 'Commissions' }}</td>
-                    <td class="periode">
-                      du {{ b.dateDebut | date: 'dd/MM/yyyy' }}
-                      @if (b.dateFin) { <br />au {{ b.dateFin | date: 'dd/MM/yyyy' }} } @else { <br /><small>sans fin</small> }
-                    </td>
-                    <td class="actions">
-                      @if (modifiable() && (b.statut === 'EN_COURS' || b.statut === 'A_VENIR')) {
-                        <button class="bouton secondaire petit" type="button" (click)="modifier(b)">Modifier</button>
-                        <button class="bouton secondaire petit" type="button" (click)="demanderFin(b)">Arreter</button>
-                      }
-                      @if (b.precedentId || historique) {
-                        <button class="bouton secondaire petit" type="button" (click)="voirHistorique(b)">Versions</button>
-                      }
-                    </td>
-                  </tr>
+  <div class="page-baremes">
+    <!-- ======================================================= services -->
+    <nav class="carte liste-services" aria-label="Services">
+      <h2>Services</h2>
+      @for (g of parService(); track g.service.id) {
+        @let actifs = enVigueur(g.baremes);
+        <button type="button" class="service" [class.actif]="serviceActif()?.id === g.service.id" (click)="choisirService(g.service.id)">
+          <app-logo-service [nom]="g.service.nom" [logo]="g.service.logo" [taille]="34" />
+          <span class="textes">
+            <strong>{{ g.service.nom }}</strong>
+            @if (actifs) {
+              <small class="couvert">{{ actifs }} bareme(s) en vigueur</small>
+            } @else {
+              <small class="non-couvert">Aucun bareme : commission 0 F</small>
+            }
+          </span>
+        </button>
+      }
+    </nav>
+
+    <!-- ======================================================== detail -->
+    @if (serviceActif(); as s) {
+      <section class="detail-service">
+        <div class="carte tete-service">
+          <div class="identite">
+            <app-logo-service [nom]="s.nom" [logo]="s.logo" [taille]="52" />
+            <div>
+              <h2>{{ s.nom }}</h2>
+              <small>{{ s.categorie }} · {{ s.commissionDifferee ? 'commission versee plus tard par l\'operateur' : 'commission creditee aussitot' }}</small>
+            </div>
+            @if (modifiable() && s.actif) {
+              <button class="bouton" type="button" (click)="nouveau(s.id)">+ Bareme pour {{ s.nom }}</button>
+            }
+          </div>
+
+          <!-- Testeur : la commission qu'une operation de ce service recevrait aujourd'hui. -->
+          <div class="testeur">
+            <span class="titre-testeur">Tester</span>
+            <div class="choix-testeur">
+              <select [(ngModel)]="simType" (ngModelChange)="simuler()" aria-label="Operation a tester">
+                @for (t of s.types; track t.id) {
+                  @if (t.actif) { <option [ngValue]="t.id">{{ libelleType(s, t) }}</option> }
                 }
-              </tbody>
-            </table>
+              </select>
+            </div>
+            @if (s.reseaux.length) {
+              <div class="choix-testeur">
+                <select [(ngModel)]="simReseau" (ngModelChange)="simuler()" aria-label="Reseau a tester">
+                  <option [ngValue]="null">Sans reseau</option>
+                  @for (r of s.reseaux; track r.id) {
+                    @if (r.actif) {
+                      @let o = opt(r.nom, r.logo);
+                      <option [ngValue]="r.id" [attr.data-couleur]="o.couleur" [attr.data-logo]="o.logo" [attr.data-monogramme]="o.monogramme">{{ r.nom }}</option>
+                    }
+                  }
+                </select>
+              </div>
+            }
+            <div class="montant-testeur">
+              <input type="number" min="1" step="1" inputmode="numeric" [(ngModel)]="simMontant" (ngModelChange)="simuler()" aria-label="Montant a tester" />
+              <span>F</span>
+            </div>
+            <span class="fleche" aria-hidden="true">→</span>
+            <div class="resultat-testeur" [class.sans]="simulation() && !simulation()!.baremeId">
+              @if (simulation(); as r) {
+                <strong>{{ r.commission | number: '1.0-0' }} F</strong>
+                <small>{{ r.baremeLibelle ? r.baremeLibelle + ' · ' : 'aucun bareme · ' }}{{ r.detail }}</small>
+              } @else {
+                <small>Saisissez un montant.</small>
+              }
+            </div>
+          </div>
+          <p class="aide regle">Le bareme le plus precis l'emporte : reseau et operation, puis operation, puis reseau, puis tout le service.</p>
+        </div>
+
+        @let liste = baremesDe(s.id);
+        @if (liste.length) {
+          <div class="grille-baremes">
+            @for (b of liste; track b.id) {
+              <article class="carte bareme" [class.passe]="b.statut === 'TERMINE' || b.statut === 'DESACTIVE'" [attr.data-mode]="b.mode">
+                <header>
+                  <span class="portee">{{ b.portee }}</span>
+                  <span class="etiquette statut" [class]="'etiquette statut ' + b.statut">{{ statuts[b.statut] }}</span>
+                  @if (b.exemple) { <span class="etiquette exemple">Exemple</span> }
+                </header>
+                <h3>{{ b.libelle }}</h3>
+
+                <!-- Le calcul, lisible d'un coup d'oeil. -->
+                @switch (b.mode) {
+                  @case ('FIXE') {
+                    <div class="calcul">
+                      <strong>{{ b.valeurFixe | number: '1.0-0' }} F</strong>
+                      <span>par operation, quel que soit le montant</span>
+                    </div>
+                  }
+                  @case ('POURCENTAGE') {
+                    <div class="calcul">
+                      <strong>{{ b.taux | number: '1.0-4' }} %</strong>
+                      <span>du montant
+                        @if (b.minimum != null || b.maximum != null) {
+                          · {{ b.minimum != null ? 'au moins ' + (b.minimum | number: '1.0-0') + ' F' : '' }}{{ b.minimum != null && b.maximum != null ? ', ' : '' }}{{ b.maximum != null ? 'au plus ' + (b.maximum | number: '1.0-0') + ' F' : '' }}
+                        }
+                      </span>
+                    </div>
+                  }
+                  @case ('TRANCHES') {
+                    <ul class="tranches">
+                      @for (t of b.tranches; track $index) {
+                        <li>
+                          <span>{{ t.montantMin | number: '1.0-0' }} {{ t.montantMax != null ? '→ ' + (t.montantMax | number: '1.0-0') : 'et plus' }}</span>
+                          <strong>{{ t.mode === 'FIXE' ? (t.valeurFixe | number: '1.0-0') + ' F' : (t.taux | number: '1.0-4') + ' %' }}</strong>
+                        </li>
+                      }
+                    </ul>
+                  }
+                }
+
+                <p class="periode">
+                  Depuis le {{ b.dateDebut | date: 'dd/MM/yyyy' }}{{ b.dateFin ? ' jusqu\'au ' + (b.dateFin | date: 'dd/MM/yyyy') : ', sans fin' }}
+                  · creditee sur {{ b.compteCredit === 'FLOAT' ? 'le float du service' : 'les commissions' }}
+                </p>
+
+                @if ((modifiable() && (b.statut === 'EN_COURS' || b.statut === 'A_VENIR')) || b.precedentId || historique) {
+                  <footer class="actions-carte">
+                    @if (modifiable() && (b.statut === 'EN_COURS' || b.statut === 'A_VENIR')) {
+                      <button type="button" class="action bleu" (click)="modifier(b)">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>
+                        <span>Modifier</span>
+                      </button>
+                      <button type="button" class="action rouge" (click)="demanderFin(b)">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                        <span>Arreter</span>
+                      </button>
+                    }
+                    @if (b.precedentId || historique) {
+                      <button type="button" class="action violet" (click)="voirHistorique(b)">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7" /><path d="M4 4v3.5h3.5" /><path d="M12 8v4.5l3 1.8" /></svg>
+                        <span>Versions</span>
+                      </button>
+                    }
+                  </footer>
+                }
+              </article>
+            }
           </div>
         } @else {
-          <p class="aucun">Aucun bareme : ses operations auront une commission de 0 F.</p>
+          <div class="carte vide-service">
+            <app-logo-service [nom]="s.nom" [logo]="s.logo" [taille]="44" />
+            <p><strong>Aucun bareme pour {{ s.nom }}.</strong> Ses operations auront une commission de 0 F.</p>
+            @if (modifiable() && s.actif) {
+              <button class="bouton" type="button" (click)="nouveau(s.id)">+ Creer son premier bareme</button>
+            }
+          </div>
         }
       </section>
     }
   </div>
 
   @if (controle().length) {
-    <section class="carte controle">
-      <h2>Exemples du cahier des charges</h2>
-      <p class="aide">Commissions relevees dans le cahier, comparees a ce que donnent vos baremes actuels.</p>
+    <details class="carte controle">
+      <summary>
+        <strong>Exemples du cahier des charges</strong>
+        <small>{{ controleJustes() }} / {{ controle().length }} commission(s) conforme(s)</small>
+        @if (modifiable()) {
+          <button class="bouton secondaire petit" type="button" (click)="$event.preventDefault(); chargerExemples()"
+                  title="Baremes qui reproduisent les exemples du cahier des charges">Charger les exemples</button>
+        }
+      </summary>
       <div class="tableau-conteneur">
         <table class="tableau">
           <thead>
@@ -171,7 +212,7 @@
           </tbody>
         </table>
       </div>
-    </section>
+    </details>
   }
 }
 
@@ -191,16 +232,19 @@
           <label for="service">Service *</label>
           <select id="service" name="service" [(ngModel)]="f.serviceId" (ngModelChange)="changerService()" [disabled]="e !== 'nouveau'">
             @for (s of catalogue(); track s.id) {
-              @if (s.actif) { <option [ngValue]="s.id">{{ s.nom }}</option> }
+              @if (s.actif) {
+                @let o = opt(s.nom, s.logo);
+                <option [ngValue]="s.id" [attr.data-couleur]="o.couleur" [attr.data-logo]="o.logo" [attr.data-monogramme]="o.monogramme">{{ s.nom }}</option>
+              }
             }
           </select>
         </div>
         @if (serviceDe(f.serviceId); as s) {
           <div class="champ">
             <label for="type">Operation</label>
-            <select id="type" name="type" [(ngModel)]="f.typeOperationId" (ngModelChange)="proposerLibelle()" [disabled]="e !== 'nouveau'">
+            <select id="type" name="type" [(ngModel)]="f.typeOperationId" (ngModelChange)="changerType()" [disabled]="e !== 'nouveau'">
               <option [ngValue]="null">Toutes les operations</option>
-              @for (t of s.types; track t.id) { <option [ngValue]="t.id">{{ t.libelle }}</option> }
+              @for (t of s.types; track t.id) { <option [ngValue]="t.id">{{ libelleType(s, t) }}</option> }
             </select>
           </div>
           @if (s.reseaux.length) {
@@ -208,7 +252,10 @@
               <label for="reseau">Reseau</label>
               <select id="reseau" name="reseau" [(ngModel)]="f.reseauId" (ngModelChange)="proposerLibelle()" [disabled]="e !== 'nouveau'">
                 <option [ngValue]="null">Tous les reseaux</option>
-                @for (r of s.reseaux; track r.id) { <option [ngValue]="r.id">{{ r.nom }}</option> }
+                @for (r of s.reseaux; track r.id) {
+                  @let o = opt(r.nom, r.logo);
+                  <option [ngValue]="r.id" [attr.data-couleur]="o.couleur" [attr.data-logo]="o.logo" [attr.data-monogramme]="o.monogramme">{{ r.nom }}</option>
+                }
               </select>
             </div>
           }
@@ -219,12 +266,23 @@
         </div>
       </div>
 
-      <fieldset class="choix-mode">
-        <legend>Calcul de la commission</legend>
-        <label [class.choisi]="f.mode === 'FIXE'"><input type="radio" name="mode" value="FIXE" [ngModel]="f.mode" (ngModelChange)="changerMode($event)" /> Montant fixe</label>
-        <label [class.choisi]="f.mode === 'POURCENTAGE'"><input type="radio" name="mode" value="POURCENTAGE" [ngModel]="f.mode" (ngModelChange)="changerMode($event)" /> Pourcentage du montant</label>
-        <label [class.choisi]="f.mode === 'TRANCHES'"><input type="radio" name="mode" value="TRANCHES" [ngModel]="f.mode" (ngModelChange)="changerMode($event)" /> Par tranche de montant</label>
-      </fieldset>
+      <div class="choix-mode" role="radiogroup" aria-label="Calcul de la commission">
+        <button type="button" role="radio" [attr.aria-checked]="f.mode === 'FIXE'" [class.choisi]="f.mode === 'FIXE'" (click)="changerMode('FIXE')">
+          <strong>500 F</strong>
+          <span>Montant fixe</span>
+          <small>la meme commission pour chaque operation</small>
+        </button>
+        <button type="button" role="radio" [attr.aria-checked]="f.mode === 'POURCENTAGE'" [class.choisi]="f.mode === 'POURCENTAGE'" (click)="changerMode('POURCENTAGE')">
+          <strong>1,5 %</strong>
+          <span>Pourcentage</span>
+          <small>une part du montant, avec un minimum et un maximum si besoin</small>
+        </button>
+        <button type="button" role="radio" [attr.aria-checked]="f.mode === 'TRANCHES'" [class.choisi]="f.mode === 'TRANCHES'" (click)="changerMode('TRANCHES')">
+          <strong>0 → 50 000</strong>
+          <span>Par tranche</span>
+          <small>une commission differente selon le montant</small>
+        </button>
+      </div>
 
       @switch (f.mode) {
         @case ('FIXE') {

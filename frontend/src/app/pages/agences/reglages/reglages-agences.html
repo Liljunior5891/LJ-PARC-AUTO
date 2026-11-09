@@ -37,9 +37,26 @@
         <input id="plafond" name="plafond" type="number" min="0" step="1" [(ngModel)]="r.plafondDepenseCaissier" />
       </div>
       <div class="champ">
+        <label for="minutes-verrou">Verrouiller l'ecran du caissier apres (minutes sans geste)</label>
+        <input id="minutes-verrou" name="minutesVerrou" type="number" min="1" max="120" step="1" [(ngModel)]="r.minutesVerrouCaisse" />
+        <small class="aide">Le caissier reprend avec son code PIN. De 1 a 120 minutes, 5 par defaut.</small>
+      </div>
+      <div class="champ" style="grid-column: 1 / -1">
+        <label class="case"><input type="checkbox" name="validationDepenses" [(ngModel)]="r.validationDepensesCaisse" />
+          Valider les depenses payees par la caisse (superviseur, puis administrateur)</label>
+        <small class="aide">Une depense payee par la caisse generale ou la caisse d'un caissier attend le visa du superviseur
+          (une saisie du superviseur vaut son visa), puis l'approbation de l'administrateur. Tant qu'elle attend, rien n'est ecrit
+          au registre : soldes, cloture et rapports ne bougent pas. Approuvee apres la fermeture de la caisse du caissier,
+          elle sort de la caisse generale.</small>
+      </div>
+      <div class="champ">
         <label for="echeance">Alerte avant l'echeance d'un credit (jours)</label>
         <input id="echeance" name="echeance" type="number" min="0" max="90" step="1" [(ngModel)]="r.joursAlerteEcheance" />
         <small class="aide">Les seuils de cash et de virtuel se reglent compte par compte, dans « Soldes et tresorerie ».</small>
+      </div>
+      <div class="champ">
+        <label for="alerte-commission">Alerte si une commission n'est pas versee apres (jours)</label>
+        <input id="alerte-commission" name="alerteCommission" type="number" min="0" max="365" step="1" [(ngModel)]="r.joursAlerteCommission" />
       </div>
     </div>
     <div class="actions-formulaire">

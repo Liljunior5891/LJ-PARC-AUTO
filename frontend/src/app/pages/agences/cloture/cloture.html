@@ -6,11 +6,16 @@
   </div>
   <div class="actions-entete">
     @if (agences().length > 1) {
-      <select [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
-        @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
-      </select>
+      <div class="choix-agence-entete">
+        <select [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
+          @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+        </select>
+      </div>
     }
-    <input type="date" [ngModel]="journee" (ngModelChange)="choisirJournee($event)" aria-label="Journee a cloturer" />
+    <div class="dates-periode">
+      <span>Journee du</span>
+      <input type="date" [ngModel]="journee" (ngModelChange)="choisirJournee($event)" aria-label="Journee a cloturer" />
+    </div>
   </div>
 </div>
 
@@ -135,7 +140,7 @@
               <td class="montant numerique">{{ c.ecartTotal | number: '1.0-0' }}</td>
             </tr>
           } @empty {
-            <tr><td colspan="6" class="vide">Aucune cloture.</td></tr>
+            <tr><td colspan="6"><div class="message vide">Aucune cloture.</div></td></tr>
           }
         </tbody>
       </table>

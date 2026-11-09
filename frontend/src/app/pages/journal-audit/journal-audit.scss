@@ -1,0 +1,110 @@
+.journal {
+  margin-top: 1rem;
+}
+
+table.tableau {
+  .date {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ip {
+    display: block;
+    color: var(--couleur-texte-doux);
+    font-size: 0.72rem;
+  }
+
+  .description {
+    min-width: 280px;
+  }
+
+  .chevron {
+    width: 1.5rem;
+    color: var(--couleur-texte-doux);
+    text-align: center;
+  }
+
+  tr.cliquable {
+    cursor: pointer;
+
+    &:hover td {
+      background: #f2f7fd;
+    }
+  }
+
+  tr.ouverte td {
+    background: #eef5fe;
+  }
+
+  tr.detail td {
+    padding: 0.5rem 0.75rem 0.9rem;
+    background: #f8fafc;
+  }
+}
+
+.module {
+  color: var(--couleur-texte-doux);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.action {
+  display: inline-block;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: var(--couleur-texte-doux);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &.creation { background: #e3f5ea; color: var(--couleur-succes); }
+  &.modification { background: #eaf3fe; color: var(--couleur-primaire); }
+  &.suppression { background: #fce9e9; color: var(--couleur-danger); }
+  &.connexion { background: #f1ecfb; color: #6a42b8; }
+}
+
+/* Valeurs avant / apres de chaque champ change. */
+.changements {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+
+  th {
+    padding: 0.3rem 0.5rem;
+    color: var(--couleur-texte-doux);
+    font-size: 0.72rem;
+    text-align: left;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--couleur-bordure);
+  }
+
+  td {
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid #edf0f4;
+    word-break: break-word;
+    vertical-align: top;
+  }
+
+  .champ {
+    width: 22%;
+    color: var(--couleur-texte-doux);
+  }
+
+  .avant {
+    color: var(--couleur-danger);
+    text-decoration: line-through;
+    text-decoration-color: color-mix(in srgb, var(--couleur-danger) 40%, transparent);
+  }
+
+  .apres {
+    color: var(--couleur-succes);
+    font-weight: 600;
+  }
+}
+
+.vide {
+  padding: 2rem;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}

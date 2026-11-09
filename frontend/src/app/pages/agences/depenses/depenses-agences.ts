@@ -2,13 +2,18 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
-import { CategorieDepense, ChargeRecurrente, CompteAgence, DepenseAgence, SyntheseDepenses } from '../../../core/models/agences';
+import { ActivatedRoute } from '@angular/router';
+import {
+  CategorieDepense, ChargeRecurrente, CompteAgence, DepenseAgence, LIBELLES_STATUT_DEPENSE_AGENCE, ResumeDepenses, SyntheseDepenses
+} from '../../../core/models/agences';
 import { Page } from '../../../core/models/models';
 import { AgencesService } from '../../../core/services/agences.service';
 import { Modale } from '../../../shared/modale';
+import { OngletsInclines } from '../../../shared/onglets-inclines';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
+import { AgencesHorsLigneService, erreurReseau } from '../../../core/services/agences-hors-ligne.service';
 
-type Onglet = 'liste' | 'suivi' | 'recurrentes';
+type Onglet = 'liste' | 'a-valider' | 'suivi' | 'recurrentes';
 
 function moisCourant(): string {
   return new Date().toISOString().slice(0, 7);
@@ -21,16 +26,27 @@ function moisCourant(): string {
  */
 @Component({
   selector: 'app-depenses-agences',
-  imports: [DatePipe, DecimalPipe, FormsModule, Modale, SuiteListe],
+  imports: [DatePipe, DecimalPipe, FormsModule, Modale, OngletsInclines, SuiteListe],
   templateUrl: './depenses-agences.html',
   styleUrl: './depenses-agences.scss'
 })
 export class DepensesAgences implements OnInit {
   readonly service = inject(AgencesService);
+  private readonly horsLigne = inject(AgencesHorsLigneService);
   /** Le caissier paie depuis sa caisse ouverte : pas de choix de compte. */
   readonly caissierSeul = !inject(AuthService).aRole('ADMIN', 'SUPERVISEUR_AGENCE');
+  readonly estAdmin = inject(AuthService).aRole('ADMIN');
+  private readonly route = inject(ActivatedRoute);
+  readonly libellesStatut = LIBELLES_STATUT_DEPENSE_AGENCE;
 
   onglet: Onglet = 'liste';
+  readonly onglets = computed(() => [
+    { id: 'liste', libelle: 'Depenses', icone: '🧾' },
+    ...(this.service.peut('DEPENSE_VALIDER')
+      ? [{ id: 'a-valider', libelle: 'A valider' + (this.aValider().length ? ' (' + this.aValider().length + ')' : ''), icone: '⏳' }] : []),
+    ...(this.service.peut('SOLDES_CONSULTER') ? [{ id: 'suivi', libelle: 'Suivi mensuel', icone: '📊' }] : []),
+    { id: 'recurrentes', libelle: 'Charges recurrentes', icone: '🔁' }
+  ]);
   readonly agences = computed(() => (this.service.moi()?.agences ?? []).filter((a) => a.actif));
   agenceId: number | null = null;
   readonly categories = signal<CategorieDepense[]>([]);
@@ -41,6 +57,7 @@ export class DepensesAgences implements OnInit {
 
   // Liste
   readonly page = signal<Page<DepenseAgence> | null>(null);
+  readonly resume = signal<ResumeDepenses | null>(null);
   private readonly suite = new SuiteDePages();
   filtre = { du: '', au: '', categorieId: null as number | null, statut: '', q: '' };
 
@@ -64,12 +81,22 @@ export class DepensesAgences implements OnInit {
   readonly aAnnuler = signal<DepenseAgence | null>(null);
   motif = '';
 
+  // Validation des depenses de caisse
+  readonly aValider = signal<DepenseAgence[]>([]);
+  readonly aRefuser = signal<DepenseAgence | null>(null);
+  readonly envoiValidation = signal<number | null>(null);
+  motifRefus = '';
+
   ngOnInit(): void {
     this.service.chargerMoi().subscribe({
       next: (m) => {
         this.agenceId = m.agences.find((a) => a.actif)?.id ?? null;
+        if (this.route.snapshot.queryParamMap.get('aValider') && this.service.peut('DEPENSE_VALIDER')) {
+          this.onglet = 'a-valider';
+        }
         this.chargerComptes();
         this.charger();
+        this.chargerAValider();
       }
     });
     this.service.categoriesDepense().subscribe({ next: (c) => this.categories.set(c) });
@@ -90,6 +117,9 @@ export class DepensesAgences implements OnInit {
     if (this.onglet === 'liste') {
       this.page.set(null);
       this.chargerListe();
+      this.service.resumeDepenses({ agenceId: this.agenceId, ...this.filtre }).subscribe({ next: (r) => this.resume.set(r) });
+    } else if (this.onglet === 'a-valider') {
+      this.chargerAValider();
     } else if (this.onglet === 'suivi') {
       this.service.syntheseDepenses(this.agenceId, this.mois).subscribe({ next: (s) => this.synthese.set(s) });
     } else if (this.agenceId) {
@@ -102,6 +132,68 @@ export class DepensesAgences implements OnInit {
       next: (p) => this.page.set(cumulerPage(this.page(), p)),
       error: (e) => this.erreur.set(this.message(e, 'Chargement des depenses impossible.'))
     });
+  }
+
+  chargerAValider(): void {
+    if (!this.service.peut('DEPENSE_VALIDER')) {
+      return;
+    }
+    this.service.depensesAValider(this.agenceId).subscribe({
+      next: (l) => this.aValider.set(l),
+      error: (e) => this.erreur.set(this.message(e, 'Chargement des depenses a valider impossible.'))
+    });
+  }
+
+  /** Le superviseur vise ; l'administrateur approuve et la depense s'ecrit au registre. */
+  valider(d: DepenseAgence): void {
+    if (this.envoiValidation()) {
+      return;
+    }
+    this.envoiValidation.set(d.id);
+    this.erreur.set(null);
+    this.succes.set(null);
+    this.service.validerDepense(d.id).subscribe({
+      next: (r) => {
+        this.envoiValidation.set(null);
+        this.detail.set(null);
+        this.succes.set(r.statut === 'VALIDEE'
+          ? `${r.numero} approuvee : ${r.montant.toLocaleString('fr-FR')} F debites de ${r.compteNom ?? 'la caisse'}.`
+          : `${r.numero} visee : elle attend l'approbation de l'administrateur.`);
+        this.charger();
+        this.chargerAValider();
+      },
+      error: (e) => {
+        this.envoiValidation.set(null);
+        this.erreur.set(this.message(e, 'Validation impossible.'));
+      }
+    });
+  }
+
+  demanderRefus(d: DepenseAgence): void {
+    this.motifRefus = '';
+    this.erreurModale.set(null);
+    this.aRefuser.set(d);
+  }
+
+  refuser(): void {
+    const d = this.aRefuser();
+    if (!d || !this.motifRefus.trim()) {
+      return;
+    }
+    this.service.refuserDepense(d.id, this.motifRefus.trim()).subscribe({
+      next: (r) => {
+        this.aRefuser.set(null);
+        this.detail.set(null);
+        this.succes.set(`${r.numero} refusee : rien n'a ete debite.`);
+        this.charger();
+        this.chargerAValider();
+      },
+      error: (e) => this.erreurModale.set(this.message(e, 'Refus impossible.'))
+    });
+  }
+
+  enAttente(d: DepenseAgence): boolean {
+    return d.statut === 'ATTENTE_SUPERVISEUR' || d.statut === 'ATTENTE_ADMIN';
   }
 
   suiteListe(): void {
@@ -141,15 +233,20 @@ export class DepensesAgences implements OnInit {
     if (!this.agenceId || !f.categorieId || !f.libelle.trim() || !f.montant) {
       return;
     }
-    this.service.creerDepense({
+    const depense = {
       agenceId: this.agenceId, categorieId: f.categorieId, libelle: f.libelle.trim(), montant: Math.round(f.montant),
       compteId: this.caissierSeul ? null : f.compteId, beneficiaire: f.beneficiaire.trim() || undefined,
       reference: f.reference.trim() || undefined, observations: f.observations.trim() || undefined
-    }).subscribe({
+    };
+    this.service.creerDepense(depense).subscribe({
       next: (d) => {
         const fin = () => {
           this.saisie.set(false);
-          this.succes.set(`${d.numero} enregistree : ${d.montant.toLocaleString('fr-FR')} F debites de ${d.compteNom ?? 'la caisse'}.`);
+          this.succes.set(this.enAttente(d)
+            ? `${d.numero} de ${d.montant.toLocaleString('fr-FR')} F envoyee pour validation (${this.libellesStatut[d.statut].toLowerCase()}) : `
+              + `rien n'est debite de ${d.compteNom ?? 'la caisse'} avant l'approbation de l'administrateur.`
+            : `${d.numero} enregistree : ${d.montant.toLocaleString('fr-FR')} F debites de ${d.compteNom ?? 'la caisse'}.`);
+          this.chargerAValider();
           this.charger();
         };
         if (this.fichier) {
@@ -158,7 +255,18 @@ export class DepensesAgences implements OnInit {
           fin();
         }
       },
-      error: (e) => this.erreurModale.set(this.message(e, 'Enregistrement impossible.'))
+      error: (e) => {
+        if (!erreurReseau(e)) {
+          this.erreurModale.set(this.message(e, 'Enregistrement impossible.'));
+          return;
+        }
+        // Sans connexion : la depense part dans la file (le justificatif se joindra ensuite, en ligne).
+        const reference = this.horsLigne.ajouter('DEPENSE', depense,
+          `Depense ${depense.libelle} ${depense.montant.toLocaleString('fr-FR')} F`);
+        this.saisie.set(false);
+        this.succes.set(`${reference} : depense gardee hors ligne (${depense.montant.toLocaleString('fr-FR')} F). `
+          + `Elle partira au retour du reseau${this.fichier ? ' ; joignez le justificatif une fois en ligne' : ''}.`);
+      }
     });
   }
 

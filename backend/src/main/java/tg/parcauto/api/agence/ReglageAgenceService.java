@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 public class ReglageAgenceService {
 
     private final ReglageAgenceRepository reglages;
+    private final tg.parcauto.api.plateforme.entreprise.EntrepriseRepository entreprises;
     private final DroitAgenceRepository droits;
     private final InitialisationAgence initialisation;
     private final DroitsAgence droitsCourants;
@@ -35,7 +36,12 @@ public class ReglageAgenceService {
                            @NotNull @Positive Long montantMaxTransaction,
                            @NotNull @PositiveOrZero Long seuilValidationMouvement,
                            @NotNull @PositiveOrZero Long plafondDepenseCaissier,
-                           @Min(0) @Max(90) Integer joursAlerteEcheance) {
+                           @Min(0) @Max(90) Integer joursAlerteEcheance,
+                           @Min(0) @Max(365) Integer joursAlerteCommission,
+                           /** Absent : inchange. */
+                           Boolean validationDepensesCaisse,
+                           /** Minutes sans geste avant le verrouillage de l'ecran du caissier ; absent : inchange. */
+                           @Min(1) @Max(120) Integer minutesVerrouCaisse) {
     }
 
     public record Permission(String code, String libelle, String groupe) {
@@ -51,7 +57,9 @@ public class ReglageAgenceService {
     }
 
     /** Ce que l'utilisateur connecte peut faire et les agences qu'il voit. */
-    public record Moi(boolean administrateur, List<String> permissions, List<AgenceVisible> agences) {
+    public record Moi(boolean administrateur, List<String> permissions, List<AgenceVisible> agences,
+                      /** Plusieurs agences autorisees par le super-administrateur ; sinon une seule agence ouverte. */
+                      boolean agencesMultiples) {
     }
 
     public Reglages lire() {
@@ -68,6 +76,15 @@ public class ReglageAgenceService {
         reglage.setPlafondDepenseCaissier(r.plafondDepenseCaissier());
         if (r.joursAlerteEcheance() != null) {
             reglage.setJoursAlerteEcheance(r.joursAlerteEcheance());
+        }
+        if (r.joursAlerteCommission() != null) {
+            reglage.setJoursAlerteCommission(r.joursAlerteCommission());
+        }
+        if (r.validationDepensesCaisse() != null) {
+            reglage.setValidationDepensesCaisse(r.validationDepensesCaisse());
+        }
+        if (r.minutesVerrouCaisse() != null) {
+            reglage.setMinutesVerrouCaisse(r.minutesVerrouCaisse());
         }
         Reglages apres = versDto(reglage);
         if (!avant.equals(apres)) {
@@ -119,11 +136,14 @@ public class ReglageAgenceService {
         return new Moi(DroitsAgence.estAdministrateur(),
                 droitsCourants.courants().stream().map(Enum::name).toList(),
                 perimetre.visibles().stream().map(a -> new AgenceVisible(a.getId(), a.getCode(), a.getNom(), a.isActif()))
-                        .toList());
+                        .toList(),
+                entreprises.findById(tg.parcauto.api.plateforme.tenant.ContexteEntreprise.exiger())
+                        .map(tg.parcauto.api.plateforme.entreprise.Entreprise::isAgencesMultiples).orElse(false));
     }
 
     private static Reglages versDto(ReglageAgence r) {
         return new Reglages(r.getHeureBascule(), r.getDelaiDoublonMinutes(), r.getMontantMaxTransaction(),
-                r.getSeuilValidationMouvement(), r.getPlafondDepenseCaissier(), r.getJoursAlerteEcheance());
+                r.getSeuilValidationMouvement(), r.getPlafondDepenseCaissier(), r.getJoursAlerteEcheance(),
+                r.getJoursAlerteCommission(), r.isValidationDepensesCaisse(), r.getMinutesVerrouCaisse());
     }
 }

@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Agence, RequeteAgence } from '../../../core/models/agences';
@@ -12,7 +13,7 @@ import { Modale } from '../../../shared/modale';
  */
 @Component({
   selector: 'app-agences-liste',
-  imports: [FormsModule, Modale],
+  imports: [FormsModule, Modale, RouterLink],
   templateUrl: './agences-liste.html',
   styleUrl: './agences-liste.scss'
 })
@@ -27,6 +28,10 @@ export class AgencesListe implements OnInit {
   readonly erreurFormulaire = signal<string | null>(null);
   readonly succes = signal<string | null>(null);
   readonly gestion = signal(false);
+  /** Plusieurs agences autorisees par le super-administrateur de la plateforme. */
+  readonly multiples = signal(true);
+  /** Sans l'option, une seule agence ouverte : impossible d'en creer une autre. */
+  readonly limiteAtteinte = computed(() => !this.multiples() && this.agences().some((a) => a.actif));
 
   readonly edition = signal<Agence | 'nouvelle' | null>(null);
   formulaire: RequeteAgence = this.vide();
@@ -36,6 +41,7 @@ export class AgencesListe implements OnInit {
     this.service.chargerMoi().subscribe({
       next: (moi) => {
         this.gestion.set(moi.permissions.includes('AGENCES_GERER'));
+        this.multiples.set(!!moi.agencesMultiples);
         if (this.gestion()) {
           this.service.personnel().subscribe({ next: (p) => this.personnel.set(p) });
         }

@@ -35,4 +35,16 @@ public class ServiceFinancier extends BaseEntity {
 
     @Column(nullable = false)
     private boolean actif = true;
+
+    /** Logo reduit par le navigateur, en data URL (image/jpeg, image/png ou image/webp) ; nul sans logo. */
+    @Column(columnDefinition = "text")
+    private String logo;
+
+    /**
+     * Commission versee plus tard par l'operateur : acquise a la transaction,
+     * elle n'est creditee qu'au rapprochement avec le versement. Faux : creditee
+     * aussitot sur le sous-compte des commissions.
+     */
+    @Column(name = "commission_differee", nullable = false)
+    private boolean commissionDifferee = false;
 }

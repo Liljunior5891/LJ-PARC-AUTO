@@ -59,7 +59,10 @@ export class ReglagesAgencesPage implements OnInit {
       montantMaxTransaction: Math.round(r.montantMaxTransaction),
       seuilValidationMouvement: Math.round(r.seuilValidationMouvement),
       plafondDepenseCaissier: Math.round(r.plafondDepenseCaissier),
-      joursAlerteEcheance: Math.max(0, Math.round(r.joursAlerteEcheance ?? 7))
+      joursAlerteEcheance: Math.max(0, Math.round(r.joursAlerteEcheance ?? 7)),
+      joursAlerteCommission: Math.max(0, Math.round(r.joursAlerteCommission ?? 30)),
+      validationDepensesCaisse: !!r.validationDepensesCaisse,
+      minutesVerrouCaisse: Math.min(120, Math.max(1, Math.round(Number(r.minutesVerrouCaisse) || 5)))
     }).subscribe({
       next: (n) => {
         this.reglages.set({ ...n });

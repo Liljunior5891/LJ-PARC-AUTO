@@ -4,7 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { FiltresTransactions, ResumeTransactions, ServiceFinancier, Transaction } from '../../../core/models/agences';
 import { Page } from '../../../core/models/models';
 import { AgencesService } from '../../../core/services/agences.service';
+import { ActivatedRoute, Router } from '@angular/router';
+import { LogoService, attributsOption } from '../../../shared/logo-service';
+import { MaCaisseAgence } from '../caisses/ma-caisse-agence';
 import { Modale } from '../../../shared/modale';
+import { FormulaireTransaction } from './formulaire-transaction';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 /**
@@ -14,7 +18,7 @@ import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-lis
  */
 @Component({
   selector: 'app-transactions-agences',
-  imports: [DatePipe, DecimalPipe, FormsModule, Modale, SuiteListe],
+  imports: [DatePipe, DecimalPipe, FormsModule, FormulaireTransaction, LogoService, MaCaisseAgence, Modale, SuiteListe],
   templateUrl: './transactions.html',
   styleUrl: './transactions.scss'
 })
@@ -22,6 +26,13 @@ export class TransactionsAgences implements OnInit {
   readonly service = inject(AgencesService);
 
   readonly catalogue = signal<ServiceFinancier[]>([]);
+  readonly opt = attributsOption;
+
+  /** Logo du reseau de la transaction, sinon celui de son service. */
+  logoDe(t: Transaction): string | null | undefined {
+    const s = this.catalogue().find((x) => x.id === t.serviceId);
+    return s?.reseaux.find((r) => r.id === t.reseauId)?.logo ?? s?.logo;
+  }
   readonly page = signal<Page<Transaction> | null>(null);
   readonly resume = signal<ResumeTransactions | null>(null);
   readonly erreur = signal<string | null>(null);
@@ -37,7 +48,19 @@ export class TransactionsAgences implements OnInit {
   readonly aAnnuler = signal<Transaction | null>(null);
   motif = '';
 
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  /** Fenetre de saisie d'une nouvelle transaction. */
+  readonly saisieOuverte = signal(false);
+
   ngOnInit(): void {
+    // « Nouvelle transaction » du menu arrive ici avec ?nouvelle=1 : la fenetre s'ouvre, le parametre s'efface.
+    this.route.queryParamMap.subscribe((p) => {
+      if (p.get('nouvelle')) {
+        this.saisieOuverte.set(true);
+        this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
+      }
+    });
     this.service.chargerMoi().subscribe();
     this.service.catalogue().subscribe({ next: (c) => this.catalogue.set(c) });
     this.charger();
@@ -65,6 +88,24 @@ export class TransactionsAgences implements OnInit {
     this.filtrer();
   }
 
+  /** Periode choisie dans la liste, comme au PDV ; « Entre deux dates » montre les deux dates. */
+  portee = 'AUJOURDHUI';
+  readonly portees = [
+    { valeur: 'AUJOURDHUI', libelle: 'Aujourd\'hui' },
+    { valeur: 'HIER', libelle: 'Hier' },
+    { valeur: '7J', libelle: '7 derniers jours' },
+    { valeur: 'MOIS', libelle: 'Ce mois' },
+    { valeur: 'PERSONNALISEE', libelle: 'Entre deux dates...' }
+  ];
+
+  changerPortee(valeur: string): void {
+    this.portee = valeur;
+    const jours: Record<string, number | 'mois'> = { AUJOURDHUI: 0, HIER: -1, '7J': -6, MOIS: 'mois' };
+    if (valeur in jours) {
+      this.periode(jours[valeur]);
+    }
+  }
+
   periode(jours: number | 'mois'): void {
     if (jours === 'mois') {
       const d = new Date();
@@ -74,6 +115,13 @@ export class TransactionsAgences implements OnInit {
       this.f.du = this.jour(jours);
       this.f.au = jours === -1 ? this.jour(-1) : this.jour(0);
     }
+    this.filtrer();
+  }
+
+  /** Transaction validee dans la fenetre : message et liste a jour. */
+  transactionEnregistree(t: Transaction): void {
+    this.succes.set(`${t.reference} validee : ${t.typeLibelle} ${t.reseauNom ?? t.serviceNom} de ${t.montant.toLocaleString('fr-FR')} F, `
+      + `commission ${t.commission.toLocaleString('fr-FR')} F.`);
     this.filtrer();
   }
 

@@ -71,9 +71,25 @@ public class SessionCaisseController {
         return service.ouvrir(ouverture, principal);
     }
 
+    @PostMapping("/sessions/{id}/soumission")
+    @Operation(summary = "Le caissier compte son tiroir et soumet la fermeture de sa caisse au superviseur")
+    public SessionCaisseService.SessionDto soumettre(@PathVariable Long id,
+                                                     @Valid @RequestBody SessionCaisseService.Fermeture fermeture,
+                                                     @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.soumettre(id, fermeture, principal);
+    }
+
+    @PostMapping("/sessions/{id}/rejet")
+    @PreAuthorize("@droitsAgence.a('CAISSE_GERER')")
+    @Operation(summary = "Refuse le comptage soumis : la caisse est rouverte au caissier")
+    public SessionCaisseService.SessionDto rejeter(@PathVariable Long id, @Valid @RequestBody SessionCaisseService.Rejet rejet,
+                                                   @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.rejeter(id, rejet, principal);
+    }
+
     @PostMapping("/sessions/{id}/fermeture")
     @PreAuthorize("@droitsAgence.a('CAISSE_GERER')")
-    @Operation(summary = "Ferme la caisse : comptage, ecart justifie, remise a la caisse generale")
+    @Operation(summary = "Valide (caisse soumise) ou ferme la caisse : comptage, ecart justifie, remise a la caisse generale")
     public SessionCaisseService.SessionDto fermer(@PathVariable Long id,
                                                   @Valid @RequestBody SessionCaisseService.Fermeture fermeture,
                                                   @AuthenticationPrincipal UtilisateurPrincipal principal) {

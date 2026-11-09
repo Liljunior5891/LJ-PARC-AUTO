@@ -60,6 +60,10 @@ public class SessionCaisseService {
 
     private static final Set<Role> PROFILS_CAISSE = EnumSet.of(Role.CAISSIER_AGENCE, Role.SUPERVISEUR_AGENCE);
 
+    /** Caisse en cours : ouverte, ou comptee et soumise en attente de validation. */
+    public static final Set<SessionCaisseAgence.Statut> EN_COURS =
+            EnumSet.of(SessionCaisseAgence.Statut.OUVERTE, SessionCaisseAgence.Statut.SOUMISE);
+
     private final SessionCaisseAgenceRepository repository;
     private final PerimetreAgence perimetre;
     private final CompteService comptes;
@@ -77,7 +81,14 @@ public class SessionCaisseService {
     public record Ouverture(@NotNull Long agenceId, @NotNull Long caissierId, @NotNull List<@Valid LigneBillettage> billettage) {
     }
 
-    public record Fermeture(@NotNull List<@Valid LigneBillettage> billettage, @Size(max = 1000) String justification) {
+    /**
+     * Comptage du tiroir. A la validation d'une caisse soumise, un billettage
+     * absent reprend le comptage du caissier.
+     */
+    public record Fermeture(List<@Valid LigneBillettage> billettage, @Size(max = 1000) String justification) {
+    }
+
+    public record Rejet(@jakarta.validation.constraints.NotBlank @Size(max = 500) String motif) {
     }
 
     public record SessionDto(Long id, String numero, Long agenceId, String agenceNom, Long caissierId, String caissierNom,
@@ -87,7 +98,12 @@ public class SessionCaisseService {
                              /** Approvisionnements et remises de la caisse, hors transactions. */
                              long autresMouvements, Instant fermeeLe, String fermeeParNom, Long montantTheorique,
                              Long montantCompte, Long ecart, String justification, List<LigneBillettage> billettageOuverture,
-                             List<LigneBillettage> billettageFermeture) {
+                             List<LigneBillettage> billettageFermeture,
+                             /** Comptage soumis par le caissier, en attente de validation. */
+                             Instant soumiseLe, Long montantSoumis, Long ecartSoumis, String justificationSoumise,
+                             List<LigneBillettage> billettageSoumis,
+                             /** Dernier rejet du comptage par le superviseur. */
+                             String motifRejet, Instant rejeteeLe, String rejeteeParNom) {
     }
 
     /** Caissier d'une agence et l'etat de sa caisse. */
@@ -113,7 +129,7 @@ public class SessionCaisseService {
             if (u.getRoles().stream().noneMatch(PROFILS_CAISSE::contains)) {
                 continue;
             }
-            Optional<SessionCaisseAgence> ouverte = repository.findByCaissierIdAndStatut(u.getId(), SessionCaisseAgence.Statut.OUVERTE);
+            Optional<SessionCaisseAgence> ouverte = repository.findFirstByCaissierIdAndStatutIn(u.getId(), EN_COURS);
             SessionDto session = ouverte.filter(s -> s.getAgenceId().equals(agence.getId())).map(this::versDto).orElse(null);
             String ailleurs = ouverte.filter(s -> !s.getAgenceId().equals(agence.getId()))
                     .map(s -> "Caisse ouverte dans une autre agence (" + s.getNumero() + ")").orElse(null);
@@ -133,9 +149,21 @@ public class SessionCaisseService {
                 .filter(s -> s.getAgenceId().equals(agenceId));
     }
 
+    /** Caisse en cours de l'utilisateur dans l'agence : ouverte, ou soumise en attente de validation. */
     @Transactional(readOnly = true)
     public Optional<SessionDto> maSession(Long agenceId, UtilisateurPrincipal moi) {
-        return ouverte(agenceId, moi.getId()).map(this::versDto);
+        return repository.findFirstByCaissierIdAndStatutIn(moi.getId(), EN_COURS)
+                .filter(s -> s.getAgenceId().equals(agenceId)).map(this::versDto);
+    }
+
+    /** Message du refus d'une operation a un caissier sans caisse ouverte. */
+    @Transactional(readOnly = true)
+    public String motifSansCaisse(Long agenceId, String agenceNom, Long caissierId) {
+        boolean soumise = repository.findFirstByCaissierIdAndStatutIn(caissierId, EnumSet.of(SessionCaisseAgence.Statut.SOUMISE))
+                .filter(s -> s.getAgenceId().equals(agenceId)).isPresent();
+        return soumise
+                ? "Votre caisse est comptee et en attente de validation par le superviseur : aucune operation n'est possible"
+                : "Votre caisse n'est pas ouverte dans l'agence " + agenceNom + " : demandez a votre superviseur de l'ouvrir";
     }
 
     @Transactional(readOnly = true)
@@ -169,8 +197,10 @@ public class SessionCaisseService {
         if (!agence.getUtilisateurIds().contains(caissier.getId())) {
             throw new BusinessException(caissier.nomComplet() + " n'est pas rattache a l'agence " + agence.getNom());
         }
-        repository.findByCaissierIdAndStatut(caissier.getId(), SessionCaisseAgence.Statut.OUVERTE).ifPresent(s -> {
-            throw new BusinessException("La caisse de " + caissier.nomComplet() + " est deja ouverte (" + s.getNumero() + ")");
+        repository.findFirstByCaissierIdAndStatutIn(caissier.getId(), EN_COURS).ifPresent(s -> {
+            throw new BusinessException("La caisse de " + caissier.nomComplet() + " est deja "
+                    + (s.getStatut() == SessionCaisseAgence.Statut.SOUMISE ? "comptee et en attente de validation" : "ouverte")
+                    + " (" + s.getNumero() + ")");
         });
         List<LigneBillettage> billettage = nettoyer(o.billettage());
         long fond = total(billettage);
@@ -203,22 +233,93 @@ public class SessionCaisseService {
     }
 
     /**
-     * Ferme la caisse : le tiroir compte est compare au solde attendu ; un ecart
-     * non nul exige une justification et se regularise, puis tout l'argent
-     * compte revient a la caisse generale.
+     * Premier temps de la fermeture : le caissier compte son tiroir, le montant
+     * attendu sous les yeux ; un ecart doit etre justifie. La caisse passe a
+     * SOUMISE : plus aucune operation jusqu'a la decision du superviseur.
+     */
+    public SessionDto soumettre(Long id, Fermeture f, UtilisateurPrincipal caissier) {
+        SessionCaisseAgence s = charger(id);
+        Agence agence = perimetre.exiger(s.getAgenceId());
+        if (!s.getCaissierId().equals(caissier.getId())) {
+            throw new BusinessException("Seul " + s.getCaissierNom() + " peut soumettre le comptage de sa caisse");
+        }
+        if (s.getStatut() != SessionCaisseAgence.Statut.OUVERTE) {
+            throw new BusinessException(s.getStatut() == SessionCaisseAgence.Statut.SOUMISE
+                    ? "Le comptage de la caisse " + s.getNumero() + " est deja soumis : attendez la validation du superviseur"
+                    : "La caisse " + s.getNumero() + " est deja fermee");
+        }
+        if (f.billettage() == null) {
+            throw new BusinessException("Comptez votre tiroir coupure par coupure");
+        }
+        List<LigneBillettage> billettage = nettoyer(f.billettage());
+        long compte = total(billettage);
+        long theorique = compteRepository.findById(s.getCompteId()).map(CompteAgence::getSolde).orElse(0L);
+        long ecart = compte - theorique;
+        String justification = f.justification() == null || f.justification().isBlank() ? null : f.justification().trim();
+        if (ecart != 0 && justification == null) {
+            throw new BusinessException("Ecart de " + (ecart > 0 ? "+" : "") + RegistreService.francs(ecart)
+                    + " entre le tiroir et le montant attendu (" + RegistreService.francs(theorique) + ") : justifiez-le");
+        }
+        s.setStatut(SessionCaisseAgence.Statut.SOUMISE);
+        s.setSoumiseLe(Instant.now());
+        s.setMontantSoumis(compte);
+        s.setEcartSoumis(ecart);
+        s.setJustificationSoumise(justification);
+        s.setBillettageSoumis(enJson(billettage));
+        audit.tracer(agence.getId(), "SOUMISSION_CAISSE", "SESSION_CAISSE", s.getId(), "Caisse de " + s.getCaissierNom()
+                        + " comptee et soumise (" + s.getNumero() + ") : attendu " + RegistreService.francs(theorique) + ", compte "
+                        + RegistreService.francs(compte) + (ecart != 0 ? ", ecart " + RegistreService.francs(ecart) : ""),
+                theorique, compte);
+        return versDto(s);
+    }
+
+    /** Le superviseur refuse le comptage soumis : la caisse est rouverte au caissier, qui recompte. */
+    public SessionDto rejeter(Long id, Rejet r, UtilisateurPrincipal superviseur) {
+        SessionCaisseAgence s = charger(id);
+        Agence agence = perimetre.exiger(s.getAgenceId());
+        if (s.getStatut() != SessionCaisseAgence.Statut.SOUMISE) {
+            throw new BusinessException("La caisse " + s.getNumero() + " n'a pas de comptage en attente");
+        }
+        Long montant = s.getMontantSoumis();
+        s.setStatut(SessionCaisseAgence.Statut.OUVERTE);
+        s.setMotifRejet(r.motif().trim());
+        s.setRejeteeLe(Instant.now());
+        s.setRejeteeParNom(superviseur.getNomComplet());
+        s.setSoumiseLe(null);
+        s.setMontantSoumis(null);
+        s.setEcartSoumis(null);
+        s.setJustificationSoumise(null);
+        s.setBillettageSoumis(null);
+        audit.tracer(agence.getId(), "REJET_CAISSE", "SESSION_CAISSE", s.getId(), "Comptage de la caisse de " + s.getCaissierNom()
+                + " rejete (" + s.getNumero() + ") : " + r.motif().trim(), montant, null);
+        return versDto(s);
+    }
+
+    /**
+     * Ferme la caisse (second temps, ou fermeture directe par le superviseur) :
+     * le tiroir compte est compare au solde attendu ; un ecart non nul exige
+     * une justification et se regularise, puis tout l'argent compte revient a
+     * la caisse generale. Pour une caisse soumise, sans nouveau billettage, le
+     * comptage du caissier est repris tel quel.
      */
     public SessionDto fermer(Long id, Fermeture f, UtilisateurPrincipal superviseur) {
         SessionCaisseAgence s = charger(id);
         Agence agence = perimetre.exiger(s.getAgenceId());
-        if (s.getStatut() != SessionCaisseAgence.Statut.OUVERTE) {
+        if (s.getStatut() == SessionCaisseAgence.Statut.FERMEE) {
             throw new BusinessException("La caisse " + s.getNumero() + " est deja fermee");
         }
-        List<LigneBillettage> billettage = nettoyer(f.billettage());
+        boolean soumise = s.getStatut() == SessionCaisseAgence.Statut.SOUMISE;
+        boolean repris = soumise && (f.billettage() == null || f.billettage().isEmpty());
+        if (!soumise && f.billettage() == null) {
+            throw new BusinessException("Comptez le tiroir coupure par coupure");
+        }
+        List<LigneBillettage> billettage = repris ? deJson(s.getBillettageSoumis()) : nettoyer(f.billettage());
         long compte = total(billettage);
         CompteAgence caisse = registre.verrouiller(List.of(s.getCompteId())).get(0);
         long theorique = caisse.getSolde();
         long ecart = compte - theorique;
-        String justification = f.justification() == null || f.justification().isBlank() ? null : f.justification().trim();
+        String saisie = f.justification() == null || f.justification().isBlank() ? null : f.justification().trim();
+        String justification = saisie != null ? saisie : soumise ? s.getJustificationSoumise() : null;
         if (ecart != 0 && justification == null) {
             throw new BusinessException("Ecart de " + (ecart > 0 ? "+" : "") + RegistreService.francs(ecart)
                     + " entre le tiroir et le montant attendu (" + RegistreService.francs(theorique) + ") : justifiez-le");
@@ -247,7 +348,8 @@ public class SessionCaisseService {
         s.setJustification(justification);
         s.setBillettageFermeture(enJson(billettage));
         audit.tracer(agence.getId(), "FERMETURE_CAISSE", "SESSION_CAISSE", s.getId(), "Caisse de " + s.getCaissierNom()
-                        + " fermee (" + s.getNumero() + ") : attendu " + RegistreService.francs(theorique) + ", compte "
+                        + (soumise ? (repris ? " validee sur le comptage du caissier" : " validee apres recomptage") : " fermee")
+                        + " (" + s.getNumero() + ") : attendu " + RegistreService.francs(theorique) + ", compte "
                         + RegistreService.francs(compte) + (ecart != 0 ? ", ecart " + RegistreService.francs(ecart) : ""),
                 theorique, compte);
         return versDto(s);
@@ -305,7 +407,7 @@ public class SessionCaisseService {
         long encaisse = ((Number) t[1]).longValue();
         long decaisse = ((Number) t[2]).longValue();
         long commissions = ((Number) t[3]).longValue();
-        long solde = s.getStatut() == SessionCaisseAgence.Statut.OUVERTE
+        long solde = s.getStatut() != SessionCaisseAgence.Statut.FERMEE
                 ? compteRepository.findById(s.getCompteId()).map(CompteAgence::getSolde).orElse(0L)
                 : s.getMontantTheorique() == null ? 0 : s.getMontantTheorique();
         long autres = solde - s.getFondInitial() - encaisse + decaisse;
@@ -314,6 +416,8 @@ public class SessionCaisseService {
         return new SessionDto(s.getId(), s.getNumero(), s.getAgenceId(), agenceNom, s.getCaissierId(), s.getCaissierNom(),
                 s.getStatut(), s.getOuverteLe(), s.getOuverteParNom(), s.getFondInitial(), solde, nombre, encaisse, decaisse,
                 commissions, autres, s.getFermeeLe(), s.getFermeeParNom(), s.getMontantTheorique(), s.getMontantCompte(),
-                s.getEcart(), s.getJustification(), deJson(s.getBillettageOuverture()), deJson(s.getBillettageFermeture()));
+                s.getEcart(), s.getJustification(), deJson(s.getBillettageOuverture()), deJson(s.getBillettageFermeture()),
+                s.getSoumiseLe(), s.getMontantSoumis(), s.getEcartSoumis(), s.getJustificationSoumise(), deJson(s.getBillettageSoumis()),
+                s.getMotifRejet(), s.getRejeteeLe(), s.getRejeteeParNom());
     }
 }

@@ -10,3 +10,13 @@
 .majuscules {
   text-transform: uppercase;
 }
+
+a.action {
+  text-decoration: none;
+}
+
+.message.info-abonnement {
+  border: 1px solid #f2dca4;
+  background: #fff6e0;
+  color: #7a5200;
+}

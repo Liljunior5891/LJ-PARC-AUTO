@@ -9,12 +9,14 @@
   @if (!interdit()) {
     <div class="actions-entete">
       @if (plusieurs()) {
-        <select class="choix-agence" [ngModel]="agenceId" (ngModelChange)="choisirAgence($event)" aria-label="Agence affichee">
-          <option [ngValue]="null">Toutes les agences</option>
-          @for (a of service.moi()?.agences ?? []; track a.id) {
-            <option [ngValue]="a.id">{{ a.nom }}{{ a.actif ? '' : ' (fermee)' }}</option>
-          }
-        </select>
+        <div class="choix-agence-entete">
+          <select [ngModel]="agenceId" (ngModelChange)="choisirAgence($event)" aria-label="Agence affichee">
+            <option [ngValue]="null">Toutes les agences</option>
+            @for (a of service.moi()?.agences ?? []; track a.id) {
+              <option [ngValue]="a.id">{{ a.nom }}{{ a.actif ? '' : ' (fermee)' }}</option>
+            }
+          </select>
+        </div>
       }
       @if (agence()) {
         @if (service.peut('SOLDES_INITIAUX') && comptesOuvrables().length) {
@@ -48,7 +50,7 @@
 @if (interdit()) {
   <div class="carte vide">Votre profil ne donne pas acces aux soldes. Demandez a l'administrateur si vous en avez besoin.</div>
 } @else if (chargement() && !etat()) {
-  <p class="vide">Chargement des soldes...</p>
+  <div class="message vide">Chargement des soldes...</div>
 } @else if (etat(); as e) {
   @if (!e.agences.length) {
     <div class="carte vide">
@@ -57,36 +59,52 @@
     </div>
   } @else {
     @let t = agence()?.totaux ?? e.totaux;
-    <div class="grille-indicateurs">
-      <div class="carte indicateur succes">
-        <span class="libelle">Tresorerie disponible</span>
-        <span class="valeur numerique">{{ t.tresorerie | number: '1.0-0' }} F</span>
-        <span class="detail">Cash + virtuel + banque, hors comptes bloques</span>
+    <div class="cartes-apercu tete-ecran">
+      <div class="carte-apercu vert">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.6" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Tresorerie disponible</span>
+          <strong>{{ t.tresorerie | number: '1.0-0' }}<em> F</em></strong>
+          <small>Cash + virtuel + banque, hors comptes bloques</small>
+        </span>
       </div>
-      <div class="carte indicateur">
-        <span class="libelle">Cash</span>
-        <span class="valeur numerique">{{ t.cash | number: '1.0-0' }} F</span>
-        <span class="detail">Especes en caisse</span>
+      <div class="carte-apercu bleu">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.6" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Cash</span>
+          <strong>{{ t.cash | number: '1.0-0' }}<em> F</em></strong>
+          <small>Especes en caisse</small>
+        </span>
       </div>
-      <div class="carte indicateur">
-        <span class="libelle">Virtuel</span>
-        <span class="valeur numerique">{{ t.virtuel | number: '1.0-0' }} F</span>
-        <span class="detail">Floats des services et recharge</span>
+      <div class="carte-apercu orange">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Virtuel</span>
+          <strong>{{ t.virtuel | number: '1.0-0' }}<em> F</em></strong>
+          <small>Floats des services et recharge</small>
+        </span>
       </div>
-      <div class="carte indicateur">
-        <span class="libelle">Banque</span>
-        <span class="valeur numerique">{{ t.banque | number: '1.0-0' }} F</span>
-        <span class="detail">Comptes bancaires</span>
+      <div class="carte-apercu violet">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 9.5L12 4l9 5.5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Banque</span>
+          <strong>{{ t.banque | number: '1.0-0' }}<em> F</em></strong>
+          <small>Comptes bancaires</small>
+        </span>
       </div>
-      <div class="carte indicateur commissions">
-        <span class="libelle">Commissions</span>
-        <span class="valeur numerique">{{ t.commissions | number: '1.0-0' }} F</span>
-        <span class="detail">Sous-compte des commissions</span>
+      <div class="carte-apercu violet">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M5 15l4-4 3 3 6-6" /><path d="M14 8h4v4" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Commissions</span>
+          <strong>{{ t.commissions | number: '1.0-0' }}<em> F</em></strong>
+          <small>Sous-compte des commissions</small>
+        </span>
       </div>
     </div>
 
     @if (!agence()) {
       <!-- Vue centralisee : une ligne par agence. -->
+      <div class="carte">
       <div class="tableau-conteneur">
         <table class="tableau">
           <thead>
@@ -123,6 +141,7 @@
           </tfoot>
         </table>
       </div>
+      </div>
     } @else {
       @let a = agence()!;
       @if (comptesOuvrables().length && service.peut('SOLDES_INITIAUX') && comptesOuvrables().length === a.comptes.length) {
@@ -131,6 +150,7 @@
           (cash et float de chaque service) avant les premieres operations.
         </div>
       }
+      <div class="carte">
       <div class="tableau-conteneur">
         <table class="tableau comptes">
           <thead>
@@ -154,6 +174,7 @@
               @for (c of comptesDe(f); track c.id) {
                 <tr [class.inactive]="!c.actif || !c.serviceActif">
                   <td>
+                    @if (c.serviceId) { <app-logo-service class="logo-compte" [nom]="c.libelle" [logo]="logoService(c.serviceId)" [taille]="22" /> }
                     <strong>{{ c.libelle }}</strong>
                     <small class="sous-ligne">
                       {{ c.categorie ?? c.typeLibelle }}
@@ -180,6 +201,7 @@
             </tbody>
           }
         </table>
+      </div>
       </div>
     }
   }
@@ -235,7 +257,7 @@
                 <td>{{ l.auteurNom ?? '—' }}</td>
               </tr>
             } @empty {
-              <tr><td colspan="6" class="vide">Aucun mouvement{{ filtreDu || filtreAu ? ' sur cette periode' : '' }}.</td></tr>
+              <tr><td colspan="6"><div class="message vide">Aucun mouvement{{ filtreDu || filtreAu ? ' sur cette periode' : '' }}.</div></td></tr>
             }
           </tbody>
         </table>

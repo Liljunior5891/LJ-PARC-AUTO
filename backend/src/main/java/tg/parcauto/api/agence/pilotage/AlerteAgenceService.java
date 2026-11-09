@@ -54,6 +54,8 @@ public class AlerteAgenceService {
     private final CreditService credits;
     private final ClotureService clotures;
     private final MouvementService mouvements;
+    private final tg.parcauto.api.agence.depense.DepenseAgenceService depenses;
+    private final tg.parcauto.api.agence.commission.RapprochementService rapprochement;
 
     @PersistenceContext
     private EntityManager em;
@@ -109,6 +111,15 @@ public class AlerteAgenceService {
                         t.getReference() + " (" + RegistreService.francs(t.getMontant()) + ") enregistree malgre l'avertissement de doublon, par "
                                 + t.getCaissierNom(), "/agences/transactions")));
 
+        // Commissions acquises que l'operateur n'a toujours pas versees.
+        Map<Long, String> services = em.createQuery("select s from ServiceFinancier s", tg.parcauto.api.agence.catalogue.ServiceFinancier.class)
+                .getResultList().stream().collect(Collectors.toMap(s -> s.getId(), s -> s.getNom()));
+        rapprochement.anciennes(agences, LocalDate.now(JourneeCaisse.FUSEAU).minusDays(reglage.getJoursAlerteCommission()))
+                .forEach(r -> alertes.add(new Alerte(Niveau.ATTENTION, "Commission non creditee", noms.get((Long) r[0]),
+                        services.get((Long) r[1]) + " : " + ((Number) r[2]).longValue() + " commission(s), "
+                                + RegistreService.francs(((Number) r[3]).longValue()) + ", en attente depuis le "
+                                + ((LocalDate) r[4]).format(JJ_MM), "/agences/rapprochement")));
+
         // Stock de cartes faible.
         cartes.alertesStock(agences).forEach(m -> alertes.add(new Alerte(Niveau.ATTENTION, "Stock faible", null, m, "/agences/cartes")));
 
@@ -127,6 +138,11 @@ public class AlerteAgenceService {
         if (enAttente > 0) {
             alertes.add(new Alerte(Niveau.INFO, "Mouvement a valider", null, enAttente + " mouvement(s) en attente de validation",
                     "/agences/mouvements"));
+        }
+        long depensesAValider = depenses.nombreAValider(java.util.Set.copyOf(agences));
+        if (depensesAValider > 0) {
+            alertes.add(new Alerte(Niveau.INFO, "Depense a valider", null, depensesAValider
+                    + " depense(s) payee(s) par la caisse en attente de votre validation", "/agences/depenses?aValider=1"));
         }
         alertes.sort(Comparator.comparing(Alerte::niveau));
         return alertes;

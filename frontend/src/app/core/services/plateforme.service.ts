@@ -52,6 +52,13 @@ export class PlateformeService {
     return this.http.get<EntrepriseResume[]>(`${this.api}/plateforme/entreprises`);
   }
 
+  /** Module Agences : autorise ou non l'entreprise a gerer plusieurs agences. */
+  autoriserAgencesMultiples(id: number, autorise: boolean): Observable<EntrepriseResume> {
+    return this.http.patch<EntrepriseResume>(`${this.api}/plateforme/entreprises/${id}/agences-multiples`, null, {
+      params: new HttpParams().set('autorise', autorise)
+    });
+  }
+
   changerStatut(id: number, statut: StatutEntreprise): Observable<EntrepriseResume> {
     return this.http.patch<EntrepriseResume>(`${this.api}/plateforme/entreprises/${id}/statut`, null, {
       params: new HttpParams().set('statut', statut)

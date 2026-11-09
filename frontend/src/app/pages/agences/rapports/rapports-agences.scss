@@ -1,79 +1,16 @@
-.mise-en-page {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 1rem;
-  align-items: start;
+/* Complements aux rapports du PDV (pdv/rapports/rapports.scss), dont l'ecran reprend la mise en page. */
+
+.liste-rapports button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-.liste-rapports {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem;
-
-  button {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-    padding: 0.55rem 0.7rem;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    background: none;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-
-    small {
-      color: var(--couleur-texte-doux);
-      font-size: 0.75rem;
-    }
-
-    &:hover:not(:disabled) {
-      background: #f2f7fd;
-    }
-
-    &.actif {
-      border-color: var(--couleur-primaire);
-      background: color-mix(in srgb, var(--couleur-primaire) 7%, #fff);
-    }
-
-    &:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-  }
-}
-
-.filtres {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.6rem 0.9rem;
-  margin-bottom: 1rem;
-
-  .champ {
-    margin: 0;
-    min-width: 150px;
-  }
-
-  .exports {
-    display: flex;
-    gap: 0.4rem;
-    margin-left: auto;
-  }
-}
-
-.titre-rapport {
-  margin-bottom: 0.8rem;
-
-  h2 {
-    margin: 0;
-    font-size: 1.15rem;
-  }
-
-  small {
-    color: var(--couleur-texte-doux);
-  }
+.dates input {
+  height: 38px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 8px;
+  font: inherit;
 }
 
 table.tableau {
@@ -84,21 +21,5 @@ table.tableau {
 
   tfoot th {
     background: #f4f6f9;
-  }
-}
-
-.vide {
-  padding: 2rem;
-  color: var(--couleur-texte-doux);
-  text-align: center;
-}
-
-@media (max-width: 900px) {
-  .mise-en-page {
-    grid-template-columns: 1fr;
-  }
-
-  .filtres .exports {
-    margin-left: 0;
   }
 }

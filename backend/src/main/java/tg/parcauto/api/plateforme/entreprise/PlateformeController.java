@@ -42,4 +42,11 @@ public class PlateformeController {
                                                            @RequestParam StatutEntreprise statut) {
         return service.changerStatut(id, statut);
     }
+
+    @PatchMapping("/entreprises/{id}/agences-multiples")
+    @Operation(summary = "Module Agences : autorise ou non l'entreprise a gerer plusieurs agences (une seule par defaut)")
+    public PlateformeService.EntrepriseResume autoriserAgencesMultiples(@PathVariable Long id,
+                                                                      @RequestParam boolean autorise) {
+        return service.autoriserAgencesMultiples(id, autorise);
+    }
 }

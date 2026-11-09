@@ -15,7 +15,9 @@ public interface DepenseAgenceRepository extends JpaRepository<DepenseAgence, Lo
     @Query("""
             select count(d) > 0 from DepenseAgence d
             where d.recurrenteId = :recurrente and d.periode = :periode
-              and d.statut = tg.parcauto.api.agence.depense.DepenseAgence.Statut.VALIDEE
+              and d.statut in (tg.parcauto.api.agence.depense.DepenseAgence.Statut.VALIDEE,
+                  tg.parcauto.api.agence.depense.DepenseAgence.Statut.ATTENTE_SUPERVISEUR,
+                  tg.parcauto.api.agence.depense.DepenseAgence.Statut.ATTENTE_ADMIN)
             """)
     boolean dejaReglee(@Param("recurrente") Long recurrenteId, @Param("periode") String periode);
 
@@ -44,4 +46,9 @@ public interface DepenseAgenceRepository extends JpaRepository<DepenseAgence, Lo
             group by d.journee
             """)
     List<Object[]> parJour(@Param("agences") Collection<Long> agences, @Param("du") LocalDate du, @Param("au") LocalDate au);
+
+    List<DepenseAgence> findByAgenceIdInAndStatutInOrderByDateDepenseAscIdAsc(java.util.Collection<Long> agences,
+                                                                             java.util.Collection<DepenseAgence.Statut> statuts);
+
+    long countByAgenceIdInAndStatutIn(java.util.Collection<Long> agences, java.util.Collection<DepenseAgence.Statut> statuts);
 }

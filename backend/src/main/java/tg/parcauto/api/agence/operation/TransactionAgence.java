@@ -28,6 +28,9 @@ public class TransactionAgence extends BaseEntity {
 
     public enum Statut { VALIDEE, ANNULEE }
 
+    /** ACQUISE : en attente du versement de l'operateur ; CREDITEE : recue sur un compte. */
+    public enum StatutCommission { ACQUISE, CREDITEE }
+
     @Column(name = "agence_id", nullable = false, updatable = false)
     private Long agenceId;
 
@@ -74,6 +77,14 @@ public class TransactionAgence extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "compte_commission", nullable = false, length = 20, updatable = false)
     private Bareme.CompteCredit compteCommission = Bareme.CompteCredit.COMMISSIONS;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "commission_statut", nullable = false, length = 20)
+    private StatutCommission commissionStatut = StatutCommission.CREDITEE;
+
+    /** Versement de l'operateur qui a credite la commission. */
+    @Column(name = "versement_id")
+    private Long versementId;
 
     @Column(name = "motif_commission", length = 255, updatable = false)
     private String motifCommission;

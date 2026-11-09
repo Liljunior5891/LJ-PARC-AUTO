@@ -4,56 +4,100 @@
     <p class="sous-titre">La vente d'une carte est un chiffre d'affaires (marge = prix − cout reel du lot) ; dans une recharge, seule la
       commission est un revenu.</p>
   </div>
-  @if (agences().length > 1) {
-    <select class="choix-agence" [(ngModel)]="agenceId" (ngModelChange)="chargerTout()" aria-label="Agence">
-      @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
-    </select>
-  }
+  <div class="actions-entete">
+    <div class="dates-periode" [class.invalides]="du > au">
+      <span>Du</span>
+      <input type="date" [max]="au" [(ngModel)]="du" (change)="chargerSuivi()" aria-label="Debut du suivi" />
+      <span>au</span>
+      <input type="date" [min]="du" [(ngModel)]="au" (change)="chargerSuivi()" aria-label="Fin du suivi" />
+    </div>
+    @if (agences().length > 1) {
+      <div class="choix-agence-entete">
+        <select [(ngModel)]="agenceId" (ngModelChange)="chargerTout()" aria-label="Agence">
+          @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+        </select>
+      </div>
+    }
+    @if (peutEntrer()) {
+      <button type="button" class="bouton secondaire" (click)="ouvrirEntree()" title="Achat ou stock initial de cartes">📦 Entree en stock</button>
+    }
+    @if (service.peut('TRANSACTION_SAISIR')) {
+      <button type="button" class="bouton secondaire" [disabled]="!typeRecharge()" (click)="ouvrirRecharge()">⚡ Recharger une carte</button>
+      <button type="button" class="bouton" (click)="ouvrirVente()">💳 Vendre une carte</button>
+    }
+  </div>
 </div>
 
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }
 
-@if (service.peut('TRANSACTION_SAISIR')) {
-  <div class="grands-boutons">
-    <button type="button" class="grand vendre" (click)="ouvrirVente()">
-      <span aria-hidden="true">💳</span> VENDRE UNE CARTE
-    </button>
-    <button type="button" class="grand recharger" [disabled]="!typeRecharge()" (click)="ouvrirRecharge()">
-      <span aria-hidden="true">⚡</span> RECHARGER UNE CARTE
-    </button>
+<!-- Stock, vente et recharge cote a cote : tout le suivi des cartes en un coup d'oeil. -->
+<section class="suivi-cartes">
+  <div class="carte panneau-cartes stock">
+    <h2>Stock
+      @if (peutEntrer()) { <button type="button" class="lien-entree" (click)="ouvrirEntree()">+ Entree</button> }
+    </h2>
+    <div class="cartes-apercu compactes">
+      @for (s of stock(); track s.produitId) {
+        <div class="carte-apercu vert" [class.rouge]="s.alerte">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5" /><path d="M2.5 10h19M6 15h4" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">{{ s.nom }}</span>
+            <strong>{{ s.disponible }}<em> en stock</em></strong>
+            <small [title]="s.alerte ? 'Stock faible (seuil ' + s.seuilAlerte + ')' : ''">
+              @if (s.alerte) { <span class="attention">Stock faible</span> · }
+              {{ s.prixVente | number: '1.0-0' }} F@if (s.disponible) { · marge {{ s.margeUnitaireEstimee | number: '1.0-0' }} F }
+            </small>
+          </span>
+        </div>
+      } @empty {
+        <p class="aide">Aucune carte en stock.</p>
+      }
+    </div>
   </div>
-}
 
-<div class="bandeau-stock">
-  @for (s of stock(); track s.produitId) {
-    <div class="pastille" [class.alerte]="s.alerte">
-      <strong>{{ s.nom }}</strong>
-      <span class="numerique">{{ s.disponible }} en stock</span>
-      <small>{{ s.prixVente | number: '1.0-0' }} F@if (s.disponible) { · marge estimee {{ s.margeUnitaireEstimee | number: '1.0-0' }} F }</small>
-      @if (s.alerte) { <small class="avertir">Stock faible (seuil {{ s.seuilAlerte }})</small> }
+  @if (suivi(); as s) {
+    <div class="carte panneau-cartes">
+      <h2>Vente de cartes <small>{{ libellePeriode() }}</small></h2>
+      <div class="cartes-apercu compactes">
+        <div class="carte-apercu bleu"><span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5" /><path d="M2.5 10h19M6 15h4" /></svg></span><span class="textes"><span class="libelle">Cartes vendues</span><strong>{{ s.ventes.cartes }}</strong><small>{{ s.ventes.ventes }} vente(s)</small></span></div>
+        <div class="carte-apercu orange"><span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z" /><path d="M9 8h6M9 12h6M9 16h3" /></svg></span><span class="textes"><span class="libelle">Chiffre d'affaires</span><strong>{{ s.ventes.chiffreAffaires | number: '1.0-0' }}<em> F</em></strong></span></div>
+        <div class="carte-apercu violet"><span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4-8 4zM4 8v8l8 4 8-4V8M12 12v8" /></svg></span><span class="textes"><span class="libelle">Cout reel</span><strong>{{ s.ventes.cout | number: '1.0-0' }}<em> F</em></strong></span></div>
+        <div class="carte-apercu vert"><span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M5 15l4-4 3 3 6-6" /><path d="M14 8h4v4" /></svg></span><span class="textes"><span class="libelle">Marge brute</span><strong>{{ s.ventes.marge | number: '1.0-0' }}<em> F</em></strong></span></div>
+      </div>
+    </div>
+
+    <div class="carte panneau-cartes recharge">
+      <h2>Recharge de cartes <small>{{ libellePeriode() }}</small></h2>
+      <div class="cartes-apercu compactes">
+        <div class="carte-apercu bleu"><span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg></span><span class="textes"><span class="libelle">Solde initial</span><strong>{{ s.recharge.soldeOuverture | number: '1.0-0' }}<em> F</em></strong><small>electronique, debut de periode</small></span></div>
+        <div class="carte-apercu orange"><span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 14v5h16v-5" /><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5" /></svg></span><span class="textes"><span class="libelle">Approvisionnements</span><strong>{{ s.recharge.approvisionnements | number: '1.0-0' }}<em> F</em></strong><small>via « Mouvements »</small></span></div>
+        <div class="carte-apercu violet"><span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z" /></svg></span><span class="textes"><span class="libelle">Recharges</span><strong>{{ s.recharge.montantRecharges | number: '1.0-0' }}<em> F</em></strong><small>{{ s.recharge.nombreRecharges }} recharge(s)</small></span></div>
+        <div class="carte-apercu bleu"><span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg></span><span class="textes"><span class="libelle">Solde disponible</span><strong>{{ s.recharge.soldeActuel | number: '1.0-0' }}<em> F</em></strong></span></div>
+        <div class="carte-apercu vert"><span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M5 15l4-4 3 3 6-6" /><path d="M14 8h4v4" /></svg></span><span class="textes"><span class="libelle">Commissions</span><strong>{{ s.recharge.commissions | number: '1.0-0' }}<em> F</em></strong><small>creditees au sous-compte</small></span></div>
+      </div>
     </div>
   }
-</div>
+</section>
 
-<div class="onglets">
-  <button type="button" [class.actif]="onglet === 'ventes'" (click)="changerOnglet('ventes')">Ventes</button>
-  <button type="button" [class.actif]="onglet === 'stock'" (click)="changerOnglet('stock')">Stock et lots</button>
-  <button type="button" [class.actif]="onglet === 'suivi'" (click)="changerOnglet('suivi')">Suivi et rentabilite</button>
-</div>
+<app-onglets-inclines [onglets]="onglets" [actif]="onglet" (choisir)="changerOnglet($any($event))" />
 
 @switch (onglet) {
   @case ('ventes') {
     @if (ventes(); as p) {
+      <div class="carte">
       <div class="tableau-conteneur">
         <table class="tableau">
-          <thead><tr><th>Date</th><th>Reference</th><th>Carte</th><th class="montant">Qte</th><th class="montant">Montant</th><th class="montant">Cout</th><th class="montant">Marge</th><th>Caissier</th></tr></thead>
+          <thead><tr><th>Date</th><th>Reference</th><th>Carte</th><th>Client</th><th class="montant">Qte</th><th class="montant">Montant</th><th class="montant">Cout</th><th class="montant">Marge</th><th>Caissier</th></tr></thead>
           <tbody>
             @for (v of p.content; track v.id) {
               <tr class="cliquable" [class.annulee]="v.statut === 'ANNULEE'" (click)="detail.set(v)">
                 <td>{{ v.dateVente | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>{{ v.reference }}</td>
                 <td>{{ v.produitNom }}</td>
+                <td>{{ nomClient(v) }}</td>
                 <td class="montant numerique">{{ v.quantite }}</td>
                 <td class="montant numerique">{{ v.montant | number: '1.0-0' }}</td>
                 <td class="montant numerique">{{ v.coutTotal | number: '1.0-0' }}</td>
@@ -61,24 +105,26 @@
                 <td>{{ v.caissierNom }}</td>
               </tr>
             } @empty {
-              <tr><td colspan="8" class="vide">Aucune vente de carte.</td></tr>
+              <tr><td colspan="9"><div class="message vide">Aucune vente de carte.</div></td></tr>
             }
           </tbody>
         </table>
       </div>
       <app-suite-liste [page]="p" (suite)="suiteVentes()" />
+      </div>
     }
   }
   @case ('stock') {
-    @if (service.peut('CARTE_STOCK')) {
-      <div class="actions-stock">
+    @if (peutEntrer()) {
+      <div class="actions-formulaire actions-stock">
         <button class="bouton" type="button" (click)="ouvrirEntree()">+ Entree en stock</button>
       </div>
     }
     @for (s of stock(); track s.produitId) {
       <section class="carte produit">
         <h2>{{ s.nom }} <small>{{ s.disponible }} disponible(s) · valeur au cout reel {{ s.valeurStock | number: '1.0-0' }} F</small></h2>
-        <table class="tableau compact">
+        <div class="tableau-conteneur">
+        <table class="tableau">
           <thead><tr><th>Lot</th><th>Entre le</th><th class="montant">Entre</th><th class="montant">Reste</th><th class="montant">Cout unitaire</th><th>Paye par</th><th>Fournisseur</th></tr></thead>
           <tbody>
             @for (l of s.lots; track l.id) {
@@ -92,41 +138,18 @@
                 <td>{{ l.fournisseur ?? '' }}</td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="vide">Aucun lot : faites une entree en stock (stock initial ou achat).</td></tr>
+              <tr><td colspan="7"><div class="message vide">Aucun lot : faites une entree en stock (stock initial ou achat).</div></td></tr>
             }
           </tbody>
         </table>
+        </div>
       </section>
-    }
-  }
-  @case ('suivi') {
-    <div class="filtres">
-      <label>Du <input type="date" [(ngModel)]="du" (change)="chargerOnglet()" /></label>
-      <label>Au <input type="date" [(ngModel)]="au" (change)="chargerOnglet()" /></label>
-    </div>
-    @if (suivi(); as s) {
-      <h2 class="titre-section">Vente de cartes</h2>
-      <div class="grille-indicateurs">
-        <div class="carte indicateur"><span class="libelle">Cartes vendues</span><span class="valeur numerique">{{ s.ventes.cartes }}</span><span class="detail">{{ s.ventes.ventes }} vente(s)</span></div>
-        <div class="carte indicateur"><span class="libelle">Chiffre d'affaires</span><span class="valeur numerique">{{ s.ventes.chiffreAffaires | number: '1.0-0' }} F</span></div>
-        <div class="carte indicateur"><span class="libelle">Cout reel des cartes</span><span class="valeur numerique">{{ s.ventes.cout | number: '1.0-0' }} F</span></div>
-        <div class="carte indicateur succes"><span class="libelle">Marge brute</span><span class="valeur numerique">{{ s.ventes.marge | number: '1.0-0' }} F</span></div>
-      </div>
-      <h2 class="titre-section">Recharge de cartes</h2>
-      <div class="grille-indicateurs">
-        <div class="carte indicateur"><span class="libelle">Solde electronique initial</span><span class="valeur numerique">{{ s.recharge.soldeOuverture | number: '1.0-0' }} F</span></div>
-        <div class="carte indicateur"><span class="libelle">Approvisionnements</span><span class="valeur numerique">{{ s.recharge.approvisionnements | number: '1.0-0' }} F</span><span class="detail">Sur la periode</span></div>
-        <div class="carte indicateur"><span class="libelle">Recharges</span><span class="valeur numerique">{{ s.recharge.montantRecharges | number: '1.0-0' }} F</span><span class="detail">{{ s.recharge.nombreRecharges }} recharge(s)</span></div>
-        <div class="carte indicateur"><span class="libelle">Solde disponible</span><span class="valeur numerique">{{ s.recharge.soldeActuel | number: '1.0-0' }} F</span></div>
-        <div class="carte indicateur succes"><span class="libelle">Commissions generees</span><span class="valeur numerique">{{ s.recharge.commissions | number: '1.0-0' }} F</span><span class="detail">Creditees au sous-compte</span></div>
-      </div>
-      <p class="aide">Pour approvisionner le compte de recharge, passez par « Mouvements » (approvisionnement vers le compte de recharge).</p>
     }
   }
 }
 
 @if (vente()) {
-  <app-modale titre="Vendre une carte" largeur="560px" [erreur]="erreurModale()" (ferme)="vente.set(false)">
+  <app-modale titre="Vendre des cartes" largeur="640px" [erreur]="erreurModale()" (ferme)="vente.set(false)">
     <form (ngSubmit)="vendre()">
       <div class="grille-formulaire">
         <div class="champ">
@@ -135,31 +158,64 @@
             @for (s of stock(); track s.produitId) { <option [ngValue]="s.produitId">{{ s.nom }} ({{ s.disponible }} en stock)</option> }
           </select>
         </div>
+      </div>
+
+      <h3 class="titre-groupe">Client</h3>
+      <div class="ligne-client">
         <div class="champ">
-          <label for="quantite">Quantite</label>
-          <input id="quantite" name="quantite" type="number" min="1" step="1" [(ngModel)]="fv.quantite" />
+          <label for="client-nom">Nom</label>
+          <input id="client-nom" name="clientNom" maxlength="150" [(ngModel)]="fv.clientNom" autocomplete="off" />
         </div>
         <div class="champ">
-          <label for="client">Client</label>
-          <input id="client" name="client" maxlength="150" [(ngModel)]="fv.clientNom" />
+          <label for="client-prenom">Prenoms</label>
+          <input id="client-prenom" name="clientPrenom" maxlength="150" [(ngModel)]="fv.clientPrenom" autocomplete="off" />
         </div>
         <div class="champ">
-          <label for="tel">Telephone</label>
-          <input id="tel" name="tel" maxlength="30" [(ngModel)]="fv.clientTelephone" />
+          <label for="tel">Telephone <span class="requis">*</span></label>
+          <input id="tel" name="tel" type="tel" maxlength="30" required [(ngModel)]="fv.clientTelephone" autocomplete="off" placeholder="90 00 00 00" />
         </div>
       </div>
+
+      <h3 class="titre-groupe">Cartes vendues <span class="compteur-cartes">{{ fv.numeros.length }}</span></h3>
+      <div class="champ">
+        <label for="numero-carte">Numero de la carte</label>
+        <div class="saisie-numero">
+          <input id="numero-carte" #champNumero name="numeroSaisi" maxlength="40" inputmode="numeric" [(ngModel)]="fv.numeroSaisi"
+                 autocomplete="off" placeholder="Saisir ou scanner le numero, puis Entree"
+                 (keydown.enter)="$event.preventDefault(); ajouterNumero(champNumero)" />
+          <button type="button" class="bouton" [disabled]="!fv.numeroSaisi.trim()" (click)="ajouterNumero(champNumero)">
+            <span aria-hidden="true">＋</span> Ajouter
+          </button>
+        </div>
+      </div>
+      @if (fv.numeros.length) {
+        <ol class="numeros-cartes">
+          @for (n of fv.numeros; track n; let i = $index) {
+            <li>
+              <span class="numerique">{{ n }}</span>
+              <button type="button" class="retirer" (click)="retirerNumero(i)" [attr.aria-label]="'Retirer la carte ' + n" title="Retirer">✕</button>
+            </li>
+          }
+        </ol>
+      } @else {
+        <p class="aide">Saisissez le numero de chaque carte remise au client, puis « Ajouter la carte » (ou Entree).</p>
+      }
+
       @if (stockChoisi(); as s) {
         <div class="total-vente">
-          <span>A encaisser</span>
-          <strong class="numerique">{{ (fv.quantite || 0) * s.prixVente | number: '1.0-0' }} F</strong>
+          <span>A encaisser ({{ fv.numeros.length }} × {{ s.prixVente | number: '1.0-0' }} F)</span>
+          <strong class="numerique">{{ fv.numeros.length * s.prixVente | number: '1.0-0' }} F</strong>
         </div>
-        @if ((fv.quantite || 0) > s.disponible) {
+        @if (fv.numeros.length > s.disponible) {
           <div class="message erreur">Stock insuffisant : {{ s.disponible }} carte(s) disponible(s).</div>
         }
       }
       <div class="actions-formulaire">
         <button class="bouton secondaire annuler" type="button" (click)="vente.set(false)">Annuler</button>
-        <button class="bouton" type="submit" [disabled]="!fv.produitId || !fv.quantite || (fv.quantite > (stockChoisi()?.disponible ?? 0))">Vendre</button>
+        <button class="bouton" type="submit"
+                [disabled]="!fv.produitId || !fv.numeros.length || !fv.clientTelephone.trim() || fv.numeros.length > (stockChoisi()?.disponible ?? 0)">
+          Vendre {{ fv.numeros.length || '' }} carte(s)
+        </button>
       </div>
     </form>
   </app-modale>
@@ -236,8 +292,22 @@
         </div>
         <div class="champ">
           <label for="e-fournisseur">Fournisseur</label>
-          <input id="e-fournisseur" name="fournisseur" maxlength="150" [(ngModel)]="fe.fournisseur" />
+          <select id="e-fournisseur" name="fournisseur" [(ngModel)]="fe.fournisseur">
+            <option value="">Aucun</option>
+            @for (p of banques; track p.pays) {
+              <optgroup [label]="p.pays">
+                @for (b of p.banques; track b) { <option [value]="b">{{ b }}</option> }
+              </optgroup>
+            }
+            <option value="__autre">Autre fournisseur...</option>
+          </select>
         </div>
+        @if (fe.fournisseur === '__autre') {
+          <div class="champ">
+            <label for="e-autre">Nom du fournisseur</label>
+            <input id="e-autre" name="autre" maxlength="150" [(ngModel)]="fe.autreFournisseur" />
+          </div>
+        }
         <div class="champ">
           <label for="e-ref">Reference</label>
           <input id="e-ref" name="ref" maxlength="80" [(ngModel)]="fe.reference" />
@@ -261,7 +331,11 @@
       <dt>Encaisse</dt><dd>{{ v.montant | number: '1.0-0' }} F dans {{ v.compteNom }}</dd>
       <dt>Cout reel</dt><dd>{{ v.coutTotal | number: '1.0-0' }} F (lots les plus anciens d'abord)</dd>
       <dt>Marge brute</dt><dd><strong>{{ v.marge | number: '1.0-0' }} F</strong></dd>
-      @if (v.clientNom || v.clientTelephone) { <dt>Client</dt><dd>{{ v.clientNom }} {{ v.clientTelephone }}</dd> }
+      @if (nomClient(v)) { <dt>Client</dt><dd>{{ nomClient(v) }}</dd> }
+      @if (v.numeros.length) {
+        <dt>Cartes</dt>
+        <dd><ul class="numeros-vendus">@for (n of v.numeros; track n) { <li class="numerique">{{ n }}</li> }</ul></dd>
+      }
       @if (v.statut === 'ANNULEE') { <dt>Annulation</dt><dd>{{ v.annuleeLe | date: 'dd/MM HH:mm' }} par {{ v.annuleeParNom }} : {{ v.motifAnnulation }}</dd> }
     </dl>
     @if (v.annulable) {

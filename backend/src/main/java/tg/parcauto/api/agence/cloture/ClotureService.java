@@ -101,8 +101,9 @@ public class ClotureService {
         LocalDate courante = registre.journee(Instant.now());
         LocalDate jour = journee != null ? journee : courante;
         List<CompteAControler> aControler = comptesAControler(agence, jour);
-        List<String> ouvertes = sessions.findByAgenceIdAndStatut(agence.getId(), SessionCaisseAgence.Statut.OUVERTE).stream()
-                .map(s -> s.getCaissierNom() + " (" + s.getNumero() + ")").toList();
+        List<String> ouvertes = sessions.findByAgenceIdAndStatutIn(agence.getId(), tg.parcauto.api.agence.caisse.SessionCaisseService.EN_COURS)
+                .stream().map(s -> s.getCaissierNom() + " (" + s.getNumero()
+                        + (s.getStatut() == SessionCaisseAgence.Statut.SOUMISE ? ", comptage a valider" : "") + ")").toList();
         ClotureDto existante = repository.findByAgenceIdAndJournee(agence.getId(), jour).map(c -> versDto(c, agence.getNom())).orElse(null);
         return new Preparation(agence.getId(), agence.getNom(), jour, courante, ecritures.countByAgenceIdAndJournee(agence.getId(), jour),
                 aControler, ouvertes, existante);
@@ -137,9 +138,10 @@ public class ClotureService {
         if (c.getStatut() == ClotureAgence.Statut.VALIDEE) {
             throw new BusinessException("La journee du " + s.journee().format(JJ_MM_AAAA) + " est deja cloturee");
         }
-        List<SessionCaisseAgence> ouvertes = sessions.findByAgenceIdAndStatut(agence.getId(), SessionCaisseAgence.Statut.OUVERTE);
+        List<SessionCaisseAgence> ouvertes = sessions.findByAgenceIdAndStatutIn(agence.getId(),
+                tg.parcauto.api.agence.caisse.SessionCaisseService.EN_COURS);
         if (!ouvertes.isEmpty()) {
-            throw new BusinessException("Fermez d'abord les caisses ouvertes : " + ouvertes.stream()
+            throw new BusinessException("Fermez ou validez d'abord les caisses des caissiers : " + ouvertes.stream()
                     .map(SessionCaisseAgence::getCaissierNom).collect(Collectors.joining(", ")));
         }
         Map<Long, LigneSaisie> saisies = s.lignes().stream().collect(Collectors.toMap(LigneSaisie::compteId, Function.identity(), (a, b) -> b));

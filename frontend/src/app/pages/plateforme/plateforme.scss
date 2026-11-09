@@ -56,3 +56,25 @@ tr.suspendue td {
   opacity: 0.6;
 }
 
+
+/* Option « plusieurs agences » du module Agences, sous la pastille du module. */
+.option-agences {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  margin-top: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 999px;
+  color: var(--couleur-texte-doux);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &.active {
+    border-color: color-mix(in srgb, var(--couleur-succes) 40%, transparent);
+    background: #e3f5ea;
+    color: var(--couleur-succes);
+  }
+}

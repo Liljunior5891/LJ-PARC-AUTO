@@ -6,17 +6,14 @@
   </div>
   <div class="actions-entete">
     @if (agences().length > 1) {
-      <select [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
-        @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
-      </select>
+      <div class="choix-agence-entete">
+        <select [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
+          @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+        </select>
+      </div>
     }
-    <select [(ngModel)]="filtreStatut" (ngModelChange)="charger()" aria-label="Statut">
-      <option value="EN_COURS">En cours</option>
-      <option value="SOLDE">Soldes</option>
-      <option value="">Tous</option>
-    </select>
     @if (service.peut('CREDIT_GERER')) {
-      <button class="bouton" type="button" (click)="nouveau()">+ Nouveau</button>
+      <button class="bouton" type="button" (click)="nouveau()">+ Nouveau credit ou dette</button>
     }
   </div>
 </div>
@@ -24,19 +21,35 @@
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }
 
-<div class="grille-indicateurs">
-  <div class="carte indicateur" [class.alerte]="totalDettes() > 0">
-    <span class="libelle">Dettes restantes</span>
-    <span class="valeur numerique">{{ totalDettes() | number: '1.0-0' }} F</span>
-    <span class="detail">Credits, apports remboursables et dettes en cours</span>
+<div class="cartes-apercu tete-ecran">
+  <div class="carte-apercu vert" [class.rouge]="totalDettes() > 0">
+    <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" /></svg></span>
+    <span class="textes">
+      <span class="libelle">Dettes restantes</span>
+      <strong>{{ totalDettes() | number: '1.0-0' }}<em> F</em></strong>
+      <small>Credits, apports remboursables et dettes en cours</small>
+    </span>
   </div>
-  <div class="carte indicateur">
-    <span class="libelle">Avances a recuperer</span>
-    <span class="valeur numerique">{{ totalCreances() | number: '1.0-0' }} F</span>
+  <div class="carte-apercu violet">
+    <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg></span>
+    <span class="textes">
+      <span class="libelle">Avances a recuperer</span>
+      <strong>{{ totalCreances() | number: '1.0-0' }}<em> F</em></strong>
+    </span>
   </div>
 </div>
 
-<div class="tableau-conteneur">
+<div class="carte">
+<div class="filtres-ligne">
+  <div class="filtre">
+    <select [(ngModel)]="filtreStatut" (ngModelChange)="charger()" aria-label="Statut">
+      <option value="EN_COURS">En cours</option>
+      <option value="SOLDE">Soldes</option>
+      <option value="">En cours et soldes</option>
+    </select>
+  </div>
+</div>
+<div class="tableau-conteneur" style="margin-top: 1rem">
   <table class="tableau">
     <thead>
       <tr><th>Numero</th><th>Type</th><th>Tiers</th><th>Libelle</th><th class="montant">Initial</th><th class="montant">Restant</th><th>Prochaine echeance</th><th></th></tr>
@@ -61,10 +74,11 @@
           </td>
         </tr>
       } @empty {
-        <tr><td colspan="8" class="vide">Aucun credit ni dette.</td></tr>
+        <tr><td colspan="8"><div class="message vide">Aucun credit ni dette.</div></td></tr>
       }
     </tbody>
   </table>
+</div>
 </div>
 
 @if (saisie()) {
@@ -172,7 +186,7 @@
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="5" class="vide">Aucun remboursement.</td></tr>
+          <tr><td colspan="5"><div class="message vide">Aucun remboursement.</div></td></tr>
         }
       </tbody>
     </table>

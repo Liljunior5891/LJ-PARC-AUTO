@@ -2,9 +2,10 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { CompteAgence, EtatSoldes, FamilleCompte, LigneRegistre, RequeteCompte, SoldesAgence, TypeCompte, VerificationSolde } from '../../../core/models/agences';
+import { CompteAgence, EtatSoldes, FamilleCompte, LigneRegistre, RequeteCompte, SoldesAgence, TypeCompte, VerificationSolde, ServiceFinancier } from '../../../core/models/agences';
 import { Page } from '../../../core/models/models';
 import { AgencesService } from '../../../core/services/agences.service';
+import { LogoService } from '../../../shared/logo-service';
 import { Modale } from '../../../shared/modale';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
@@ -24,11 +25,18 @@ const FAMILLES: Record<FamilleCompte, string> = {
  */
 @Component({
   selector: 'app-soldes-agences',
-  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink, Modale, SuiteListe],
+  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink, LogoService, Modale, SuiteListe],
   templateUrl: './soldes.html',
   styleUrl: './soldes.scss'
 })
 export class SoldesAgences implements OnInit {
+
+  /** Catalogue des services, pour afficher leurs logos. */
+  readonly catalogueLogos = signal<ServiceFinancier[]>([]);
+
+  logoService(id?: number | null): string | null | undefined {
+    return this.catalogueLogos().find((s) => s.id === id)?.logo;
+  }
   readonly service = inject(AgencesService);
 
   readonly etat = signal<EtatSoldes | null>(null);
@@ -70,6 +78,7 @@ export class SoldesAgences implements OnInit {
   readonly verification = signal<VerificationSolde[] | null>(null);
 
   ngOnInit(): void {
+    this.service.catalogue().subscribe({ next: (c) => this.catalogueLogos.set(c) });
     this.service.chargerMoi().subscribe({
       next: (moi) => {
         if (!moi.permissions.includes('SOLDES_CONSULTER')) {

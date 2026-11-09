@@ -402,6 +402,9 @@ public class BaremeService {
             if (!t.getService().getId().equals(b.getServiceId())) {
                 throw new BusinessException("L'operation " + t.getLibelle() + " n'appartient pas a ce service");
             }
+            if (t.getReseau() != null && b.getReseauId() != null && !t.getReseau().getId().equals(b.getReseauId())) {
+                throw new BusinessException("L'operation " + t.getLibelle() + " est propre au reseau " + t.getReseau().getNom());
+            }
         }
         if (b.getReseauId() != null) {
             Reseau r = reseaux.findById(b.getReseauId())
@@ -474,7 +477,8 @@ public class BaremeService {
         }
 
         ServiceFinancier serviceParCode(String code) {
-            return services.values().stream().filter(s -> s.getCode().equals(code)).findFirst().orElse(null);
+            // Services actifs seulement : un service desactive (Rapid Transfer eclate) ne recoit plus d'exemple.
+            return services.values().stream().filter(s -> s.getCode().equals(code) && s.isActif()).findFirst().orElse(null);
         }
 
         TypeOperation type(Long serviceId, String code) {

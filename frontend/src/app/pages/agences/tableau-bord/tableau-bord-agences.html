@@ -1,147 +1,416 @@
 <div class="entete-page">
   <div>
-    <h1>Tableau de bord des agences</h1>
-    <p class="sous-titre">Tresorerie du moment, activite et revenus de la periode. Le volume des transactions n'est pas un revenu :
-      seules les commissions et les ventes de cartes forment le chiffre d'affaires.</p>
+    <h1>{{ caissier() ? 'Mon tableau de bord' : 'Tableau de bord' }}{{ agenceAffichee() ? ' — ' + agenceAffichee() : '' }}</h1>
+    <p class="sous-titre">{{ portee() }} — {{ libellePeriode() }}</p>
+  </div>
+  <div class="commandes-bord">
+    <div class="choix-periode">
+      <select [(ngModel)]="periode" (ngModelChange)="changerPeriode()" aria-label="Periode observee">
+        @for (p of periodes; track p.valeur) { <option [value]="p.valeur">{{ p.libelle }}</option> }
+      </select>
+    </div>
+    @if (periode === 'PERSONNALISEE') {
+      <div class="dates-periode" [class.invalides]="du > au">
+        <span>Du</span>
+        <input type="date" [max]="au" [(ngModel)]="du" (change)="charger()" aria-label="Date de debut" />
+        <span>au</span>
+        <input type="date" [min]="du" [(ngModel)]="au" (change)="charger()" aria-label="Date de fin" />
+      </div>
+    }
+    <button class="bouton secondaire" type="button" (click)="charger()">Actualiser</button>
   </div>
 </div>
 
-<!-- Filtres : une seule rangee au-dessus des graphiques. -->
-<div class="carte filtres">
-  <div class="champ">
-    <label for="periode">Periode</label>
-    <select id="periode" [(ngModel)]="periode" (ngModelChange)="changerPeriode()">
-      @for (p of periodes; track p.valeur) { <option [value]="p.valeur">{{ p.libelle }}</option> }
-    </select>
-  </div>
-  @if (periode === 'PERSONNALISEE') {
-    <div class="champ">
-      <label for="du">Du</label>
-      <input id="du" type="date" [(ngModel)]="du" (change)="charger()" />
-    </div>
-    <div class="champ">
-      <label for="au">Au</label>
-      <input id="au" type="date" [(ngModel)]="au" (change)="charger()" />
-    </div>
-  }
-  @if ((service.moi()?.agences?.length ?? 0) > 1) {
-    <div class="champ">
-      <label for="agence">Agence</label>
-      <select id="agence" [(ngModel)]="agenceId" (ngModelChange)="charger()">
-        <option [ngValue]="null">Toutes</option>
-        @for (a of service.moi()?.agences ?? []; track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+<app-ma-caisse-agence />
+
+<!-- Filtres d'activite : agence, service, reseau, caissier. -->
+<div class="carte barre-filtres">
+  <div class="filtres-ligne">
+    @if ((service.moi()?.agences?.length ?? 0) > 1) {
+      <div class="filtre">
+        <select [(ngModel)]="agenceId" (ngModelChange)="charger()" aria-label="Agence">
+          <option [ngValue]="null">Toutes les agences</option>
+          @for (a of service.moi()?.agences ?? []; track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+        </select>
+      </div>
+    }
+    <div class="filtre">
+      <select [(ngModel)]="serviceId" (ngModelChange)="changerService()" aria-label="Service">
+        <option [ngValue]="null">Tous les services</option>
+        @for (s of catalogue(); track s.id) {
+          @let o = opt(s.nom, s.logo);
+          <option [ngValue]="s.id" [attr.data-couleur]="o.couleur" [attr.data-logo]="o.logo" [attr.data-monogramme]="o.monogramme">{{ s.nom }}</option>
+        }
       </select>
     </div>
-  }
-  <div class="champ">
-    <label for="service">Service</label>
-    <select id="service" [(ngModel)]="serviceId" (ngModelChange)="changerService()">
-      <option [ngValue]="null">Tous</option>
-      @for (s of catalogue(); track s.id) { <option [ngValue]="s.id">{{ s.nom }}</option> }
-    </select>
-  </div>
-  @if (serviceChoisi()?.reseaux?.length) {
-    <div class="champ">
-      <label for="reseau">Reseau</label>
-      <select id="reseau" [(ngModel)]="reseauId" (ngModelChange)="charger()">
-        <option [ngValue]="null">Tous</option>
-        @for (r of serviceChoisi()!.reseaux; track r.id) { <option [ngValue]="r.id">{{ r.nom }}</option> }
+    @if (serviceChoisi()?.reseaux?.length) {
+      <div class="filtre">
+        <select [(ngModel)]="reseauId" (ngModelChange)="charger()" aria-label="Reseau">
+          <option [ngValue]="null">Tous les reseaux</option>
+          @for (r of serviceChoisi()!.reseaux; track r.id) {
+            @let o = opt(r.nom, r.logo);
+            <option [ngValue]="r.id" [attr.data-couleur]="o.couleur" [attr.data-logo]="o.logo" [attr.data-monogramme]="o.monogramme">{{ r.nom }}</option>
+          }
+        </select>
+      </div>
+    }
+    @if (!caissier()) {
+    <div class="filtre">
+      <select [(ngModel)]="caissierId" (ngModelChange)="charger()" aria-label="Caissier">
+        <option [ngValue]="null">Tous les caissiers</option>
+        @for (c of caissiers(); track c.id) { <option [ngValue]="c.id">{{ c.nom }}</option> }
       </select>
     </div>
-  }
-  <div class="champ">
-    <label for="caissier">Caissier</label>
-    <select id="caissier" [(ngModel)]="caissierId" (ngModelChange)="charger()">
-      <option [ngValue]="null">Tous</option>
-      @for (c of caissiers(); track c.id) { <option [ngValue]="c.id">{{ c.nom }}</option> }
-    </select>
+    }
   </div>
 </div>
+
+<!-- Illustrations des cartes de tete : coffre de billets, telephone, pieces. -->
+<ng-template #illustrationBillets>
+  <svg class="illustration" viewBox="0 0 160 110" aria-hidden="true">
+    <ellipse cx="82" cy="102" rx="64" ry="5" fill="rgba(0,0,0,0.18)" />
+    <g transform="rotate(-10 80 60)">
+      <rect x="34" y="40" width="96" height="48" rx="6" fill="#bfe6d3" />
+      <rect x="28" y="30" width="96" height="48" rx="6" fill="#ffffff" />
+      <circle cx="76" cy="54" r="12" fill="#2fb383" />
+      <text x="76" y="58.5" text-anchor="middle" font-size="12" font-weight="800" fill="#ffffff">F</text>
+      <rect x="36" y="38" width="14" height="6" rx="3" fill="#dff3e9" />
+      <rect x="102" y="64" width="14" height="6" rx="3" fill="#dff3e9" />
+    </g>
+    <ellipse cx="132" cy="94" rx="15" ry="5.5" fill="#d39b16" />
+    <rect x="117" y="83" width="30" height="11" fill="#e8b423" />
+    <ellipse cx="132" cy="83" rx="15" ry="5.5" fill="#ffd45c" />
+  </svg>
+</ng-template>
+
+<ng-template #illustrationTelephone>
+  <svg class="illustration" viewBox="0 0 160 110" aria-hidden="true">
+    <ellipse cx="80" cy="102" rx="64" ry="5" fill="rgba(0,0,0,0.18)" />
+    <rect x="56" y="8" width="48" height="90" rx="9" fill="#3f4a12" />
+    <rect x="61" y="16" width="38" height="70" rx="4" fill="#eaf5d0" />
+    <rect x="66" y="24" width="28" height="7" rx="3" fill="#a9bd2c" />
+    <rect x="66" y="38" width="28" height="4" rx="2" fill="#ffffff" />
+    <rect x="66" y="47" width="20" height="4" rx="2" fill="#ffffff" />
+    <rect x="66" y="64" width="28" height="12" rx="3" fill="#ff8c1a" />
+    <path d="M112 34 q14 12 0 24 M120 28 q22 18 0 36" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+    <path d="M48 34 q-14 12 0 24" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+  </svg>
+</ng-template>
+
+<ng-template #illustrationPieces>
+  <svg class="illustration" viewBox="0 0 160 110" aria-hidden="true">
+    <ellipse cx="80" cy="102" rx="64" ry="5" fill="rgba(0,0,0,0.18)" />
+    @for (pile of [{ x: 52, pieces: [0, 1, 2] }, { x: 88, pieces: [0, 1, 2, 3, 4] },
+                   { x: 124, pieces: [0, 1, 2, 3, 4, 5, 6] }]; track pile.x) {
+      @for (i of pile.pieces; track i) {
+        <ellipse [attr.cx]="pile.x" [attr.cy]="98 - i * 9" rx="16" ry="6" fill="#d39b16" />
+        <rect [attr.x]="pile.x - 16" [attr.y]="90 - i * 9" width="32" height="8" fill="#e8b423" />
+        <ellipse [attr.cx]="pile.x" [attr.cy]="90 - i * 9" rx="16" ry="6" fill="#ffd45c" />
+      }
+    }
+    <path d="M24 60 L60 44 L84 52 L130 14" fill="none" stroke="#ffffff" stroke-width="5"
+          stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M116 12 L132 12 L132 28" fill="none" stroke="#ffffff" stroke-width="5"
+          stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+</ng-template>
 
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 
 @if (donnees(); as d) {
-  @if (alertes().length) {
-    <section class="carte bloc-alertes">
-      <h2>Alertes <small>{{ alertes().length }}</small></h2>
-      <ul>
-        @for (a of alertes(); track $index) {
-          <li [class]="'alerte-' + a.niveau">
-            <span class="niveau">{{ a.niveau === 'CRITIQUE' ? '⛔' : a.niveau === 'ATTENTION' ? '⚠' : 'ℹ' }} {{ a.categorie }}</span>
-            <span class="texte">@if (a.agence) { <strong>{{ a.agence }}</strong> · } {{ a.message }}</span>
-            @if (a.lien) { <a [routerLink]="a.lien">Voir</a> }
-          </li>
+  <!-- Trois cartes de tete : ce dont l'agence dispose, ce qu'elle gagne, ce qu'il lui reste. -->
+  <section class="cartes-tete">
+    <a class="carte-tete vert" [routerLink]="lien('SOLDES_CONSULTER', '/agences/soldes')">
+      <span class="titre">{{ caissier() ? 'Ma caisse' : 'Tresorerie disponible' }}</span>
+      <strong>{{ grosMontant(d.tresorerie.tresorerie) }}<small>FCFA</small></strong>
+      <span class="detail">{{ caissier() ? 'especes dans votre caisse, en ce moment' : 'cash + virtuel + banque, en ce moment' }}</span>
+      <ng-container [ngTemplateOutlet]="illustrationBillets" />
+    </a>
+    <a class="carte-tete olive" routerLink="/agences/transactions">
+      <span class="titre">{{ caissier() ? 'Mon chiffre d\'affaires' : 'Chiffre d\'affaires' }}</span>
+      <strong>{{ grosMontant(d.chiffreAffaires) }}<small>FCFA</small></strong>
+      <span class="detail">commissions {{ d.commissions | number: '1.0-0' }} F · cartes {{ d.ventesCartes | number: '1.0-0' }} F</span>
+      <ng-container [ngTemplateOutlet]="illustrationTelephone" />
+    </a>
+    <a class="carte-tete violet" [routerLink]="lien('SOLDES_CONSULTER', '/agences/rapports')">
+      <span class="titre">{{ caissier() ? 'Mon resultat' : 'Resultat net' }}</span>
+      <strong>{{ grosMontant(d.resultatNet) }}<small>FCFA</small></strong>
+      <span class="detail">{{ caissier() ? 'CA − cout des cartes − mes depenses' : 'CA − cout des cartes − depenses − frais financiers' }}</span>
+      <ng-container [ngTemplateOutlet]="illustrationPieces" />
+    </a>
+  </section>
+
+  <!-- Activite de la periode : cartes au style des rapports (icone et couleur par information). -->
+  <section class="cartes-apercu tete-ecran">
+    <a class="carte-apercu bleu" routerLink="/agences/transactions">
+      <span class="icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3" /></svg>
+      </span>
+      <span class="textes">
+        <span class="libelle">Transactions</span>
+        <strong>{{ d.nombre | number: '1.0-0' }}</strong>
+        <small>volume {{ d.volume | number: '1.0-0' }} F (argent qui transite)</small>
+      </span>
+    </a>
+    <a class="carte-apercu orange" routerLink="/agences/depenses">
+      <span class="icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M12 9v6M9.5 11.5L12 9l2.5 2.5" /></svg>
+      </span>
+      <span class="textes">
+        <span class="libelle">{{ caissier() ? 'Mes depenses' : 'Depenses' }}</span>
+        <strong>{{ d.depenses | number: '1.0-0' }}<em> F</em></strong>
+        <small>{{ caissier() ? 'payees depuis votre caisse' : 'frais financiers ' + (d.fraisFinanciers | number: '1.0-0') + ' F' }}</small>
+      </span>
+    </a>
+    @if (caissier()) {
+      <a class="carte-apercu violet" routerLink="/agences/cartes">
+        <span class="icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5" /><path d="M2.5 10h19M6 15h4" /></svg>
+        </span>
+        <span class="textes">
+          <span class="libelle">Mes ventes de cartes</span>
+          <strong>{{ d.ventesCartes | number: '1.0-0' }}<em> F</em></strong>
+          <small>marge {{ (d.ventesCartes - d.coutCartes) | number: '1.0-0' }} F</small>
+        </span>
+      </a>
+      <a class="carte-apercu orange" routerLink="/agences/cloture" [class.calme]="d.cloturesAFaire === 0">
+        <span class="icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
+        </span>
+        <span class="textes">
+          <span class="libelle">Clotures a faire</span>
+          <strong>{{ d.cloturesAFaire }}</strong>
+          <small>{{ d.cloturesAFaire ? 'journee(s) a cloturer' : 'tout est cloture' }}</small>
+        </span>
+      </a>
+    } @else {
+    <a class="carte-apercu violet" [routerLink]="lien('COMMISSION_RAPPROCHER', '/agences/rapprochement')" [class.calme]="d.commissionsEnAttente === 0">
+      <span class="icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
+      </span>
+      <span class="textes">
+        <span class="libelle">Commissions en attente</span>
+        <strong>{{ d.commissionsEnAttente | number: '1.0-0' }}<em> F</em></strong>
+        <small>encaissees sur la periode : {{ d.commissionsEncaissees | number: '1.0-0' }} F</small>
+      </span>
+    </a>
+    <a class="carte-apercu {{ d.dettes > 0 ? 'rouge' : 'vert' }}" [routerLink]="lien('CREDIT_GERER', '/agences/credits')">
+      <span class="icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M5 15l4-4 3 3 6-6" /><path d="M14 8h4v4" /></svg>
+      </span>
+      <span class="textes">
+        <span class="libelle">Dettes restantes</span>
+        <strong>{{ d.dettes | number: '1.0-0' }}<em> F</em></strong>
+        <small>{{ d.creances ? 'avances a recuperer : ' + (d.creances | number: '1.0-0') + ' F' : 'aucune avance a recuperer' }}</small>
+      </span>
+    </a>
+    }
+  </section>
+
+
+  <!-- Panneaux, poses ensuite selon le profil : le caissier ne voit que ses donnees. -->
+  <ng-template #pTresorerie>
+    <div class="carte panneau">
+      <div class="entete-panneau">
+        <h2>Tresorerie maintenant</h2>
+        @if (service.peut('SOLDES_CONSULTER')) { <a class="lien-tout" routerLink="/agences/soldes">Voir les soldes</a> }
+      </div>
+      <!-- Cash, virtuel et banque en barre continue, comme l'etat du parc. -->
+      <div class="barre-etats">
+        @for (c of comptesTresorerie(); track c.libelle) {
+          @if (c.valeur > 0) {
+            <span [style.flex]="c.valeur" [style.background]="c.couleur"
+                  [attr.title]="c.libelle + ' : ' + (c.valeur | number: '1.0-0') + ' F'"></span>
+          }
+        }
+      </div>
+      <ul class="legende-graphique modes">
+        @for (c of comptesTresorerie(); track c.libelle) {
+          <li><span class="puce" [style.background]="c.couleur"></span> {{ c.libelle }}
+            <strong>{{ part(c.valeur, d.tresorerie.tresorerie) }} %</strong></li>
         }
       </ul>
-    </section>
-  }
 
-  <h2 class="titre-section">Tresorerie maintenant</h2>
-  <div class="grille-indicateurs">
-    <div class="carte indicateur succes">
-      <span class="libelle">Tresorerie disponible</span>
-      <span class="valeur numerique">{{ d.tresorerie.tresorerie | number: '1.0-0' }} F</span>
-      <span class="detail">Cash + virtuel + banque</span>
+      <div class="cartes-apercu compactes">
+        <a class="carte-apercu vert" [routerLink]="lien('CAISSE_GERER', '/agences/caisses')">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.6" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Cash</span>
+            <strong>{{ d.tresorerie.cash | number: '1.0-0' }}<em> F</em></strong>
+            <small>especes en caisse et au coffre</small>
+          </span>
+          <span class="jauge"><i [style.width.%]="part(d.tresorerie.cash, d.tresorerie.tresorerie)"></i></span>
+        </a>
+        <a class="carte-apercu bleu" [routerLink]="lien('SOLDES_CONSULTER', '/agences/soldes')">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Virtuel</span>
+            <strong>{{ d.tresorerie.virtuel | number: '1.0-0' }}<em> F</em></strong>
+            <small>float des operateurs</small>
+          </span>
+          <span class="jauge"><i [style.width.%]="part(d.tresorerie.virtuel, d.tresorerie.tresorerie)"></i></span>
+        </a>
+        <a class="carte-apercu violet" [routerLink]="lien('SOLDES_CONSULTER', '/agences/soldes')">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3 9.5L12 4l9 5.5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Banque</span>
+            <strong>{{ d.tresorerie.banque | number: '1.0-0' }}<em> F</em></strong>
+            <small>comptes bancaires</small>
+          </span>
+          <span class="jauge"><i [style.width.%]="part(d.tresorerie.banque, d.tresorerie.tresorerie)"></i></span>
+        </a>
+        <a class="carte-apercu orange" routerLink="/agences/cloture" [class.calme]="d.cloturesAFaire === 0 && d.mouvementsEnAttente === 0">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">Clotures a faire</span>
+            <strong>{{ d.cloturesAFaire }}</strong>
+            <small>{{ d.mouvementsEnAttente ? d.mouvementsEnAttente + ' mouvement(s) a valider' : 'aucun mouvement en attente' }}</small>
+          </span>
+        </a>
+      </div>
     </div>
-    <div class="carte indicateur">
-      <span class="libelle">Cash</span>
-      <span class="valeur numerique">{{ d.tresorerie.cash | number: '1.0-0' }} F</span>
+  </ng-template>
+  <ng-template #pAlertes>
+    <div class="carte panneau">
+      <div class="entete-panneau">
+        <h2>Alertes</h2>
+        @if (alertes().length) { <span class="lien-tout">{{ alertes().length }}</span> }
+      </div>
+      @if (alertes().length) {
+        <div class="cartes-apercu compactes alertes-documents">
+          @for (a of alertes().slice(0, 5); track $index) {
+            <a class="carte-apercu {{ a.niveau === 'CRITIQUE' ? 'rouge' : a.niveau === 'ATTENTION' ? 'orange' : 'bleu' }}"
+               [routerLink]="a.lien || null">
+              <span class="icone" aria-hidden="true">
+                @if (a.niveau === 'INFO') {
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5M12 8h.01" /></svg>
+                } @else {
+                  <svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" /></svg>
+                }
+              </span>
+              <span class="textes">
+                <span class="libelle">{{ a.categorie }}{{ a.agence ? ' · ' + a.agence : '' }}</span>
+                <small class="message-alerte" [title]="a.message">{{ a.message }}</small>
+              </span>
+            </a>
+          }
+        </div>
+        @if (alertes().length > 5) {
+          <p class="note">{{ alertes().length - 5 }} autre(s) alerte(s).</p>
+        }
+      } @else {
+        <div class="cartes-apercu compactes alertes-documents">
+          <span class="carte-apercu calme">
+            <span class="icone" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+            </span>
+            <span class="textes">
+              <span class="libelle">Aucune alerte</span>
+              <small>tout est en ordre</small>
+            </span>
+          </span>
+        </div>
+      }
     </div>
-    <div class="carte indicateur">
-      <span class="libelle">Virtuel</span>
-      <span class="valeur numerique">{{ d.tresorerie.virtuel | number: '1.0-0' }} F</span>
+  </ng-template>
+  <ng-template #pDonut>
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>Commissions par service</h2>
+        <p class="sous-titre">{{ libellePeriode() }}</p>
+      </figcaption>
+      <div class="donut">
+        <svg viewBox="0 0 160 160" role="img" aria-label="Repartition des commissions par service">
+          <circle cx="80" cy="80" r="60" fill="none" stroke="#eef2f0" stroke-width="22" />
+          @for (arc of arcsDonut(); track arc.libelle) {
+            <circle cx="80" cy="80" r="60" fill="none" [attr.stroke]="arc.couleur" stroke-width="22"
+                    [attr.stroke-dasharray]="arc.longueur + ' ' + circonference"
+                    [attr.stroke-dashoffset]="arc.decalage" transform="rotate(-90 80 80)">
+              <title>{{ arc.libelle }} : {{ arc.total | number: '1.0-0' }} FCFA ({{ arc.pourcent }} %)</title>
+            </circle>
+          }
+        </svg>
+        <div class="centre-donut">
+          <strong>{{ abrege(d.commissions) }}</strong>
+          <small>FCFA</small>
+        </div>
+      </div>
+      <ul class="legende-donut">
+        @for (arc of arcsDonut(); track arc.libelle) {
+          <li>
+            <span class="puce" [style.background]="arc.couleur"></span>
+            <app-logo-service [nom]="arc.libelle" [logo]="logoService(arc.id)" [taille]="18" />
+            <span class="nom">{{ arc.libelle }}</span>
+            <strong>{{ arc.pourcent }} %</strong>
+          </li>
+        } @empty {
+          <li class="message vide">Aucune transaction sur cette periode.</li>
+        }
+      </ul>
+    </figure>
+  </ng-template>
+  <ng-template #pCaissiers>
+    <div class="carte panneau">
+      <div class="entete-panneau">
+        <div>
+          <h2>Activite par caissier</h2>
+          <p class="sous-titre">Transactions et commissions de la periode</p>
+        </div>
+        <a class="lien-tout" routerLink="/agences/transactions">Tout voir</a>
+      </div>
+      <div class="table-billets">
+        <div class="ligne-entete">
+          <span>Caissier</span><span>Volume</span><span>Nombre</span><span>Commissions</span>
+        </div>
+        @for (c of d.parCaissier; track c.id) {
+          <a class="billet" routerLink="/agences/transactions">
+            <span class="personne">
+              <span class="avatar">{{ initiales(c.nom) }}</span>
+              <span>
+                <strong>{{ c.nom }}</strong>
+                <small>{{ part(c.commissions, d.commissions) }} % des commissions</small>
+              </span>
+            </span>
+            <span class="client">{{ c.volume | number: '1.0-0' }} F</span>
+            <span><span class="pastille-km">{{ c.nombre }}</span></span>
+            <span class="montant">{{ c.commissions | number: '1.0-0' }}</span>
+          </a>
+        } @empty {
+          <p class="message vide">Aucune transaction sur cette periode.</p>
+        }
+      </div>
     </div>
-    <div class="carte indicateur">
-      <span class="libelle">Banque</span>
-      <span class="valeur numerique">{{ d.tresorerie.banque | number: '1.0-0' }} F</span>
-    </div>
-  </div>
-
-  <h2 class="titre-section">Activite du {{ d.du | date: 'dd/MM/yyyy' }}{{ d.du !== d.au ? ' au ' + (d.au | date: 'dd/MM/yyyy') : '' }}</h2>
-  <div class="grille-indicateurs">
-    <div class="carte indicateur">
-      <span class="libelle">Transactions</span>
-      <span class="valeur numerique">{{ d.nombre | number: '1.0-0' }}</span>
-      <span class="detail">Volume {{ d.volume | number: '1.0-0' }} F (argent qui transite)</span>
-    </div>
-    <div class="carte indicateur succes">
-      <span class="libelle">Chiffre d'affaires</span>
-      <span class="valeur numerique">{{ d.chiffreAffaires | number: '1.0-0' }} F</span>
-      <span class="detail">Commissions {{ d.commissions | number: '1.0-0' }} F + ventes de cartes {{ d.ventesCartes | number: '1.0-0' }} F</span>
-    </div>
-    <div class="carte indicateur">
-      <span class="libelle">Depenses</span>
-      <span class="valeur numerique">{{ d.depenses | number: '1.0-0' }} F</span>
-      <span class="detail">Frais financiers (interets) : {{ d.fraisFinanciers | number: '1.0-0' }} F</span>
-    </div>
-    <div class="carte indicateur" [class.alerte]="d.resultatNet < 0" [class.succes]="d.resultatNet > 0">
-      <span class="libelle">Resultat net</span>
-      <span class="valeur numerique">{{ d.resultatNet | number: '1.0-0' }} F</span>
-      <span class="detail">CA − cout des cartes ({{ d.coutCartes | number: '1.0-0' }} F) − depenses − frais financiers</span>
-    </div>
-    <div class="carte indicateur" [class.alerte]="d.dettes > 0">
-      <span class="libelle">Dettes restantes</span>
-      <span class="valeur numerique">{{ d.dettes | number: '1.0-0' }} F</span>
-      @if (d.creances) { <span class="detail">Avances a recuperer : {{ d.creances | number: '1.0-0' }} F</span> }
-    </div>
-  </div>
-
-  <div class="grille-graphiques">
-    <!-- Commissions par jour : une seule serie, barres fines posees sur l'axe. -->
-    <section class="carte graphique">
-      <h3>Commissions par jour</h3>
+  </ng-template>
+  <ng-template #pJour>
+    <!-- Commissions par jour : une seule serie, barres posees sur l'axe, survol avec infobulle. -->
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>Commissions par jour</h2>
+        <p class="sous-titre">{{ libellePeriode() }}, en FCFA</p>
+      </figcaption>
       <div class="zone">
-        <svg [attr.viewBox]="'0 0 ' + L + ' ' + H" role="img" aria-label="Commissions par jour"
+        <svg class="courbes" [attr.viewBox]="'0 0 ' + L + ' ' + H" role="img" aria-label="Commissions par jour"
              (mousemove)="survoler($event, 'jour')" (mouseleave)="survolJour.set(null)">
           @for (g of graduations(maxCommission()); track g.y) {
             <line class="grille" [attr.x1]="M.gauche" [attr.x2]="L - M.droite" [attr.y1]="g.y" [attr.y2]="g.y" />
-            <text class="axe" [attr.x]="M.gauche - 8" [attr.y]="g.y + 4" text-anchor="end">{{ abrege(g.valeur) }}</text>
+            <text class="graduation" [attr.x]="M.gauche - 8" [attr.y]="g.y + 4">{{ abrege(g.valeur) }}</text>
           }
           @for (b of barresJour(); track $index; let i = $index) {
-            @if (b.hauteur > 0) { <path class="barre" [class.estompe]="survolJour() !== null && survolJour() !== i" [attr.d]="b.chemin" /> }
+            @if (b.hauteur > 0) {
+              <path [attr.d]="b.chemin" [attr.fill]="couleurCommissions"
+                    [attr.opacity]="survolJour() !== null && survolJour() !== i ? 0.35 : 1" />
+            }
           }
           @for (e of etiquettesJours(); track e.x) {
-            <text class="axe" [attr.x]="e.x" [attr.y]="H - 8" text-anchor="middle">{{ e.texte }}</text>
+            <text class="etiquette-mois" [attr.x]="e.x" [attr.y]="H - 8">{{ e.texte }}</text>
           }
         </svg>
         @if (survolJour() !== null) {
@@ -154,29 +423,37 @@
           </div>
         }
       </div>
-    </section>
-
-    <!-- Tresorerie en fin de journee : une ligne de 2 px, survol avec repere vertical. -->
-    <section class="carte graphique">
-      <h3>Tresorerie disponible en fin de journee</h3>
+      <ul class="legende-graphique">
+        <li><span class="puce" [style.background]="couleurCommissions"></span> Commissions</li>
+      </ul>
+    </figure>
+  </ng-template>
+  <ng-template #pTresorerieJour>
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>{{ caissier() ? 'Ma caisse en fin de journee' : 'Tresorerie disponible en fin de journee' }}</h2>
+        <p class="sous-titre">{{ libellePeriode() }}, en FCFA</p>
+      </figcaption>
       <div class="zone">
-        <svg [attr.viewBox]="'0 0 ' + L + ' ' + H" role="img" aria-label="Evolution de la tresorerie"
+        <svg class="courbes" [attr.viewBox]="'0 0 ' + L + ' ' + H" role="img" aria-label="Evolution de la tresorerie"
              (mousemove)="survoler($event, 'tresorerie')" (mouseleave)="survolTresorerie.set(null)">
           @for (g of graduations(echelleTresorerie().max, echelleTresorerie().min); track g.y) {
             <line class="grille" [attr.x1]="M.gauche" [attr.x2]="L - M.droite" [attr.y1]="g.y" [attr.y2]="g.y" />
-            <text class="axe" [attr.x]="M.gauche - 8" [attr.y]="g.y + 4" text-anchor="end">{{ abrege(g.valeur) }}</text>
+            <text class="graduation" [attr.x]="M.gauche - 8" [attr.y]="g.y + 4">{{ abrege(g.valeur) }}</text>
           }
-          <path class="ligne" [attr.d]="cheminTresorerie()" />
-          @if (pointsTresorerie().length === 1) {
-            <circle class="point" [attr.cx]="pointsTresorerie()[0].x" [attr.cy]="pointsTresorerie()[0].y" r="4" />
+          <path [attr.d]="cheminTresorerie()" fill="none" [attr.stroke]="couleurTresorerie"
+                stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+          @for (pt of pointsTresorerie(); track $index; let i = $index) {
+            @if (pointsTresorerie().length <= 31 || survolTresorerie() === i) {
+              <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="3.5" fill="#fff" [attr.stroke]="couleurTresorerie" stroke-width="2" />
+            }
           }
           @if (survolTresorerie() !== null) {
             @let pt = pointsTresorerie()[survolTresorerie()!];
             <line class="repere" [attr.x1]="pt.x" [attr.x2]="pt.x" [attr.y1]="M.haut" [attr.y2]="H - M.bas" />
-            <circle class="point" [attr.cx]="pt.x" [attr.cy]="pt.y" r="4" />
           }
           @for (e of etiquettesJours(); track e.x) {
-            <text class="axe" [attr.x]="e.x" [attr.y]="H - 8" text-anchor="middle">{{ e.texte }}</text>
+            <text class="etiquette-mois" [attr.x]="e.x" [attr.y]="H - 8">{{ e.texte }}</text>
           }
         </svg>
         @if (survolTresorerie() !== null) {
@@ -187,67 +464,87 @@
           </div>
         }
       </div>
-    </section>
-  </div>
+    </figure>
+  </ng-template>
+  <ng-template #pReseaux>
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>Activite par reseau</h2>
+        <p class="sous-titre">Volume et commissions, en FCFA</p>
+      </figcaption>
+      <ul class="legende-graphique">
+        <li><span class="puce" [style.background]="couleurVolume"></span> Volume</li>
+        <li><span class="puce" [style.background]="couleurCommissions"></span> Commissions</li>
+      </ul>
+      <div class="colonnes-camions">
+        @for (r of d.parReseau; track r.id) {
+          <span class="camion" [attr.title]="r.nom + ' — ' + r.nombre + ' operation(s), volume ' + r.volume + ', commissions ' + r.commissions">
+            <span class="paire-barres">
+              <span class="barre" [style.height.%]="part(r.volume, maximumReseaux())" [style.background]="couleurVolume"></span>
+              <span class="barre" [style.height.%]="part(r.commissions, maximumCommissionsReseaux())" [style.background]="couleurCommissions"></span>
+            </span>
+            <app-logo-service [nom]="r.nom" [logo]="logoReseau(r.id)" [taille]="22" />
+            <span class="etiquette-camion">{{ r.nom }}</span>
+            <span class="valeur-colonne">{{ r.nombre }} op.</span>
+          </span>
+        } @empty {
+          <p class="message vide">Aucune operation sur un reseau (Western Union, MoneyGram...).</p>
+        }
+      </div>
+    </figure>
+  </ng-template>
+  <ng-template #pRentabilite>
+    <figure class="carte panneau">
+      <figcaption>
+        <h2>Rentabilite par service</h2>
+        <p class="sous-titre">Commissions de la periode</p>
+      </figcaption>
+      <ul class="liste-services">
+        @for (s of d.parService; track s.id; let i = $index) {
+          <li [title]="s.nombre + ' transaction(s), volume ' + (s.volume | number: '1.0-0') + ' F'">
+            <span class="nom"><app-logo-service [nom]="s.nom" [logo]="logoService(s.id)" [taille]="20" /> {{ s.nom }}</span>
+            <span class="piste"><i [style.width.%]="largeurService(s.commissions)" [style.background]="couleurArc(i)"></i></span>
+            <strong>{{ s.commissions | number: '1.0-0' }}</strong>
+            <small>{{ s.nombre }} op. · {{ abrege(s.volume) }} F</small>
+          </li>
+        } @empty {
+          <li class="message vide">Aucune transaction sur la periode.</li>
+        }
+      </ul>
+    </figure>
+  </ng-template>
 
-  <div class="grille-graphiques">
-    <!-- Rentabilite par service : barres horizontales triees, valeur affichee au bout. -->
-    <section class="carte graphique">
-      <h3>Rentabilite par service (commissions)</h3>
-      @for (s of d.parService; track s.id) {
-        <div class="ligne-service" [title]="s.nombre + ' transaction(s), volume ' + (s.volume | number: '1.0-0') + ' F'">
-          <span class="nom">{{ s.nom }}</span>
-          <span class="piste"><span class="remplissage" [style.width.%]="largeurService(s.commissions)"></span></span>
-          <span class="valeur numerique">{{ s.commissions | number: '1.0-0' }} F</span>
-        </div>
-      } @empty {
-        <p class="vide">Aucune transaction sur la periode.</p>
-      }
+  @if (caissier()) {
+    <section class="rangee egale">
+      <ng-container [ngTemplateOutlet]="pDonut" />
+      <ng-container [ngTemplateOutlet]="pRentabilite" />
     </section>
-
-    <section class="carte graphique">
-      <h3>Repartition des transactions</h3>
-      <table class="tableau compact">
-        <thead><tr><th>Service</th><th class="montant">Nombre</th><th class="montant">Volume</th><th class="montant">Commissions</th></tr></thead>
-        <tbody>
-          @for (s of d.parService; track s.id) {
-            <tr><td>{{ s.nom }}</td><td class="montant numerique">{{ s.nombre }}</td><td class="montant numerique">{{ s.volume | number: '1.0-0' }}</td><td class="montant numerique">{{ s.commissions | number: '1.0-0' }}</td></tr>
-          } @empty {
-            <tr><td colspan="4" class="vide">—</td></tr>
-          }
-        </tbody>
-      </table>
+    <section class="rangee">
+      <ng-container [ngTemplateOutlet]="pJour" />
     </section>
-  </div>
-
-  <div class="grille-graphiques">
-    <section class="carte graphique">
-      <h3>Activite par reseau</h3>
-      <table class="tableau compact">
-        <thead><tr><th>Reseau</th><th class="montant">Nombre</th><th class="montant">Volume</th><th class="montant">Commissions</th></tr></thead>
-        <tbody>
-          @for (r of d.parReseau; track r.id) {
-            <tr><td>{{ r.nom }}</td><td class="montant numerique">{{ r.nombre }}</td><td class="montant numerique">{{ r.volume | number: '1.0-0' }}</td><td class="montant numerique">{{ r.commissions | number: '1.0-0' }}</td></tr>
-          } @empty {
-            <tr><td colspan="4" class="vide">Aucune operation sur un reseau (Western Union, MoneyGram...).</td></tr>
-          }
-        </tbody>
-      </table>
+    <section class="rangee egale">
+      <ng-container [ngTemplateOutlet]="pTresorerieJour" />
+      <ng-container [ngTemplateOutlet]="pReseaux" />
     </section>
-    <section class="carte graphique">
-      <h3>Activite par caissier</h3>
-      <table class="tableau compact">
-        <thead><tr><th>Caissier</th><th class="montant">Nombre</th><th class="montant">Volume</th><th class="montant">Commissions</th></tr></thead>
-        <tbody>
-          @for (c of d.parCaissier; track c.id) {
-            <tr><td>{{ c.nom }}</td><td class="montant numerique">{{ c.nombre }}</td><td class="montant numerique">{{ c.volume | number: '1.0-0' }}</td><td class="montant numerique">{{ c.commissions | number: '1.0-0' }}</td></tr>
-          } @empty {
-            <tr><td colspan="4" class="vide">—</td></tr>
-          }
-        </tbody>
-      </table>
+  } @else {
+    <!-- Tresorerie, alertes et repartition des commissions. -->
+    <section class="rangee trois">
+      <ng-container [ngTemplateOutlet]="pTresorerie" />
+      <ng-container [ngTemplateOutlet]="pAlertes" />
+      <ng-container [ngTemplateOutlet]="pDonut" />
     </section>
-  </div>
+    <!-- Caissiers a gauche, commissions par jour a droite, plus large. -->
+    <section class="rangee etroit-large">
+      <ng-container [ngTemplateOutlet]="pCaissiers" />
+      <ng-container [ngTemplateOutlet]="pJour" />
+    </section>
+    <!-- Tresorerie en fin de journee, reseaux, services. -->
+    <section class="rangee trois">
+      <ng-container [ngTemplateOutlet]="pTresorerieJour" />
+      <ng-container [ngTemplateOutlet]="pReseaux" />
+      <ng-container [ngTemplateOutlet]="pRentabilite" />
+    </section>
+  }
 } @else if (!erreur()) {
-  <p class="vide">Chargement...</p>
+  <div class="message vide">Chargement des indicateurs...</div>
 }

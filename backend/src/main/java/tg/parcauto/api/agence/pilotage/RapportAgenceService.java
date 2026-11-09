@@ -231,21 +231,28 @@ public class RapportAgenceService {
         NomsCatalogue c = catalogueNoms();
         r.colonne("service", "Service", Format.TEXTE).colonne("reseau", "Reseau", Format.TEXTE).colonne("operation", "Operation", Format.TEXTE)
                 .colonne("nombre", "Nombre", Format.NOMBRE).colonne("volume", "Volume", Format.MONTANT)
-                .colonne("commissions", "Commissions", Format.MONTANT).colonne("modifiees", "Commissions modifiees", Format.NOMBRE);
+                .colonne("commissions", "Commissions acquises", Format.MONTANT).colonne("attente", "Dont en attente", Format.MONTANT)
+                .colonne("modifiees", "Commissions modifiees", Format.NOMBRE);
         long total = 0;
         long volume = 0;
+        long attente = 0;
         List<Object[]> lignes = liste("select t.serviceId, t.reseauId, t.typeOperationId, count(t), sum(t.montant), sum(t.commission),"
-                + " sum(case when t.commission <> t.commissionProposee then 1 else 0 end) from TransactionAgence t where t.agenceId in :agences"
+                + " sum(case when t.commission <> t.commissionProposee then 1 else 0 end),"
+                + " sum(case when t.commissionStatut = tg.parcauto.api.agence.operation.TransactionAgence.StatutCommission.ACQUISE then t.commission else 0 end)"
+                + " from TransactionAgence t where t.agenceId in :agences"
                 + " and t.statut = :validee and t.journee between :du and :au group by t.serviceId, t.reseauId, t.typeOperationId",
                 agences, du, au, Map.of("validee", TransactionAgence.Statut.VALIDEE));
         lignes.sort(Comparator.comparingLong((Object[] x) -> n(x[5])).reversed());
         for (Object[] l : lignes) {
-            r.ligne(c.services.get((Long) l[0]), l[1] == null ? "" : c.reseaux.get((Long) l[1]), c.types.get((Long) l[2]), n(l[3]), n(l[4]), n(l[5]), n(l[6]));
+            r.ligne(c.services.get((Long) l[0]), l[1] == null ? "" : c.reseaux.get((Long) l[1]), c.types.get((Long) l[2]), n(l[3]), n(l[4]), n(l[5]),
+                    n(l[7]), n(l[6]));
+            attente += n(l[7]);
             total += n(l[5]);
             volume += n(l[4]);
         }
-        r.total("volume", volume).total("commissions", total);
-        r.indicateur("Commissions acquises", total, Format.MONTANT).indicateur("Taux moyen", volume == 0 ? 0
+        r.total("volume", volume).total("commissions", total).total("attente", attente);
+        r.indicateur("Commissions acquises", total, Format.MONTANT).indicateur("Encaissees", total - attente, Format.MONTANT)
+                .indicateur("En attente de versement", attente, Format.MONTANT).indicateur("Taux moyen", volume == 0 ? 0
                 : java.math.BigDecimal.valueOf(total * 100.0 / volume).setScale(2, java.math.RoundingMode.HALF_UP), Format.POURCENT);
     }
 

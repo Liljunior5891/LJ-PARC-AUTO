@@ -3,11 +3,15 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApercuTransaction, CompteAgence, ProduitCarte, ServiceFinancier, StockCarte, SuiviCartes, TypeOperation, VenteCarte } from '../../../core/models/agences';
 import { Page } from '../../../core/models/models';
+import { AuthService } from '../../../core/auth/auth.service';
 import { AgencesService } from '../../../core/services/agences.service';
 import { Modale } from '../../../shared/modale';
+import { OngletsInclines } from '../../../shared/onglets-inclines';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
+import { BANQUES_UEMOA } from '../../../shared/banques-uemoa';
+import { AgencesHorsLigneService, erreurReseau } from '../../../core/services/agences-hors-ligne.service';
 
-type Onglet = 'ventes' | 'stock' | 'suivi';
+type Onglet = 'ventes' | 'stock';
 
 /**
  * Cartes prepayees : VENDRE UNE CARTE (stock par lot, prix encaisse en
@@ -17,14 +21,19 @@ type Onglet = 'ventes' | 'stock' | 'suivi';
  */
 @Component({
   selector: 'app-cartes-agences',
-  imports: [DatePipe, DecimalPipe, FormsModule, Modale, SuiteListe],
+  imports: [DatePipe, DecimalPipe, FormsModule, Modale, OngletsInclines, SuiteListe],
   templateUrl: './cartes-agences.html',
   styleUrl: './cartes-agences.scss'
 })
 export class CartesAgences implements OnInit {
   readonly service = inject(AgencesService);
+  private readonly horsLigne = inject(AgencesHorsLigneService);
 
   onglet: Onglet = 'ventes';
+  readonly onglets = [
+    { id: 'ventes', libelle: 'Ventes', icone: '💳' },
+    { id: 'stock', libelle: 'Stock et lots', icone: '📦' }
+  ];
   readonly agences = computed(() => (this.service.moi()?.agences ?? []).filter((a) => a.actif));
   agenceId: number | null = null;
   readonly produits = signal<ProduitCarte[]>([]);
@@ -46,7 +55,7 @@ export class CartesAgences implements OnInit {
 
   // Vente
   readonly vente = signal(false);
-  fv = { produitId: null as number | null, quantite: 1, clientNom: '', clientTelephone: '' };
+  fv = this.venteVide(null);
   readonly stockChoisi = computed(() => this.stock().find((s) => s.produitId === this.produitVente()));
   private readonly produitVente = signal<number | null>(null);
 
@@ -57,9 +66,14 @@ export class CartesAgences implements OnInit {
   private minuterie?: ReturnType<typeof setTimeout>;
 
   // Stock
+  private readonly auth = inject(AuthService);
   readonly entree = signal(false);
+  /** Entree en stock : droit CARTE_STOCK et profil superviseur ou administrateur. */
+  readonly peutEntrer = computed(() => this.service.peut('CARTE_STOCK') && this.auth.aRole('ADMIN', 'SUPERVISEUR_AGENCE'));
   fe = { produitId: null as number | null, quantite: null as number | null, coutUnitaire: null as number | null, compteId: null as number | null,
-         fournisseur: '', reference: '' };
+         fournisseur: '', autreFournisseur: '', reference: '' };
+  /** Banques de l'UEMOA proposees comme fournisseur des cartes. */
+  readonly banques = BANQUES_UEMOA;
 
   readonly detail = signal<VenteCarte | null>(null);
   readonly aAnnuler = signal<VenteCarte | null>(null);
@@ -88,7 +102,20 @@ export class CartesAgences implements OnInit {
         next: (e) => this.comptes.set((e.agences[0]?.comptes ?? []).filter((c) => c.actif && c.type !== 'CAISSE_CAISSIER'))
       });
     }
+    this.chargerSuivi();
     this.chargerOnglet();
+  }
+
+  /** Vente et recharge de la periode, affichees a cote du stock. */
+  chargerSuivi(): void {
+    if (this.agenceId && this.du && this.au) {
+      this.service.suiviCartes(this.agenceId, this.du, this.au).subscribe({ next: (s) => this.suivi.set(s) });
+    }
+  }
+
+  libellePeriode(): string {
+    const f = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+    return this.du === this.au ? 'le ' + f(this.du) : 'du ' + f(this.du) + ' au ' + f(this.au);
   }
 
   changerOnglet(o: Onglet): void {
@@ -100,8 +127,6 @@ export class CartesAgences implements OnInit {
     if (this.onglet === 'ventes') {
       this.ventes.set(null);
       this.chargerVentes();
-    } else if (this.onglet === 'suivi') {
-      this.service.suiviCartes(this.agenceId, this.du, this.au).subscribe({ next: (s) => this.suivi.set(s) });
     }
   }
 
@@ -120,11 +145,39 @@ export class CartesAgences implements OnInit {
   // ---------------------------------------------------------------- vente
   ouvrirVente(): void {
     const premier = this.stock().find((s) => s.disponible > 0) ?? this.stock()[0];
-    this.fv = { produitId: premier?.produitId ?? null, quantite: 1, clientNom: '', clientTelephone: '' };
+    this.fv = this.venteVide(premier?.produitId ?? null);
     this.produitVente.set(this.fv.produitId);
     this.erreurModale.set(null);
     this.succes.set(null);
     this.vente.set(true);
+  }
+
+  private venteVide(produitId: number | null) {
+    return { produitId, clientNom: '', clientPrenom: '', clientTelephone: '', numeroSaisi: '', numeros: [] as string[] };
+  }
+
+  /** Ajoute le numero saisi a la liste des cartes vendues (sans espaces, sans doublon). */
+  ajouterNumero(champ?: HTMLInputElement): void {
+    const numero = this.fv.numeroSaisi.replace(/\s+/g, '').toUpperCase();
+    if (!numero) {
+      return;
+    }
+    if (this.fv.numeros.includes(numero)) {
+      this.erreurModale.set(`La carte ${numero} est deja dans la liste.`);
+      return;
+    }
+    this.erreurModale.set(null);
+    this.fv.numeros = [...this.fv.numeros, numero];
+    this.fv.numeroSaisi = '';
+    champ?.focus();
+  }
+
+  retirerNumero(index: number): void {
+    this.fv.numeros = this.fv.numeros.filter((_, i) => i !== index);
+  }
+
+  nomClient(v: VenteCarte): string {
+    return [v.clientNom, v.clientPrenom, v.clientTelephone].filter((x) => !!x).join(' ');
   }
 
   changerProduitVente(): void {
@@ -132,17 +185,37 @@ export class CartesAgences implements OnInit {
   }
 
   vendre(): void {
-    if (!this.agenceId || !this.fv.produitId || !this.fv.quantite) {
+    // Un numero tape mais pas encore ajoute compte aussi.
+    if (this.fv.numeroSaisi.trim()) {
+      this.ajouterNumero();
+    }
+    if (!this.agenceId || !this.fv.produitId || !this.fv.numeros.length || !this.fv.clientTelephone.trim()) {
       return;
     }
-    this.service.vendreCartes({ agenceId: this.agenceId, produitId: this.fv.produitId, quantite: this.fv.quantite,
-      clientNom: this.fv.clientNom.trim() || undefined, clientTelephone: this.fv.clientTelephone.trim() || undefined }).subscribe({
+    const vente = { agenceId: this.agenceId, produitId: this.fv.produitId, numeros: this.fv.numeros,
+      clientNom: this.fv.clientNom.trim() || undefined, clientPrenom: this.fv.clientPrenom.trim() || undefined,
+      clientTelephone: this.fv.clientTelephone.trim() };
+    this.service.vendreCartes(vente).subscribe({
       next: (v) => {
         this.vente.set(false);
         this.succes.set(`${v.reference} : ${v.quantite} ${v.produitNom} vendue(s), ${v.montant.toLocaleString('fr-FR')} F encaisses (marge ${v.marge.toLocaleString('fr-FR')} F).`);
         this.chargerTout();
       },
-      error: (e) => this.erreurModale.set(this.message(e, 'Vente impossible.'))
+      error: (e) => {
+        if (!erreurReseau(e)) {
+          this.erreurModale.set(this.message(e, 'Vente impossible.'));
+          return;
+        }
+        // Sans connexion : la vente est gardee sur l'appareil, le stock local diminue aussitot.
+        const s = this.stockChoisi();
+        const resume = `Vente de ${vente.numeros.length} ${s?.nom ?? 'carte(s)'} (${vente.numeros.join(', ')})`;
+        const reference = this.horsLigne.ajouter('VENTE_CARTE', vente, resume);
+        this.stock.update((liste) => liste.map((x) => x.produitId === vente.produitId
+          ? { ...x, disponible: Math.max(0, x.disponible - vente.numeros.length) } : x));
+        this.vente.set(false);
+        this.succes.set(`${reference} : vente gardee hors ligne (${vente.numeros.length} carte(s), `
+          + `${((s?.prixVente ?? 0) * vente.numeros.length).toLocaleString('fr-FR')} F a encaisser). Elle partira au retour du reseau.`);
+      }
     });
   }
 
@@ -198,6 +271,7 @@ export class CartesAgences implements OnInit {
       next: (t) => {
         this.recharge.set(false);
         this.succes.set(`${t.reference} : recharge de ${t.montant.toLocaleString('fr-FR')} F${t.carteMasquee ? ' sur la carte ' + t.carteMasquee : ''}, commission ${t.commission.toLocaleString('fr-FR')} F.`);
+        this.chargerSuivi();
         this.chargerOnglet();
       },
       error: (e) => this.erreurModale.set(this.message(e, 'Recharge impossible.'))
@@ -208,7 +282,7 @@ export class CartesAgences implements OnInit {
   ouvrirEntree(): void {
     const p = this.produits()[0];
     this.fe = { produitId: p?.id ?? null, quantite: null, coutUnitaire: null,
-      compteId: this.comptes().find((c) => c.type === 'CAISSE_GENERALE')?.id ?? null, fournisseur: '', reference: '' };
+      compteId: this.comptes().find((c) => c.type === 'CAISSE_GENERALE')?.id ?? null, fournisseur: '', autreFournisseur: '', reference: '' };
     this.erreurModale.set(null);
     this.entree.set(true);
   }
@@ -219,7 +293,7 @@ export class CartesAgences implements OnInit {
     }
     this.service.entrerLotCartes({ agenceId: this.agenceId, produitId: this.fe.produitId, quantite: this.fe.quantite,
       coutUnitaire: Math.round(this.fe.coutUnitaire), compteId: this.fe.compteId,
-      fournisseur: this.fe.fournisseur.trim() || undefined, reference: this.fe.reference.trim() || undefined }).subscribe({
+      fournisseur: this.fournisseurChoisi(), reference: this.fe.reference.trim() || undefined }).subscribe({
       next: (s) => {
         this.stock.set(s);
         this.entree.set(false);
@@ -227,6 +301,12 @@ export class CartesAgences implements OnInit {
       },
       error: (e) => this.erreurModale.set(this.message(e, 'Entree impossible.'))
     });
+  }
+
+  /** Banque choisie dans la liste, ou nom saisi pour « Autre fournisseur ». */
+  private fournisseurChoisi(): string | undefined {
+    const f = this.fe.fournisseur === '__autre' ? this.fe.autreFournisseur : this.fe.fournisseur;
+    return f.trim() || undefined;
   }
 
   demanderAnnulation(v: VenteCarte): void {

@@ -1,76 +1,25 @@
-.choix-agence {
-  min-width: 200px;
-  padding: 0.5rem 0.7rem;
-  border: 1px solid var(--couleur-bordure);
-  border-radius: 8px;
-  font: inherit;
-  background: var(--couleur-surface);
-}
+/* Complements aux cartes des caisses du PDV (pdv/caisses/caisses.scss). */
 
-.grille-caissiers {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
+.grille-caisses {
   margin-bottom: 1.25rem;
 }
 
-.caissier {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  border-top: 4px solid var(--couleur-bordure);
-
-  &.ouverte {
-    border-top-color: var(--couleur-succes);
-  }
-
-  > header {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-
-    h2 {
-      margin: 0;
-      font-size: 1.02rem;
-    }
-
-    small {
-      color: var(--couleur-texte-doux);
-    }
-  }
-
-  .avatar {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.2rem;
-    height: 2.2rem;
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--couleur-primaire) 12%, #fff);
-    color: var(--couleur-primaire);
-    font-weight: 700;
-  }
-
-  .bouton {
-    justify-content: center;
-    margin-top: auto;
-  }
+.caisse .avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--couleur-primaire);
+  font-weight: 700;
 }
 
-.etat {
-  align-self: flex-start;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  background: var(--couleur-fond);
-  color: var(--couleur-texte-doux);
-  font-size: 0.8rem;
-  font-weight: 600;
-
-  &.ouverte {
-    background: color-mix(in srgb, var(--couleur-succes) 12%, #fff);
-    color: var(--couleur-succes);
-  }
+.caisse .actions-carte {
+  margin-top: auto;
 }
+
 
 .chiffres {
   display: grid;
@@ -104,8 +53,12 @@
   color: var(--couleur-danger);
 }
 
-.historique h2 {
-  font-size: 1rem;
+.historique {
+  margin-top: 1.25rem;
+
+  h2 {
+    font-size: 1rem;
+  }
 }
 
 table.tableau {
@@ -186,4 +139,28 @@ table.tableau {
   padding: 2rem;
   color: var(--couleur-texte-doux);
   text-align: center;
+}
+
+/* Comptage soumis par le caissier, en attente de validation. */
+.caisse.a-valider {
+  border-color: #e0a100;
+}
+
+.etat.a-valider {
+  color: #8a6200;
+  font-weight: 600;
+}
+
+.comptage-soumis {
+  margin: 0.4rem 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  background: #fff6e0;
+  color: #7a5200;
+  font-size: 0.88rem;
+
+  &.juste {
+    background: #e3f5ea;
+    color: var(--couleur-succes);
+  }
 }

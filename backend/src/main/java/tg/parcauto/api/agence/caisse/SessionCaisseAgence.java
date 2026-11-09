@@ -23,7 +23,8 @@ import java.time.Instant;
 @NoArgsConstructor
 public class SessionCaisseAgence extends BaseEntity {
 
-    public enum Statut { OUVERTE, FERMEE }
+    /** SOUMISE : le caissier a compte son tiroir, le superviseur doit valider (plus aucune operation). */
+    public enum Statut { OUVERTE, SOUMISE, FERMEE }
 
     @Column(name = "agence_id", nullable = false, updatable = false)
     private Long agenceId;
@@ -88,4 +89,30 @@ public class SessionCaisseAgence extends BaseEntity {
 
     @Column(name = "ecriture_fermeture_id")
     private Long ecritureFermetureId;
+
+    // Comptage soumis par le caissier, en attente de la validation du superviseur.
+    @Column(name = "soumise_le")
+    private Instant soumiseLe;
+
+    @Column(name = "montant_soumis")
+    private Long montantSoumis;
+
+    @Column(name = "ecart_soumis")
+    private Long ecartSoumis;
+
+    @Column(name = "justification_soumise", length = 1000)
+    private String justificationSoumise;
+
+    @Column(name = "billettage_soumis", columnDefinition = "text")
+    private String billettageSoumis;
+
+    // Dernier rejet du comptage (la caisse est alors rouverte au caissier).
+    @Column(name = "motif_rejet", length = 500)
+    private String motifRejet;
+
+    @Column(name = "rejetee_le")
+    private Instant rejeteeLe;
+
+    @Column(name = "rejetee_par_nom", length = 150)
+    private String rejeteeParNom;
 }

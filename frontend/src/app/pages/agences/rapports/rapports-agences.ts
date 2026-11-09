@@ -19,12 +19,13 @@ type Periodicite = 'JOUR' | 'SEMAINE' | 'MOIS' | 'ANNEE' | 'LIBRE';
   selector: 'app-rapports-agences',
   imports: [KeyValuePipe, FormsModule],
   templateUrl: './rapports-agences.html',
-  styleUrl: './rapports-agences.scss'
+  styleUrls: ['../../pdv/rapports/rapports.scss', './rapports-agences.scss']
 })
 export class RapportsAgences implements OnInit {
   readonly service = inject(AgencesService);
 
   readonly catalogue = signal<RapportAgenceCatalogue[]>([]);
+  readonly couleurs = ['bleu', 'vert', 'orange', 'violet'];
   readonly rapport = signal<Rapport | null>(null);
   readonly chargement = signal(false);
   readonly erreur = signal<string | null>(null);

@@ -34,4 +34,8 @@ public class Reseau extends BaseEntity {
 
     @Column(nullable = false)
     private boolean actif = true;
+
+    /** Logo reduit par le navigateur, en data URL (image/jpeg, image/png ou image/webp) ; nul sans logo. */
+    @Column(columnDefinition = "text")
+    private String logo;
 }

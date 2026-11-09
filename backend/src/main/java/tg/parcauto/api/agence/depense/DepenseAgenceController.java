@@ -74,7 +74,7 @@ public class DepenseAgenceController {
     }
 
     @GetMapping
-    @PreAuthorize("@droitsAgence.a('DEPENSE_SAISIR') or @droitsAgence.a('DEPENSE_ANNULER')")
+    @PreAuthorize("@droitsAgence.a('DEPENSE_SAISIR') or @droitsAgence.a('DEPENSE_ANNULER') or @droitsAgence.a('DEPENSE_VALIDER')")
     @Operation(summary = "Depenses des agences visibles ; un caissier ne voit que les siennes")
     public Page<DepenseAgenceService.DepenseDto> lister(
             @RequestParam(required = false) Long agenceId,
@@ -87,6 +87,19 @@ public class DepenseAgenceController {
         return service.lister(new DepenseAgenceService.Filtres(agenceId, du, au, categorieId, statut, q), pageable);
     }
 
+    @GetMapping("/resume")
+    @PreAuthorize("@droitsAgence.a('DEPENSE_SAISIR') or @droitsAgence.a('DEPENSE_ANNULER') or @droitsAgence.a('DEPENSE_VALIDER')")
+    @Operation(summary = "Chiffres de la liste filtree : total, repartition par categorie, moyenne, annulees")
+    public DepenseAgenceService.Resume resume(
+            @RequestParam(required = false) Long agenceId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate du,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate au,
+            @RequestParam(required = false) Long categorieId,
+            @RequestParam(required = false) DepenseAgence.Statut statut,
+            @RequestParam(required = false) String q) {
+        return service.resume(new DepenseAgenceService.Filtres(agenceId, du, au, categorieId, statut, q));
+    }
+
     @GetMapping("/synthese")
     @PreAuthorize("@droitsAgence.a('SOLDES_CONSULTER')")
     @Operation(summary = "Suivi mensuel : total, par categorie, comparaison avec les 5 mois precedents")
@@ -95,7 +108,7 @@ public class DepenseAgenceController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@droitsAgence.a('DEPENSE_SAISIR') or @droitsAgence.a('DEPENSE_ANNULER')")
+    @PreAuthorize("@droitsAgence.a('DEPENSE_SAISIR') or @droitsAgence.a('DEPENSE_ANNULER') or @droitsAgence.a('DEPENSE_VALIDER')")
     @Operation(summary = "Detail d'une depense")
     public DepenseAgenceService.DepenseDto detail(@PathVariable Long id) {
         return service.detail(id);
@@ -110,6 +123,28 @@ public class DepenseAgenceController {
         return service.creer(r, principal);
     }
 
+    @GetMapping("/a-valider")
+    @PreAuthorize("@droitsAgence.a('DEPENSE_VALIDER')")
+    @Operation(summary = "Depenses payees par la caisse qui attendent ma validation (visa du superviseur, approbation de l'administrateur)")
+    public java.util.List<DepenseAgenceService.DepenseDto> aValider(@RequestParam(required = false) Long agenceId) {
+        return service.aValider(agenceId);
+    }
+
+    @PostMapping("/{id}/validation")
+    @PreAuthorize("@droitsAgence.a('DEPENSE_VALIDER')")
+    @Operation(summary = "Vise (superviseur) ou approuve (administrateur) une depense de caisse ; approuvee, elle s'ecrit au registre")
+    public DepenseAgenceService.DepenseDto valider(@PathVariable Long id, @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.valider(id, principal);
+    }
+
+    @PostMapping("/{id}/refus")
+    @PreAuthorize("@droitsAgence.a('DEPENSE_VALIDER')")
+    @Operation(summary = "Refuse une depense de caisse en attente, avec motif")
+    public DepenseAgenceService.DepenseDto refuser(@PathVariable Long id, @Valid @RequestBody Motif motif,
+                                                   @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.refuser(id, motif.motif(), principal);
+    }
+
     @PostMapping("/{id}/annulation")
     @PreAuthorize("@droitsAgence.a('DEPENSE_ANNULER')")
     @Operation(summary = "Annule une depense par l'ecriture inverse, avec motif")
@@ -119,14 +154,14 @@ public class DepenseAgenceController {
     }
 
     @PostMapping(value = "/{id}/justificatif", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@droitsAgence.a('DEPENSE_SAISIR') or @droitsAgence.a('DEPENSE_ANNULER')")
+    @PreAuthorize("@droitsAgence.a('DEPENSE_SAISIR') or @droitsAgence.a('DEPENSE_ANNULER') or @droitsAgence.a('DEPENSE_VALIDER')")
     @Operation(summary = "Joint ou remplace le justificatif (photo ou PDF, 15 Mo au plus)")
     public DepenseAgenceService.DepenseDto joindre(@PathVariable Long id, @RequestPart("fichier") MultipartFile fichier) {
         return service.joindre(id, fichier);
     }
 
     @GetMapping("/{id}/justificatif")
-    @PreAuthorize("@droitsAgence.a('DEPENSE_SAISIR') or @droitsAgence.a('DEPENSE_ANNULER')")
+    @PreAuthorize("@droitsAgence.a('DEPENSE_SAISIR') or @droitsAgence.a('DEPENSE_ANNULER') or @droitsAgence.a('DEPENSE_VALIDER')")
     @Operation(summary = "Telecharge le justificatif")
     public ResponseEntity<Resource> justificatif(@PathVariable Long id) {
         DepenseAgenceService.DepenseDto d = service.detail(id);

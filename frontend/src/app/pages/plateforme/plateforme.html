@@ -76,6 +76,15 @@
               } @empty {
                 <small class="aucun">Aucun module</small>
               }
+              @if (e.modules.includes('AGENCES')) {
+                <!-- Option du module Agences, reglee par le super-administrateur. -->
+                <label class="option-agences" [class.active]="e.agencesMultiples"
+                       [title]="e.agencesMultiples ? 'L\'entreprise peut creer plusieurs agences' : 'Une seule agence : cochez pour en autoriser plusieurs'">
+                  <input type="checkbox" [checked]="!!e.agencesMultiples" [disabled]="enCours() !== null"
+                         (change)="basculerAgencesMultiples(e)" />
+                  {{ e.agencesMultiples ? 'Plusieurs agences autorisees' : 'Une seule agence' }}
+                </label>
+              }
             </td>
             <td>
               <span class="etiquette" [class.actif]="e.statut === 'ACTIVE'" [class.suspendu]="e.statut === 'SUSPENDUE'">

@@ -128,8 +128,9 @@ public class TransactionService {
 
     /** Resume montre avant validation. */
     public record Apercu(long commissionProposee, long commission, String baremeLibelle, String detailCommission,
-                         boolean baremeExemple, boolean commissionModifiable, List<Effet> effets, Doublon doublon,
-                         List<String> blocages) {
+                         boolean baremeExemple, boolean commissionModifiable,
+                         /** Commission versee plus tard par l'operateur : aucun compte n'est credite maintenant. */
+                         boolean commissionDifferee, List<Effet> effets, Doublon doublon, List<String> blocages) {
     }
 
     public record TransactionDto(
@@ -139,7 +140,8 @@ public class TransactionService {
             long commission, long commissionProposee, boolean commissionModifiee, String motifCommission,
             Bareme.CompteCredit compteCommission, String referenceOperateur, String clientNom, String clientTelephone,
             String clientTypePiece, String clientNumeroPiece, String carteMasquee, String observations, Long caissierId,
-            String caissierNom, TransactionAgence.Statut statut, boolean doublonConfirme, Instant annuleeLe,
+            String caissierNom, TransactionAgence.Statut statut, TransactionAgence.StatutCommission commissionStatut,
+            boolean doublonConfirme, Instant annuleeLe,
             String annuleeParNom, String motifAnnulation, boolean annulable) {
     }
 
@@ -164,7 +166,7 @@ public class TransactionService {
                 .forEach(e -> blocages.add(e.compte() + " insuffisant : il manque " + RegistreService.francs(e.manque())));
         return new Apercu(plan.commission.commission(), plan.commissionRetenue, plan.commission.baremeLibelle(),
                 plan.commission.detail(), plan.commission.exemple(), droits.courants().contains(PermissionAgence.COMMISSION_MODIFIER),
-                effets, plan.doublon, blocages);
+                plan.service.isCommissionDifferee(), effets, plan.doublon, blocages);
     }
 
     /** Valide la transaction : ecriture au registre, fiche client, trace d'une commission modifiee. */
@@ -200,6 +202,9 @@ public class TransactionService {
         t.setBaremeId(plan.commission.baremeId());
         t.setCompteCommission(plan.commission.compteCredit());
         t.setMotifCommission(modifiee ? s.motifCommission().trim() : null);
+        // Versement differe : la commission est acquise mais attend le versement de l'operateur.
+        t.setCommissionStatut(plan.service.isCommissionDifferee() && plan.commissionRetenue > 0
+                ? TransactionAgence.StatutCommission.ACQUISE : TransactionAgence.StatutCommission.CREDITEE);
         t.setReferenceOperateur(texte(s.referenceOperateur()));
         t.setObservations(texte(s.observations()));
         t.setCarteMasquee(carteMasquee(s.carte()));
@@ -242,6 +247,10 @@ public class TransactionService {
             throw new BusinessException("Le motif de l'annulation est obligatoire");
         }
         verrou.exigerOuverte(t.getAgenceId(), t.getJournee(), "l'annulation de " + t.getReference());
+        if (t.getVersementId() != null) {
+            throw new BusinessException("La commission de " + t.getReference() + " est deja rapprochee d'un versement de l'operateur :"
+                    + " annulez d'abord ce versement");
+        }
         Ecriture inverse = registre.contrePasser(t.getEcritureId(), motif.trim());
         t.setStatut(TransactionAgence.Statut.ANNULEE);
         t.setAnnulationEcritureId(inverse.getId());
@@ -353,6 +362,9 @@ public class TransactionService {
             throw new BusinessException("Choisissez le reseau (" + reseauxActifs.stream().map(Reseau::getNom)
                     .collect(Collectors.joining(", ")) + ")");
         }
+        if (p.type.getReseau() != null && (p.reseau == null || !p.type.getReseau().getId().equals(p.reseau.getId()))) {
+            throw new BusinessException("L'operation " + p.type.getLibelle() + " est propre au reseau " + p.type.getReseau().getNom());
+        }
         long montant = s.montant();
         ReglageAgence reglage = reglages.findFirstByOrderByIdAsc().orElseGet(ReglageAgence::new);
         if (montant > reglage.getMontantMaxTransaction()) {
@@ -379,8 +391,7 @@ public class TransactionService {
             p.caisse = liste.stream().filter(c -> c.getId().equals(session.get().getCompteId())).findFirst()
                     .orElseThrow(() -> new BusinessException("La caisse du caissier est introuvable"));
         } else if (caissierSeul()) {
-            throw new BusinessException("Votre caisse n'est pas ouverte dans l'agence " + p.agence.getNom()
-                    + " : demandez a votre superviseur de l'ouvrir");
+            throw new BusinessException(sessions.motifSansCaisse(p.agence.getId(), p.agence.getNom(), moi));
         } else {
             p.caisse = trouver(liste, TypeCompte.CAISSE_GENERALE, null, "la caisse generale");
         }
@@ -394,7 +405,7 @@ public class TransactionService {
                     (typeVirtuel == TypeCompte.FLOAT ? "le float de " : "le compte de recharge de ") + p.service.getNom());
             ajouter(p, virtuel, typeVirtuel == TypeCompte.FLOAT ? "Virtuel" : "Recharge", montant * p.type.getEffetVirtuel());
         }
-        if (p.commissionRetenue > 0) {
+        if (p.commissionRetenue > 0 && !p.service.isCommissionDifferee()) {
             CompteAgence compteCommission = p.commission.compteCredit() == Bareme.CompteCredit.FLOAT
                     ? trouver(liste, TypeCompte.FLOAT, p.service.getId(), "le float de " + p.service.getNom())
                     : trouver(liste, TypeCompte.COMMISSIONS, null, "le compte des commissions");
@@ -597,7 +608,7 @@ public class TransactionService {
                 t.getCommission() != t.getCommissionProposee(), t.getMotifCommission(), t.getCompteCommission(),
                 t.getReferenceOperateur(), t.getClientNom(), t.getClientTelephone(), t.getClientTypePiece(),
                 t.getClientNumeroPiece(), t.getCarteMasquee(), t.getObservations(), t.getCaissierId(), t.getCaissierNom(),
-                t.getStatut(), t.isDoublonConfirme(), t.getAnnuleeLe(), t.getAnnuleeParNom(), t.getMotifAnnulation(),
+                t.getStatut(), t.getCommissionStatut(), t.isDoublonConfirme(), t.getAnnuleeLe(), t.getAnnuleeParNom(), t.getMotifAnnulation(),
                 ctx.annulation() && t.getStatut() == TransactionAgence.Statut.VALIDEE);
     }
 }

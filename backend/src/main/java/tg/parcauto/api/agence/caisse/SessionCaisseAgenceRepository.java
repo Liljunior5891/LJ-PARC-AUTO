@@ -14,5 +14,9 @@ public interface SessionCaisseAgenceRepository extends JpaRepository<SessionCais
 
     List<SessionCaisseAgence> findByAgenceIdAndStatut(Long agenceId, SessionCaisseAgence.Statut statut);
 
+    Optional<SessionCaisseAgence> findFirstByCaissierIdAndStatutIn(Long caissierId, Collection<SessionCaisseAgence.Statut> statuts);
+
+    List<SessionCaisseAgence> findByAgenceIdAndStatutIn(Long agenceId, Collection<SessionCaisseAgence.Statut> statuts);
+
     Page<SessionCaisseAgence> findByAgenceIdInOrderByOuverteLeDesc(Collection<Long> agenceIds, Pageable pageable);
 }

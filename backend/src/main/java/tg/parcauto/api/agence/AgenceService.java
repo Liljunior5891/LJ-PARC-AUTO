@@ -1,5 +1,7 @@
 package tg.parcauto.api.agence;
 
+import tg.parcauto.api.plateforme.entreprise.Entreprise;
+import tg.parcauto.api.plateforme.entreprise.EntrepriseRepository;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class AgenceService {
     private static final Set<Role> PROFILS_AGENCE = EnumSet.of(Role.SUPERVISEUR_AGENCE, Role.CAISSIER_AGENCE);
 
     private final AgenceRepository repository;
+    private final EntrepriseRepository entreprises;
     private final PerimetreAgence perimetre;
     private final PersonnelService personnel;
     private final UtilisateurRepository utilisateurs;
@@ -84,6 +87,7 @@ public class AgenceService {
         initialisation.assurer();
         Agence agence = new Agence();
         verifierUnicite(r, null);
+        verifierLimite(null, r.actif() == null || r.actif());
         appliquer(agence, r);
         agence = repository.saveAndFlush(agence);
         comptes.synchroniser(agence);
@@ -95,6 +99,9 @@ public class AgenceService {
     public Reponse modifier(Long id, Requete r) {
         Agence agence = repository.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Agence", id));
         verifierUnicite(r, id);
+        if (!agence.isActif() && Boolean.TRUE.equals(r.actif())) {
+            verifierLimite(id, true);
+        }
         Reponse avant = versDto(agence, Map.of());
         appliquer(agence, r);
         repository.flush();
@@ -102,6 +109,27 @@ public class AgenceService {
         audit.tracer(id, "MODIFICATION", "AGENCE", id, "Agence " + agence.getNom() + " modifiee", avant,
                 versDto(agence, Map.of()));
         return detail(id);
+    }
+
+    /** Plusieurs agences autorisees pour l'entreprise connectee (option du super-administrateur). */
+    @Transactional(readOnly = true)
+    public boolean agencesMultiples() {
+        return entreprises.findById(ContexteEntreprise.exiger()).map(Entreprise::isAgencesMultiples).orElse(false);
+    }
+
+    /**
+     * Sans l'option « plusieurs agences », l'entreprise n'a qu'une agence ouverte :
+     * en creer ou en rouvrir une deuxieme est refuse.
+     */
+    private void verifierLimite(Long sauf, boolean ouverte) {
+        if (!ouverte || agencesMultiples()) {
+            return;
+        }
+        boolean autreOuverte = repository.findAll().stream().anyMatch(a -> a.isActif() && !a.getId().equals(sauf));
+        if (autreOuverte) {
+            throw new BusinessException("Votre abonnement comprend une seule agence. Pour en gerer plusieurs, demandez a "
+                    + "l'administrateur de la plateforme d'activer l'option « plusieurs agences ».");
+        }
     }
 
     private void verifierUnicite(Requete r, Long id) {

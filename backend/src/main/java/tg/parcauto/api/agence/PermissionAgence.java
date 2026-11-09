@@ -13,11 +13,15 @@ import java.util.Set;
  */
 public enum PermissionAgence {
 
+    TABLEAU_BORD("Voir le tableau de bord de son agence", "Soldes",
+            EnumSet.of(Role.SUPERVISEUR_AGENCE, Role.CAISSIER_AGENCE)),
     SOLDES_CONSULTER("Consulter les soldes et la tresorerie", "Soldes",
             EnumSet.of(Role.SUPERVISEUR_AGENCE)),
     TRANSACTION_SAISIR("Saisir une transaction", "Operations",
             EnumSet.of(Role.SUPERVISEUR_AGENCE, Role.CAISSIER_AGENCE)),
     COMMISSION_MODIFIER("Modifier la commission proposee par le bareme (trace)", "Operations",
+            EnumSet.of(Role.SUPERVISEUR_AGENCE)),
+    COMMISSION_RAPPROCHER("Rapprocher les commissions avec les versements des operateurs", "Tresorerie",
             EnumSet.of(Role.SUPERVISEUR_AGENCE)),
     HISTORIQUE_COMPLET("Voir les operations de tous les caissiers", "Operations",
             EnumSet.of(Role.SUPERVISEUR_AGENCE)),
@@ -29,9 +33,11 @@ public enum PermissionAgence {
             EnumSet.of(Role.SUPERVISEUR_AGENCE)),
     DEPENSE_ANNULER("Annuler une depense (avec motif)", "Operations",
             EnumSet.of(Role.SUPERVISEUR_AGENCE)),
+    DEPENSE_VALIDER("Viser une depense payee par la caisse (avant l'administrateur)", "Operations",
+            EnumSet.of(Role.SUPERVISEUR_AGENCE)),
     CREDIT_GERER("Enregistrer les credits, dettes, apports et remboursements", "Tresorerie",
             EnumSet.noneOf(Role.class)),
-    CARTE_STOCK("Approvisionner le stock de cartes prepayees", "Tresorerie",
+    CARTE_STOCK("Entrer des cartes prepayees en stock (superviseur et administrateur seulement)", "Tresorerie",
             EnumSet.of(Role.SUPERVISEUR_AGENCE)),
     MOUVEMENT_SAISIR("Mouvements entre comptes (approvisionnement, banque...)", "Tresorerie",
             EnumSet.of(Role.SUPERVISEUR_AGENCE)),

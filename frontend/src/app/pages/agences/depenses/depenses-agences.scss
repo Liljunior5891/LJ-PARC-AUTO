@@ -1,43 +1,13 @@
-.actions-entete {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-
-  select {
-    padding: 0.5rem 0.7rem;
-    border: 1px solid var(--couleur-bordure);
-    border-radius: 8px;
-    font: inherit;
-    background: var(--couleur-surface);
-  }
-}
-
-.filtres {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.8rem;
-  margin-bottom: 1rem;
-
-  input,
-  select {
-    padding: 0.45rem 0.6rem;
-    border: 1px solid var(--couleur-bordure);
-    border-radius: 8px;
-    font: inherit;
-    background: var(--couleur-surface);
-  }
-
-  label {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-  }
-}
-
 table.tableau {
   .montant {
     text-align: right;
     white-space: nowrap;
+  }
+
+  td.vide {
+    padding: 1.5rem;
+    color: var(--couleur-texte-doux);
+    text-align: center;
   }
 
   .actions {
@@ -139,9 +109,13 @@ table.tableau {
     font-size: 0.82rem;
   }
 
-  input,
-  select {
-    padding: 0.45rem 0.6rem;
+  label:has(select) {
+    min-width: 260px;
+  }
+
+  input {
+    height: 38px;
+    padding: 0 0.6rem;
     border: 1px solid var(--couleur-bordure);
     border-radius: 8px;
     font: inherit;
@@ -194,4 +168,24 @@ table.tableau {
   padding: 1.5rem;
   color: var(--couleur-texte-doux);
   text-align: center;
+}
+
+.resume-depenses {
+  margin: 1rem 0 0;
+}
+
+/* Onglet « A valider » : depenses de caisse en attente du superviseur ou de l'administrateur. */
+.aide-validation {
+  margin-top: 0;
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+}
+
+td.actions-validation {
+  white-space: nowrap;
+  text-align: right;
+
+  .bouton + .bouton {
+    margin-left: 0.35rem;
+  }
 }

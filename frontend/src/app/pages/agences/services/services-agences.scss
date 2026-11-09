@@ -1,39 +1,84 @@
-.catalogue {
+.filtres-categorie {
   display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
 }
 
-.titre-categorie {
-  margin: 0 0 0.6rem;
-  color: var(--couleur-primaire);
+.puce-filtre {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--couleur-texte);
   font-size: 0.85rem;
+  cursor: pointer;
+
+  > span {
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: #eef2f7;
+    color: var(--couleur-texte-doux);
+    font-size: 0.75rem;
+  }
+
+  &.actif {
+    border-color: var(--couleur-primaire);
+    background: var(--couleur-primaire);
+    color: #fff;
+
+    > span { background: rgba(255, 255, 255, 0.25); color: #fff; }
+  }
+}
+
+/* Une seule grille en colonnes (maconnerie) : chaque carte prend la premiere
+   place libre, sans laisser de vide a droite ni sous les cartes courtes. */
+.grille-services {
+  columns: 340px;
+  column-gap: 1rem;
+}
+
+.categorie-service {
+  display: block;
+  color: var(--couleur-primaire);
+  font-size: 0.7rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.grille-services {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1rem;
 }
 
 .service {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  border-top: 4px solid var(--couleur-primaire);
+  break-inside: avoid;
+  margin-bottom: 1rem;
+  border-top: 4px solid var(--couleur-succes);
+
+  /* Carte individuelle d'un reseau (Ria, Kori...) : liseré bleu. */
+  &.reseau {
+    border-top-color: var(--couleur-primaire);
+  }
 
   &.inactif {
     opacity: 0.6;
     border-top-color: var(--couleur-bordure);
   }
 
+  /* En-tete en bandeau bleu, comme les cartes des caisses du PDV. */
   > header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.5rem;
+    margin: -1.25rem -1.25rem 0;
+    padding: 0.85rem 1.25rem;
+    background: #eaf3fe;
+    border-bottom: 1px solid #d5e5fb;
+    border-radius: var(--rayon) var(--rayon) 0 0;
 
     h3 {
       display: inline;
@@ -82,24 +127,13 @@
   font-size: 0.78rem;
 }
 
-.operations {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-
-  th {
-    padding: 0.3rem 0.4rem;
-    color: var(--couleur-texte-doux);
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-align: left;
-    border-bottom: 1px solid var(--couleur-bordure);
+table.tableau.operations {
+  th,
+  td {
+    padding: 0.5rem 0.6rem;
   }
 
   td {
-    padding: 0.4rem;
-    border-bottom: 1px solid #f0f2f5;
-
     small {
       margin-left: 0.25rem;
       color: var(--couleur-texte-doux);
@@ -214,4 +248,54 @@
   padding: 2rem;
   color: var(--couleur-texte-doux);
   text-align: center;
+}
+
+.service > header .titre-service {
+  flex: 1;
+  min-width: 0;
+}
+
+.puce-reseau {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.choix-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 1rem 0 0.6rem;
+
+  > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .aide {
+    flex-basis: 100%;
+    margin: 0;
+  }
+}
+
+/* Operation propre a un reseau, sur sa carte individuelle. */
+.etiquette.propre {
+  background: #eaf3fe;
+  color: var(--couleur-primaire);
+}
+
+.pied-reseau {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.effets-detachement {
+  margin: 0 0 1rem;
+  padding-left: 1.2rem;
+  line-height: 1.5;
 }

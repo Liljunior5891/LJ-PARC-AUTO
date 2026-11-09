@@ -14,21 +14,20 @@
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }
 
-<div class="filtres">
+<app-onglets-inclines [onglets]="ongletsStatut" [actif]="filtreStatut || 'TOUS'"
+                      (choisir)="choisirStatut($event)" />
+
+<div class="carte">
   @if (agences().length > 1) {
-    <select [(ngModel)]="filtreAgence" (ngModelChange)="filtrer()" aria-label="Agence">
-      <option [ngValue]="null">Toutes les agences</option>
-      @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
-    </select>
+    <div class="filtres-ligne" style="margin-bottom: 1rem">
+      <div class="filtre">
+        <select [(ngModel)]="filtreAgence" (ngModelChange)="filtrer()" aria-label="Agence">
+          <option [ngValue]="null">Toutes les agences</option>
+          @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+        </select>
+      </div>
+    </div>
   }
-  <div class="onglets-statut" role="tablist">
-    <button type="button" [class.actif]="filtreStatut === ''" (click)="filtreStatut = ''; filtrer()">Tous</button>
-    <button type="button" [class.actif]="filtreStatut === 'EN_ATTENTE'" (click)="filtreStatut = 'EN_ATTENTE'; filtrer()">En attente</button>
-    <button type="button" [class.actif]="filtreStatut === 'VALIDE'" (click)="filtreStatut = 'VALIDE'; filtrer()">Valides</button>
-    <button type="button" [class.actif]="filtreStatut === 'REJETE'" (click)="filtreStatut = 'REJETE'; filtrer()">Rejetes</button>
-    <button type="button" [class.actif]="filtreStatut === 'ANNULE'" (click)="filtreStatut = 'ANNULE'; filtrer()">Annules</button>
-  </div>
-</div>
 
 @if (page(); as p) {
   <div class="tableau-conteneur">
@@ -57,15 +56,16 @@
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="9" class="vide">Aucun mouvement.</td></tr>
+          <tr><td colspan="9"><div class="message vide">Aucun mouvement.</div></td></tr>
         }
       </tbody>
     </table>
   </div>
   <app-suite-liste [page]="p" (suite)="suiteListe()" />
 } @else {
-  <p class="vide">Chargement...</p>
+  <div class="message vide">Chargement...</div>
 }
+</div>
 
 @if (saisie()) {
   <app-modale titre="Nouveau mouvement" largeur="720px" [erreur]="erreurModale()" (ferme)="saisie.set(false)">

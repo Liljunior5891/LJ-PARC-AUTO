@@ -17,17 +17,57 @@
 @if (chargement()) {
   <p class="vide">Chargement du catalogue...</p>
 } @else {
+  @if (parCategorie().length > 1) {
+    <div class="filtres-categorie">
+      <button type="button" class="puce-filtre" [class.actif]="!filtreCategorie()" (click)="filtreCategorie.set(null)">
+        Toutes <span>{{ services().length }}</span>
+      </button>
+      @for (g of parCategorie(); track g.categorie) {
+        <button type="button" class="puce-filtre" [class.actif]="filtreCategorie() === g.categorie" (click)="filtreCategorie.set(g.categorie)">
+          {{ g.categorie }} <span>{{ g.services.length }}</span>
+        </button>
+      }
+    </div>
+  }
   <div class="liste-defilante catalogue">
-    @for (g of parCategorie(); track g.categorie) {
-      <section class="categorie">
-        <h2 class="titre-categorie">{{ g.categorie }}</h2>
         <div class="grille-services">
-          @for (s of g.services; track s.id) {
+          @for (c of cartes(); track c.cle) {
+            @let s = c.service;
+            @if (c.reseau; as r) {
+            <article class="carte service reseau" [class.inactif]="!r.actif || !s.actif">
+              <header>
+                <app-logo-service [nom]="r.nom" [logo]="r.logo" [taille]="40" />
+                <div class="titre-service">
+                  <span class="categorie-service">{{ s.categorie }} · Reseau de {{ s.nom }}</span>
+                  <h3>{{ r.nom }}</h3>
+                  @if (!r.actif) { <span class="etiquette">Desactive</span> }
+                  <span class="etiquette">{{ s.commissionDifferee ? 'Versement differe' : 'Credit immediat' }}</span>
+                </div>
+                @if (modifiable()) {
+                  <button class="bouton secondaire petit" type="button" (click)="modifierReseau(s, r)">Modifier</button>
+                }
+              </header>
+              <p class="note">Float partage avec {{ s.nom }}. Les operations « communes » valent pour tous ses reseaux ; ajoutez ici celles propres a {{ r.nom }}.</p>
+              <ng-container *ngTemplateOutlet="operations; context: { $implicit: s, reseau: r }" />
+              @if (modifiable()) {
+                <div class="pied-reseau">
+                  <button type="button" class="ajout" (click)="nouveauType(s, r)">+ Operation propre a {{ r.nom }}</button>
+                  @if (r.actif) {
+                    <button type="button" class="bouton petit" (click)="detacher(s, r)"
+                            title="Son propre float, ses operations et ses baremes, comme Xpress ou Mixx">Gerer comme un service a part</button>
+                  }
+                </div>
+              }
+            </article>
+            } @else {
             <article class="carte service" [class.inactif]="!s.actif">
               <header>
-                <div>
+                <app-logo-service [nom]="s.nom" [logo]="s.logo" [taille]="40" />
+                <div class="titre-service">
+                  <span class="categorie-service">{{ s.categorie }}</span>
                   <h3>{{ s.nom }}</h3>
                   @if (!s.actif) { <span class="etiquette">Desactive</span> }
+                  <span class="etiquette" [title]="s.commissionDifferee ? 'Commission creditee au versement de l operateur' : 'Commission creditee aussitot'">{{ s.commissionDifferee ? 'Versement differe' : 'Credit immediat' }}</span>
                 </div>
                 @if (modifiable()) {
                   <button class="bouton secondaire petit" type="button" (click)="modifierService(s)">Modifier</button>
@@ -39,7 +79,7 @@
                   <small>Reseaux</small>
                   @for (r of s.reseaux; track r.id) {
                     <button type="button" class="puce-reseau" [class.inactif]="!r.actif" [disabled]="!modifiable()"
-                            (click)="modifierReseau(s, r)" [title]="modifiable() ? 'Modifier le reseau' : r.nom">{{ r.nom }}</button>
+                            (click)="modifierReseau(s, r)" [title]="modifiable() ? 'Modifier le reseau' : r.nom"><app-logo-service [nom]="r.nom" [logo]="r.logo" [taille]="18" /> {{ r.nom }}</button>
                   } @empty {
                     <span class="aucun">Aucun (un seul reseau)</span>
                   }
@@ -52,48 +92,59 @@
                 }
               }
 
-              <table class="operations">
-                <thead>
-                  <tr><th>Operation</th><th>Cash</th><th>Virtuel</th><th></th></tr>
-                </thead>
-                <tbody>
-                  @for (t of s.types; track t.id) {
-                    <tr [class.inactif]="!t.actif">
-                      <td>
-                        {{ t.libelle }}
-                        @if (t.nature === 'VENTE_CARTE') { <span class="etiquette vente">Chiffre d'affaires</span> }
-                        @if (!t.actif) { <span class="etiquette">Desactivee</span> }
-                      </td>
-                      <td><span class="sens" [class.plus]="t.effetCash > 0" [class.moins]="t.effetCash < 0">{{ sens(t.effetCash) }}</span></td>
-                      <td>
-                        @if (t.compteVirtuel === 'AUCUN') {
-                          <span class="aucun">—</span>
-                        } @else {
-                          <span class="sens" [class.plus]="t.effetVirtuel > 0" [class.moins]="t.effetVirtuel < 0">{{ sens(t.effetVirtuel) }}</span>
-                          <small>{{ t.compteVirtuel === 'FLOAT' ? 'float' : 'recharge' }}</small>
-                        }
-                      </td>
-                      <td class="action">
-                        @if (modifiable()) {
-                          <button class="lien" type="button" (click)="modifierType(s, t)">Modifier</button>
-                        }
-                      </td>
-                    </tr>
-                  } @empty {
-                    <tr><td colspan="4" class="aucun">Aucune operation : le service n'apparaitra pas a la saisie.</td></tr>
-                  }
-                </tbody>
-              </table>
+              @if (s.reseaux.length) {
+                <p class="note">Operations communes a tous les reseaux de {{ s.nom }}.</p>
+              }
+              <ng-container *ngTemplateOutlet="operations; context: { $implicit: s, reseau: null }" />
               @if (modifiable()) {
-                <button type="button" class="ajout" (click)="nouveauType(s)">+ Operation</button>
+                <button type="button" class="ajout" (click)="nouveauType(s)">+ Operation{{ s.reseaux.length ? ' commune' : '' }}</button>
               }
             </article>
+            }
           }
         </div>
-      </section>
-    }
   </div>
 }
+
+<ng-template #operations let-s let-reseau="reseau">
+  <div class="tableau-conteneur">
+  <table class="tableau operations">
+    <thead>
+      <tr><th>Operation</th><th>Cash</th><th>Virtuel</th><th></th></tr>
+    </thead>
+    <tbody>
+      @for (t of typesCarte(s, reseau); track t.id) {
+        <tr [class.inactif]="!t.actif">
+          <td>
+            {{ t.libelle }}
+            @if (reseau) {
+              @if (t.reseauId) { <span class="etiquette propre">Propre</span> } @else { <span class="etiquette">Commune</span> }
+            }
+            @if (t.nature === 'VENTE_CARTE') { <span class="etiquette vente">Chiffre d'affaires</span> }
+            @if (!t.actif) { <span class="etiquette">Desactivee</span> }
+          </td>
+          <td><span class="sens" [class.plus]="t.effetCash > 0" [class.moins]="t.effetCash < 0">{{ sens(t.effetCash) }}</span></td>
+          <td>
+            @if (t.compteVirtuel === 'AUCUN') {
+              <span class="aucun">—</span>
+            } @else {
+              <span class="sens" [class.plus]="t.effetVirtuel > 0" [class.moins]="t.effetVirtuel < 0">{{ sens(t.effetVirtuel) }}</span>
+              <small>{{ t.compteVirtuel === 'FLOAT' ? 'float' : 'recharge' }}</small>
+            }
+          </td>
+          <td class="action">
+            @if (modifiable()) {
+              <button class="lien" type="button" (click)="modifierType(s, t)">Modifier</button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="4" class="aucun">Aucune operation : {{ reseau ? 'le reseau' : 'le service' }} n'apparaitra pas a la saisie.</td></tr>
+      }
+    </tbody>
+  </table>
+  </div>
+</ng-template>
 
 @if (edition(); as e) {
   <app-modale [titre]="titre(e)" largeur="620px" [erreur]="erreurFormulaire()" (ferme)="edition.set(null)">
@@ -114,6 +165,19 @@
               </datalist>
             </div>
           </div>
+          <div class="choix-logo">
+            <app-logo-service [nom]="formService.nom || 'Logo'" [logo]="formService.logo" [taille]="56" />
+            <div>
+              <label class="bouton secondaire petit">
+                {{ formService.logo ? 'Changer le logo' : 'Choisir un logo' }}
+                <input type="file" accept="image/png,image/jpeg,image/webp" hidden (change)="choisirLogo($event, formService)" />
+              </label>
+              @if (formService.logo) { <button class="bouton secondaire petit danger" type="button" (click)="formService.logo = ''">Retirer</button> }
+              <small class="aide">Image carree de preference (PNG, JPEG ou WebP). Sans logo, une pastille aux initiales s'affiche.</small>
+            </div>
+          </div>
+          <label class="case"><input type="checkbox" name="differee" [(ngModel)]="formService.commissionDifferee" />
+            Commission versee plus tard par l'operateur (a rapprocher avec ses versements)</label>
           @if (e.id) {
             <label class="case"><input type="checkbox" name="actif" [(ngModel)]="formService.actif" /> Service actif (propose a la saisie)</label>
           } @else {
@@ -129,6 +193,18 @@
             <label for="reseau">Nom du reseau *</label>
             <input id="reseau" name="reseau" required maxlength="120" [(ngModel)]="formReseau.nom" placeholder="Ex. Western Union" />
           </div>
+          <div class="choix-logo">
+            <app-logo-service [nom]="formReseau.nom || 'Logo'" [logo]="formReseau.logo" [taille]="56" />
+            <div>
+              <label class="bouton secondaire petit">
+                {{ formReseau.logo ? 'Changer le logo' : 'Choisir un logo' }}
+                <input type="file" accept="image/png,image/jpeg,image/webp" hidden (change)="choisirLogo($event, formReseau)" />
+              </label>
+              @if (formReseau.logo) { <button class="bouton secondaire petit danger" type="button" (click)="formReseau.logo = ''">Retirer</button> }
+              <small class="aide">Image carree de preference (PNG, JPEG ou WebP). Sans logo, une pastille aux initiales s'affiche.</small>
+            </div>
+          </div>
+
           @if (e.id) {
             <label class="case"><input type="checkbox" name="actif" [(ngModel)]="formReseau.actif" /> Reseau actif</label>
           }
@@ -183,5 +259,23 @@
         }
       }
     </form>
+  </app-modale>
+}
+
+@if (aDetacher(); as d) {
+  <app-modale [titre]="'Gerer ' + d.reseau.nom + ' a part'" largeur="520px" [erreur]="erreurFormulaire()" (ferme)="aDetacher.set(null)">
+    <ul class="effets-detachement">
+      <li>{{ d.reseau.nom }} devient un service, comme Xpress ou Mixx, avec <strong>son propre float</strong> dans chaque agence
+        (a approvisionner par « Mouvements »).</li>
+      <li>Ses operations et ses baremes en cours sont recopies.</li>
+      <li>Le reseau est desactive dans {{ d.service.nom }} ; ses anciennes transactions y restent consultables.</li>
+      @if (dernierReseau(d.service)) {
+        <li>C'est le dernier reseau : <strong>{{ d.service.nom }} sera desactive</strong>. Pensez a transferer le solde de son float.</li>
+      }
+    </ul>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="aDetacher.set(null)">Annuler</button>
+      <button class="bouton" type="button" (click)="confirmerDetachement()">Gerer a part</button>
+    </div>
   </app-modale>
 }

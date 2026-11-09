@@ -21,7 +21,18 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class DepenseAgence extends BaseEntity {
 
-    public enum Statut { VALIDEE, ANNULEE }
+    /**
+     * ATTENTE_SUPERVISEUR et ATTENTE_ADMIN : depense payee par une caisse, en
+     * attente des validations (reglage des agences) ; rien n'est ecrit au registre
+     * avant l'approbation de l'administrateur. REFUSEE : refusee a l'une des etapes.
+     */
+    public enum Statut {
+        ATTENTE_SUPERVISEUR, ATTENTE_ADMIN, VALIDEE, REFUSEE, ANNULEE;
+
+        public boolean enAttente() {
+            return this == ATTENTE_SUPERVISEUR || this == ATTENTE_ADMIN;
+        }
+    }
 
     @Column(name = "agence_id", nullable = false, updatable = false)
     private Long agenceId;
@@ -38,13 +49,15 @@ public class DepenseAgence extends BaseEntity {
     @Column(nullable = false, updatable = false)
     private long montant;
 
-    @Column(nullable = false, updatable = false)
+    /** Journee de caisse de l'ecriture ; pour une depense validee apres coup, celle de l'approbation. */
+    @Column(nullable = false)
     private LocalDate journee;
 
     @Column(name = "date_depense", nullable = false, updatable = false)
     private Instant dateDepense;
 
-    @Column(name = "compte_id", nullable = false, updatable = false)
+    /** Compte debite ; pour une depense de caissier approuvee apres la fermeture de sa caisse, la caisse generale. */
+    @Column(name = "compte_id", nullable = false)
     private Long compteId;
 
     @Column(length = 150)
@@ -95,4 +108,25 @@ public class DepenseAgence extends BaseEntity {
 
     @Column(name = "motif_annulation", length = 500)
     private String motifAnnulation;
+
+    @Column(name = "visee_par_nom", length = 150)
+    private String viseeParNom;
+
+    @Column(name = "visee_le")
+    private Instant viseeLe;
+
+    @Column(name = "approuvee_par_nom", length = 150)
+    private String approuveeParNom;
+
+    @Column(name = "approuvee_le")
+    private Instant approuveeLe;
+
+    @Column(name = "refusee_par_nom", length = 150)
+    private String refuseeParNom;
+
+    @Column(name = "refusee_le")
+    private Instant refuseeLe;
+
+    @Column(name = "motif_refus", length = 500)
+    private String motifRefus;
 }

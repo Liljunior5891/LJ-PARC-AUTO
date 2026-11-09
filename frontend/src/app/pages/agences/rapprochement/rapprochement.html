@@ -1,0 +1,169 @@
+<div class="entete-page">
+  <div>
+    <h1>Rapprochement des commissions</h1>
+    <p class="sous-titre">Les commissions sont acquises des la transaction, mais l'operateur les verse plus tard. Enregistrez chaque versement
+      en cochant les commissions qu'il couvre : l'ecart entre l'attendu et le verse est calcule.</p>
+  </div>
+  @if (agences().length > 1) {
+    <div class="choix-agence-entete">
+      <select [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
+        @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+      </select>
+    </div>
+  }
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+<div class="cartes-apercu tete-ecran operateurs">
+  @for (o of attentes(); track o.serviceId) {
+    <button type="button" class="carte-apercu orange" [class.calme]="!o.nombre" [class.active]="operateur()?.serviceId === o.serviceId"
+            (click)="choisirOperateur(o)">
+      <app-logo-service class="logo-operateur" [nom]="o.service" [logo]="logoService(o.serviceId)" [taille]="48" />
+      <span class="textes">
+        <span class="libelle">{{ o.service }}</span>
+        <strong>{{ o.montant | number: '1.0-0' }}<em> F</em></strong>
+        <small>{{ o.nombre ? o.nombre + ' en attente depuis le ' + (o.plusAncienne | date: 'dd/MM') : (o.differe ? 'Rien en attente' : 'Credit immediat') }}</small>
+      </span>
+    </button>
+  }
+</div>
+
+@if (operateur(); as o) {
+  <section class="carte">
+    <header class="tete">
+      <h2>{{ o.service }} — commissions en attente</h2>
+      <div class="dates-periode">
+        <span>Du</span>
+        <input type="date" [(ngModel)]="du" (change)="filtrer()" aria-label="Du" />
+        <span>au</span>
+        <input type="date" [(ngModel)]="au" (change)="filtrer()" aria-label="Au" />
+      </div>
+    </header>
+    @if (commissions(); as p) {
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead>
+            <tr>
+              <th class="case-col"><input type="checkbox" [checked]="p.content.length && choisies().size === p.content.length" (change)="toutCocher()"
+                                          aria-label="Tout cocher" /></th>
+              <th>Date</th><th>Reference</th><th>Operation</th><th class="montant">Montant</th><th class="montant">Commission</th><th>Caissier</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of p.content; track c.transactionId) {
+              <tr class="cliquable" [class.choisie]="estChoisie(c)" (click)="basculer(c)">
+                <td class="case-col"><input type="checkbox" [checked]="estChoisie(c)" (click)="$event.stopPropagation()" (change)="basculer(c)"
+                                            [attr.aria-label]="'Choisir ' + c.reference" /></td>
+                <td>{{ c.date | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td>{{ c.reference }}</td>
+                <td>{{ c.operation }}{{ c.reseau ? ' · ' + c.reseau : '' }}</td>
+                <td class="montant numerique">{{ c.montant | number: '1.0-0' }}</td>
+                <td class="montant numerique"><strong>{{ c.commission | number: '1.0-0' }}</strong></td>
+                <td>{{ c.caissierNom }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7"><div class="message vide">Aucune commission en attente{{ du || au ? ' sur cette periode' : '' }}.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-suite-liste [page]="p" (suite)="suiteCommissions()" />
+      @if (service.peut('COMMISSION_RAPPROCHER') && p.content.length) {
+        <div class="actions-rapprochement">
+          <span>{{ choisies().size }} cochee(s) · <strong class="numerique">{{ totalChoisi() | number: '1.0-0' }} F</strong></span>
+          <button class="bouton secondaire" type="button" (click)="ouvrirVersement('periode')">Versement pour toute la periode</button>
+          <button class="bouton" type="button" [disabled]="!choisies().size" (click)="ouvrirVersement('selection')">Versement pour la selection</button>
+        </div>
+      }
+    }
+  </section>
+
+  <section class="carte">
+    <h2>Versements de {{ o.service }}</h2>
+    @if (versements(); as p) {
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Date</th><th>Reference</th><th>Ref. operateur</th><th class="montant">Commissions</th><th class="montant">Attendu</th><th class="montant">Verse</th><th class="montant">Ecart</th><th>Compte</th><th></th></tr></thead>
+          <tbody>
+            @for (v of p.content; track v.id) {
+              <tr [class.annule]="v.statut === 'ANNULE'">
+                <td>{{ v.dateVersement | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td>{{ v.reference }}</td>
+                <td>{{ v.referenceOperateur ?? '' }}</td>
+                <td class="montant numerique">{{ v.nombreCommissions }}</td>
+                <td class="montant numerique">{{ v.montantAttendu | number: '1.0-0' }}</td>
+                <td class="montant numerique">{{ v.montantVerse | number: '1.0-0' }}</td>
+                <td class="montant numerique" [class.moins]="v.ecart < 0" [class.plus]="v.ecart > 0">{{ v.ecart > 0 ? '+' : '' }}{{ v.ecart | number: '1.0-0' }}</td>
+                <td>{{ v.compteNom }}</td>
+                <td class="actions">
+                  @if (v.statut === 'VALIDE' && service.peut('COMMISSION_RAPPROCHER')) {
+                    <button class="bouton secondaire petit" type="button" (click)="demanderAnnulation(v)">Annuler</button>
+                  } @else if (v.statut === 'ANNULE') { <small>Annule : {{ v.motifAnnulation }}</small> }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="9"><div class="message vide">Aucun versement enregistre.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-suite-liste [page]="p" (suite)="suiteHistorique()" />
+    }
+  </section>
+}
+
+@if (saisie(); as mode) {
+  <app-modale [titre]="'Versement ' + (operateur()?.service ?? '')"
+              [sousTitre]="mode === 'selection' ? choisies().size + ' commission(s) cochee(s)' : 'Toutes les commissions en attente' + (du || au ? ' de la periode' : '')"
+              largeur="600px" [erreur]="erreurModale()" (ferme)="saisie.set(null)">
+    <form (ngSubmit)="enregistrer()">
+      <div class="attendu">Attendu : <strong class="numerique">{{ attendu() | number: '1.0-0' }} F</strong></div>
+      <div class="grille-formulaire">
+        <div class="champ">
+          <label for="verse">Montant verse par l'operateur (F) *</label>
+          <input id="verse" name="verse" type="number" min="0" step="1" [(ngModel)]="fv.montantVerse" />
+        </div>
+        <div class="champ">
+          <label for="compte">Recu sur *</label>
+          <select id="compte" name="compte" [(ngModel)]="fv.compteId">
+            @for (c of comptes(); track c.id) { <option [ngValue]="c.id">{{ c.libelle }}</option> }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="ref">Reference de l'operateur</label>
+          <input id="ref" name="ref" maxlength="80" [(ngModel)]="fv.referenceOperateur" placeholder="Ex. releve d'octobre" />
+        </div>
+        <div class="champ">
+          <label for="obs">Observations</label>
+          <input id="obs" name="obs" maxlength="500" [(ngModel)]="fv.observations" />
+        </div>
+      </div>
+      <div class="ecart" [class.nul]="ecart() === 0" [class.negatif]="ecart() < 0">
+        Ecart : <strong>{{ ecart() > 0 ? '+' : '' }}{{ ecart() | number: '1.0-0' }} F</strong>
+        {{ ecart() === 0 ? '(conforme)' : ecart() < 0 ? '(l\'operateur a verse moins que prevu)' : '(l\'operateur a verse plus que prevu)' }}
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="saisie.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="fv.montantVerse == null || fv.compteId == null">Enregistrer le versement</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (aAnnuler(); as v) {
+  <app-modale [titre]="'Annuler ' + v.reference" largeur="480px" [erreur]="erreurModale()" (ferme)="aAnnuler.set(null)">
+    <form (ngSubmit)="annuler()">
+      <p class="aide">Le montant verse ressort du compte et les {{ v.nombreCommissions }} commission(s) repassent en attente.</p>
+      <div class="champ">
+        <label for="motif">Motif *</label>
+        <input id="motif" name="motif" maxlength="500" [(ngModel)]="motif" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="aAnnuler.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motif.trim()">Annuler le versement</button>
+      </div>
+    </form>
+  </app-modale>
+}

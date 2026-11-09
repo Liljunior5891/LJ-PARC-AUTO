@@ -1,9 +1,12 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { Component, LOCALE_ID, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AlerteAgence, ServiceFinancier, TableauBordAgences } from '../../../core/models/agences';
 import { AgencesService } from '../../../core/services/agences.service';
+import { MaCaisseAgence } from '../caisses/ma-caisse-agence';
+import { LogoService, attributsOption } from '../../../shared/logo-service';
+import { grosMontant } from '../../../shared/montant';
 import { Periode, dateIso, datesDePeriode } from '../../../shared/periodes';
 
 /** Periodes du cahier des charges : aujourd'hui, hier, semaine, mois, mois precedent, annee, personnalisee. */
@@ -24,6 +27,12 @@ const LARGEUR = 640;
 const HAUTEUR = 220;
 const MARGE = { haut: 12, droite: 12, bas: 26, gauche: 64 };
 
+/** Anneau des commissions par service (meme geometrie que le PDV). */
+const RAYON_DONUT = 60;
+const CIRCONFERENCE = 2 * Math.PI * RAYON_DONUT;
+const ECART_ARC = 3;
+const PALETTE = ['#ff8c1a', '#2f6fd6', '#7c9a3c', '#1f6b52', '#22c3a6', '#a855f7', '#d9b24a'];
+
 interface Barre { x: number; y: number; largeur: number; hauteur: number; chemin: string }
 
 /**
@@ -34,13 +43,21 @@ interface Barre { x: number; y: number; largeur: number; hauteur: number; chemin
  */
 @Component({
   selector: 'app-tableau-bord-agences',
-  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink],
+  imports: [DatePipe, DecimalPipe, FormsModule, LogoService, MaCaisseAgence, NgTemplateOutlet, RouterLink],
   templateUrl: './tableau-bord-agences.html',
-  styleUrl: './tableau-bord-agences.scss'
+  styleUrls: ['../../tableau-bord/tableau-bord.scss', './tableau-bord-agences.scss']
 })
 export class TableauBordAgencesPage implements OnInit {
   readonly service = inject(AgencesService);
+  private readonly locale = inject(LOCALE_ID);
   readonly periodes = PERIODES_AGENCE;
+  readonly circonference = CIRCONFERENCE;
+  readonly opt = attributsOption;
+  /** Caissier sans le droit de voir toutes les operations : le tableau de bord ne montre que les siennes. */
+  readonly caissier = computed(() => !!this.service.moi() && !this.service.peut('HISTORIQUE_COMPLET'));
+  readonly couleurCommissions = '#22a27a';
+  readonly couleurVolume = '#2f6fd6';
+  readonly couleurTresorerie = '#1f7a5c';
   readonly L = LARGEUR;
   readonly H = HAUTEUR;
   readonly M = MARGE;
@@ -64,7 +81,32 @@ export class TableauBordAgencesPage implements OnInit {
   readonly survolJour = signal<number | null>(null);
   readonly survolTresorerie = signal<number | null>(null);
 
+  private readonly route = inject(ActivatedRoute);
+
+  /** Nom de l'agence affichee : celle choisie, ou la seule de l'utilisateur (superviseur, caissier). */
+  readonly agenceAffichee = computed(() => {
+    const agences = this.service.moi()?.agences ?? [];
+    const id = this.agenceFiltre();
+    return id != null ? agences.find((a) => a.id === id)?.nom : agences.length === 1 ? agences[0].nom : undefined;
+  });
+  private readonly agenceFiltre = signal<number | null>(null);
+
+  /** Sous le titre : l'activite d'une agence, ou la vue de toutes les agences. */
+  readonly portee = computed(() => (this.caissier() ? 'Vos operations, votre caisse et vos depenses'
+    : this.agenceAffichee() ? 'Activite de l\'agence' : 'Vision globale des agences'));
+
+  /** Lien d'une carte, seulement si le profil a acces a l'ecran vise. */
+  lien(permission: string, route: string): string | null {
+    return this.service.peut(permission) ? route : null;
+  }
+
   ngOnInit(): void {
+    // Tableau de bord d'une agence precise, ouvert depuis sa carte (?agence=ID).
+    const demandee = Number(this.route.snapshot.queryParamMap.get('agence'));
+    if (demandee) {
+      this.agenceId = demandee;
+      this.agenceFiltre.set(demandee);
+    }
     this.service.chargerMoi().subscribe();
     this.service.catalogue().subscribe({ next: (c) => this.catalogue.set(c) });
     this.charger();
@@ -90,6 +132,7 @@ export class TableauBordAgencesPage implements OnInit {
   }
 
   charger(): void {
+    this.agenceFiltre.set(this.agenceId);
     this.service.alertes(this.agenceId).subscribe({ next: (a) => this.alertes.set(a) });
     this.service.tableauBord({ agenceId: this.agenceId, du: this.du, au: this.au, serviceId: this.serviceId,
       reseauId: this.reseauId, caissierId: this.caissierId }).subscribe({
@@ -199,6 +242,85 @@ export class TableauBordAgencesPage implements OnInit {
 
   largeurService(commissions: number): number {
     return (commissions / this.maxService()) * 100;
+  }
+
+  /** Libelle de la periode affichee, sous le titre et dans les graphiques. */
+  libellePeriode(): string {
+    const p = this.periodes.find((x) => x.valeur === this.periode);
+    if (this.periode !== 'PERSONNALISEE' && p) {
+      return p.libelle.toLowerCase();
+    }
+    const f = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
+    return this.du === this.au ? 'le ' + f(this.du) : 'du ' + f(this.du) + ' au ' + f(this.au);
+  }
+
+  /** Cash, virtuel et banque : la barre de tresorerie et sa legende. */
+  readonly comptesTresorerie = computed(() => {
+    const t = this.donnees()?.tresorerie;
+    return [
+      { libelle: 'Cash', valeur: t?.cash ?? 0, couleur: '#22a27a' },
+      { libelle: 'Virtuel', valeur: t?.virtuel ?? 0, couleur: '#2f6fd6' },
+      { libelle: 'Banque', valeur: t?.banque ?? 0, couleur: '#7a4fd1' }
+    ];
+  });
+
+  /** Commissions par service en anneau, total au centre. */
+  readonly arcsDonut = computed(() => {
+    const lignes = (this.donnees()?.parService ?? []).filter((l) => l.commissions > 0);
+    const total = lignes.reduce((s, l) => s + l.commissions, 0);
+    let cumul = 0;
+    return lignes.map((ligne, i) => {
+      const part = total === 0 ? 0 : ligne.commissions / total;
+      const arc = {
+        id: ligne.id,
+        libelle: ligne.nom,
+        total: ligne.commissions,
+        pourcent: Math.round(part * 100),
+        couleur: this.couleurArc(i),
+        longueur: Math.max(part * CIRCONFERENCE - ECART_ARC, 0),
+        decalage: -cumul * CIRCONFERENCE
+      };
+      cumul += part;
+      return arc;
+    });
+  });
+
+  logoService(id: number): string | null | undefined {
+    return this.catalogue().find((s) => s.id === id)?.logo;
+  }
+
+  logoReseau(id: number): string | null | undefined {
+    for (const s of this.catalogue()) {
+      const r = s.reseaux.find((x) => x.id === id);
+      if (r) {
+        return r.logo;
+      }
+    }
+    return undefined;
+  }
+
+  couleurArc(i: number): string {
+    return PALETTE[i % PALETTE.length];
+  }
+
+  readonly maximumReseaux = computed(() => Math.max(0, ...(this.donnees()?.parReseau.map((r) => r.volume) ?? [0])));
+  readonly maximumCommissionsReseaux = computed(() =>
+    Math.max(0, ...(this.donnees()?.parReseau.map((r) => r.commissions) ?? [0])));
+
+  grosMontant(valeur: number): string {
+    return grosMontant(valeur, this.locale);
+  }
+
+  /** Part d'une valeur dans un maximum, en pourcentage ; une valeur faible garde un trait visible. */
+  part(valeur: number, maximum: number): number {
+    if (valeur <= 0 || maximum <= 0) {
+      return 0;
+    }
+    return Math.max(1, Math.round((valeur / maximum) * 100));
+  }
+
+  initiales(nom?: string): string {
+    return (nom ?? '?').split(/\s+/).filter(Boolean).slice(0, 2).map((mot) => mot[0].toUpperCase()).join('');
   }
 
   abrege(valeur: number): string {

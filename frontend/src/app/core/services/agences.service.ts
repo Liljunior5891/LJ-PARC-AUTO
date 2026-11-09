@@ -7,8 +7,12 @@ import { Page } from '../models/models';
 import { MembrePersonnel } from '../models/pdv';
 import { Rapport } from '../models/rapport';
 import { FichierRecu } from './rapport.service';
+import { AgencesHorsLigneService } from './agences-hors-ligne.service';
 import {
   Agence,
+  AttenteOperateur,
+  CommissionAttente,
+  VersementCommission,
   AlerteAgence,
   RapportAgenceCatalogue,
   ProduitCarte,
@@ -19,6 +23,7 @@ import {
   ChargeRecurrente,
   CreditAgence,
   DepenseAgence,
+  ResumeDepenses,
   SyntheseDepenses,
   TypeCredit,
   Cloture,
@@ -62,12 +67,14 @@ import {
 export class AgencesService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/agences`;
+  /** Copies locales des lectures utiles a la saisie hors ligne. */
+  private readonly horsLigne = inject(AgencesHorsLigneService);
 
   /** Droits et agences visibles, lus une fois puis gardes pour le menu et les ecrans. */
   readonly moi = signal<DroitsMoi | null>(null);
 
   chargerMoi(): Observable<DroitsMoi> {
-    return this.http.get<DroitsMoi>(`${this.base}/moi`).pipe(tap((m) => this.moi.set(m)));
+    return this.horsLigne.avecCopie('moi', this.http.get<DroitsMoi>(`${this.base}/moi`)).pipe(tap((m) => this.moi.set(m)));
   }
 
   peut(permission: string): boolean {
@@ -93,7 +100,7 @@ export class AgencesService {
 
   // ---------------------------------------------------------- catalogue
   catalogue(): Observable<ServiceFinancier[]> {
-    return this.http.get<ServiceFinancier[]>(`${this.base}/catalogue`);
+    return this.horsLigne.avecCopie('catalogue', this.http.get<ServiceFinancier[]>(`${this.base}/catalogue`));
   }
 
   categories(): Observable<string[]> {
@@ -104,6 +111,11 @@ export class AgencesService {
     return id == null
       ? this.http.post<ServiceFinancier>(`${this.base}/catalogue/services`, r)
       : this.http.put<ServiceFinancier>(`${this.base}/catalogue/services/${id}`, r);
+  }
+
+  /** Fait d'un reseau un service a part (son propre float), comme Xpress ou Mixx. */
+  detacherReseau(id: number): Observable<ServiceFinancier> {
+    return this.http.post<ServiceFinancier>(`${this.base}/catalogue/reseaux/${id}/detacher`, {});
   }
 
   enregistrerReseau(id: number | null, r: RequeteReseau): Observable<ServiceFinancier> {
@@ -270,8 +282,8 @@ export class AgencesService {
 
   /** Caisse ouverte de l'utilisateur dans l'agence ; null s'il n'en a pas (reponse 204). */
   maSession(agenceId: number): Observable<SessionCaisseAgence | null> {
-    return this.http.get<SessionCaisseAgence>(`${this.base}/caisses/ma-session`,
-      { params: new HttpParams().set('agenceId', agenceId), observe: 'response' }).pipe(map((r) => r.body ?? null));
+    return this.horsLigne.avecCopie('ma-session.' + agenceId, this.http.get<SessionCaisseAgence>(`${this.base}/caisses/ma-session`,
+      { params: new HttpParams().set('agenceId', agenceId), observe: 'response' }).pipe(map((r) => r.body ?? null)));
   }
 
   sessionsCaisse(agenceId: number | null, page: number): Observable<Page<SessionCaisseAgence>> {
@@ -286,6 +298,17 @@ export class AgencesService {
     return this.http.post<SessionCaisseAgence>(`${this.base}/caisses/sessions`, { agenceId, caissierId, billettage });
   }
 
+  /** Le caissier compte son tiroir et soumet la fermeture de sa caisse. */
+  soumettreCaisse(id: number, billettage: LigneBillettageAgence[], justification?: string): Observable<SessionCaisseAgence> {
+    return this.http.post<SessionCaisseAgence>(`${this.base}/caisses/sessions/${id}/soumission`, { billettage, justification });
+  }
+
+  /** Le superviseur refuse le comptage soumis : la caisse est rouverte au caissier. */
+  rejeterCaisse(id: number, motif: string): Observable<SessionCaisseAgence> {
+    return this.http.post<SessionCaisseAgence>(`${this.base}/caisses/sessions/${id}/rejet`, { motif });
+  }
+
+  /** Ferme la caisse (directement) ou valide le comptage soumis par le caissier. */
   fermerCaisse(id: number, billettage: LigneBillettageAgence[], justification?: string): Observable<SessionCaisseAgence> {
     return this.http.post<SessionCaisseAgence>(`${this.base}/caisses/sessions/${id}/fermeture`, { billettage, justification });
   }
@@ -370,7 +393,7 @@ export class AgencesService {
 
   // ------------------------------------------------------------ depenses
   categoriesDepense(): Observable<CategorieDepense[]> {
-    return this.http.get<CategorieDepense[]>(`${this.base}/depenses/categories`);
+    return this.horsLigne.avecCopie('categories-depense', this.http.get<CategorieDepense[]>(`${this.base}/depenses/categories`));
   }
 
   enregistrerCategorieDepense(id: number | null, r: { nom: string; actif?: boolean }): Observable<CategorieDepense> {
@@ -383,6 +406,11 @@ export class AgencesService {
     return this.http.get<Page<DepenseAgence>>(`${this.base}/depenses`, { params: this.filtres(f).set('page', page).set('size', 30) });
   }
 
+  resumeDepenses(f: { agenceId?: number | null; du?: string; au?: string; categorieId?: number | null; statut?: string; q?: string }):
+    Observable<ResumeDepenses> {
+    return this.http.get<ResumeDepenses>(`${this.base}/depenses/resume`, { params: this.filtres(f) });
+  }
+
   syntheseDepenses(agenceId: number | null, mois?: string): Observable<SyntheseDepenses> {
     return this.http.get<SyntheseDepenses>(`${this.base}/depenses/synthese`, { params: this.filtres({ agenceId, mois }) });
   }
@@ -391,6 +419,18 @@ export class AgencesService {
                     beneficiaire?: string; reference?: string; observations?: string; recurrenteId?: number | null;
                     periode?: string }): Observable<DepenseAgence> {
     return this.http.post<DepenseAgence>(`${this.base}/depenses`, r);
+  }
+
+  depensesAValider(agenceId: number | null): Observable<DepenseAgence[]> {
+    return this.http.get<DepenseAgence[]>(`${this.base}/depenses/a-valider`, { params: this.filtres({ agenceId }) });
+  }
+
+  validerDepense(id: number): Observable<DepenseAgence> {
+    return this.http.post<DepenseAgence>(`${this.base}/depenses/${id}/validation`, {});
+  }
+
+  refuserDepense(id: number, motif: string): Observable<DepenseAgence> {
+    return this.http.post<DepenseAgence>(`${this.base}/depenses/${id}/refus`, { motif });
   }
 
   annulerDepense(id: number, motif: string): Observable<DepenseAgence> {
@@ -445,7 +485,7 @@ export class AgencesService {
 
   // --------------------------------------------------------------- cartes
   produitsCartes(): Observable<ProduitCarte[]> {
-    return this.http.get<ProduitCarte[]>(`${this.base}/cartes/produits`);
+    return this.horsLigne.avecCopie('produits-cartes', this.http.get<ProduitCarte[]>(`${this.base}/cartes/produits`));
   }
 
   enregistrerProduitCarte(id: number | null, r: { nom: string; prixVente: number; seuilAlerte: number; actif?: boolean }): Observable<ProduitCarte> {
@@ -454,7 +494,8 @@ export class AgencesService {
   }
 
   stockCartes(agenceId: number): Observable<StockCarte[]> {
-    return this.http.get<StockCarte[]>(`${this.base}/cartes/stock`, { params: new HttpParams().set('agenceId', agenceId) });
+    return this.horsLigne.avecCopie('stock-cartes.' + agenceId,
+      this.http.get<StockCarte[]>(`${this.base}/cartes/stock`, { params: new HttpParams().set('agenceId', agenceId) }));
   }
 
   entrerLotCartes(r: { agenceId: number; produitId: number; quantite: number; coutUnitaire: number; compteId?: number | null;
@@ -462,7 +503,8 @@ export class AgencesService {
     return this.http.post<StockCarte[]>(`${this.base}/cartes/lots`, r);
   }
 
-  vendreCartes(r: { agenceId: number; produitId: number; quantite: number; clientNom?: string; clientTelephone?: string }): Observable<VenteCarte> {
+  vendreCartes(r: { agenceId: number; produitId: number; numeros: string[]; clientNom?: string; clientPrenom?: string;
+                    clientTelephone: string }): Observable<VenteCarte> {
     return this.http.post<VenteCarte>(`${this.base}/cartes/ventes`, r);
   }
 
@@ -499,5 +541,29 @@ export class AgencesService {
 
   alertes(agenceId?: number | null): Observable<AlerteAgence[]> {
     return this.http.get<AlerteAgence[]>(`${this.base}/alertes`, { params: this.filtres({ agenceId }) });
+  }
+
+  // -------------------------------------------- rapprochement des commissions
+  attentesCommissions(agenceId?: number | null): Observable<AttenteOperateur[]> {
+    return this.http.get<AttenteOperateur[]>(`${this.base}/rapprochement/attentes`, { params: this.filtres({ agenceId }) });
+  }
+
+  commissionsEnAttente(agenceId: number, serviceId: number, page: number, du?: string, au?: string): Observable<Page<CommissionAttente>> {
+    return this.http.get<Page<CommissionAttente>>(`${this.base}/rapprochement/commissions`,
+      { params: this.filtres({ agenceId, serviceId, du, au }).set('page', page).set('size', 50) });
+  }
+
+  versementsCommissions(agenceId: number | null, serviceId: number | null, page: number): Observable<Page<VersementCommission>> {
+    return this.http.get<Page<VersementCommission>>(`${this.base}/rapprochement/versements`,
+      { params: this.filtres({ agenceId, serviceId }).set('page', page).set('size', 30) });
+  }
+
+  enregistrerVersement(r: { agenceId: number; serviceId: number; transactionIds?: number[]; du?: string; au?: string; montantVerse: number;
+                            compteId: number; referenceOperateur?: string; observations?: string }): Observable<VersementCommission> {
+    return this.http.post<VersementCommission>(`${this.base}/rapprochement/versements`, r);
+  }
+
+  annulerVersement(id: number, motif: string): Observable<VersementCommission> {
+    return this.http.post<VersementCommission>(`${this.base}/rapprochement/versements/${id}/annulation`, { motif });
   }
 }

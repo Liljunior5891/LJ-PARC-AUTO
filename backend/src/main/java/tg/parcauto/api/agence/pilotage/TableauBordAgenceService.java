@@ -50,6 +50,7 @@ public class TableauBordAgenceService {
             TypeCompte.FLOAT, TypeCompte.RECHARGE, TypeCompte.BANQUE);
 
     private final PerimetreAgence perimetre;
+    private final tg.parcauto.api.agence.DroitsAgence droits;
     private final SoldeService soldes;
     private final ServiceFinancierRepository services;
     private final ReseauRepository reseaux;
@@ -59,6 +60,7 @@ public class TableauBordAgenceService {
     private final tg.parcauto.api.agence.depense.DepenseAgenceService depensesService;
     private final tg.parcauto.api.agence.credit.CreditService credits;
     private final tg.parcauto.api.agence.carte.CarteService cartes;
+    private final tg.parcauto.api.agence.commission.RapprochementService rapprochement;
 
     @PersistenceContext
     private EntityManager em;
@@ -76,15 +78,25 @@ public class TableauBordAgenceService {
     }
 
     public record TableauBord(LocalDate du, LocalDate au, LocalDate journeeCourante, SoldeService.Totaux tresorerie,
-                              long nombre, long volume, long commissions, long ventesCartes, long coutCartes,
+                              long nombre, long volume, long commissions,
+                              /** Commissions de la periode deja recues, et commissions en attente de versement (toutes dates). */
+                              long commissionsEncaissees, long commissionsEnAttente, long ventesCartes, long coutCartes,
                               long chiffreAffaires, long depenses, long fraisFinanciers, long resultatNet, long dettes, long creances,
                               List<Point> parJour,
                               List<PointTresorerie> tresorerieParJour, List<Repartition> parService,
                               List<Repartition> parReseau, List<Repartition> parCaissier, long cloturesAFaire,
-                              long mouvementsEnAttente) {
+                              long mouvementsEnAttente,
+                              /** CAISSIER : ses seules donnees ; AGENCE : une agence ; TOUTES : toutes les agences visibles. */
+                              String perimetre) {
     }
 
-    public TableauBord calculer(Filtres f) {
+    public TableauBord calculer(Filtres demande) {
+        // Sans le droit de voir toutes les operations, le caissier ne voit que les siennes :
+        // ses transactions, sa caisse, ses depenses et ses ventes de cartes.
+        boolean caissier = !droits.courants().contains(tg.parcauto.api.agence.PermissionAgence.HISTORIQUE_COMPLET);
+        Long moi = perimetre.utilisateurCourant();
+        Filtres f = caissier ? new Filtres(demande.agenceId(), demande.du(), demande.au(), demande.serviceId(), demande.reseauId(), moi)
+                : demande;
         LocalDate courante = registre.journee(Instant.now());
         LocalDate au = f.au() != null ? f.au() : courante;
         LocalDate du = f.du() != null ? f.du() : au;
@@ -95,10 +107,24 @@ public class TableauBordAgenceService {
         }
         List<Long> agences = f.agenceId() != null ? List.of(perimetre.exiger(f.agenceId()).getId())
                 : perimetre.visibles().stream().map(Agence::getId).toList();
-        SoldeService.Totaux tresorerie = soldes.etat(f.agenceId()).totaux();
+        String portee = caissier ? "CAISSIER" : (f.agenceId() != null || agences.size() == 1 ? "AGENCE" : "TOUTES");
+        List<Long> mesCaisses = caissier && !agences.isEmpty() ? em.createQuery("""
+                        select c.id from CompteAgence c
+                        where c.agenceId in :agences and c.type = :type and c.utilisateurId = :moi""", Long.class)
+                .setParameter("agences", agences).setParameter("type", TypeCompte.CAISSE_CAISSIER).setParameter("moi", moi)
+                .getResultList() : List.of();
+        SoldeService.Totaux tresorerie;
+        if (caissier) {
+            long enCaisse = mesCaisses.isEmpty() ? 0 : em.createQuery(
+                            "select coalesce(sum(c.solde), 0) from CompteAgence c where c.id in :ids", Long.class)
+                    .setParameter("ids", mesCaisses).getSingleResult();
+            tresorerie = new SoldeService.Totaux(enCaisse, 0, 0, enCaisse, 0, 0);
+        } else {
+            tresorerie = soldes.etat(f.agenceId()).totaux();
+        }
         if (agences.isEmpty()) {
-            return new TableauBord(du, au, courante, tresorerie, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of(), List.of(), List.of(),
-                    List.of(), List.of(), 0, 0);
+            return new TableauBord(du, au, courante, tresorerie, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of(), List.of(), List.of(),
+                    List.of(), List.of(), 0, 0, portee);
         }
         Filtres borne = new Filtres(f.agenceId(), du, au, f.serviceId(), f.reseauId(), f.caissierId());
 
@@ -138,6 +164,30 @@ public class TableauBordAgenceService {
                 .toList();
 
         java.util.Set<Long> ensemble = new java.util.HashSet<>(agences);
+        if (caissier) {
+            // Ses ventes de cartes et ses depenses ; ni dettes, ni rapprochement, ni mouvements a valider.
+            Object[] v = em.createQuery("""
+                            select coalesce(sum(v.montant), 0), coalesce(sum(v.coutTotal), 0) from VenteCarte v
+                            where v.agenceId in :agences and v.caissierId = :moi
+                              and v.statut = tg.parcauto.api.agence.carte.VenteCarte.Statut.VALIDEE
+                              and v.journee >= :du and v.journee <= :au""", Object[].class)
+                    .setParameter("agences", agences).setParameter("moi", moi).setParameter("du", du).setParameter("au", au)
+                    .getSingleResult();
+            long ventesCartes = nombre(v[0]);
+            long coutCartes = nombre(v[1]);
+            long depenses = nombre(em.createQuery("""
+                            select coalesce(sum(d.montant), 0) from DepenseAgence d
+                            where d.agenceId in :agences and d.auteurId = :moi
+                              and d.statut = tg.parcauto.api.agence.depense.DepenseAgence.Statut.VALIDEE
+                              and d.journee >= :du and d.journee <= :au""", Long.class)
+                    .setParameter("agences", agences).setParameter("moi", moi).setParameter("du", du).setParameter("au", au)
+                    .getSingleResult());
+            long chiffreAffaires = commissions + ventesCartes;
+            return new TableauBord(du, au, courante, tresorerie, nombre, volume, commissions, 0, 0, ventesCartes, coutCartes,
+                    chiffreAffaires, depenses, 0, chiffreAffaires - coutCartes - depenses, 0, 0, parJour,
+                    tresorerieParJour(mesCaisses, debutSerie, au), parService, parReseau, parCaissier,
+                    clotures.aFaire(f.agenceId()).size(), 0, portee);
+        }
         var totauxCartes = cartes.totaux(ensemble, du, au);
         long ventesCartes = totauxCartes.chiffreAffaires();
         long coutCartes = totauxCartes.cout();
@@ -145,23 +195,25 @@ public class TableauBordAgenceService {
         long depenses = depensesService.total(ensemble, du, au);
         long frais = credits.fraisFinanciers(ensemble, du, au);
         var totauxCredits = credits.totaux(ensemble);
+        List<Long> comptesTresorerie = em.createQuery(
+                        "select c.id from CompteAgence c where c.agenceId in :agences and c.type in :types and c.bloque = false", Long.class)
+                .setParameter("agences", agences).setParameter("types", TRESORERIE).getResultList();
         // Resultat net = chiffre d'affaires - cout des cartes vendues - depenses - frais financiers.
-        return new TableauBord(du, au, courante, tresorerie, nombre, volume, commissions, ventesCartes, coutCartes, chiffreAffaires,
+        return new TableauBord(du, au, courante, tresorerie, nombre, volume, commissions, rapprochement.encaissees(ensemble, du, au),
+                rapprochement.totalEnAttente(ensemble), ventesCartes, coutCartes, chiffreAffaires,
                 depenses, frais, chiffreAffaires - coutCartes - depenses - frais, totauxCredits.dettesRestantes(), totauxCredits.creancesRestantes(), parJour,
-                tresorerieParJour(agences, debutSerie, au), parService, parReseau, parCaissier, clotures.aFaire(f.agenceId()).size(),
-                mouvements.enAttente());
+                tresorerieParJour(comptesTresorerie, debutSerie, au), parService, parReseau, parCaissier, clotures.aFaire(f.agenceId()).size(),
+                mouvements.enAttente(), portee);
     }
 
-    /** Tresorerie disponible en fin de chaque journee, reconstituee a partir du registre. */
-    private List<PointTresorerie> tresorerieParJour(List<Long> agences, LocalDate du, LocalDate au) {
-        List<Object[]> lignes = em.createQuery("""
-                        select l.journee, sum(l.montant) from LigneRegistre l, CompteAgence c
-                        where c.id = l.compteId and c.agenceId in :agences and c.type in :types and c.bloque = false
-                          and l.journee <= :au
+    /** Solde des comptes donnes en fin de chaque journee, reconstitue a partir du registre. */
+    private List<PointTresorerie> tresorerieParJour(List<Long> comptes, LocalDate du, LocalDate au) {
+        List<Object[]> lignes = comptes.isEmpty() ? List.of() : em.createQuery("""
+                        select l.journee, sum(l.montant) from LigneRegistre l
+                        where l.compteId in :comptes and l.journee <= :au
                         group by l.journee
                         """, Object[].class)
-                .setParameter("agences", agences)
-                .setParameter("types", TRESORERIE)
+                .setParameter("comptes", comptes)
                 .setParameter("au", au)
                 .getResultList();
         long solde = 0;

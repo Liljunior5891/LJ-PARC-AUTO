@@ -1,28 +1,3 @@
-.filtres {
-  margin-bottom: 1rem;
-}
-
-.raccourcis-periode {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.6rem;
-}
-
-.grille-filtres {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 0.6rem 0.8rem;
-
-  .champ {
-    margin: 0;
-  }
-
-  .recherche {
-    grid-column: span 2;
-  }
-}
-
 table.tableau {
   .montant {
     text-align: right;
@@ -80,12 +55,16 @@ table.tableau {
   text-align: center;
 }
 
-@media (max-width: 640px) {
-  .grille-filtres .recherche {
-    grid-column: auto;
-  }
+.montant-filtre {
+  width: 110px;
+}
 
+@media (max-width: 640px) {
   .fiche {
     grid-template-columns: 1fr;
   }
+}
+
+.logo-ligne {
+  margin-right: 0.35rem;
 }

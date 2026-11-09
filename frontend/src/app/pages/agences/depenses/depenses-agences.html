@@ -6,9 +6,11 @@
   </div>
   <div class="actions-entete">
     @if (agences().length > 1) {
-      <select [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
-        @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
-      </select>
+      <div class="choix-agence-entete">
+        <select [(ngModel)]="agenceId" (ngModelChange)="changerAgence()" aria-label="Agence">
+          @for (a of agences(); track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+        </select>
+      </div>
     }
     @if (service.peut('DEPENSE_SAISIR')) {
       <button class="bouton" type="button" (click)="nouvelle()">+ Nouvelle depense</button>
@@ -16,61 +18,158 @@
   </div>
 </div>
 
-<div class="onglets">
-  <button type="button" [class.actif]="onglet === 'liste'" (click)="changerOnglet('liste')">Depenses</button>
-  @if (service.peut('SOLDES_CONSULTER')) {
-    <button type="button" [class.actif]="onglet === 'suivi'" (click)="changerOnglet('suivi')">Suivi mensuel</button>
-  }
-  <button type="button" [class.actif]="onglet === 'recurrentes'" (click)="changerOnglet('recurrentes')">Charges recurrentes</button>
-</div>
-
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }
 
+<app-onglets-inclines [onglets]="onglets()" [actif]="onglet" (choisir)="changerOnglet($any($event))" />
+
 @switch (onglet) {
   @case ('liste') {
-    <div class="filtres">
-      <input type="date" [(ngModel)]="filtre.du" (change)="charger()" aria-label="Du" />
-      <input type="date" [(ngModel)]="filtre.au" (change)="charger()" aria-label="Au" />
-      <select [(ngModel)]="filtre.categorieId" (ngModelChange)="charger()" aria-label="Categorie">
-        <option [ngValue]="null">Toutes les categories</option>
-        @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.nom }}</option> }
-      </select>
-      <select [(ngModel)]="filtre.statut" (ngModelChange)="charger()" aria-label="Statut">
-        <option value="">Tous statuts</option>
-        <option value="VALIDEE">Validees</option>
-        <option value="ANNULEE">Annulees</option>
-      </select>
-      <input type="search" [(ngModel)]="filtre.q" (keyup.enter)="charger()" (search)="charger()" placeholder="Numero, libelle, beneficiaire" />
+    <div class="carte">
+    <div class="filtres-ligne">
+      <div class="dates-periode">
+        <span>Du</span>
+        <input type="date" [(ngModel)]="filtre.du" (change)="charger()" aria-label="Du" />
+        <span>au</span>
+        <input type="date" [(ngModel)]="filtre.au" (change)="charger()" aria-label="Au" />
+      </div>
+      <div class="filtre">
+        <select [(ngModel)]="filtre.categorieId" (ngModelChange)="charger()" aria-label="Categorie">
+          <option [ngValue]="null">Toutes les categories</option>
+          @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.nom }}</option> }
+        </select>
+      </div>
+      <div class="filtre">
+        <select [(ngModel)]="filtre.statut" (ngModelChange)="charger()" aria-label="Statut">
+          <option value="">Tous les statuts</option>
+          <option value="VALIDEE">Validees</option>
+          <option value="ATTENTE_SUPERVISEUR">Attendent le superviseur</option>
+          <option value="ATTENTE_ADMIN">Attendent l'administrateur</option>
+          <option value="REFUSEE">Refusees</option>
+          <option value="ANNULEE">Annulees</option>
+        </select>
+      </div>
+      <input class="recherche" type="search" [(ngModel)]="filtre.q" (keyup.enter)="charger()" (search)="charger()" placeholder="Numero, libelle, beneficiaire..." aria-label="Recherche" />
     </div>
+
+    <!-- Chiffres de la liste filtree, comme pour les transactions. -->
+    @if (resume(); as r) {
+      <div class="cartes-apercu tete-ecran resume-depenses">
+        <div class="carte-apercu orange">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M12 9v6M9.5 11.5L12 9l2.5 2.5" /></svg></span>
+          <span class="textes">
+            <span class="libelle">Total des depenses</span>
+            <strong>{{ r.total | number: '1.0-0' }}<em> F</em></strong>
+            <small>{{ r.nombre }} depense(s) validee(s)</small>
+          </span>
+        </div>
+        <div class="carte-apercu violet" [class.calme]="!r.parCategorie.length">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 12.5V4.5h8l9 9-8 8z" /><circle cx="8" cy="9" r="1.5" /></svg></span>
+          <span class="textes">
+            <span class="libelle">Premier poste</span>
+            @if (r.parCategorie[0]; as c) {
+              <strong>{{ c.total | number: '1.0-0' }}<em> F</em></strong>
+              <small>{{ c.categorie }} · {{ r.total ? ((c.total / r.total) * 100 | number: '1.0-0') : 0 }} % du total</small>
+            } @else {
+              <strong>—</strong>
+              <small>aucune depense</small>
+            }
+          </span>
+        </div>
+        <div class="carte-apercu bleu">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg></span>
+          <span class="textes">
+            <span class="libelle">Depense moyenne</span>
+            <strong>{{ r.moyenne | number: '1.0-0' }}<em> F</em></strong>
+            <small>{{ r.parCategorie.length }} categorie(s) concernee(s)</small>
+          </span>
+        </div>
+        <div class="carte-apercu rouge" [class.calme]="!r.sansJustificatif && !r.annulees">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></svg></span>
+          <span class="textes">
+            <span class="libelle">Sans justificatif</span>
+            <strong>{{ r.sansJustificatif }}</strong>
+            <small>{{ r.annulees ? r.annulees + ' annulee(s) : ' + (r.montantAnnule | number: '1.0-0') + ' F' : 'aucune annulation' }}</small>
+          </span>
+        </div>
+      </div>
+    }
     @if (page(); as p) {
-      <div class="tableau-conteneur">
+      <div class="tableau-conteneur" style="margin-top: 1rem">
         <table class="tableau">
           <thead><tr><th>Date</th><th>Numero</th><th>Categorie</th><th>Libelle</th><th>Paye par</th><th class="montant">Montant</th><th>Statut</th></tr></thead>
           <tbody>
             @for (d of p.content; track d.id) {
-              <tr class="cliquable" [class.annulee]="d.statut === 'ANNULEE'" (click)="detail.set(d)">
+              <tr class="cliquable" [class.annulee]="d.statut === 'ANNULEE' || d.statut === 'REFUSEE'" (click)="detail.set(d)">
                 <td>{{ d.dateDepense | date: 'dd/MM/yyyy HH:mm' }}</td>
                 <td>{{ d.numero }}</td>
                 <td>{{ d.categorieNom }}</td>
                 <td>{{ d.libelle }}@if (d.justificatifNom) { <span title="Justificatif"> 📎</span> }</td>
                 <td>{{ d.compteNom }}</td>
                 <td class="montant numerique">{{ d.montant | number: '1.0-0' }}</td>
-                <td><span class="etiquette" [class.actif]="d.statut === 'VALIDEE'">{{ d.statut === 'VALIDEE' ? 'Validee' : 'Annulee' }}</span></td>
+                <td>
+                  @if (enAttente(d)) {
+                    <span class="badge attente-validation">⏳ {{ libellesStatut[d.statut] }}</span>
+                  } @else {
+                    <span class="etiquette" [class.actif]="d.statut === 'VALIDEE'">{{ libellesStatut[d.statut] }}</span>
+                  }
+                </td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="vide">Aucune depense.</td></tr>
+              <tr><td colspan="7"><div class="message vide">Aucune depense.</div></td></tr>
             }
           </tbody>
         </table>
       </div>
       <app-suite-liste [page]="p" (suite)="suiteListe()" />
     }
+    </div>
+  }
+
+  @case ('a-valider') {
+    <div class="carte">
+      <p class="aide-validation">
+        {{ estAdmin ? 'Approuvez : la depense s\'ecrit au registre et le compte est debite.'
+                    : 'Visez ou refusez les depenses de caisse : l\'administrateur les approuve ensuite.' }}
+        Tant qu'elle attend, rien n'est debite.
+      </p>
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Saisie</th><th>Numero</th><th>Categorie et libelle</th><th>Caisse</th><th>Etape</th><th class="montant">Montant</th><th></th></tr></thead>
+          <tbody>
+            @for (d of aValider(); track d.id) {
+              <tr>
+                <td>{{ d.dateDepense | date: 'dd/MM HH:mm' }}<br /><small>{{ d.auteurNom }}</small></td>
+                <td>{{ d.numero }}@if (agences().length > 1) { <br /><small>{{ d.agenceNom }}</small> }</td>
+                <td>{{ d.categorieNom }}<br /><small>{{ d.libelle }}</small></td>
+                <td>{{ d.compteNom }}</td>
+                <td><span class="badge attente-validation">{{ libellesStatut[d.statut] }}</span>
+                  @if (d.viseeParNom) { <br /><small>Visee par {{ d.viseeParNom }}</small> }</td>
+                <td class="montant numerique"><strong>{{ d.montant | number: '1.0-0' }}</strong></td>
+                <td class="actions-validation">
+                  @if (d.validable) {
+                    <button class="bouton petit succes" type="button" [disabled]="envoiValidation() !== null" (click)="valider(d)">
+                      {{ envoiValidation() === d.id ? '...' : (estAdmin ? 'Approuver' : 'Viser') }}</button>
+                    <button class="bouton petit danger" type="button" [disabled]="envoiValidation() !== null" (click)="demanderRefus(d)">Refuser</button>
+                  } @else {
+                    <small>Votre propre saisie</small>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7"><div class="message vide">Aucune depense en attente de votre validation.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
   }
 
   @case ('suivi') {
-    <div class="filtres">
-      <label>Mois <input type="month" [(ngModel)]="mois" (change)="charger()" /></label>
+    <div class="carte barre-filtres">
+      <div class="filtres-ligne">
+        <label>Mois <input type="month" [(ngModel)]="mois" (change)="charger()" /></label>
+      </div>
     </div>
     @if (synthese(); as s) {
       <div class="grille-suivi">
@@ -135,7 +234,7 @@
                 <td class="actions">@if (service.peut('PARAMETRAGE')) { <button class="bouton secondaire petit" type="button" (click)="editerCharge(r)">Modifier</button> }</td>
               </tr>
             } @empty {
-              <tr><td colspan="6" class="vide">Aucune charge recurrente : ajoutez le loyer, l'internet, le transport...</td></tr>
+              <tr><td colspan="6"><div class="message vide">Aucune charge recurrente : ajoutez le loyer, l'internet, le transport...</div></td></tr>
             }
           </tbody>
         </table>
@@ -238,12 +337,42 @@
       @if (d.periode) { <dt>Charge du mois</dt><dd>{{ d.periode }}</dd> }
       @if (d.justificatifNom) { <dt>Justificatif</dt><dd><button type="button" class="lien" (click)="ouvrirJustificatif(d)">{{ d.justificatifNom }}</button></dd> }
       @if (d.statut === 'ANNULEE') { <dt>Annulation</dt><dd>{{ d.annuleeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ d.annuleeParNom }} : {{ d.motifAnnulation }}</dd> }
+      <dt>Statut</dt><dd>{{ libellesStatut[d.statut] }}</dd>
+      @if (d.viseeParNom) { <dt>Visa</dt><dd>{{ d.viseeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ d.viseeParNom }}</dd> }
+      @if (d.approuveeParNom) { <dt>Approbation</dt><dd>{{ d.approuveeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ d.approuveeParNom }}</dd> }
+      @if (d.statut === 'REFUSEE') { <dt>Refus</dt><dd>{{ d.refuseeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ d.refuseeParNom }} : {{ d.motifRefus }}</dd> }
     </dl>
+    @if (enAttente(d)) {
+      <div class="message info">En attente de validation : rien n'est encore debite de {{ d.compteNom }}.</div>
+    }
+    @if (d.validable) {
+      <div class="actions-formulaire">
+        <button class="bouton danger" type="button" (click)="demanderRefus(d)">Refuser</button>
+        <button class="bouton succes" type="button" [disabled]="envoiValidation() !== null" (click)="valider(d)">{{ estAdmin ? 'Approuver' : 'Viser' }}</button>
+      </div>
+    }
     @if (d.annulable) {
       <div class="actions-formulaire">
         <button class="bouton danger" type="button" (click)="demanderAnnulation(d)">Annuler la depense</button>
       </div>
     }
+  </app-modale>
+}
+
+@if (aRefuser(); as d) {
+  <app-modale [titre]="'Refuser ' + d.numero" [sousTitre]="d.libelle + ' · ' + (d.montant | number: '1.0-0') + ' F'" largeur="500px"
+              [erreur]="erreurModale()" (ferme)="aRefuser.set(null)">
+    <form (ngSubmit)="refuser()">
+      <div class="message info">Rien n'a ete debite : un refus ne change ni les soldes ni le registre.</div>
+      <div class="champ">
+        <label for="motif-refus">Motif *</label>
+        <input id="motif-refus" name="motifRefus" maxlength="500" [(ngModel)]="motifRefus" placeholder="Montant trop eleve, piece manquante..." />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="aRefuser.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motifRefus.trim()">Refuser la depense</button>
+      </div>
+    </form>
   </app-modale>
 }
 

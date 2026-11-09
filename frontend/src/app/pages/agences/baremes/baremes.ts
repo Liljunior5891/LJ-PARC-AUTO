@@ -9,9 +9,11 @@ import {
   ModeBareme,
   ServiceFinancier,
   StatutBareme,
-  TrancheBareme
+  TrancheBareme,
+  TypeOperation
 } from '../../../core/models/agences';
 import { AgencesService } from '../../../core/services/agences.service';
+import { LogoService, attributsOption } from '../../../shared/logo-service';
 import { Modale } from '../../../shared/modale';
 
 interface FormulaireBareme {
@@ -52,7 +54,7 @@ function aujourdhui(): string {
  */
 @Component({
   selector: 'app-baremes-agences',
-  imports: [DatePipe, DecimalPipe, FormsModule, Modale],
+  imports: [DatePipe, DecimalPipe, FormsModule, LogoService, Modale],
   templateUrl: './baremes.html',
   styleUrl: './baremes.scss'
 })
@@ -68,6 +70,33 @@ export class BaremesAgences implements OnInit {
   readonly erreurModale = signal<string | null>(null);
   readonly modifiable = signal(false);
   readonly statuts = STATUTS;
+  readonly opt = attributsOption;
+
+  /** Service affiche a droite ; le testeur porte sur lui. */
+  private readonly serviceActifId = signal<number | null>(null);
+  readonly serviceActif = computed(() => this.catalogue().find((s) => s.id === this.serviceActifId()) ?? null);
+
+  /** Exemples du cahier dont la commission calculee est la bonne. */
+  readonly controleJustes = computed(() => this.controle().filter((c) => c.calculee === c.attendue).length);
+
+  choisirService(id: number): void {
+    this.serviceActifId.set(id);
+    const s = this.serviceDe(id);
+    this.simService = id;
+    this.simType = s?.types.find((t) => t.actif)?.id ?? null;
+    this.simReseau = null;
+    this.simuler();
+  }
+
+  /** Baremes du service : en vigueur d'abord, puis a venir, puis termines. */
+  baremesDe(serviceId: number): Bareme[] {
+    const ordre: Record<StatutBareme, number> = { EN_COURS: 0, A_VENIR: 1, TERMINE: 2, DESACTIVE: 3 };
+    return this.baremes().filter((b) => b.serviceId === serviceId).sort((a, b) => ordre[a.statut] - ordre[b.statut]);
+  }
+
+  enVigueur(baremes: Bareme[]): number {
+    return baremes.filter((b) => b.statut === 'EN_COURS').length;
+  }
   historique = false;
 
   /** Baremes regroupes par service, services sans bareme compris. */
@@ -101,11 +130,9 @@ export class BaremesAgences implements OnInit {
       next: (c) => {
         this.catalogue.set(c);
         const premier = c.find((s) => s.actif && s.types.length);
-        if (premier && this.simService == null) {
-          this.simService = premier.id;
-          this.simType = premier.types.find((t) => t.actif)?.id ?? null;
+        if (premier && this.serviceActifId() == null) {
+          this.choisirService(premier.id);
         }
-        this.simuler();
       },
       error: (e) => this.erreur.set(this.message(e, 'Chargement du catalogue impossible.'))
     });
@@ -176,6 +203,21 @@ export class BaremesAgences implements OnInit {
   /** Bareme en vigueur avant aujourd'hui : la modification creera une nouvelle version. */
   nouvelleVersion(e: Bareme | 'nouveau'): boolean {
     return e !== 'nouveau' && e.dateDebut < aujourdhui();
+  }
+
+  /** Libelle d'une operation, suivi du reseau quand elle lui est propre. */
+  libelleType(s: ServiceFinancier, t: TypeOperation): string {
+    const reseau = t.reseauId ? s.reseaux.find((r) => r.id === t.reseauId)?.nom : null;
+    return reseau ? `${t.libelle} (${reseau})` : t.libelle;
+  }
+
+  /** Une operation propre a un reseau fixe le reseau du bareme. */
+  changerType(): void {
+    const t = this.serviceDe(this.f.serviceId)?.types.find((x) => x.id === this.f.typeOperationId);
+    if (t?.reseauId) {
+      this.f.reseauId = t.reseauId;
+    }
+    this.proposerLibelle();
   }
 
   proposerLibelle(): void {

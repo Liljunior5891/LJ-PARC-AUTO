@@ -2,6 +2,8 @@
 import { MembrePersonnel } from './pdv';
 
 export interface DroitsMoi {
+  /** Plusieurs agences autorisees par le super-administrateur ; sinon une seule agence ouverte. */
+  agencesMultiples?: boolean;
   administrateur: boolean;
   permissions: string[];
   agences: { id: number; code: string; nom: string; actif: boolean }[];
@@ -42,10 +44,14 @@ export interface ReseauFinancier {
   nom: string;
   ordre: number;
   actif: boolean;
+  /** Logo en data URL ; absent : pastille aux initiales. */
+  logo?: string | null;
 }
 
 export interface TypeOperation {
   id: number;
+  /** Reseau auquel l'operation est propre ; nul : commune a tous les reseaux du service. */
+  reseauId?: number | null;
   code: string;
   libelle: string;
   effetCash: number;
@@ -64,6 +70,8 @@ export interface ServiceFinancier {
   categorie: string;
   ordre: number;
   actif: boolean;
+  commissionDifferee: boolean;
+  logo?: string | null;
   reseaux: ReseauFinancier[];
   types: TypeOperation[];
 }
@@ -73,6 +81,9 @@ export interface RequeteService {
   categorie: string;
   ordre?: number | null;
   actif?: boolean;
+  commissionDifferee?: boolean;
+  /** Data URL ; vide : retire le logo ; absent : inchange. */
+  logo?: string | null;
 }
 
 export interface RequeteReseau {
@@ -80,10 +91,13 @@ export interface RequeteReseau {
   nom: string;
   ordre?: number | null;
   actif?: boolean;
+  logo?: string | null;
 }
 
 export interface RequeteType {
   serviceId: number;
+  /** Operation propre a ce reseau ; nul : commune a tout le service. */
+  reseauId?: number | null;
   libelle: string;
   effetCash: number;
   effetVirtuel: number;
@@ -187,6 +201,11 @@ export interface ReglagesAgences {
   seuilValidationMouvement: number;
   plafondDepenseCaissier: number;
   joursAlerteEcheance: number;
+  joursAlerteCommission: number;
+  /** Depenses payees par une caisse : visa du superviseur puis approbation de l'administrateur. */
+  validationDepensesCaisse?: boolean;
+  /** Minutes sans geste avant que l'ecran du caissier d'agence se verrouille (code PIN). */
+  minutesVerrouCaisse?: number;
 }
 
 export interface DroitsAgences {
@@ -305,6 +324,7 @@ export interface ApercuTransaction {
   detailCommission: string;
   baremeExemple: boolean;
   commissionModifiable: boolean;
+  commissionDifferee: boolean;
   effets: EffetTransaction[];
   doublon?: { id: number; reference: string; date: string; caissierNom: string; texte: string };
   blocages: string[];
@@ -345,6 +365,7 @@ export interface Transaction {
   caissierId: number;
   caissierNom: string;
   statut: StatutTransaction;
+  commissionStatut: 'ACQUISE' | 'CREDITEE';
   doublonConfirme: boolean;
   annuleeLe?: string;
   annuleeParNom?: string;
@@ -392,7 +413,8 @@ export interface SessionCaisseAgence {
   agenceNom?: string;
   caissierId: number;
   caissierNom: string;
-  statut: 'OUVERTE' | 'FERMEE';
+  /** SOUMISE : comptee par le caissier, en attente de validation du superviseur. */
+  statut: 'OUVERTE' | 'SOUMISE' | 'FERMEE';
   ouverteLe: string;
   ouverteParNom?: string;
   fondInitial: number;
@@ -410,6 +432,16 @@ export interface SessionCaisseAgence {
   justification?: string;
   billettageOuverture: LigneBillettageAgence[];
   billettageFermeture: LigneBillettageAgence[];
+  /** Comptage soumis par le caissier. */
+  soumiseLe?: string;
+  montantSoumis?: number;
+  ecartSoumis?: number;
+  justificationSoumise?: string;
+  billettageSoumis: LigneBillettageAgence[];
+  /** Dernier rejet du comptage. */
+  motifRejet?: string;
+  rejeteeLe?: string;
+  rejeteeParNom?: string;
 }
 
 export interface CaissierAgence {
@@ -550,6 +582,8 @@ export interface TableauBordAgences {
   nombre: number;
   volume: number;
   commissions: number;
+  commissionsEncaissees: number;
+  commissionsEnAttente: number;
   ventesCartes: number;
   coutCartes: number;
   chiffreAffaires: number;
@@ -565,6 +599,8 @@ export interface TableauBordAgences {
   parCaissier: RepartitionActivite[];
   cloturesAFaire: number;
   mouvementsEnAttente: number;
+  /** CAISSIER : ses seules donnees ; AGENCE : une agence ; TOUTES : toutes les agences. */
+  perimetre: 'CAISSIER' | 'AGENCE' | 'TOUTES';
 }
 
 export interface LigneAudit {
@@ -579,6 +615,16 @@ export interface LigneAudit {
   description: string;
   avant?: string;
   apres?: string;
+}
+
+export interface ResumeDepenses {
+  total: number;
+  nombre: number;
+  moyenne: number;
+  annulees: number;
+  montantAnnule: number;
+  sansJustificatif: number;
+  parCategorie: { categorieId: number; categorie: string; total: number; nombre: number }[];
 }
 
 export interface CategorieDepense {
@@ -607,13 +653,33 @@ export interface DepenseAgence {
   periode?: string;
   observations?: string;
   justificatifNom?: string;
-  statut: 'VALIDEE' | 'ANNULEE';
+  statut: StatutDepenseAgence;
   auteurNom: string;
   annuleeLe?: string;
   annuleeParNom?: string;
   motifAnnulation?: string;
   annulable: boolean;
+  viseeParNom?: string;
+  viseeLe?: string;
+  approuveeParNom?: string;
+  approuveeLe?: string;
+  refuseeParNom?: string;
+  refuseeLe?: string;
+  motifRefus?: string;
+  /** L'utilisateur peut viser (superviseur) ou approuver (administrateur) cette depense. */
+  validable: boolean;
 }
+
+/** ATTENTE_SUPERVISEUR / ATTENTE_ADMIN : depense de caisse pas encore ecrite au registre. */
+export type StatutDepenseAgence = 'ATTENTE_SUPERVISEUR' | 'ATTENTE_ADMIN' | 'VALIDEE' | 'REFUSEE' | 'ANNULEE';
+
+export const LIBELLES_STATUT_DEPENSE_AGENCE: Record<StatutDepenseAgence, string> = {
+  ATTENTE_SUPERVISEUR: 'Attend le superviseur',
+  ATTENTE_ADMIN: "Attend l'administrateur",
+  VALIDEE: 'Validee',
+  REFUSEE: 'Refusee',
+  ANNULEE: 'Annulee'
+};
 
 export interface SyntheseDepenses {
   mois: string;
@@ -732,7 +798,10 @@ export interface VenteCarte {
   marge: number;
   compteNom?: string;
   clientNom?: string;
+  clientPrenom?: string;
   clientTelephone?: string;
+  /** Numero de chaque carte vendue. */
+  numeros: string[];
   caissierNom: string;
   statut: 'VALIDEE' | 'ANNULEE';
   annuleeLe?: string;
@@ -760,4 +829,45 @@ export interface AlerteAgence {
   agence?: string;
   message: string;
   lien?: string;
+}
+
+export interface AttenteOperateur {
+  serviceId: number;
+  service: string;
+  differe: boolean;
+  nombre: number;
+  montant: number;
+  plusAncienne?: string;
+}
+
+export interface CommissionAttente {
+  transactionId: number;
+  reference: string;
+  date: string;
+  journee: string;
+  reseau?: string;
+  operation: string;
+  montant: number;
+  commission: number;
+  caissierNom: string;
+}
+
+export interface VersementCommission {
+  id: number;
+  reference: string;
+  agenceId: number;
+  agenceNom?: string;
+  serviceId: number;
+  service: string;
+  referenceOperateur?: string;
+  dateVersement: string;
+  montantAttendu: number;
+  montantVerse: number;
+  ecart: number;
+  nombreCommissions: number;
+  compteNom?: string;
+  observations?: string;
+  statut: 'VALIDE' | 'ANNULE';
+  auteurNom?: string;
+  motifAnnulation?: string;
 }

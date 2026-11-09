@@ -68,6 +68,9 @@ public class VenteCarte extends BaseEntity {
     @Column(name = "client_nom", length = 150, updatable = false)
     private String clientNom;
 
+    @Column(name = "client_prenom", length = 150, updatable = false)
+    private String clientPrenom;
+
     @Column(name = "client_telephone", length = 30, updatable = false)
     private String clientTelephone;
 
@@ -99,4 +102,10 @@ public class VenteCarte extends BaseEntity {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "agc_vente_carte_lot", joinColumns = @JoinColumn(name = "vente_id"))
     private List<ConsommationLot> lots = new ArrayList<>();
+
+    /** Numero de chaque carte vendue, dans l'ordre de saisie. */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "agc_vente_carte_numero", joinColumns = @JoinColumn(name = "vente_id"))
+    @Column(name = "numero", length = 40)
+    private List<String> numeros = new ArrayList<>();
 }

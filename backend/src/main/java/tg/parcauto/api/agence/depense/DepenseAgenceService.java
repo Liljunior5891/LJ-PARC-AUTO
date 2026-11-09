@@ -32,6 +32,7 @@ import tg.parcauto.api.agence.tresorerie.CompteAgenceRepository;
 import tg.parcauto.api.agence.tresorerie.Ecriture;
 import tg.parcauto.api.agence.tresorerie.NatureEcriture;
 import tg.parcauto.api.agence.tresorerie.RegistreService;
+import tg.parcauto.api.agence.tresorerie.TypeCompte;
 import tg.parcauto.api.common.BusinessException;
 import tg.parcauto.api.common.NumerotationService;
 import tg.parcauto.api.common.ResourceNotFoundException;
@@ -80,6 +81,7 @@ public class DepenseAgenceService {
     private final StockageFichierService stockage;
     private final InitialisationAgence initialisation;
     private final AuditAgenceService audit;
+    private final tg.parcauto.api.agence.caisse.SessionCaisseAgenceRepository sessionsRepository;
 
     public record CategorieRequete(@NotBlank @Size(max = 80) String nom, Integer ordre, Boolean actif) {
     }
@@ -98,7 +100,12 @@ public class DepenseAgenceService {
                              String libelle, long montant, LocalDate journee, Instant dateDepense, Long compteId,
                              String compteNom, String beneficiaire, String reference, Long recurrenteId, String periode,
                              String observations, String justificatifNom, DepenseAgence.Statut statut, String auteurNom,
-                             Instant annuleeLe, String annuleeParNom, String motifAnnulation, boolean annulable) {
+                             Instant annuleeLe, String annuleeParNom, String motifAnnulation, boolean annulable,
+                             /** Circuit de validation des depenses de caisse. */
+                             String viseeParNom, Instant viseeLe, String approuveeParNom, Instant approuveeLe,
+                             String refuseeParNom, Instant refuseeLe, String motifRefus,
+                             /** L'utilisateur peut viser (superviseur) ou approuver (administrateur) cette depense. */
+                             boolean validable) {
     }
 
     public record Filtres(Long agenceId, LocalDate du, LocalDate au, Long categorieId, DepenseAgence.Statut statut, String q) {
@@ -203,12 +210,176 @@ public class DepenseAgenceService {
         d.setObservations(texte(observations));
         d.setAuteurId(auteur.getId());
         d.setAuteurNom(auteur.getNomComplet());
+        DepenseAgence.Statut attente = etapeInitiale(compte);
+        if (attente == null) {
+            d = repository.save(d);
+            ecrire(d, compte.getId(), categorie.getNom());
+            return versDto(d, contexte());
+        }
+        // Rien n'est ecrit au registre avant l'approbation de l'administrateur.
+        long disponible = compte.getSolde() + compte.getDecouvertAutorise();
+        if (montant > disponible) {
+            throw new BusinessException(compte.getLibelle() + " insuffisant : il manque " + RegistreService.francs(montant - disponible)
+                    + " (solde disponible " + RegistreService.francs(disponible) + ")");
+        }
+        d.setStatut(attente);
+        if (attente == DepenseAgence.Statut.ATTENTE_ADMIN) {
+            d.setViseeParNom(auteur.getNomComplet());
+            d.setViseeLe(maintenant);
+        }
         d = repository.save(d);
-        Ecriture e = registre.enregistrer(new RegistreService.Entete(agence.getId(), NatureEcriture.DEPENSE,
-                d.getNumero() + " - " + categorie.getNom() + " : " + libelle, null, "DEPENSE", d.getId()),
-                List.of(RegistreService.Mouvement.de(compte.getId(), -montant)));
-        d.setEcritureId(e.getId());
+        audit.tracer(agence.getId(), "CREATION", "DEPENSE", d.getId(), "Depense " + d.getNumero() + " de "
+                + RegistreService.francs(montant) + " en attente de validation (" + libelleAttente(attente) + ")", null, attente.name());
         return versDto(d, contexte());
+    }
+
+    private void ecrire(DepenseAgence d, Long compteId, String categorieNom) {
+        Ecriture e = registre.enregistrer(new RegistreService.Entete(d.getAgenceId(), NatureEcriture.DEPENSE,
+                d.getNumero() + " - " + categorieNom + " : " + d.getLibelle(), null, "DEPENSE", d.getId()),
+                List.of(RegistreService.Mouvement.de(compteId, -d.getMontant())));
+        d.setEcritureId(e.getId());
+    }
+
+    /**
+     * Etape par laquelle commence une depense : nulle (prise en compte tout de suite)
+     * sans le reglage, hors caisse ou pour l'administrateur ; le visa du superviseur
+     * pour un caissier ; l'administrateur pour une depense saisie par un superviseur.
+     */
+    private DepenseAgence.Statut etapeInitiale(CompteAgence compte) {
+        boolean reglage = reglages.findFirstByOrderByIdAsc().map(ReglageAgence::isValidationDepensesCaisse).orElse(false);
+        if (!reglage || compte.getType().getFamille() != TypeCompte.Famille.CASH || DroitsAgence.estAdministrateur()) {
+            return null;
+        }
+        return caissierSeul() ? DepenseAgence.Statut.ATTENTE_SUPERVISEUR : DepenseAgence.Statut.ATTENTE_ADMIN;
+    }
+
+    private static String libelleAttente(DepenseAgence.Statut s) {
+        return s == DepenseAgence.Statut.ATTENTE_SUPERVISEUR ? "visa du superviseur" : "approbation de l'administrateur";
+    }
+
+    // ---------------------------------------------------- circuit de validation
+
+    /** Depenses qui attendent une validation de cet utilisateur : son visa (superviseur) ou toutes (administrateur). */
+    @Transactional(readOnly = true)
+    public List<DepenseDto> aValider(Long agenceId) {
+        List<DepenseAgence.Statut> statuts = statutsValidables();
+        Set<Long> agences = agences(agenceId);
+        if (statuts.isEmpty() || agences.isEmpty()) {
+            return List.of();
+        }
+        Contexte ctx = contexte();
+        return repository.findByAgenceIdInAndStatutInOrderByDateDepenseAscIdAsc(agences, statuts).stream()
+                .map(d -> versDto(d, ctx)).toList();
+    }
+
+    /** Nombre de depenses qui attendent une validation de cet utilisateur. */
+    @Transactional(readOnly = true)
+    public long nombreAValider(Set<Long> agences) {
+        List<DepenseAgence.Statut> statuts = statutsValidables();
+        return statuts.isEmpty() || agences.isEmpty() ? 0 : repository.countByAgenceIdInAndStatutIn(agences, statuts);
+    }
+
+    private List<DepenseAgence.Statut> statutsValidables() {
+        if (DroitsAgence.estAdministrateur()) {
+            return List.of(DepenseAgence.Statut.ATTENTE_SUPERVISEUR, DepenseAgence.Statut.ATTENTE_ADMIN);
+        }
+        return droits.courants().contains(PermissionAgence.DEPENSE_VALIDER)
+                ? List.of(DepenseAgence.Statut.ATTENTE_SUPERVISEUR) : List.of();
+    }
+
+    /**
+     * Validation : le superviseur vise ; l'administrateur approuve (a l'une ou l'autre
+     * etape) et la depense s'ecrit au registre. Une depense de caissier dont la caisse
+     * est fermee entre-temps sort de la caisse generale, ou ses especes ont ete remises.
+     */
+    public DepenseDto valider(Long id, UtilisateurPrincipal u) {
+        DepenseAgence d = enAttente(id);
+        Instant maintenant = Instant.now();
+        if (!DroitsAgence.estAdministrateur()) {
+            droits.exiger(PermissionAgence.DEPENSE_VALIDER);
+            if (d.getStatut() != DepenseAgence.Statut.ATTENTE_SUPERVISEUR) {
+                throw new BusinessException("La depense " + d.getNumero() + " attend l'approbation de l'administrateur");
+            }
+            if (d.getAuteurId().equals(u.getId())) {
+                throw new org.springframework.security.access.AccessDeniedException("Une depense se vise par une autre personne que son auteur");
+            }
+            d.setStatut(DepenseAgence.Statut.ATTENTE_ADMIN);
+            d.setViseeParNom(u.getNomComplet());
+            d.setViseeLe(maintenant);
+            audit.tracer(d.getAgenceId(), "VALIDATION", "DEPENSE", d.getId(), "Depense " + d.getNumero() + " visee",
+                    "ATTENTE_SUPERVISEUR", "ATTENTE_ADMIN");
+            return versDto(d, contexte());
+        }
+        DepenseAgence.Statut avant = d.getStatut();
+        if (d.getViseeParNom() == null) {
+            d.setViseeParNom(u.getNomComplet());
+            d.setViseeLe(maintenant);
+        }
+        CompteAgence compte = compteAApprouver(d);
+        d.setCompteId(compte.getId());
+        d.setJournee(registre.journee(maintenant));
+        String categorie = categories.findById(d.getCategorieId()).map(CategorieDepenseAgence::getNom).orElse("Depense");
+        ecrire(d, compte.getId(), categorie);
+        d.setStatut(DepenseAgence.Statut.VALIDEE);
+        d.setApprouveeParNom(u.getNomComplet());
+        d.setApprouveeLe(maintenant);
+        audit.tracer(d.getAgenceId(), "VALIDATION", "DEPENSE", d.getId(), "Depense " + d.getNumero() + " approuvee, "
+                + RegistreService.francs(d.getMontant()) + " sortis de " + compte.getLibelle(), avant.name(), "VALIDEE");
+        return versDto(d, contexte());
+    }
+
+    public DepenseDto refuser(Long id, String motif, UtilisateurPrincipal u) {
+        DepenseAgence d = enAttente(id);
+        if (motif == null || motif.isBlank()) {
+            throw new BusinessException("Le motif du refus est obligatoire");
+        }
+        if (!DroitsAgence.estAdministrateur()) {
+            droits.exiger(PermissionAgence.DEPENSE_VALIDER);
+            if (d.getStatut() != DepenseAgence.Statut.ATTENTE_SUPERVISEUR) {
+                throw new BusinessException("La depense " + d.getNumero() + " attend la decision de l'administrateur");
+            }
+        }
+        DepenseAgence.Statut avant = d.getStatut();
+        d.setStatut(DepenseAgence.Statut.REFUSEE);
+        d.setRefuseeParNom(u.getNomComplet());
+        d.setRefuseeLe(Instant.now());
+        d.setMotifRefus(motif.trim());
+        audit.tracer(d.getAgenceId(), "REJET", "DEPENSE", d.getId(), "Depense " + d.getNumero() + " refusee (" + motif.trim() + ")",
+                avant.name(), "REFUSEE");
+        return versDto(d, contexte());
+    }
+
+    /**
+     * Compte debite a l'approbation : la caisse du caissier si sa caisse est encore
+     * ouverte ; la caisse generale si elle est fermee (ses especes y ont ete remises) ;
+     * refus si elle est comptee et en attente de la decision du superviseur.
+     */
+    private CompteAgence compteAApprouver(DepenseAgence d) {
+        CompteAgence compte = comptes.findById(d.getCompteId()).orElseThrow(() -> ResourceNotFoundException.of("Compte", d.getCompteId()));
+        if (compte.getType() != TypeCompte.CAISSE_CAISSIER || compte.getUtilisateurId() == null) {
+            return compte;
+        }
+        var session = sessionsRepository.findFirstByCaissierIdAndStatutIn(compte.getUtilisateurId(), SessionCaisseService.EN_COURS)
+                .filter(s -> s.getCompteId().equals(compte.getId()));
+        if (session.isPresent()) {
+            if (session.get().getStatut() == tg.parcauto.api.agence.caisse.SessionCaisseAgence.Statut.SOUMISE) {
+                throw new BusinessException("La caisse de " + session.get().getCaissierNom()
+                        + " est comptee et attend la decision du superviseur : approuvez apres sa fermeture");
+            }
+            return compte;
+        }
+        return comptes.findByAgenceIdIn(List.of(d.getAgenceId())).stream()
+                .filter(c -> c.getType() == TypeCompte.CAISSE_GENERALE).findFirst()
+                .orElseThrow(() -> new BusinessException("L'agence n'a pas de caisse generale"));
+    }
+
+    private DepenseAgence enAttente(Long id) {
+        DepenseAgence d = charger(id);
+        perimetre.exiger(d.getAgenceId());
+        if (!d.getStatut().enAttente()) {
+            throw new BusinessException("La depense " + d.getNumero() + " n'attend plus de validation");
+        }
+        return d;
     }
 
     /**
@@ -223,7 +394,8 @@ public class DepenseAgenceService {
                         + " : demandez a votre superviseur");
             }
             var session = sessions.ouverte(agence.getId(), auteur.getId())
-                    .orElseThrow(() -> new BusinessException("Votre caisse n'est pas ouverte : une depense de caissier se paie depuis sa caisse"));
+                    .orElseThrow(() -> new BusinessException(sessions.motifSansCaisse(agence.getId(), agence.getNom(), auteur.getId())
+                            + " (une depense de caissier se paie depuis sa caisse)"));
             return comptes.findById(session.getCompteId()).orElseThrow();
         }
         if (compteId == null) {
@@ -297,9 +469,42 @@ public class DepenseAgenceService {
     }
 
     @Transactional(readOnly = true)
+    /** Chiffres de la liste filtree : total, repartition, moyenne, annulees et pieces manquantes. */
+    public record Resume(long total, long nombre, long moyenne, long annulees, long montantAnnule, long sansJustificatif,
+                         List<TotalCategorie> parCategorie) {
+    }
+
+    @Transactional(readOnly = true)
+    public Resume resume(Filtres f) {
+        List<DepenseAgence> lignes = repository.findAll(specification(f));
+        Map<Long, String> noms = categories.findAll().stream()
+                .collect(Collectors.toMap(CategorieDepenseAgence::getId, CategorieDepenseAgence::getNom));
+        List<DepenseAgence> validees = lignes.stream().filter(d -> d.getStatut() == DepenseAgence.Statut.VALIDEE).toList();
+        long total = validees.stream().mapToLong(DepenseAgence::getMontant).sum();
+        List<DepenseAgence> annulees = lignes.stream().filter(d -> d.getStatut() == DepenseAgence.Statut.ANNULEE).toList();
+        List<TotalCategorie> parCategorie = validees.stream()
+                .collect(Collectors.groupingBy(DepenseAgence::getCategorieId)).entrySet().stream()
+                .map(e -> new TotalCategorie(e.getKey(), noms.getOrDefault(e.getKey(), "?"),
+                        e.getValue().stream().mapToLong(DepenseAgence::getMontant).sum(), e.getValue().size()))
+                .sorted(java.util.Comparator.comparingLong(TotalCategorie::total).reversed())
+                .toList();
+        return new Resume(total, validees.size(), validees.isEmpty() ? 0 : Math.round((double) total / validees.size()),
+                annulees.size(), annulees.stream().mapToLong(DepenseAgence::getMontant).sum(),
+                validees.stream().filter(d -> d.getJustificatifChemin() == null).count(), parCategorie);
+    }
+
     public Page<DepenseDto> lister(Filtres f, Pageable pageable) {
+        Specification<DepenseAgence> spec = specification(f);
+        Pageable trie = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "dateDepense").and(Sort.by(Sort.Direction.DESC, "id")));
+        Contexte ctx = contexte();
+        return repository.findAll(spec, trie).map(d -> versDto(d, ctx));
+    }
+
+    /** Depenses visibles selon les filtres ; un caissier ne voit que les siennes. */
+    private Specification<DepenseAgence> specification(Filtres f) {
         Set<Long> agences = agences(f.agenceId());
-        Specification<DepenseAgence> spec = (root, query, cb) -> {
+        return (root, query, cb) -> {
             List<Predicate> p = new ArrayList<>();
             p.add(agences.isEmpty() ? cb.disjunction() : root.get("agenceId").in(agences));
             if (caissierSeul()) {
@@ -324,10 +529,6 @@ public class DepenseAgenceService {
             }
             return cb.and(p.toArray(Predicate[]::new));
         };
-        Pageable trie = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
-                Sort.by(Sort.Direction.DESC, "dateDepense").and(Sort.by(Sort.Direction.DESC, "id")));
-        Contexte ctx = contexte();
-        return repository.findAll(spec, trie).map(d -> versDto(d, ctx));
     }
 
     /** Total du mois, par categorie, et les six derniers mois pour comparer. */
@@ -468,7 +669,8 @@ public class DepenseAgenceService {
         return repository.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Depense", id));
     }
 
-    private record Contexte(Map<Long, String> agences, Map<Long, String> categories, Map<Long, String> comptes, boolean annulation) {
+    private record Contexte(Map<Long, String> agences, Map<Long, String> categories, Map<Long, String> comptes, boolean annulation,
+                            boolean visa, boolean admin, Long moi) {
     }
 
     private Contexte contexte() {
@@ -477,7 +679,8 @@ public class DepenseAgenceService {
                 categories.findAll().stream().collect(Collectors.toMap(CategorieDepenseAgence::getId, CategorieDepenseAgence::getNom)),
                 comptes.findByAgenceIdIn(visibles.stream().map(Agence::getId).toList()).stream()
                         .collect(Collectors.toMap(CompteAgence::getId, CompteAgence::getLibelle)),
-                droits.courants().contains(PermissionAgence.DEPENSE_ANNULER));
+                droits.courants().contains(PermissionAgence.DEPENSE_ANNULER),
+                droits.courants().contains(PermissionAgence.DEPENSE_VALIDER), DroitsAgence.estAdministrateur(), moi());
     }
 
     private static DepenseDto versDto(DepenseAgence d, Contexte ctx) {
@@ -485,6 +688,10 @@ public class DepenseAgenceService {
                 ctx.categories().get(d.getCategorieId()), d.getLibelle(), d.getMontant(), d.getJournee(), d.getDateDepense(),
                 d.getCompteId(), ctx.comptes().get(d.getCompteId()), d.getBeneficiaire(), d.getReference(), d.getRecurrenteId(),
                 d.getPeriode(), d.getObservations(), d.getJustificatifNom(), d.getStatut(), d.getAuteurNom(), d.getAnnuleeLe(),
-                d.getAnnuleeParNom(), d.getMotifAnnulation(), ctx.annulation() && d.getStatut() == DepenseAgence.Statut.VALIDEE);
+                d.getAnnuleeParNom(), d.getMotifAnnulation(), ctx.annulation() && d.getStatut() == DepenseAgence.Statut.VALIDEE,
+                d.getViseeParNom(), d.getViseeLe(), d.getApprouveeParNom(), d.getApprouveeLe(), d.getRefuseeParNom(),
+                d.getRefuseeLe(), d.getMotifRefus(),
+                ctx.admin() ? d.getStatut().enAttente()
+                        : ctx.visa() && d.getStatut() == DepenseAgence.Statut.ATTENTE_SUPERVISEUR && !d.getAuteurId().equals(ctx.moi()));
     }
 }

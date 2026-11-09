@@ -71,7 +71,7 @@ public class CarteController {
     }
 
     @PostMapping("/lots")
-    @PreAuthorize("@droitsAgence.a('CARTE_STOCK')")
+    @PreAuthorize("@droitsAgence.a('CARTE_STOCK') and hasAnyRole('ADMIN', 'SUPERVISEUR_AGENCE')")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Entree d'un lot : achat paye depuis un compte, ou stock initial sans compte")
     public List<CarteService.StockProduit> entrer(@Valid @RequestBody CarteService.Entree e,

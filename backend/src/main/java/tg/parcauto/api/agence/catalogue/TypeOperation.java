@@ -35,6 +35,11 @@ public class TypeOperation extends BaseEntity {
     @JoinColumn(name = "service_id", nullable = false)
     private ServiceFinancier service;
 
+    /** Reseau auquel l'operation est propre ; nul : commune a tous les reseaux du service. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reseau_id")
+    private Reseau reseau;
+
     @Column(nullable = false, length = 40)
     private String code;
 

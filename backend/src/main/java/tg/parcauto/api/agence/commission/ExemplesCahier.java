@@ -25,7 +25,11 @@ final class ExemplesCahier {
             new Cas("KEAZ", "RETRAIT", null, 1_800_000, 9_000),
             new Cas("RAPID_TRANSFER", null, "MONEYGRAM", 1_000_000, 2_478),
             new Cas("RAPID_TRANSFER", null, "WESTERN_UNION", 57_000, 298),
-            new Cas("RAPID_TRANSFER", null, "KORI", 113_602, 271));
+            new Cas("RAPID_TRANSFER", null, "KORI", 113_602, 271),
+            // Memes exemples une fois les reseaux devenus des services a part.
+            new Cas("MONEYGRAM", null, null, 1_000_000, 2_478),
+            new Cas("WESTERN_UNION", null, null, 57_000, 298),
+            new Cas("KORI", null, null, 113_602, 271));
 
     static final List<Modele> MODELES = List.of(
             new Modele("KEAZ", "DEPOT", null, "Keaz Spot - depot (exemple du cahier)", Bareme.Mode.POURCENTAGE,
@@ -39,6 +43,12 @@ final class ExemplesCahier {
             new Modele("RAPID_TRANSFER", null, "WESTERN_UNION", "Western Union (exemple du cahier)", Bareme.Mode.POURCENTAGE,
                     new BigDecimal("0.5228"), List.of()),
             new Modele("RAPID_TRANSFER", null, "KORI", "KORI (exemple du cahier)", Bareme.Mode.POURCENTAGE,
+                    new BigDecimal("0.2386"), List.of()),
+            new Modele("MONEYGRAM", null, null, "MoneyGram (exemple du cahier)", Bareme.Mode.POURCENTAGE,
+                    new BigDecimal("0.2478"), List.of()),
+            new Modele("WESTERN_UNION", null, null, "Western Union (exemple du cahier)", Bareme.Mode.POURCENTAGE,
+                    new BigDecimal("0.5228"), List.of()),
+            new Modele("KORI", null, null, "KORI (exemple du cahier)", Bareme.Mode.POURCENTAGE,
                     new BigDecimal("0.2386"), List.of()));
 
     private ExemplesCahier() {

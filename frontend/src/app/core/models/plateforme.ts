@@ -133,6 +133,8 @@ export interface EntrepriseResume {
   creeLe?: string;
   nombreUtilisateurs: number;
   modules: CodeModule[];
+  /** Module Agences : plusieurs agences autorisees (une seule par defaut). */
+  agencesMultiples?: boolean;
 }
 
 export interface StatistiquesPlateforme {

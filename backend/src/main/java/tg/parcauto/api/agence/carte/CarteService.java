@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -90,13 +91,17 @@ public class CarteService {
                                boolean alerte, long margeUnitaireEstimee, List<LotDto> lots) {
     }
 
-    public record Vente(@NotNull Long agenceId, @NotNull Long produitId, @NotNull @Min(1) Integer quantite,
-                        @Size(max = 150) String clientNom, @Size(max = 30) String clientTelephone) {
+    /** Une vente = un client et les numeros des cartes qu'il achete ; la quantite est le nombre de numeros. */
+    public record Vente(@NotNull Long agenceId, @NotNull Long produitId,
+                        @NotEmpty(message = "ajoutez au moins un numero de carte") @Size(max = 200) List<@NotBlank @Size(max = 40) String> numeros,
+                        @Size(max = 150) String clientNom, @Size(max = 150) String clientPrenom,
+                        @NotBlank(message = "le telephone du client est obligatoire") @Size(max = 30) String clientTelephone) {
     }
 
     public record VenteDto(Long id, String reference, Long agenceId, String agenceNom, Long produitId, String produitNom,
                            Instant dateVente, LocalDate journee, int quantite, long prixUnitaire, long montant, long coutTotal,
-                           long marge, String compteNom, String clientNom, String clientTelephone, String caissierNom,
+                           long marge, String compteNom, String clientNom, String clientPrenom, String clientTelephone,
+                           List<String> numeros, String caissierNom,
                            VenteCarte.Statut statut, Instant annuleeLe, String annuleeParNom, String motifAnnulation,
                            boolean annulable) {
     }
@@ -220,6 +225,8 @@ public class CarteService {
         if (!p.isActif()) {
             throw new BusinessException("La carte " + p.getNom() + " n'est plus vendue");
         }
+        List<String> numeros = numerosVerifies(v.numeros());
+        int quantite = numeros.size();
         // Caisse du cash : celle du caissier, ou la caisse generale pour un superviseur sans caisse.
         Long sessionId = null;
         CompteAgence caisse;
@@ -228,8 +235,7 @@ public class CarteService {
             sessionId = session.get().getId();
             caisse = comptes.findById(session.get().getCompteId()).orElseThrow();
         } else if (caissierSeul()) {
-            throw new BusinessException("Votre caisse n'est pas ouverte dans l'agence " + agence.getNom()
-                    + " : demandez a votre superviseur de l'ouvrir");
+            throw new BusinessException(sessions.motifSansCaisse(agence.getId(), agence.getNom(), caissier.getId()));
         } else {
             caisse = compteService.synchroniser(agence).stream().filter(c -> c.getType() == TypeCompte.CAISSE_GENERALE).findFirst()
                     .orElseThrow(() -> new BusinessException("L'agence n'a pas de caisse generale"));
@@ -240,12 +246,13 @@ public class CarteService {
             em.refresh(l);
         }
         int stock = disponibles.stream().mapToInt(LotCarte::getQuantiteRestante).sum();
-        if (stock < v.quantite()) {
+        if (stock < quantite) {
             throw new BusinessException("Stock insuffisant de " + p.getNom() + " : " + stock + " carte(s) disponible(s) pour "
-                    + v.quantite() + " demandee(s)");
+                    + quantite + " demandee(s)");
         }
         VenteCarte vente = new VenteCarte();
-        int reste = v.quantite();
+        vente.getNumeros().addAll(numeros);
+        int reste = quantite;
         long cout = 0;
         for (LotCarte l : disponibles) {
             if (reste == 0) {
@@ -263,21 +270,22 @@ public class CarteService {
         vente.setReference(numerotation.prochainNumero("VCA"));
         vente.setDateVente(maintenant);
         vente.setJournee(registre.journee(maintenant));
-        vente.setQuantite(v.quantite());
+        vente.setQuantite(quantite);
         vente.setPrixUnitaire(p.getPrixVente());
-        vente.setMontant((long) v.quantite() * p.getPrixVente());
+        vente.setMontant((long) quantite * p.getPrixVente());
         vente.setCoutTotal(cout);
         vente.setMarge(vente.getMontant() - cout);
         vente.setCompteCashId(caisse.getId());
         vente.setSessionId(sessionId);
         vente.setClientNom(texte(v.clientNom()));
+        vente.setClientPrenom(texte(v.clientPrenom()));
         vente.setClientTelephone(texte(v.clientTelephone()));
         vente.setCaissierId(caissier.getId());
         vente.setCaissierNom(caissier.getNomComplet());
         vente = ventes.save(vente);
         if (vente.getMontant() > 0) {
             Ecriture e = registre.enregistrer(new RegistreService.Entete(agence.getId(), NatureEcriture.CARTE,
-                    vente.getReference() + " - Vente de " + v.quantite() + " " + p.getNom(), null, "VENTE_CARTE", vente.getId()),
+                    vente.getReference() + " - Vente de " + quantite + " " + p.getNom(), null, "VENTE_CARTE", vente.getId()),
                     List.of(RegistreService.Mouvement.de(caisse.getId(), vente.getMontant())));
             vente.setEcritureId(e.getId());
         }
@@ -397,6 +405,32 @@ public class CarteService {
 
     // ------------------------------------------------------------------ outils
 
+    /**
+     * Numeros nettoyes (espaces retires), sans doublon dans la saisie ni carte
+     * deja vendue par une vente encore valide.
+     */
+    private List<String> numerosVerifies(List<String> saisis) {
+        List<String> numeros = saisis.stream().map(n -> n.replaceAll("\\s+", "").toUpperCase(java.util.Locale.ROOT)).toList();
+        Set<String> vus = new java.util.HashSet<>();
+        for (String n : numeros) {
+            if (n.isEmpty()) {
+                throw new BusinessException("Un numero de carte est vide");
+            }
+            if (!vus.add(n)) {
+                throw new BusinessException("La carte " + n + " est saisie deux fois");
+            }
+        }
+        List<String> dejaVendues = em.createQuery("""
+                        select n from VenteCarte v join v.numeros n
+                        where v.statut = tg.parcauto.api.agence.carte.VenteCarte.Statut.VALIDEE and n in :numeros
+                        """, String.class)
+                .setParameter("numeros", numeros).getResultList();
+        if (!dejaVendues.isEmpty()) {
+            throw new BusinessException("Carte(s) deja vendue(s) : " + String.join(", ", new java.util.TreeSet<>(dejaVendues)));
+        }
+        return numeros;
+    }
+
     private ProduitCarte produit(Long id) {
         return produits.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Carte", id));
     }
@@ -449,7 +483,7 @@ public class CarteService {
         return new VenteDto(v.getId(), v.getReference(), v.getAgenceId(), ctx.agences().get(v.getAgenceId()), v.getProduitId(),
                 ctx.produits().get(v.getProduitId()), v.getDateVente(), v.getJournee(), v.getQuantite(), v.getPrixUnitaire(),
                 v.getMontant(), v.getCoutTotal(), v.getMarge(), ctx.comptes().get(v.getCompteCashId()), v.getClientNom(),
-                v.getClientTelephone(), v.getCaissierNom(), v.getStatut(), v.getAnnuleeLe(), v.getAnnuleeParNom(),
+                v.getClientPrenom(), v.getClientTelephone(), List.copyOf(v.getNumeros()), v.getCaissierNom(), v.getStatut(), v.getAnnuleeLe(), v.getAnnuleeParNom(),
                 v.getMotifAnnulation(), ctx.annulation() && v.getStatut() == VenteCarte.Statut.VALIDEE);
     }
 }

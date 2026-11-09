@@ -52,7 +52,7 @@ public class PilotageAgenceController {
     }
 
     @GetMapping("/tableau-bord")
-    @PreAuthorize("@droitsAgence.a('SOLDES_CONSULTER')")
+    @PreAuthorize("@droitsAgence.a('TABLEAU_BORD') or @droitsAgence.a('SOLDES_CONSULTER')")
     @Operation(summary = "Tresorerie, activite, revenus et repartitions sur une periode de journees de caisse")
     public TableauBordAgenceService.TableauBord tableauBord(
             @RequestParam(required = false) Long agenceId,

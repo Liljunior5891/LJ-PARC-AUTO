@@ -5,6 +5,7 @@ import { CompteAgence, MouvementAgence, StatutMouvement, TypeMouvement } from '.
 import { Page } from '../../../core/models/models';
 import { AgencesService } from '../../../core/services/agences.service';
 import { Modale } from '../../../shared/modale';
+import { OngletsInclines } from '../../../shared/onglets-inclines';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
 const TYPES: { code: TypeMouvement; libelle: string; aide: string }[] = [
@@ -31,11 +32,18 @@ const STATUTS: Record<StatutMouvement, string> = {
  */
 @Component({
   selector: 'app-mouvements-agences',
-  imports: [DatePipe, DecimalPipe, FormsModule, Modale, SuiteListe],
+  imports: [DatePipe, DecimalPipe, FormsModule, Modale, OngletsInclines, SuiteListe],
   templateUrl: './mouvements.html',
   styleUrl: './mouvements.scss'
 })
 export class MouvementsAgences implements OnInit {
+  readonly ongletsStatut = [
+    { id: 'TOUS', libelle: 'Tous', icone: '📋' },
+    { id: 'EN_ATTENTE', libelle: 'En attente', icone: '⏳' },
+    { id: 'VALIDE', libelle: 'Valides', icone: '✅' },
+    { id: 'REJETE', libelle: 'Rejetes', icone: '⛔' },
+    { id: 'ANNULE', libelle: 'Annules', icone: '↩' }
+  ];
   readonly service = inject(AgencesService);
   readonly types = TYPES;
   readonly statuts = STATUTS;
@@ -51,6 +59,11 @@ export class MouvementsAgences implements OnInit {
 
   filtreAgence: number | null = null;
   filtreStatut: StatutMouvement | '' = '';
+
+  choisirStatut(id: string): void {
+    this.filtreStatut = id === 'TOUS' ? '' : (id as StatutMouvement);
+    this.filtrer();
+  }
 
   // Formulaire
   readonly saisie = signal(false);

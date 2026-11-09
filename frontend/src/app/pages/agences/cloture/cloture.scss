@@ -1,18 +1,3 @@
-.actions-entete {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-
-  select,
-  input {
-    padding: 0.5rem 0.7rem;
-    border: 1px solid var(--couleur-bordure);
-    border-radius: 8px;
-    font: inherit;
-    background: var(--couleur-surface);
-  }
-}
-
 .message.attention {
   background: #fff6e0;
   color: #7a5200;

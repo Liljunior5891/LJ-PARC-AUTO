@@ -8,42 +8,42 @@
 
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 
-<div class="mise-en-page">
-  <nav class="liste-rapports carte" aria-label="Rapports">
+<div class="rapports">
+  <nav class="carte liste-rapports" aria-label="Rapports">
+    <h2>Rapports des agences</h2>
     @for (r of catalogue(); track r.code) {
       <button type="button" [class.actif]="type === r.code" [disabled]="!r.autorise" (click)="choisir(r.code)"
-              [title]="r.autorise ? r.description : 'Reserve aux profils ayant les rapports financiers complets'">
-        <strong>{{ r.titre }}</strong>
-        <small>{{ r.autorise ? r.description : 'Non accessible a votre profil' }}</small>
-      </button>
+              [title]="r.autorise ? r.description : 'Reserve aux profils ayant les rapports financiers complets'">{{ r.titre }}</button>
     }
   </nav>
 
-  <section class="contenu">
-    <div class="carte filtres">
-      <div class="champ">
-        <label for="periodicite">Rapport</label>
-        <select id="periodicite" [(ngModel)]="periodicite" (ngModelChange)="changerPeriodicite()">
-          <option value="JOUR">Journalier (aujourd'hui)</option>
-          <option value="SEMAINE">Hebdomadaire (cette semaine)</option>
-          <option value="MOIS">Mensuel (ce mois)</option>
-          <option value="ANNEE">Annuel (cette annee)</option>
-          <option value="LIBRE">Periode libre</option>
+  <section class="contenu-rapport">
+    <!-- Sur telephone, la liste devient une liste deroulante -->
+    <div class="choix-mobile">
+      <select [ngModel]="type" (ngModelChange)="choisir($event)" aria-label="Rapport">
+        @for (r of autorises(); track r.code) { <option [value]="r.code">{{ r.titre }}</option> }
+      </select>
+    </div>
+    <div class="carte barre-rapport">
+      <div class="choix-periode">
+        <select [(ngModel)]="periodicite" (ngModelChange)="changerPeriodicite()" aria-label="Periode">
+          <option value="JOUR">Aujourd'hui</option>
+          <option value="SEMAINE">Cette semaine</option>
+          <option value="MOIS">Ce mois</option>
+          <option value="ANNEE">Cette annee</option>
+          <option value="LIBRE">Entre deux dates...</option>
         </select>
       </div>
-      <div class="champ">
-        <label for="du">Du</label>
-        <input id="du" type="date" [(ngModel)]="du" (change)="periodicite = 'LIBRE'; charger()" />
-      </div>
-      <div class="champ">
-        <label for="au">Au</label>
-        <input id="au" type="date" [(ngModel)]="au" (change)="periodicite = 'LIBRE'; charger()" />
+      <div class="dates" [class.invalides]="du > au">
+        <span>Du</span>
+        <input type="date" class="champ-ligne" [max]="au" [(ngModel)]="du" (change)="periodicite = 'LIBRE'; charger()" aria-label="Date de debut" />
+        <span>au</span>
+        <input type="date" class="champ-ligne" [min]="du" [(ngModel)]="au" (change)="periodicite = 'LIBRE'; charger()" aria-label="Date de fin" />
       </div>
       @if ((service.moi()?.agences?.length ?? 0) > 1) {
-        <div class="champ">
-          <label for="agence">Agence</label>
-          <select id="agence" [(ngModel)]="agenceId" (ngModelChange)="charger()">
-            <option [ngValue]="null">Toutes</option>
+        <div class="choix-periode">
+          <select [(ngModel)]="agenceId" (ngModelChange)="charger()" aria-label="Agence">
+            <option [ngValue]="null">Toutes les agences</option>
             @for (a of service.moi()?.agences ?? []; track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
           </select>
         </div>
@@ -56,22 +56,26 @@
     </div>
 
     @if (chargement()) {
-      <p class="vide">Calcul du rapport...</p>
+      <div class="message vide">Calcul du rapport...</div>
     } @else if (rapport(); as r) {
-      <header class="titre-rapport">
+      <div class="titre-rapport">
         <h2>{{ r.titre }}</h2>
-        <small>{{ r.sousTitre }}</small>
-      </header>
+        <span>{{ r.sousTitre }} · {{ r.lignes.length }} ligne(s)</span>
+      </div>
       @if (r.indicateurs.length) {
-        <div class="grille-indicateurs">
+        <div class="cartes-apercu indicateurs-rapport">
           @for (i of r.indicateurs; track i.libelle) {
-            <div class="carte indicateur">
-              <span class="libelle">{{ i.libelle }}</span>
-              <span class="valeur numerique">{{ texte(i.valeur, i.format) }}</span>
+            <div class="carte-apercu {{ couleurs[$index % couleurs.length] }}">
+              <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg></span>
+              <span class="textes">
+                <span class="libelle">{{ i.libelle }}</span>
+                <strong>{{ texte(i.valeur, i.format) }}</strong>
+              </span>
             </div>
           }
         </div>
       }
+      <div class="carte">
       <div class="tableau-conteneur">
         <table class="tableau">
           <thead>
@@ -81,7 +85,7 @@
             @for (l of r.lignes; track $index) {
               <tr>@for (c of r.colonnes; track c.cle) { <td [class.montant]="numerique(c.format)" [class.numerique]="numerique(c.format)">{{ texte(l[c.cle], c.format) }}</td> }</tr>
             } @empty {
-              <tr><td [attr.colspan]="r.colonnes.length" class="vide">Aucune donnee sur cette periode.</td></tr>
+              <tr><td [attr.colspan]="r.colonnes.length"><div class="message vide">Aucune donnee sur cette periode.</div></td></tr>
             }
           </tbody>
           @if (r.lignes.length && (r.totaux | keyvalue).length) {
@@ -94,6 +98,7 @@
             </tfoot>
           }
         </table>
+      </div>
       </div>
     }
   </section>

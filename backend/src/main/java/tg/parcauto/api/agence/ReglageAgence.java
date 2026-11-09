@@ -35,4 +35,19 @@ public class ReglageAgence extends BaseEntity {
     /** Jours avant l'echeance d'un credit ou l'alerte est levee. */
     @Column(name = "jours_alerte_echeance", nullable = false)
     private int joursAlerteEcheance = 7;
+
+    /** Commission encore non creditee au-dela de ce nombre de jours : alerte. */
+    @Column(name = "jours_alerte_commission", nullable = false)
+    private int joursAlerteCommission = 30;
+
+    /**
+     * Depenses payees par une caisse (caisse generale ou de caissier) : visees par
+     * le superviseur puis approuvees par l'administrateur avant d'entrer au registre.
+     */
+    @Column(name = "validation_depenses_caisse", nullable = false)
+    private boolean validationDepensesCaisse;
+
+    /** Minutes sans geste apres lesquelles l'ecran du caissier d'agence se verrouille (code PIN). */
+    @Column(name = "minutes_verrou_caisse", nullable = false)
+    private int minutesVerrouCaisse = 5;
 }

@@ -70,6 +70,26 @@ export class Plateforme implements OnInit {
     });
   }
 
+  /** Option du module Agences : une seule agence (par defaut) ou plusieurs. */
+  basculerAgencesMultiples(entreprise: EntrepriseResume): void {
+    if (this.enCours() !== null) {
+      return;
+    }
+    this.enCours.set(entreprise.id);
+    this.erreur.set(null);
+    this.service.autoriserAgencesMultiples(entreprise.id, !entreprise.agencesMultiples).subscribe({
+      next: (maj) => {
+        this.enCours.set(null);
+        this.entreprises.update((liste) => liste.map((e) => (e.id === maj.id ? maj : e)));
+      },
+      error: (reponse) => {
+        this.enCours.set(null);
+        const message = (reponse as { error?: { message?: string } })?.error?.message;
+        this.erreur.set(message ?? 'Changement de l\'option impossible.');
+      }
+    });
+  }
+
   basculerStatut(entreprise: EntrepriseResume): void {
     if (this.enCours() !== null) {
       return;

@@ -8,39 +8,34 @@
 
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 
-<div class="carte filtres">
-  @if ((service.moi()?.agences?.length ?? 0) > 1) {
-    <div class="champ">
-      <label for="agence">Agence</label>
-      <select id="agence" [(ngModel)]="f.agenceId" (ngModelChange)="filtrer()">
-        <option [ngValue]="null">Toutes</option>
-        @for (a of service.moi()?.agences ?? []; track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+<div class="carte">
+  <div class="filtres-ligne">
+    @if ((service.moi()?.agences?.length ?? 0) > 1) {
+      <div class="filtre">
+        <select [(ngModel)]="f.agenceId" (ngModelChange)="filtrer()" aria-label="Agence">
+          <option [ngValue]="null">Toutes les agences</option>
+          @for (a of service.moi()?.agences ?? []; track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
+        </select>
+      </div>
+    }
+    <div class="filtre large">
+      <select [(ngModel)]="f.objet" (ngModelChange)="filtrer()" aria-label="Sujet">
+        <option value="">Tous les sujets</option>
+        @for (o of objets; track o.code) { <option [value]="o.code">{{ o.libelle }}</option> }
       </select>
     </div>
-  }
-  <div class="champ">
-    <label for="objet">Sujet</label>
-    <select id="objet" [(ngModel)]="f.objet" (ngModelChange)="filtrer()">
-      <option value="">Tous</option>
-      @for (o of objets; track o.code) { <option [value]="o.code">{{ o.libelle }}</option> }
-    </select>
+    <div class="dates-periode">
+      <span>Du</span>
+      <input type="date" [(ngModel)]="f.du" (change)="filtrer()" aria-label="Du" />
+      <span>au</span>
+      <input type="date" [(ngModel)]="f.au" (change)="filtrer()" aria-label="Au" />
+    </div>
+    <input class="recherche" type="search" [(ngModel)]="f.q" (keyup.enter)="filtrer()" (search)="filtrer()"
+           placeholder="Reference, nom, mot..." aria-label="Recherche" />
   </div>
-  <div class="champ">
-    <label for="du">Du</label>
-    <input id="du" type="date" [(ngModel)]="f.du" (change)="filtrer()" />
-  </div>
-  <div class="champ">
-    <label for="au">Au</label>
-    <input id="au" type="date" [(ngModel)]="f.au" (change)="filtrer()" />
-  </div>
-  <div class="champ recherche">
-    <label for="q">Recherche</label>
-    <input id="q" type="search" [(ngModel)]="f.q" (keyup.enter)="filtrer()" (search)="filtrer()" placeholder="Reference, nom, mot..." />
-  </div>
-</div>
 
 @if (page(); as p) {
-  <div class="tableau-conteneur">
+  <div class="tableau-conteneur" style="margin-top: 1rem">
     <table class="tableau">
       <thead><tr><th>Date</th><th>Auteur</th><th>Agence</th><th>Action</th><th>Description</th></tr></thead>
       <tbody>
@@ -63,12 +58,13 @@
             </tr>
           }
         } @empty {
-          <tr><td colspan="5" class="vide">Aucune ligne pour ces criteres.</td></tr>
+          <tr><td colspan="5"><div class="message vide">Aucune ligne pour ces criteres.</div></td></tr>
         }
       </tbody>
     </table>
   </div>
   <app-suite-liste [page]="p" (suite)="suiteListe()" />
 } @else if (!erreur()) {
-  <p class="vide">Chargement...</p>
+  <div class="message vide" style="margin-top: 1rem">Chargement...</div>
 }
+</div>

@@ -10,7 +10,8 @@ public enum NatureEcriture {
     ANNULATION("Annulation"),
     DEPENSE("Depense"),
     CREDIT("Credit ou dette"),
-    CARTE("Cartes prepayees");
+    CARTE("Cartes prepayees"),
+    COMMISSION("Versement de commissions");
 
     private final String libelle;
 

@@ -18,7 +18,7 @@ import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-lis
   selector: 'app-caisses-agences',
   imports: [DatePipe, DecimalPipe, FormsModule, Modale, SaisieBillettage, SuiteListe],
   templateUrl: './caisses-agences.html',
-  styleUrl: './caisses-agences.scss'
+  styleUrls: ['../../pdv/caisses/caisses.scss', './caisses-agences.scss']
 })
 export class CaissesAgences implements OnInit {
   readonly service = inject(AgencesService);
@@ -35,6 +35,8 @@ export class CaissesAgences implements OnInit {
   readonly aOuvrir = signal<CaissierAgence | null>(null);
   readonly aFermer = signal<SessionCaisseAgence | null>(null);
   readonly detail = signal<SessionCaisseAgence | null>(null);
+  readonly aRejeter = signal<SessionCaisseAgence | null>(null);
+  motifRejet = '';
   readonly quantites = signal<Record<number, number | null>>({});
   justification = '';
 
@@ -104,8 +106,13 @@ export class CaissesAgences implements OnInit {
   }
 
   demanderFermeture(s: SessionCaisseAgence): void {
-    this.quantites.set({});
-    this.justification = '';
+    // Caisse soumise : le comptage du caissier est repris, le superviseur le corrige au besoin.
+    const quantites: Record<number, number | null> = {};
+    for (const l of s.statut === 'SOUMISE' ? s.billettageSoumis : []) {
+      quantites[l.valeur] = l.quantite;
+    }
+    this.quantites.set(quantites);
+    this.justification = s.statut === 'SOUMISE' ? (s.justificationSoumise ?? '') : '';
     this.erreurModale.set(null);
     this.succes.set(null);
     this.aFermer.set(s);
@@ -120,11 +127,33 @@ export class CaissesAgences implements OnInit {
       next: (r) => {
         this.aFermer.set(null);
         const ecart = r.ecart ?? 0;
-        this.succes.set(`Caisse de ${r.caissierNom} fermee : ${(r.montantCompte ?? 0).toLocaleString('fr-FR')} F remis a la caisse generale`
+        this.succes.set(`Caisse de ${r.caissierNom} ${s.statut === 'SOUMISE' ? 'validee' : 'fermee'} : ${(r.montantCompte ?? 0).toLocaleString('fr-FR')} F remis a la caisse generale`
           + (ecart ? `, ecart de ${ecart > 0 ? '+' : ''}${ecart.toLocaleString('fr-FR')} F.` : ', sans ecart.'));
         this.charger();
       },
       error: (e) => this.erreurModale.set(this.message(e, 'Fermeture impossible.'))
+    });
+  }
+
+  demanderRejet(s: SessionCaisseAgence): void {
+    this.motifRejet = '';
+    this.erreurModale.set(null);
+    this.succes.set(null);
+    this.aRejeter.set(s);
+  }
+
+  rejeter(): void {
+    const s = this.aRejeter();
+    if (!s || !this.motifRejet.trim()) {
+      return;
+    }
+    this.service.rejeterCaisse(s.id, this.motifRejet.trim()).subscribe({
+      next: (r) => {
+        this.aRejeter.set(null);
+        this.succes.set(`Comptage de ${r.caissierNom} rejete : sa caisse est rouverte pour qu'il recompte.`);
+        this.charger();
+      },
+      error: (e) => this.erreurModale.set(this.message(e, 'Rejet impossible.'))
     });
   }
 

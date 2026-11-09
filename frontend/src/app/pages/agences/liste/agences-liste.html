@@ -5,12 +5,19 @@
   </div>
   @if (gestion()) {
     <div class="actions-entete">
-      <button class="bouton" type="button" (click)="nouvelle()">+ Nouvelle agence</button>
+      <button class="bouton" type="button" [disabled]="limiteAtteinte()" (click)="nouvelle()"
+              [title]="limiteAtteinte() ? 'Votre abonnement comprend une seule agence' : ''">+ Nouvelle agence</button>
     </div>
   }
 </div>
 
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (gestion() && limiteAtteinte()) {
+  <div class="message info-abonnement">
+    Votre abonnement comprend <strong>une seule agence</strong>. Pour en ouvrir d'autres, demandez a l'administrateur de la plateforme
+    d'activer l'option « plusieurs agences ».
+  </div>
+}
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }
 
 @if (chargement()) {
@@ -41,14 +48,18 @@
             <span class="aucun">Personne : seul l'administrateur y travaille</span>
           }
         </div>
-        @if (gestion()) {
-          <footer class="actions-carte">
+        <footer class="actions-carte">
+          <a class="action vert" routerLink="/agences/tableau-bord" [queryParams]="{ agence: a.id }" title="Tableau de bord de l'agence">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16" /><path d="M5 15l4-4 3 3 6-6" /><path d="M14 8h4v4" /></svg>
+            <span>Tableau de bord</span>
+          </a>
+          @if (gestion()) {
             <button type="button" class="action bleu" (click)="modifier(a)">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>
               <span>Modifier</span>
             </button>
-          </footer>
-        }
+          }
+        </footer>
       </article>
     } @empty {
       <div class="carte vide">

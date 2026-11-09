@@ -1,0 +1,580 @@
+/* Saisie en etapes a gauche (tuiles), resume facon ticket de caisse a droite. */
+.colonnes-transaction {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.saisie {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+
+  .grille-formulaire {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+.choix-agence {
+  max-width: 320px;
+}
+
+/* ------------------------------------------------------------- etapes */
+.etape {
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 14px;
+  background: var(--couleur-surface);
+  transition: border-color 0.2s ease;
+
+  &.faite {
+    border-color: color-mix(in srgb, var(--couleur-succes) 45%, var(--couleur-bordure));
+
+    .numero {
+      background: var(--couleur-succes);
+      color: #fff;
+    }
+  }
+}
+
+.titre-etape {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  small {
+    color: var(--couleur-texte-doux);
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+}
+
+.numero {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #e8eef6;
+  color: var(--couleur-primaire);
+  font-size: 0.78rem;
+  letter-spacing: 0;
+  transition: background 0.2s ease;
+}
+
+.recherche-service {
+  margin-left: auto;
+
+  input {
+    width: 170px;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 999px;
+    font: inherit;
+    font-size: 0.85rem;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+}
+
+/* ----------------------------------------------------- tuiles services */
+.tuiles-services {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 0.55rem;
+}
+
+.tuile-service {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.7rem 0.4rem 0.6rem;
+  border: 1.5px solid var(--couleur-bordure);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--couleur-texte);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+
+  .nom {
+    overflow: hidden;
+    max-width: 100%;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover {
+    border-color: var(--couleur-primaire-clair, #9cc3ee);
+    transform: translateY(-1px);
+  }
+
+  &.choisi {
+    border-color: var(--couleur-primaire);
+    background: #eef5fe;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--couleur-primaire) 18%, transparent);
+  }
+}
+
+/* ------------------------------------------------- reseaux (puces) */
+.puces-choix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.puce-choix {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem 0.4rem 0.45rem;
+  border: 1.5px solid var(--couleur-bordure);
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &.choisi {
+    border-color: var(--couleur-primaire);
+    background: #eef5fe;
+    color: var(--couleur-primaire);
+  }
+}
+
+/* ---------------------------------------------------- operations */
+.tuiles-operations {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 0.6rem;
+}
+
+.tuile-operation {
+  --teinte: var(--couleur-primaire);
+
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.65rem;
+  align-items: center;
+  padding: 0.75rem 0.85rem;
+  border: 1.5px solid var(--couleur-bordure);
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &.entree { --teinte: var(--couleur-succes); }
+  &.sortie { --teinte: #d9480f; }
+
+  .fleche {
+    display: grid;
+    grid-row: 1 / span 2;
+    place-items: center;
+    width: 2.3rem;
+    height: 2.3rem;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--teinte) 12%, #fff);
+    color: var(--teinte);
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .libelle {
+    font-weight: 700;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+    font-size: 0.74rem;
+  }
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--teinte) 50%, var(--couleur-bordure));
+  }
+
+  &.choisi {
+    border-color: var(--teinte);
+    background: color-mix(in srgb, var(--teinte) 7%, #fff);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--teinte) 16%, transparent);
+
+    .fleche {
+      background: var(--teinte);
+      color: #fff;
+    }
+  }
+}
+
+/* ------------------------------------------------------- montant */
+.saisie-montant {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.35rem 0.9rem;
+  border: 1.5px solid var(--couleur-bordure);
+  border-radius: 12px;
+  background: #fbfcfe;
+  cursor: text;
+
+  &:focus-within {
+    border-color: var(--couleur-primaire);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--couleur-primaire) 15%, transparent);
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.2rem 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 2rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .devise {
+    color: var(--couleur-texte-doux);
+    font-weight: 700;
+  }
+}
+
+.montants-rapides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+
+  button {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 999px;
+    background: #fff;
+    font: inherit;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover { background: #f2f6fb; }
+
+    &.choisi {
+      border-color: var(--couleur-primaire);
+      background: var(--couleur-primaire);
+      color: #fff;
+    }
+  }
+}
+
+/* ------------------------------------------------------- client */
+.champ.client {
+  position: relative;
+}
+
+.suggestions {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 2px 0 0;
+  padding: 0.25rem;
+  list-style: none;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 8px;
+  background: var(--couleur-surface);
+  box-shadow: var(--ombre);
+
+  button {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover { background: #eef3f9; }
+  }
+}
+
+.lien {
+  margin-top: 0.6rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--couleur-primaire);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* -------------------------------------------------------- ticket */
+.ticket {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+
+  > .bouton {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .valider {
+    padding: 0.85rem 1rem;
+    font-size: 1.05rem;
+  }
+}
+
+/* Papier du ticket : bord dentele en bas. */
+.ticket-corps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem 1rem 1.4rem;
+  border: 1px solid var(--couleur-bordure);
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(180deg, #fff 0%, #fbfcfe 100%);
+  padding-bottom: 1.6rem;
+  /* Demi-cercles decoupes en bas : le bord dechire du ticket. */
+  mask: radial-gradient(circle at 8px 100%, transparent 6px, #000 6.5px) bottom left / 16px 100% repeat-x;
+
+  .message { margin: 0; }
+  .champ { margin: 0; }
+
+  .detail {
+    color: var(--couleur-texte-doux);
+    font-size: 0.78rem;
+  }
+
+  .exemple {
+    color: #a8650a;
+    font-size: 0.78rem;
+  }
+}
+
+.ticket-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--couleur-texte-doux);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.puce-client {
+  overflow: hidden;
+  max-width: 60%;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #e3f6ed;
+  color: #1f7a5c;
+  font-size: 0.74rem;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ticket-operation {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+
+  div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  span {
+    color: var(--couleur-texte-doux);
+    font-size: 0.85rem;
+  }
+}
+
+.ticket-montant {
+  display: flex;
+  flex-direction: column;
+  padding: 0.6rem 0;
+  border-top: 1px dashed var(--couleur-bordure);
+  border-bottom: 1px dashed var(--couleur-bordure);
+
+  small {
+    color: var(--couleur-texte-doux);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+  }
+
+  strong {
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  em {
+    color: var(--couleur-texte-doux);
+    font-size: 1rem;
+    font-style: normal;
+  }
+}
+
+.ticket-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+
+  .commission {
+    color: var(--couleur-succes);
+    font-size: 1.15rem;
+  }
+}
+
+.ticket-pointilles {
+  border-top: 1px dashed var(--couleur-bordure);
+}
+
+.ticket-effet {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+
+  .compte {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+    font-size: 0.72rem;
+  }
+
+  .plus { color: var(--couleur-succes); }
+  .moins { color: var(--couleur-danger); }
+
+  &.insuffisant {
+    margin: 0 -0.4rem;
+    padding: 0.3rem 0.4rem;
+    border-radius: 6px;
+    background: #fce9e9;
+    color: var(--couleur-danger);
+  }
+}
+
+.saisie-commission {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  input {
+    width: 110px;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 6px;
+    font: inherit;
+    font-weight: 700;
+    text-align: right;
+  }
+}
+
+.message.attention {
+  background: #fff6e0;
+  color: #7a5200;
+  border: 1px solid #f2dca4;
+}
+
+.case {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.aide {
+  margin: 0;
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}
+
+/* ------------------------------------------------- bandeau caisse */
+.bandeau-caisse {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  background: #eef3f9;
+  color: var(--couleur-primaire);
+
+  &.ouverte {
+    background: #e3f5ea;
+    color: var(--couleur-succes);
+  }
+
+  &.fermee {
+    background: #fce9e9;
+    color: var(--couleur-danger);
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 860px) {
+  .colonnes-transaction {
+    grid-template-columns: 1fr;
+  }
+
+  .ticket {
+    position: static;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tuile-service,
+  .tuile-operation,
+  .etape {
+    transition: none;
+  }
+}
+
+/* Saisie sans connexion. */
+.bandeau-hors-ligne {
+  margin-bottom: 0.8rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid #f2dca4;
+  border-radius: 10px;
+  background: #fff6e0;
+  color: #7a5200;
+  font-size: 0.9rem;
+}

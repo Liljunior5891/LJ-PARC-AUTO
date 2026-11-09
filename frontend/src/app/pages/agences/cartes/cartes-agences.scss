@@ -1,92 +1,6 @@
-.choix-agence {
-  min-width: 200px;
-  padding: 0.5rem 0.7rem;
-  border: 1px solid var(--couleur-bordure);
-  border-radius: 8px;
-  font: inherit;
-  background: var(--couleur-surface);
-}
-
-.grands-boutons {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.grand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  min-height: 72px;
-  border: none;
-  border-radius: 12px;
-  font: inherit;
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  cursor: pointer;
-  box-shadow: var(--ombre);
-  transition: transform 0.15s ease;
-
-  span {
-    font-size: 1.5rem;
-  }
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  &.vendre {
-    background: var(--couleur-primaire);
-    color: #fff;
-  }
-
-  &.recharger {
-    background: var(--couleur-accent);
-    color: #1f2733;
-  }
-}
-
-.bandeau-stock {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-bottom: 1rem;
-}
-
-.pastille {
-  display: flex;
-  flex-direction: column;
-  min-width: 200px;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid var(--couleur-bordure);
-  border-left: 4px solid var(--couleur-succes);
-  border-radius: 8px;
-  background: var(--couleur-surface);
-
-  small {
-    color: var(--couleur-texte-doux);
-  }
-
-  &.alerte {
-    border-left-color: var(--couleur-danger);
-  }
-
-  .avertir {
-    color: var(--couleur-danger);
-    font-weight: 600;
-  }
-}
 
 .actions-stock {
-  margin-bottom: 0.8rem;
+  margin: 0 0 0.8rem;
 }
 
 .produit {
@@ -132,31 +46,7 @@ table.tableau {
   }
 }
 
-table.compact {
-  width: 100%;
-  margin: 0.6rem 0;
-  font-size: 0.88rem;
-}
 
-.filtres {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-bottom: 1rem;
-
-  label {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-  }
-
-  input {
-    padding: 0.45rem 0.6rem;
-    border: 1px solid var(--couleur-bordure);
-    border-radius: 8px;
-    font: inherit;
-  }
-}
 
 .titre-section {
   margin: 0.25rem 0 0.6rem;
@@ -205,4 +95,177 @@ table.compact {
   padding: 1.5rem;
   color: var(--couleur-texte-doux);
   text-align: center;
+}
+
+table.compact {
+  width: 100%;
+  margin: 0.6rem 0;
+  font-size: 0.88rem;
+}
+
+/* Stock, vente et recharge sur une rangee : chaque panneau garde ses cartes en deux colonnes. */
+.suivi-cartes {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.6fr) minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  @media (max-width: 1250px) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+    .recharge {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panneau-cartes {
+  min-width: 0;
+  padding: 1rem;
+
+  h2 {
+    margin: 0 0 0.7rem;
+    font-size: 0.95rem;
+
+    small {
+      margin-left: 0.3rem;
+      color: var(--couleur-texte-doux);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+  }
+
+  .carte-apercu strong {
+    font-size: 1.3rem;
+  }
+}
+
+/* Stock : une carte par produit, empilees dans un panneau etroit. */
+.stock .cartes-apercu.compactes {
+  grid-template-columns: 1fr;
+}
+
+/* La recharge a cinq indicateurs : trois colonnes quand le panneau est assez large. */
+.recharge .cartes-apercu.compactes {
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+}
+
+.panneau-cartes h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.lien-entree {
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--couleur-primaire);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Vente : numeros des cartes ajoutes un a un. */
+.titre-groupe {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+
+  small {
+    margin-left: 0.4rem;
+    color: var(--couleur-texte-doux);
+    font-weight: normal;
+  }
+}
+
+/* Nom, prenoms et telephone sur une seule ligne (empiles sur telephone). */
+.ligne-client {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.compteur-cartes {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  margin-left: 0.35rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--couleur-primaire);
+  color: #fff;
+  font-size: 0.75rem;
+  vertical-align: middle;
+}
+
+/* Champ du numero et bouton accoles, de meme hauteur. */
+.saisie-numero {
+  display: flex;
+  align-items: stretch;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+  }
+
+  .bouton {
+    justify-content: center;
+    min-width: 7.5rem;
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    white-space: nowrap;
+  }
+}
+
+.numeros-cartes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.35rem 0.25rem 0.7rem;
+    border: 1px solid #d5e5fb;
+    border-radius: 999px;
+    background: #eaf3fe;
+    font-size: 0.85rem;
+  }
+
+  .retirer {
+    border: 0;
+    background: transparent;
+    color: var(--couleur-texte-doux);
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1;
+
+    &:hover { color: var(--couleur-danger, #c0392b); }
+  }
+}
+
+.numeros-vendus {
+  margin: 0;
+  padding-left: 1.1rem;
 }

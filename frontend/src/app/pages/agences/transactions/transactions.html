@@ -1,108 +1,121 @@
 <div class="entete-page">
   <div>
-    <h1>Historique des transactions</h1>
+    <h1>Transactions</h1>
     <p class="sous-titre">{{ service.peut('HISTORIQUE_COMPLET') ? 'Toutes les transactions de vos agences.' : 'Les transactions que vous avez saisies.' }}
       Une transaction validee ne se modifie pas : une erreur se corrige par une annulation motivee.</p>
   </div>
+  @if (service.peut('TRANSACTION_SAISIR')) {
+    <div class="actions-entete">
+      <button class="bouton" type="button" (click)="saisieOuverte.set(true)">+ Nouvelle transaction</button>
+    </div>
+  }
 </div>
+
+<app-ma-caisse-agence (change)="filtrer()" />
 
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }
 
-<section class="carte filtres">
-  <div class="raccourcis-periode">
-    <button type="button" class="bouton secondaire petit" (click)="periode(0)">Aujourd'hui</button>
-    <button type="button" class="bouton secondaire petit" (click)="periode(-1)">Hier</button>
-    <button type="button" class="bouton secondaire petit" (click)="periode(-6)">7 jours</button>
-    <button type="button" class="bouton secondaire petit" (click)="periode('mois')">Ce mois</button>
-  </div>
-  <div class="grille-filtres">
+<section class="carte barre-filtres">
+  <div class="filtres-ligne">
+    <div class="choix-periode">
+      <select [ngModel]="portee" (ngModelChange)="changerPortee($event)" aria-label="Periode observee">
+        @for (p of portees; track p.valeur) { <option [value]="p.valeur">{{ p.libelle }}</option> }
+      </select>
+    </div>
+    @if (portee === 'PERSONNALISEE') {
+      <div class="dates-periode" [class.invalides]="(f.du ?? '') > (f.au ?? '')">
+        <span>Du</span>
+        <input type="date" [max]="f.au" [(ngModel)]="f.du" (change)="filtrer()" aria-label="Du" />
+        <span>au</span>
+        <input type="date" [min]="f.du" [(ngModel)]="f.au" (change)="filtrer()" aria-label="Au" />
+      </div>
+    }
     @if ((service.moi()?.agences?.length ?? 0) > 1) {
-      <div class="champ">
-        <label for="agence">Agence</label>
-        <select id="agence" [(ngModel)]="f.agenceId" (ngModelChange)="filtrer()">
-          <option [ngValue]="null">Toutes</option>
+      <div class="filtre">
+        <select [(ngModel)]="f.agenceId" (ngModelChange)="filtrer()" aria-label="Agence">
+          <option [ngValue]="null">Toutes les agences</option>
           @for (a of service.moi()?.agences ?? []; track a.id) { <option [ngValue]="a.id">{{ a.nom }}</option> }
         </select>
       </div>
     }
-    <div class="champ">
-      <label for="du">Du</label>
-      <input id="du" type="date" [(ngModel)]="f.du" (change)="filtrer()" />
-    </div>
-    <div class="champ">
-      <label for="au">Au</label>
-      <input id="au" type="date" [(ngModel)]="f.au" (change)="filtrer()" />
-    </div>
-    <div class="champ">
-      <label for="service">Service</label>
-      <select id="service" [(ngModel)]="f.serviceId" (ngModelChange)="changerService()">
-        <option [ngValue]="null">Tous</option>
-        @for (s of catalogue(); track s.id) { <option [ngValue]="s.id">{{ s.nom }}</option> }
+    <div class="filtre">
+      <select [(ngModel)]="f.serviceId" (ngModelChange)="changerService()" aria-label="Service">
+        <option [ngValue]="null">Tous les services</option>
+        @for (s of catalogue(); track s.id) {
+          @let o = opt(s.nom, s.logo);
+          <option [ngValue]="s.id" [attr.data-couleur]="o.couleur" [attr.data-logo]="o.logo" [attr.data-monogramme]="o.monogramme">{{ s.nom }}</option>
+        }
       </select>
     </div>
     @if (serviceFiltre(); as s) {
-      <div class="champ">
-        <label for="type">Operation</label>
-        <select id="type" [(ngModel)]="f.typeOperationId" (ngModelChange)="filtrer()">
-          <option [ngValue]="null">Toutes</option>
+      <div class="filtre">
+        <select [(ngModel)]="f.typeOperationId" (ngModelChange)="filtrer()" aria-label="Operation">
+          <option [ngValue]="null">Toutes les operations</option>
           @for (t of s.types; track t.id) { <option [ngValue]="t.id">{{ t.libelle }}</option> }
         </select>
       </div>
       @if (s.reseaux.length) {
-        <div class="champ">
-          <label for="reseau">Reseau</label>
-          <select id="reseau" [(ngModel)]="f.reseauId" (ngModelChange)="filtrer()">
-            <option [ngValue]="null">Tous</option>
-            @for (r of s.reseaux; track r.id) { <option [ngValue]="r.id">{{ r.nom }}</option> }
+        <div class="filtre">
+          <select [(ngModel)]="f.reseauId" (ngModelChange)="filtrer()" aria-label="Reseau">
+            <option [ngValue]="null">Tous les reseaux</option>
+            @for (r of s.reseaux; track r.id) {
+              @let o = opt(r.nom, r.logo);
+              <option [ngValue]="r.id" [attr.data-couleur]="o.couleur" [attr.data-logo]="o.logo" [attr.data-monogramme]="o.monogramme">{{ r.nom }}</option>
+            }
           </select>
         </div>
       }
     }
-    <div class="champ">
-      <label for="statut">Statut</label>
-      <select id="statut" [(ngModel)]="f.statut" (ngModelChange)="filtrer()">
-        <option value="">Tous</option>
+    <div class="filtre">
+      <select [(ngModel)]="f.statut" (ngModelChange)="filtrer()" aria-label="Statut">
+        <option value="">Validees et annulees</option>
         <option value="VALIDEE">Validees</option>
         <option value="ANNULEE">Annulees</option>
       </select>
     </div>
-    <div class="champ">
-      <label for="min">Montant de</label>
-      <input id="min" type="number" min="0" [(ngModel)]="f.montantMin" (change)="filtrer()" />
+    <div class="dates-periode">
+      <span>Montant de</span>
+      <input class="montant-filtre" type="number" min="0" [(ngModel)]="f.montantMin" (change)="filtrer()" aria-label="Montant minimum" />
+      <span>a</span>
+      <input class="montant-filtre" type="number" min="0" [(ngModel)]="f.montantMax" (change)="filtrer()" aria-label="Montant maximum" />
     </div>
-    <div class="champ">
-      <label for="max">a</label>
-      <input id="max" type="number" min="0" [(ngModel)]="f.montantMax" (change)="filtrer()" />
-    </div>
-    <div class="champ recherche">
-      <label for="q">Reference, client</label>
-      <input id="q" type="search" [(ngModel)]="f.q" (keyup.enter)="filtrer()" (search)="filtrer()" placeholder="TX-..., ref. operateur, telephone" />
-    </div>
+    <input class="recherche" type="search" [(ngModel)]="f.q" (keyup.enter)="filtrer()" (search)="filtrer()"
+           placeholder="TX-..., ref. operateur, telephone, client" aria-label="Recherche" />
   </div>
 </section>
 
 @if (resume(); as r) {
-  <div class="grille-indicateurs">
-    <div class="carte indicateur">
-      <span class="libelle">Transactions validees</span>
-      <span class="valeur numerique">{{ r.nombre | number: '1.0-0' }}</span>
-      @if (r.annulees) { <span class="detail">{{ r.annulees }} annulee(s) en plus</span> }
+  <div class="cartes-apercu tete-ecran">
+    <div class="carte-apercu bleu">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3" /></svg></span>
+      <span class="textes">
+        <span class="libelle">Transactions validees</span>
+        <strong>{{ r.nombre | number: '1.0-0' }}</strong>
+        @if (r.annulees) { <small>{{ r.annulees }} annulee(s) en plus</small> }
+      </span>
     </div>
-    <div class="carte indicateur">
-      <span class="libelle">Volume</span>
-      <span class="valeur numerique">{{ r.volume | number: '1.0-0' }} F</span>
-      <span class="detail">Argent qui a transite (ce n'est pas un revenu)</span>
+    <div class="carte-apercu orange">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3" /></svg></span>
+      <span class="textes">
+        <span class="libelle">Volume</span>
+        <strong>{{ r.volume | number: '1.0-0' }}<em> F</em></strong>
+        <small>Argent qui a transite (ce n'est pas un revenu)</small>
+      </span>
     </div>
-    <div class="carte indicateur succes">
-      <span class="libelle">Commissions</span>
-      <span class="valeur numerique">{{ r.commissions | number: '1.0-0' }} F</span>
-      <span class="detail">Revenu de l'agence</span>
+    <div class="carte-apercu vert">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M5 15l4-4 3 3 6-6" /><path d="M14 8h4v4" /></svg></span>
+      <span class="textes">
+        <span class="libelle">Commissions</span>
+        <strong>{{ r.commissions | number: '1.0-0' }}<em> F</em></strong>
+        <small>Revenu de l'agence</small>
+      </span>
     </div>
   </div>
 }
 
 @if (page(); as p) {
+  <div class="carte">
   <div class="tableau-conteneur">
     <table class="tableau">
       <thead>
@@ -122,7 +135,8 @@
           <tr class="cliquable" [class.annulee]="t.statut === 'ANNULEE'" (click)="detail.set(t)">
             <td>{{ t.dateOperation | date: 'dd/MM/yyyy HH:mm' }}</td>
             <td>{{ t.reference }}@if (t.referenceOperateur) { <small class="sous-ligne">{{ t.referenceOperateur }}</small> }</td>
-            <td>{{ t.typeLibelle }} <strong>{{ t.reseauNom ?? t.serviceNom }}</strong>
+            <td><app-logo-service class="logo-ligne" [nom]="t.reseauNom ?? t.serviceNom" [logo]="logoDe(t)" [taille]="24" />
+              {{ t.typeLibelle }} <strong>{{ t.reseauNom ?? t.serviceNom }}</strong>
               @if ((service.moi()?.agences?.length ?? 0) > 1) { <small class="sous-ligne">{{ t.agenceNom }}</small> }</td>
             <td class="montant numerique">{{ t.montant | number: '1.0-0' }}</td>
             <td class="montant numerique">{{ t.commission | number: '1.0-0' }}@if (t.commissionModifiee) { <span title="Commission modifiee"> ✎</span> }</td>
@@ -131,14 +145,15 @@
             <td><span class="etiquette" [class.actif]="t.statut === 'VALIDEE'">{{ t.statut === 'VALIDEE' ? 'Validee' : 'Annulee' }}</span></td>
           </tr>
         } @empty {
-          <tr><td colspan="8" class="vide">Aucune transaction pour ces criteres.</td></tr>
+          <tr><td colspan="8"><div class="message vide">Aucune transaction pour ces criteres.</div></td></tr>
         }
       </tbody>
     </table>
   </div>
   <app-suite-liste [page]="p" (suite)="suiteListe()" />
+  </div>
 } @else {
-  <p class="vide">Chargement...</p>
+  <div class="message vide">Chargement...</div>
 }
 
 @if (detail(); as t) {
@@ -188,4 +203,8 @@
       </div>
     </form>
   </app-modale>
+}
+
+@if (saisieOuverte()) {
+  <app-formulaire-transaction (enregistree)="transactionEnregistree($event)" (ferme)="saisieOuverte.set(false)" />
 }

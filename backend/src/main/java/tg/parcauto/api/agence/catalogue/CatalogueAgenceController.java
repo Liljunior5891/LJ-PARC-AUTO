@@ -73,6 +73,13 @@ public class CatalogueAgenceController {
         return service.modifierReseau(id, r);
     }
 
+    @PostMapping("/reseaux/{id}/detacher")
+    @PreAuthorize("@droitsAgence.a('PARAMETRAGE')")
+    @Operation(summary = "Fait d'un reseau un service a part entiere (son propre float), comme Xpress ou Mixx")
+    public CatalogueAgenceService.ServiceDto detacherReseau(@PathVariable Long id) {
+        return service.detacherReseau(id);
+    }
+
     @PostMapping("/types")
     @PreAuthorize("@droitsAgence.a('PARAMETRAGE')")
     @ResponseStatus(HttpStatus.CREATED)

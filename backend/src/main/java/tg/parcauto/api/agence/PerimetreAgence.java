@@ -41,6 +41,11 @@ public class PerimetreAgence {
         return agence;
     }
 
+    /** Identifiant de l'utilisateur connecte. */
+    public Long utilisateurCourant() {
+        return utilisateurId();
+    }
+
     private static Long utilisateurId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null && auth.getPrincipal() instanceof UtilisateurPrincipal p ? p.getId() : null;

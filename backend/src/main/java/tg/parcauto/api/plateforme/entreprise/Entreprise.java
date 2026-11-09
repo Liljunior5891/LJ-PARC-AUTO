@@ -41,6 +41,13 @@ public class Entreprise extends EntiteAuditee {
     @Column(nullable = false, length = 20)
     private StatutEntreprise statut = StatutEntreprise.ACTIVE;
 
+    /**
+     * Module Agences : l'entreprise peut gerer plusieurs agences. Faux par defaut :
+     * une seule agence, jusqu'a ce que le super-administrateur de la plateforme l'autorise.
+     */
+    @Column(name = "agences_multiples", nullable = false)
+    private boolean agencesMultiples;
+
     public boolean active() {
         return statut == StatutEntreprise.ACTIVE;
     }

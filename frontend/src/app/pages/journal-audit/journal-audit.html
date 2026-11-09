@@ -1,0 +1,103 @@
+<div class="entete-page">
+  <div>
+    <h1>{{ titre }}</h1>
+    <p class="sous-titre">Chaque creation, modification et suppression est notee ici avec son auteur, l'heure et les valeurs avant et apres,
+      ainsi que les connexions. Le journal ne peut ni se modifier ni s'effacer.</p>
+  </div>
+  @if (!modulesPage && agences) {
+    <a class="bouton secondaire" routerLink="/agences/audit" title="Les agences ont leur propre journal : operations, caisses, valeurs avant et apres">Journal des agences</a>
+  }
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+
+<div class="carte">
+  <div class="filtres-ligne">
+    @if (modulesProposes.length > 1) {
+      <div class="filtre">
+        <select [(ngModel)]="f.module" (ngModelChange)="filtrer()" aria-label="Module">
+          <option value="">{{ modulesPage ? 'Tout le module' : 'Tous les modules' }}</option>
+          @for (m of modulesProposes; track m.valeur) { <option [value]="m.valeur">{{ m.libelle }}</option> }
+        </select>
+      </div>
+    }
+    <div class="filtre">
+      <select [(ngModel)]="f.action" (ngModelChange)="filtrer()" aria-label="Action">
+        <option value="">Toutes les actions</option>
+        @for (a of actions; track a.valeur) { <option [value]="a.valeur">{{ a.libelle }}</option> }
+      </select>
+    </div>
+    <div class="filtre large">
+      <select [(ngModel)]="f.objet" (ngModelChange)="filtrer()" aria-label="Donnee">
+        <option value="">Toutes les donnees</option>
+        @for (o of referentiels().objets; track o.valeur) { <option [value]="o.valeur">{{ o.libelle }}</option> }
+      </select>
+    </div>
+    <div class="filtre">
+      <select [(ngModel)]="f.auteurId" (ngModelChange)="filtrer()" aria-label="Auteur">
+        <option [ngValue]="null">Tous les auteurs</option>
+        @for (a of referentiels().auteurs; track a.valeur) { <option [ngValue]="+a.valeur">{{ a.libelle }}</option> }
+      </select>
+    </div>
+    <div class="dates-periode" [class.invalides]="!!f.du && !!f.au && f.du > f.au">
+      <span>Du</span>
+      <input type="date" [(ngModel)]="f.du" (change)="filtrer()" aria-label="Du" />
+      <span>au</span>
+      <input type="date" [(ngModel)]="f.au" (change)="filtrer()" aria-label="Au" />
+    </div>
+    <input class="recherche" type="search" [(ngModel)]="f.recherche" (keyup.enter)="filtrer()" (search)="filtrer()"
+           placeholder="Numero, nom, mot..." aria-label="Recherche" />
+  </div>
+
+  @if (page(); as p) {
+    <div class="tableau-conteneur journal">
+      <table class="tableau">
+        <thead><tr><th>Date</th><th>Auteur</th><th>Module</th><th>Action</th><th>Description</th><th></th></tr></thead>
+        <tbody>
+          @for (l of p.content; track l.id) {
+            <tr [class.cliquable]="l.changements.length" [class.ouverte]="ouverte() === l.id" (click)="basculer(l)">
+              <td class="date">{{ l.date | date: 'dd/MM/yyyy HH:mm:ss' }}</td>
+              <td>
+                {{ l.auteurNom ?? '—' }}
+                @if (l.adresseIp) { <small class="ip">{{ l.adresseIp }}</small> }
+              </td>
+              <td><span class="module">{{ module(l.module) }}</span></td>
+              <td><span class="action" [class]="'action ' + action(l.action).classe">{{ action(l.action).libelle }}</span></td>
+              <td class="description">{{ l.description }}</td>
+              <td class="chevron">@if (l.changements.length) { <span aria-hidden="true">{{ ouverte() === l.id ? '▴' : '▾' }}</span> }</td>
+            </tr>
+            @if (ouverte() === l.id) {
+              <tr class="detail">
+                <td colspan="6">
+                  <table class="changements">
+                    <thead>
+                      <tr>
+                        <th>Champ</th>
+                        @if (l.action !== 'CREATION') { <th>Avant</th> }
+                        @if (l.action !== 'SUPPRESSION') { <th>Apres</th> }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (c of l.changements; track c.champ) {
+                        <tr>
+                          <td class="champ">{{ c.libelle }}</td>
+                          @if (l.action !== 'CREATION') { <td class="avant">{{ c.avant ?? '—' }}</td> }
+                          @if (l.action !== 'SUPPRESSION') { <td class="apres">{{ c.apres ?? '—' }}</td> }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            }
+          } @empty {
+            <tr><td colspan="6"><div class="message vide">Aucune ligne pour ces criteres.</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-suite-liste [page]="p" (suite)="suiteListe()" />
+  } @else if (!erreur()) {
+    <div class="message vide">Chargement...</div>
+  }
+</div>

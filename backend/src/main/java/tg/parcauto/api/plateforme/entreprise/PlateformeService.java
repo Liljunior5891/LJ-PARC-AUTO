@@ -34,7 +34,9 @@ public class PlateformeService {
     public record EntrepriseResume(
             Long id, String nom, String pays, String email, String telephone,
             StatutEntreprise statut, String statutLibelle, Instant creeLe,
-            long nombreUtilisateurs, List<String> modules) {
+            long nombreUtilisateurs, List<String> modules,
+            /** Module Agences : plusieurs agences autorisees. */
+            boolean agencesMultiples) {
     }
 
     public record Statistiques(long entreprises, long entreprisesActives, long utilisateurs,
@@ -71,11 +73,20 @@ public class PlateformeService {
         return resume(entreprise);
     }
 
+    /** Autorise ou retire la gestion de plusieurs agences ; les agences deja creees sont conservees. */
+    public EntrepriseResume autoriserAgencesMultiples(Long id, boolean autorise) {
+        Entreprise entreprise = repository.findById(id)
+                .orElseThrow(() -> ResourceNotFoundException.of("Entreprise", id));
+        entreprise.setAgencesMultiples(autorise);
+        return resume(entreprise);
+    }
+
     private EntrepriseResume resume(Entreprise e) {
         return new EntrepriseResume(
                 e.getId(), e.getNom(), e.getPays(), e.getEmail(), e.getTelephone(),
                 e.getStatut(), e.getStatut().getLibelle(), e.getCreeLe(),
                 utilisateurRepository.countByEntrepriseId(e.getId()),
-                moduleService.actifs(e.getId()).stream().map(Enum::name).toList());
+                moduleService.actifs(e.getId()).stream().map(Enum::name).toList(),
+                e.isAgencesMultiples());
     }
 }
