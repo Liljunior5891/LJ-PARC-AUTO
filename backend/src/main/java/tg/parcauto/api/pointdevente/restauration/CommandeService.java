@@ -56,6 +56,7 @@ public class CommandeService {
     private final VenteService venteService;
     private final tg.parcauto.api.pointdevente.caisse.SessionTravailService sessionsTravail;
     private final NumerotationService numerotation;
+    private final tg.parcauto.api.pointdevente.impression.ImpressionService impression;
 
     public RestaurationDto.CommandeDetail ouvrir(RestaurationDto.Ouverture o, UtilisateurPrincipal serveur) {
         Commande commande = new Commande();
@@ -185,6 +186,9 @@ public class CommandeService {
         if (ligne.getStatut().enAttente()) {
             return retirerLigne(id, ligneId);
         }
+        if (enPreparation(ligne)) {
+            impression.bonAnnulation(commande, List.of(ligne), auteur.getNomComplet());
+        }
         annuler(ligne, commande, auteur);
         return RestaurationDto.CommandeDetail.de(commande);
     }
@@ -196,7 +200,7 @@ public class CommandeService {
      * sans preparation sont prets aussitot. Le stock est sorti ici ; une
      * rupture bloque l'envoi entier.
      */
-    public RestaurationDto.CommandeDetail envoyer(Long id) {
+    public RestaurationDto.CommandeDetail envoyer(Long id, UtilisateurPrincipal caissier) {
         Commande commande = chargerOuverte(id);
         List<LigneCommande> brouillons = commande.getLignes().stream()
                 .filter(l -> l.getStatut() == LigneCommande.Statut.BROUILLON)
@@ -205,6 +209,7 @@ public class CommandeService {
             throw new BusinessException("Aucun article a envoyer");
         }
         envoyerLignes(commande, brouillons);
+        impression.bonsEnvoi(commande, brouillons, commande.getEnvois(), caissier.getNomComplet());
         return RestaurationDto.CommandeDetail.de(commande);
     }
 
@@ -238,6 +243,7 @@ public class CommandeService {
             throw new BusinessException("Aucun article a valider");
         }
         envoyerLignes(commande, proposees);
+        impression.bonsEnvoi(commande, proposees, commande.getEnvois(), caissier.getNomComplet());
         return RestaurationDto.CommandeDetail.de(commande);
     }
 
@@ -307,6 +313,7 @@ public class CommandeService {
             nouvelles.add(ligne);
         }
         if (!validation) {
+            // Envoi direct sans la caisse : rien ne s'imprime (seule une validation par la caisse imprime).
             envoyerLignes(commande, nouvelles);
         }
         return repository.saveAndFlush(commande);
@@ -391,10 +398,14 @@ public class CommandeService {
         Instant maintenant = Instant.now();
         int envoi = commande.getEnvois() + 1;
         commande.setEnvois(envoi);
+        // Categories imprimees sans ecran : personne ne les fera avancer, elles sont pretes des l'impression.
+        java.util.Set<Long> imprimeesSansEcran = impression.categoriesImprimeesSansEcran();
         for (LigneCommande ligne : lignes) {
             ligne.setEnvoi(envoi);
             ligne.setEnvoyeeLe(maintenant);
-            if (ligne.getPoste() == PostePreparation.AUCUN) {
+            boolean imprimeeSeulement = ligne.getArticle().getCategorie() != null
+                    && imprimeesSansEcran.contains(ligne.getArticle().getCategorie().getId());
+            if (ligne.getPoste() == PostePreparation.AUCUN || imprimeeSeulement) {
                 ligne.setStatut(LigneCommande.Statut.PRETE);
                 ligne.setPreteLe(maintenant);
             } else {
@@ -463,6 +474,8 @@ public class CommandeService {
             throw new BusinessException("Des articles sont deja partis en preparation : seul un gerant peut annuler");
         }
         commande.getLignes().removeIf(l -> l.getStatut().enAttente());
+        impression.bonAnnulation(commande,
+                commande.getLignes().stream().filter(CommandeService::enPreparation).toList(), auteur.getNomComplet());
         for (LigneCommande ligne : commande.getLignes()) {
             if (ligne.getStatut() != LigneCommande.Statut.ANNULEE) {
                 annuler(ligne, commande, auteur);
@@ -607,6 +620,12 @@ public class CommandeService {
             stockService.appliquer(ligne.getArticle(), TypeMouvementStock.RETOUR, ligne.getQuantite(),
                     null, "Annulation sur la commande " + commande.getNumero(), null);
         }
+    }
+
+    /** Partie en preparation et pas encore servie : la cuisine doit savoir qu'elle est annulee. */
+    private static boolean enPreparation(LigneCommande l) {
+        return l.getStatut() == LigneCommande.Statut.A_PREPARER || l.getStatut() == LigneCommande.Statut.EN_PREPARATION
+                || l.getStatut() == LigneCommande.Statut.PRETE;
     }
 
     private static boolean gestionnaire(UtilisateurPrincipal p) {

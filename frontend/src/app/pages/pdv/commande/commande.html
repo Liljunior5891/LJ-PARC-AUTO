@@ -249,6 +249,23 @@
         }
       </div>
 
+      @if (bons().length > 0) {
+        <details class="bons-imprimes">
+          <summary>🖨 {{ bons().length }} bon{{ bons().length > 1 ? 's' : '' }} de preparation</summary>
+          <ul>
+            @for (b of bons(); track b.id) {
+              <li [class.annulation]="b.type === 'ANNULATION'">
+                <span>
+                  <strong>{{ b.imprimanteNom }}</strong> · {{ libellesBon[b.type] }}{{ b.envoi ? ' · envoi ' + b.envoi : '' }}
+                  <small>{{ b.statut === 'IMPRIME' ? 'imprime' + (b.imprimePar ? ' par ' + b.imprimePar : '') : b.statut === 'ECHEC' ? 'echec' : 'en attente' }}</small>
+                </span>
+                <button type="button" class="reimprimer" (click)="reimprimerBon(b)">Reimprimer</button>
+              </li>
+            }
+          </ul>
+        </details>
+      }
+
       <div class="resume">
         <div><span>Total servi et envoye</span><span>{{ c.resume.total | number: '1.0-0' }} F</span></div>
         @if (totalAttente() > 0) {

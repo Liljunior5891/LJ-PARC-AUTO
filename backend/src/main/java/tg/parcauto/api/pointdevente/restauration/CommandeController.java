@@ -124,10 +124,11 @@ public class CommandeController {
     @PostMapping("/{id}/envoi")
     @PreAuthorize(Autorisations.PDV_ENVOI)
     @Operation(summary = "Envoie les articles en attente a la cuisine et au bar (caisse uniquement)")
-    public RestaurationDto.CommandeDetail envoyer(@PathVariable Long id) {
+    public RestaurationDto.CommandeDetail envoyer(@PathVariable Long id,
+                                                  @AuthenticationPrincipal UtilisateurPrincipal principal) {
         acces(id);
         caisseOuverte();
-        return service.envoyer(id);
+        return service.envoyer(id, principal);
     }
 
     @PostMapping("/{id}/demandes/validation")

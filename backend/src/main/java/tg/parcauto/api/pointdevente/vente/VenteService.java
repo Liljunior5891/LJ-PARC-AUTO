@@ -58,6 +58,7 @@ public class VenteService {
     private final tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository soldeRepository;
     private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
     private final tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetre;
+    private final tg.parcauto.api.pointdevente.impression.ImpressionService impression;
 
     public VenteDto.Ticket encaisser(VenteDto.Encaissement demande, UtilisateurPrincipal caissier) {
         List<LigneVente> lignes = new ArrayList<>();
@@ -68,6 +69,9 @@ public class VenteService {
                     : conditionnement(article, demandeLigne.conditionnementId());
             LigneVente ligne = ligne(article, conditionnement, demandeLigne.quantite(), demandeLigne.remise(), null);
             emporter(ligne, demandeLigne.quantiteLivree());
+            if (demandeLigne.note() != null && !demandeLigne.note().isBlank()) {
+                ligne.setNote(demandeLigne.note().trim());
+            }
             tg.parcauto.api.pointdevente.lieu.LieuStock lieu = lieux.demande(demandeLigne.lieuId());
             if (lieu != null) {
                 ligne.setLieu(lieu);
@@ -82,6 +86,8 @@ public class VenteService {
             lignes.add(ligne);
         }
         Vente vente = encaisserLignes(lignes, demande.reglement(), demande.compte(), caissier, null);
+        // Vente directe au comptoir : les articles des categories imprimees partent en cuisine.
+        impression.bonsVente(vente);
         if (demande.commandeEnLigneId() != null) {
             // Commande en ligne remise et reglee : la boutique en ligne la clot (et peut refuser l'encaissement).
             vente.setEnLigne(true);

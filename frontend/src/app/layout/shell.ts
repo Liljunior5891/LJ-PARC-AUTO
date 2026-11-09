@@ -10,6 +10,7 @@ import { VerrouService } from '../core/services/verrou.service';
 import { AgencesService } from '../core/services/agences.service';
 import { VerrouCaisse } from './verrou-caisse';
 import { EtatHorsLigneAgences } from './etat-hors-ligne-agences';
+import { BonsAImprimer } from './bons-a-imprimer';
 import { SansCaisse } from './sans-caisse';
 import { PdvService } from '../core/services/pdv.service';
 import { NotificationsPdv } from './notifications-pdv';
@@ -62,7 +63,7 @@ interface Onglet {
 @Component({
   selector: 'app-shell',
   host: { '(document:click)': 'clicDocument($event)' },
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, EtatHorsLigneAgences, IconeDemandesEnLigne, VerrouCaisse, SansCaisse, NotificationsPdv, AlertesPdv, PanneauCompte],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, EtatHorsLigneAgences, IconeDemandesEnLigne, VerrouCaisse, SansCaisse, NotificationsPdv, AlertesPdv, PanneauCompte, BonsAImprimer],
   templateUrl: './shell.html',
   styleUrl: './shell.scss'
 })
@@ -255,7 +256,7 @@ export class Shell {
           enfants: [
             { libelle: 'Caisses', route: '/pdv/caisses', description: 'Caisses, affectations et historique' },
             { libelle: 'Remises et coffre', route: '/pdv/tresorerie', description: 'Recettes des caissiers, coffre, compte de l\'entreprise', option: 'circuit' },
-            { libelle: 'Ecrans de preparation', route: '/pdv/ecrans', description: 'Ecrans, categories et personnel', variante: 'RESTAURATION' },
+            { libelle: 'Postes et imprimantes', route: '/pdv/ecrans', description: 'Ecrans, imprimantes de cuisine, categories et personnel', variante: 'RESTAURATION' },
             { libelle: 'Salle et tables', route: '/pdv/plan-salle', description: 'Plan du restaurant et service', variante: 'RESTAURATION' },
             { libelle: 'Codes QR', route: '/pdv/codes-qr', description: 'Commande des clients depuis leur table', variante: 'RESTAURATION' }
           ]

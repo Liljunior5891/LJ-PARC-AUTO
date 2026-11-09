@@ -170,6 +170,10 @@ export interface EcranPreparation {
   actif: boolean;
   categories: { id: number; nom: string; couleur?: string; icone?: string }[];
   utilisateurs: { id: number; nomComplet: string; roles: string[]; actif: boolean }[];
+  /** Faux pour un poste qui ne fait qu'imprimer. */
+  afficherEcran: boolean;
+  imprimanteId?: number;
+  imprimanteNom?: string;
 }
 
 export interface ListeEcrans {
@@ -183,6 +187,80 @@ export interface EcranRequete {
   actif?: boolean;
   categorieIds: number[];
   utilisateurIds: number[];
+  afficherEcran?: boolean;
+  imprimanteId?: number | null;
+}
+
+// ------------------------------------------------------------ impression des bons
+
+export type ModeImprimante = 'NAVIGATEUR' | 'AGENT';
+
+export interface Imprimante {
+  id: number;
+  nom: string;
+  mode: ModeImprimante;
+  adresseIp?: string;
+  port: number;
+  largeurPapier: 58 | 80;
+  copies: number;
+  coupe: boolean;
+  bip: boolean;
+  caisseId?: number;
+  caisseNom?: string;
+  actif: boolean;
+  /** Postes qui envoient leurs bons a cette imprimante. */
+  postes: string[];
+  /** Bons en attente ou en echec. */
+  enAttente: number;
+}
+
+export interface ImprimanteRequete {
+  nom: string;
+  mode: ModeImprimante;
+  adresseIp?: string | null;
+  port?: number | null;
+  largeurPapier: number;
+  copies: number;
+  coupe: boolean;
+  bip: boolean;
+  caisseId?: number | null;
+  actif: boolean;
+}
+
+export type TypeBon = 'BON' | 'ANNULATION' | 'DUPLICATA' | 'TEST';
+
+/** Contenu d'un bon de preparation, sans prix. */
+export interface BonCuisine {
+  poste: string;
+  type: TypeBon;
+  repere: string;
+  numero: string;
+  envoi?: number;
+  date: string;
+  serveur?: string;
+  caissier?: string;
+  lignes: { quantite: number; libelle: string; note?: string }[];
+  note?: string;
+  largeurPapier: number;
+  copies: number;
+}
+
+export interface TravailImpression {
+  id: number;
+  imprimanteId: number;
+  imprimanteNom: string;
+  imprimanteMode: ModeImprimante;
+  type: TypeBon;
+  statut: 'EN_ATTENTE' | 'EN_COURS' | 'IMPRIME' | 'ECHEC';
+  reference: string;
+  commandeId?: number;
+  envoi?: number;
+  venteId?: number;
+  creeLe: string;
+  imprimeLe?: string;
+  imprimePar?: string;
+  erreur?: string;
+  bon: BonCuisine;
 }
 
 // ------------------------------------------------------------ code QR

@@ -26,15 +26,17 @@ public final class VenteDto {
             /** Quincaillerie : ce que le client emporte maintenant ; nul : toute la ligne. */
             @PositiveOrZero BigDecimal quantiteLivree,
             /** Avec des entrepots : lieu ou retirer la ligne ; nul : le magasin de la caisse. */
-            Long lieuId) {
+            Long lieuId,
+            /** Note pour la preparation (« sans oignon »), imprimee sur le bon de cuisine. */
+            @jakarta.validation.constraints.Size(max = 160) String note) {
 
         public LigneDemande(Long articleId, BigDecimal quantite, BigDecimal remise, Long conditionnementId) {
-            this(articleId, quantite, remise, conditionnementId, null, null);
+            this(articleId, quantite, remise, conditionnementId, null, null, null);
         }
 
         public LigneDemande(Long articleId, BigDecimal quantite, BigDecimal remise, Long conditionnementId,
                             BigDecimal quantiteLivree) {
-            this(articleId, quantite, remise, conditionnementId, quantiteLivree, null);
+            this(articleId, quantite, remise, conditionnementId, quantiteLivree, null, null);
         }
     }
 

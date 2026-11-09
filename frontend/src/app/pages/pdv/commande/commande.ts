@@ -29,6 +29,9 @@ import { Modale } from '../../../shared/modale';
 import { OperationService } from '../../../core/operation/operation.service';
 import { FinDeSaisie, LecteurDouchette, normaliserCodeBarres } from '../../../shared/code-barres';
 import { imprimerAddition, imprimerTicket } from '../../../shared/ticket-pdv';
+import { imprimerBonsCuisine } from '../../../shared/bon-cuisine';
+import { ImpressionService } from '../../../core/services/impression.service';
+import { TravailImpression } from '../../../core/models/restauration';
 
 /** Consignes proposees en un geste pour la cuisine ou le bar. */
 const CONSIGNES = ['Sans piment', 'Peu pimente', 'Bien cuit', 'A point', 'Sans glace', 'Bien frais', 'A emporter'];
@@ -78,6 +81,13 @@ export class CommandePdv implements OnInit {
   readonly peutEnvoyer = this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER');
 
   readonly commande = signal<CommandeDetail | null>(null);
+  private readonly impression = inject(ImpressionService);
+  /** Bons de preparation imprimes pour cette commande (caisse seulement). */
+  readonly bons = signal<TravailImpression[]>([]);
+  private bonsDe: string | null = null;
+  readonly libellesBon: Record<TravailImpression['type'], string> = {
+    BON: 'Bon', ANNULATION: 'Annulation', DUPLICATA: 'Duplicata', TEST: 'Essai'
+  };
   readonly articles = signal<ArticlePdv[]>([]);
   readonly categories = signal<CategoriePdv[]>([]);
   readonly categorieChoisie = signal<number | null>(null);
@@ -730,7 +740,10 @@ export class CommandePdv implements OnInit {
       return;
     }
     this.service.commande(this.id).subscribe({
-      next: (commande) => this.commande.set(commande),
+      next: (commande) => {
+        this.commande.set(commande);
+        this.chargerBons(commande);
+      },
       error: (e) => this.erreur.set(this.message(e, 'Commande introuvable.'))
     });
   }
@@ -742,6 +755,7 @@ export class CommandePdv implements OnInit {
       next: (commande) => {
         this.occupe.set(false);
         this.commande.set(commande);
+        this.chargerBons(commande);
         ensuite?.(commande);
       },
       error: (e) => {
@@ -749,6 +763,39 @@ export class CommandePdv implements OnInit {
         this.erreur.set(this.message(e, 'Operation impossible.'));
       }
     });
+  }
+
+  /** Nouvel exemplaire d'un bon (DUPLICATA), imprime tout de suite ici s'il passe par le navigateur. */
+  reimprimerBon(bon: TravailImpression): void {
+    this.impression.duplicata(bon.id).subscribe({
+      next: (copie) => {
+        if (copie.imprimanteMode === 'NAVIGATEUR') {
+          this.impression.prendre([copie.id]).subscribe({ next: (pris) => imprimerBonsCuisine(pris.map((t) => t.bon)) });
+        } else {
+          this.information.set(`Duplicata envoye a ${copie.imprimanteNom}.`);
+        }
+        const c = this.commande();
+        if (c) {
+          this.bonsDe = null;
+          this.chargerBons(c);
+        }
+      },
+      error: (e) => this.erreur.set(this.message(e, 'Reimpression impossible.'))
+    });
+  }
+
+  /** Relit les bons quand la commande change d'envois ou de lignes annulees. */
+  private chargerBons(c: CommandeDetail): void {
+    if (!this.peutEnvoyer || !c.resume.id) {
+      this.bons.set([]);
+      return;
+    }
+    const empreinte = c.resume.id + ':' + c.lignes.map((l) => l.id + l.statut).join(',');
+    if (empreinte === this.bonsDe) {
+      return;
+    }
+    this.bonsDe = empreinte;
+    this.impression.deLaCommande(c.resume.id).subscribe({ next: (b) => this.bons.set(b), error: () => undefined });
   }
 
   private message(reponse: unknown, defaut: string): string {

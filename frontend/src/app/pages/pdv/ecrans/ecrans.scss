@@ -25,3 +25,80 @@
 .message.alerte {
   margin-bottom: 1rem;
 }
+
+/* Ou sortent les articles d'un poste : ecran, imprimante. */
+.sorties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.sortie {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--couleur-primaire) 10%, #fff);
+  color: var(--couleur-primaire);
+  font-size: 0.78rem;
+  font-weight: 600;
+
+  &.off {
+    background: var(--couleur-fond);
+    color: var(--couleur-texte-doux);
+    font-weight: 500;
+  }
+}
+
+.sorties-poste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 10px;
+
+  legend {
+    padding: 0 0.3rem;
+    font-weight: 600;
+  }
+
+  .alerte {
+    color: var(--couleur-danger);
+  }
+}
+
+.imprimantes {
+  margin-top: 1.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+
+  .sous-titre {
+    margin: 0.25rem 0 0.75rem;
+  }
+
+  tr.inactive {
+    opacity: 0.6;
+  }
+}
+
+.sous-ligne {
+  display: block;
+  color: var(--couleur-texte-doux);
+  font-size: 0.75rem;
+}
+
+.actions-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: flex-end;
+}
+
+.vide-ligne {
+  padding: 1.5rem 1rem !important;
+  text-align: center;
+  color: var(--couleur-texte-doux);
+}

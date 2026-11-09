@@ -48,6 +48,10 @@ public class LigneVente extends BaseEntity {
     @Column(nullable = false, precision = 16, scale = 2)
     private BigDecimal total;
 
+    /** Note pour la preparation (« sans oignon »), imprimee sur le bon de cuisine. */
+    @Column(length = 160)
+    private String note;
+
     /** Cout d'achat unitaire au moment de la vente, pour une marge qui ne varie plus ensuite. */
     @Column(name = "prix_achat", precision = 16, scale = 2)
     private BigDecimal prixAchat;

@@ -156,7 +156,7 @@ public class PreparationService {
      * des qu'un ecran existe, chacun ne voit que les ecrans qui lui sont affectes.
      */
     private void exigerSansEcran() {
-        if (ecranRepository.findAll().stream().anyMatch(EcranPreparation::isActif)) {
+        if (ecranRepository.findAll().stream().anyMatch(e -> e.isActif() && e.isAfficherEcran())) {
             throw new BusinessException("Aucun ecran de preparation ne vous est affecte : demandez a votre gerant");
         }
     }

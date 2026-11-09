@@ -1480,3 +1480,50 @@ input.grand {
   font-size: 0.8rem;
   line-height: 1.35;
 }
+
+/* Bons de preparation imprimes pour la commande, avec la reimpression. */
+.bons-imprimes {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 10px;
+  font-size: 0.85rem;
+
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  ul {
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.3rem 0;
+    border-top: 1px dashed var(--couleur-bordure);
+
+    small {
+      display: block;
+      color: var(--couleur-texte-doux);
+    }
+
+    &.annulation strong {
+      color: var(--couleur-danger);
+    }
+  }
+
+  .reimprimer {
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 8px;
+    background: var(--couleur-surface);
+    cursor: pointer;
+    font-size: 0.78rem;
+  }
+}

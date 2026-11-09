@@ -84,10 +84,14 @@ class CommandeServiceTest {
             return vente;
         });
 
+        impression = mock(tg.parcauto.api.pointdevente.impression.ImpressionService.class);
         service = new CommandeService(repository, mock(LigneCommandeRepository.class),
                 mock(TableRestaurantRepository.class), articles, stockService, venteService,
-                mock(tg.parcauto.api.pointdevente.caisse.SessionTravailService.class), mock(NumerotationService.class));
+                mock(tg.parcauto.api.pointdevente.caisse.SessionTravailService.class), mock(NumerotationService.class),
+                impression);
     }
+
+    private tg.parcauto.api.pointdevente.impression.ImpressionService impression;
 
     @Test
     @DisplayName("L'envoi forme un bon par poste, sort le stock et rend pret ce qui se sert tel quel")
@@ -96,7 +100,7 @@ class CommandeServiceTest {
         ajouter(2L, "3");
         ajouter(3L, "1");
 
-        RestaurationDto.CommandeDetail detail = service.envoyer(10L);
+        RestaurationDto.CommandeDetail detail = service.envoyer(10L, caissier());
 
         assertThat(detail.lignes()).extracting(RestaurationDto.LigneReponse::statut).containsExactly(
                 LigneCommande.Statut.A_PREPARER, LigneCommande.Statut.A_PREPARER, LigneCommande.Statut.PRETE);
@@ -110,10 +114,10 @@ class CommandeServiceTest {
     @DisplayName("Un second envoi porte le numero de bon suivant et ne renvoie pas les lignes deja parties")
     void secondEnvoi() {
         ajouter(1L, "1");
-        service.envoyer(10L);
+        service.envoyer(10L, caissier());
         ajouter(2L, "2");
 
-        RestaurationDto.CommandeDetail detail = service.envoyer(10L);
+        RestaurationDto.CommandeDetail detail = service.envoyer(10L, caissier());
 
         assertThat(detail.lignes()).extracting(RestaurationDto.LigneReponse::envoi).containsExactly(1, 2);
         assertThat(biere.getStockActuel()).isEqualByComparingTo("22");
@@ -124,7 +128,7 @@ class CommandeServiceTest {
     void rupture() {
         ajouter(3L, "11");
 
-        assertThatThrownBy(() -> service.envoyer(10L))
+        assertThatThrownBy(() -> service.envoyer(10L, caissier()))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Stock insuffisant");
     }
@@ -133,7 +137,7 @@ class CommandeServiceTest {
     @DisplayName("Le partage par convive scinde une ligne et laisse la commande ouverte")
     void partage() {
         ajouter(2L, "3");
-        service.envoyer(10L);
+        service.envoyer(10L, caissier());
         toutServir();
         Long ligneBiere = commande.getLignes().get(0).getId();
 
@@ -151,7 +155,7 @@ class CommandeServiceTest {
     void reglementComplet() {
         ajouter(1L, "1");
         ajouter(2L, "2");
-        service.envoyer(10L);
+        service.envoyer(10L, caissier());
         toutServir();
 
         RestaurationDto.ResultatEncaissement resultat = service.encaisser(10L, encaissement(null), caissier());
@@ -165,7 +169,7 @@ class CommandeServiceTest {
     @DisplayName("L'addition complete est refusee tant que des articles n'ont pas ete envoyes")
     void brouillonBloqueAddition() {
         ajouter(1L, "1");
-        service.envoyer(10L);
+        service.envoyer(10L, caissier());
         toutServir();
         ajouter(2L, "1");
 
@@ -179,7 +183,7 @@ class CommandeServiceTest {
     void encaissementApresService() {
         ajouter(1L, "1");
         ajouter(3L, "1");
-        service.envoyer(10L);
+        service.envoyer(10L, caissier());
 
         assertThatThrownBy(() -> service.encaisser(10L, encaissement(null), caissier()))
                 .isInstanceOf(BusinessException.class)
@@ -199,7 +203,7 @@ class CommandeServiceTest {
     @DisplayName("Un serveur n'annule pas une commande partie en cuisine ; un gerant le peut et le stock revient")
     void annulation() {
         ajouter(2L, "2");
-        service.envoyer(10L);
+        service.envoyer(10L, caissier());
 
         assertThatThrownBy(() -> service.annulerCommande(10L, principal(Role.SERVEUR)))
                 .isInstanceOf(BusinessException.class)
@@ -261,7 +265,7 @@ class CommandeServiceTest {
 
         assertThatThrownBy(() -> service.encaisser(10L, encaissement(null), caissier()))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("validez ou refusez");
+                .hasMessageContaining("validez-les ou refusez-les");
 
         RestaurationDto.CommandeDetail detail = service.validerDemandes(10L, principal(Role.SERVEUR));
         assertThat(detail.lignes()).extracting(RestaurationDto.LigneReponse::statut)
@@ -321,6 +325,33 @@ class CommandeServiceTest {
     private void toutServir() {
         commande.getLignes().stream().filter(l -> l.getStatut().facturable())
                 .forEach(l -> l.setStatut(LigneCommande.Statut.SERVIE));
+    }
+
+    @Test
+    @DisplayName("L'envoi par la caisse cree les bons d'impression ; l'envoi direct d'un code QR n'imprime rien")
+    void impressionSeulementParLaCaisse() {
+        ajouter(1L, "2");
+        service.envoyer(10L, caissier());
+        org.mockito.Mockito.verify(impression).bonsEnvoi(org.mockito.ArgumentMatchers.eq(commande),
+                org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(1),
+                org.mockito.ArgumentMatchers.anyString());
+
+        org.mockito.Mockito.clearInvocations(impression);
+        when(repository.ouvertes()).thenReturn(List.of());
+        service.commandeClient(table(), List.of(new RestaurationDto.AjoutLigne(2L, BigDecimal.ONE, null)), false);
+        org.mockito.Mockito.verify(impression, org.mockito.Mockito.never()).bonsEnvoi(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyList(),
+                org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("Une categorie imprimee sans ecran est prete des l'envoi")
+    void imprimeeSansEcranPrete() {
+        poulet.getCategorie().setId(99L);
+        when(impression.categoriesImprimeesSansEcran()).thenReturn(java.util.Set.of(99L));
+        ajouter(1L, "1");
+        service.envoyer(10L, caissier());
+        assertThat(commande.getLignes().get(0).getStatut()).isEqualTo(LigneCommande.Statut.PRETE);
     }
 
     private static UtilisateurPrincipal caissier() {

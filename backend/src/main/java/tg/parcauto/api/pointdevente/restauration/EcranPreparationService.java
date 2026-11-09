@@ -29,12 +29,17 @@ public class EcranPreparationService {
     private final EcranPreparationRepository repository;
     private final CategorieRepository categorieRepository;
     private final PersonnelService personnel;
+    private final tg.parcauto.api.pointdevente.impression.ImprimanteRepository imprimantes;
 
     public record Requete(
             @NotBlank @Size(max = 80) String nom,
             Boolean actif,
             Set<Long> categorieIds,
-            Set<Long> utilisateurIds) {
+            Set<Long> utilisateurIds,
+            /** Nul : inchange (vrai a la creation). */
+            Boolean afficherEcran,
+            /** Imprimante des bons ; nulle : pas d'impression. */
+            Long imprimanteId) {
     }
 
     public record CategorieEcran(Long id, String nom, String couleur, String icone) {
@@ -45,7 +50,8 @@ public class EcranPreparationService {
     }
 
     public record Reponse(Long id, String nom, boolean actif, List<CategorieEcran> categories,
-                          List<PersonnelService.Membre> utilisateurs) {
+                          List<PersonnelService.Membre> utilisateurs, boolean afficherEcran,
+                          Long imprimanteId, String imprimanteNom) {
     }
 
     /** Ecrans de l'etablissement, et les categories preparees qu'aucun ecran ne recoit. */
@@ -57,7 +63,8 @@ public class EcranPreparationService {
         List<EcranPreparation> ecrans = repository.findAllByOrderByNomAsc();
         Map<Long, PersonnelService.Membre> membres = personnel.parId(ecrans.stream()
                 .flatMap(e -> e.getUtilisateurIds().stream()).collect(Collectors.toSet()));
-        Set<Long> couvertes = ecrans.stream().filter(EcranPreparation::isActif)
+        Set<Long> couvertes = ecrans.stream()
+                .filter(e -> e.isActif() && (e.isAfficherEcran() || (e.getImprimante() != null && e.getImprimante().isActif())))
                 .flatMap(e -> e.getCategories().stream()).map(Categorie::getId).collect(Collectors.toSet());
         List<CategorieEcran> orphelines = categorieRepository.findAllByOrderByOrdreAscNomAsc().stream()
                 .filter(c -> c.isActif() && c.getPoste() != PostePreparation.AUCUN && !couvertes.contains(c.getId()))
@@ -71,7 +78,7 @@ public class EcranPreparationService {
     public List<Reponse> accessibles(UtilisateurPrincipal utilisateur) {
         boolean gestionnaire = PersonnelService.gestionnaire(utilisateur);
         return repository.findAllByOrderByNomAsc().stream()
-                .filter(EcranPreparation::isActif)
+                .filter(e -> e.isActif() && e.isAfficherEcran())
                 .filter(e -> gestionnaire || e.getUtilisateurIds().contains(utilisateur.getId()))
                 .map(e -> versDto(e, Map.of()))
                 .toList();
@@ -83,6 +90,9 @@ public class EcranPreparationService {
         EcranPreparation ecran = charger(ecranId);
         if (!ecran.isActif()) {
             throw new BusinessException("L'ecran " + ecran.getNom() + " est desactive");
+        }
+        if (!ecran.isAfficherEcran()) {
+            throw new BusinessException("Le poste " + ecran.getNom() + " imprime ses bons sans ecran");
         }
         if (!PersonnelService.gestionnaire(utilisateur) && !ecran.getUtilisateurIds().contains(utilisateur.getId())) {
             throw new BusinessException("L'ecran " + ecran.getNom() + " ne vous est pas affecte");
@@ -127,6 +137,14 @@ public class EcranPreparationService {
             e.getUtilisateurIds().clear();
             e.getUtilisateurIds().addAll(personnel.verifier(r.utilisateurIds()));
         }
+        if (r.afficherEcran() != null) {
+            e.setAfficherEcran(r.afficherEcran());
+        }
+        e.setImprimante(r.imprimanteId() == null ? null : imprimantes.findById(r.imprimanteId())
+                .orElseThrow(() -> new BusinessException("L'imprimante choisie n'existe pas")));
+        if (!e.isAfficherEcran() && e.getImprimante() == null) {
+            throw new BusinessException("Un poste sans ecran doit avoir une imprimante : sinon ses articles ne sortent nulle part");
+        }
     }
 
     private Reponse versDto(EcranPreparation e, Map<Long, PersonnelService.Membre> membres) {
@@ -135,7 +153,10 @@ public class EcranPreparationService {
                         .sorted(Comparator.comparing(Categorie::getOrdre).thenComparing(Categorie::getNom))
                         .map(CategorieEcran::de).toList(),
                 e.getUtilisateurIds().stream().map(membres::get).filter(java.util.Objects::nonNull)
-                        .sorted(Comparator.comparing(PersonnelService.Membre::nomComplet)).toList());
+                        .sorted(Comparator.comparing(PersonnelService.Membre::nomComplet)).toList(),
+                e.isAfficherEcran(),
+                e.getImprimante() == null ? null : e.getImprimante().getId(),
+                e.getImprimante() == null ? null : e.getImprimante().getNom());
     }
 
     private EcranPreparation charger(Long id) {
