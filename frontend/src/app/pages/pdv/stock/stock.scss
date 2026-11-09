@@ -193,3 +193,68 @@ tr.cliquable {
     color: #fff;
   }
 }
+
+/* Boutons d'impression des bons dans la liste des commandes. */
+.colonne-bons {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.bons {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+/* Badge du paiement au fournisseur dans la liste des commandes. */
+.etat-paiement {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  &.payee {
+    background: color-mix(in srgb, var(--couleur-succes) 14%, #fff);
+    color: var(--couleur-succes);
+  }
+
+  &.partielle {
+    background: #e6f0fb;
+    color: var(--couleur-info);
+  }
+
+  &.non_payee {
+    background: #fff1dc;
+    color: #b35f00;
+  }
+
+  &.en_retard {
+    background: #fde8e4;
+    color: var(--couleur-danger);
+  }
+}
+
+.reste-paiement {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--couleur-texte-doux);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.sans-paiement {
+  color: var(--couleur-texte-doux);
+}

@@ -141,6 +141,17 @@ export interface CategorieDepenseRequete {
   actif?: boolean;
 }
 
+/** ATTENTE_GERANT / ATTENTE_ADMIN : depense de caisse en attente des validations, qui ne compte pas encore. */
+export type StatutDepense = 'ATTENTE_GERANT' | 'ATTENTE_ADMIN' | 'VALIDE' | 'REFUSEE' | 'ANNULEE';
+
+export const LIBELLES_STATUT_DEPENSE: Record<StatutDepense, string> = {
+  ATTENTE_GERANT: 'Attend le gerant',
+  ATTENTE_ADMIN: "Attend l'administrateur",
+  VALIDE: 'Valide',
+  REFUSEE: 'Refusee',
+  ANNULEE: 'Annulee'
+};
+
 export interface Depense {
   id: number;
   numero: string;
@@ -165,10 +176,44 @@ export interface Depense {
   justificatifNom?: string;
   auteurNom: string;
   creeLe?: string;
-  statut: 'VALIDE' | 'ANNULEE';
+  statut: StatutDepense;
   annuleeLe?: string;
   annuleePar?: string;
   motifAnnulation?: string;
+  viseePar?: string;
+  viseeLe?: string;
+  approuveePar?: string;
+  approuveeLe?: string;
+  refuseePar?: string;
+  refuseeLe?: string;
+  motifRefus?: string;
+}
+
+/** Sortie d'especes demandee a la caisse, en attente des validations. */
+export interface SortieAttente {
+  id: number;
+  numero: string;
+  sessionId: number;
+  sessionNumero: string;
+  caisseNom: string;
+  montant: number;
+  motif: string;
+  auteurNom: string;
+  demandeeLe: string;
+  statut: 'ATTENTE_GERANT' | 'ATTENTE_ADMIN' | 'VALIDEE' | 'REFUSEE';
+  viseePar?: string;
+  viseeLe?: string;
+  approuveePar?: string;
+  approuveeLe?: string;
+  refuseePar?: string;
+  refuseeLe?: string;
+  motifRefus?: string;
+}
+
+export interface ValidationsCaisse {
+  depenses: Depense[];
+  sorties: SortieAttente[];
+  sortiesTraitees: SortieAttente[];
 }
 
 export interface DepenseRequete {

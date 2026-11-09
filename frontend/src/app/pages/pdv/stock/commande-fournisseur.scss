@@ -75,34 +75,152 @@ form .tableau-conteneur.liste-modale {
 }
 
 /* Situation de paiement d'une commande receptionnee. */
+/* Carte du paiement au fournisseur : etat, progression, reste a payer. */
 .paiement-commande {
-  display: flex;
-  flex-wrap: wrap;
+  --teinte: #b35f00;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) auto;
   align-items: center;
-  gap: 0.6rem 1.6rem;
+  gap: 1.25rem 2rem;
   margin-bottom: 1rem;
+  padding: 1.1rem 1.3rem;
+  border-left: 4px solid var(--teinte);
+
+  &.retard {
+    --teinte: var(--couleur-danger);
+  }
+
+  &.solde {
+    --teinte: var(--couleur-succes);
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+    font-size: 0.75rem;
+  }
+}
+
+.pc-etat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+
+  h3 {
+    margin: 0;
+    font-size: 1rem;
+  }
+}
+
+.pc-badge {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--teinte) 13%, #fff);
+  color: var(--teinte);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pc-echeance {
+  margin: 0;
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+
+  strong {
+    color: var(--couleur-texte);
+  }
+}
+
+.pc-delai {
+  display: inline-block;
+  margin-left: 0.3rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--teinte) 10%, transparent);
+  color: var(--teinte);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pc-progression {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.pc-chiffres {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
 
   div {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
 
-    small {
-      color: var(--couleur-texte-doux);
-      font-size: 0.75rem;
+    &.droite {
+      align-items: flex-end;
     }
+  }
 
-    &.danger strong {
-      color: var(--couleur-danger);
-    }
+  strong {
+    font-variant-numeric: tabular-nums;
+  }
+}
 
-    &.solde strong {
-      color: #157a37;
+.pc-jauge {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--couleur-texte-doux) 16%, transparent);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--couleur-succes);
+    transition: width 0.3s ease;
+  }
+}
+
+.pc-part {
+  align-self: flex-end;
+}
+
+.pc-reste {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  padding-left: 1.5rem;
+  border-left: 1px solid var(--couleur-bordure);
+
+  strong {
+    color: var(--teinte);
+    font-size: 1.6rem;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+
+    span {
+      font-size: 0.95rem;
     }
   }
 
   .bouton {
-    margin-left: auto;
+    margin-top: 0.45rem;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 900px) {
+  .paiement-commande {
+    grid-template-columns: 1fr;
+  }
+
+  .pc-reste {
+    align-items: stretch;
+    padding: 1rem 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--couleur-bordure);
   }
 }
 

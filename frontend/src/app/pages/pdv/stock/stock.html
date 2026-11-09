@@ -54,6 +54,9 @@
 
 @if (onglet() === 'commandes') {
   <div class="carte">
+    @if (erreurCommandes()) {
+      <div class="message erreur">{{ erreurCommandes() }}</div>
+    }
     <!-- Statut des commandes : liste deroulante habillee par Select2 (Select2Service). -->
     <div class="filtres-statut">
       <select aria-label="Statut des commandes" [ngModel]="filtreStatut()" (ngModelChange)="filtrerCommandes($event)">
@@ -74,6 +77,8 @@
             <th class="numerique">Montant</th>
             <th>Livraison prevue</th>
             <th>Statut</th>
+            <th>Paiement</th>
+            <th class="colonne-bons">Imprimer</th>
           </tr>
         </thead>
         <tbody>
@@ -86,9 +91,33 @@
               <td class="numerique">{{ c.total | number: '1.0-0' }} F</td>
               <td>{{ c.livraisonPrevue ? (c.livraisonPrevue | date: 'dd/MM/yyyy') : '—' }}</td>
               <td><span class="statut {{ c.statut.toLowerCase() }}">{{ libellesStatut[c.statut] }}</span></td>
+              <td>
+                @if (c.paiement) {
+                  <span class="etat-paiement {{ c.paiement.toLowerCase() }}"
+                        [title]="c.paiement === 'PAYEE' ? 'Entierement payee' : 'Reste ' + (c.reste | number: '1.0-0') + ' F a payer'">
+                    {{ libellesPaiement[c.paiement] }}
+                  </span>
+                  @if (c.paiement === 'PARTIELLE' || c.paiement === 'EN_RETARD') {
+                    <small class="reste-paiement">reste {{ c.reste | number: '1.0-0' }} F</small>
+                  }
+                } @else {
+                  <span class="sans-paiement" [title]="c.statut === 'EN_COURS' ? 'A payer apres la reception' : ''">—</span>
+                }
+              </td>
+              <td class="colonne-bons">
+                <div class="bons">
+                  <button class="bouton secondaire petit info" type="button" title="Imprimer le bon de commande"
+                          (click)="imprimer($event, c, 'commande')" (keydown.enter)="$event.stopPropagation()">🖨 Bon de commande</button>
+                  @if (c.statut !== 'ANNULEE') {
+                    <button class="bouton secondaire petit succes" type="button"
+                            [title]="c.statut === 'RECUE' ? 'Imprimer le bon de livraison' : 'Bon de livraison a remplir pendant le controle de la marchandise'"
+                            (click)="imprimer($event, c, 'livraison')" (keydown.enter)="$event.stopPropagation()">🚚 Bon de livraison</button>
+                  }
+                </div>
+              </td>
             </tr>
           } @empty {
-            <tr><td colspan="7" class="vide">Aucune commande. Cliquez sur « Nouvelle commande » pour reapprovisionner.</td></tr>
+            <tr><td colspan="9" class="vide">Aucune commande. Cliquez sur « Nouvelle commande » pour reapprovisionner.</td></tr>
           }
         </tbody>
       </table>

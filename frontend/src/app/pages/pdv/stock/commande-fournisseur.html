@@ -13,6 +13,9 @@
     </div>
     <div class="actions-entete">
       <button class="bouton secondaire info" type="button" (click)="imprimerBon()">🖨 Bon de commande</button>
+      @if (c.resume.statut !== 'ANNULEE') {
+        <button class="bouton secondaire succes" type="button" (click)="imprimerLivraison()">🚚 Bon de livraison</button>
+      }
     @if (enCours()) {
         <button class="bouton danger" type="button" (click)="annuler()">Annuler la commande</button>
         <button class="bouton secondaire info" type="button" (click)="edition.set(true)">Modifier</button>
@@ -39,22 +42,52 @@
   }
   @if (c.resume.statut === 'RECUE' && c.paiement; as p) {
     @if (p.detteSuivie) {
-      <div class="paiement-commande carte">
-        <div><small>Valeur recue</small><strong>{{ p.montantRecu | number: '1.0-0' }} F</strong></div>
-        <div><small>Deja paye</small><strong>{{ p.regle | number: '1.0-0' }} F</strong></div>
-        <div [class.danger]="p.enRetard" [class.solde]="p.reste === 0">
-          <small>Reste a payer</small><strong>{{ p.reste | number: '1.0-0' }} F</strong>
+      @let part = p.montantRecu ? Math.min(100, Math.round((p.regle / p.montantRecu) * 100)) : 0;
+      @let jours = joursAvantEcheance(p.echeance);
+      <section class="paiement-commande carte" [class.solde]="p.reste === 0" [class.retard]="p.enRetard">
+        <div class="pc-etat">
+          <span class="pc-badge">
+            {{ p.reste === 0 ? '✓ Payee' : p.enRetard ? 'Paiement en retard' : p.regle > 0 ? 'Payee en partie' : 'Non payee' }}
+          </span>
+          <h3>Paiement au fournisseur</h3>
+          @if (p.reste > 0 && p.echeance) {
+            <p class="pc-echeance">
+              📅 Echeance le <strong>{{ p.echeance | date: 'dd/MM/yyyy' }}</strong>
+              @if (jours !== null) {
+                <span class="pc-delai">
+                  {{ jours < 0 ? 'en retard de ' + (-jours) + ' jour' + (jours < -1 ? 's' : '')
+                     : jours === 0 ? "aujourd'hui" : 'dans ' + jours + ' jour' + (jours > 1 ? 's' : '') }}
+                </span>
+              }
+            </p>
+          } @else if (p.reste > 0) {
+            <p class="pc-echeance">Sans echeance : a payer a la livraison</p>
+          } @else {
+            <p class="pc-echeance">Le fournisseur est entierement paye pour cette commande.</p>
+          }
         </div>
-        <div [class.danger]="p.enRetard">
-          <small>Echeance</small>
-          <strong>{{ p.echeance ? (p.echeance | date: 'dd/MM/yyyy') : '—' }}{{ p.enRetard ? ' · en retard' : '' }}</strong>
+
+        <div class="pc-progression">
+          <div class="pc-chiffres">
+            <div><small>Deja paye</small><strong>{{ p.regle | number: '1.0-0' }} F</strong></div>
+            <div class="droite"><small>Valeur recue</small><strong>{{ p.montantRecu | number: '1.0-0' }} F</strong></div>
+          </div>
+          <div class="pc-jauge" role="img" [attr.aria-label]="'Paye a ' + part + ' %'">
+            <span [style.width.%]="part"></span>
+          </div>
+          <small class="pc-part">{{ part }} % paye</small>
         </div>
-        @if (p.fournisseurId) {
-          <button class="bouton {{ p.reste > 0 ? 'succes' : 'secondaire info' }}" type="button" (click)="paiementOuvert.set(true)">
-            {{ p.reste > 0 ? 'Payer le fournisseur' : 'Compte du fournisseur' }}
-          </button>
-        }
-      </div>
+
+        <div class="pc-reste">
+          <small>Reste a payer</small>
+          <strong>{{ p.reste | number: '1.0-0' }} <span>F</span></strong>
+          @if (p.fournisseurId) {
+            <button class="bouton {{ p.reste > 0 ? 'succes' : 'secondaire info' }}" type="button" (click)="paiementOuvert.set(true)">
+              {{ p.reste > 0 ? 'Payer le fournisseur' : 'Compte du fournisseur' }}
+            </button>
+          }
+        </div>
+      </section>
     } @else {
       <p class="note">Receptionnee avant le suivi des dettes fournisseurs : reputee payee.</p>
     }

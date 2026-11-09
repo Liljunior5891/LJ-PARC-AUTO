@@ -192,6 +192,97 @@ public class PiecesAchatPdf {
         return "bon-commande_" + commandes.findById(id).map(CommandeFournisseur::getNumero).orElse(String.valueOf(id)) + ".pdf";
     }
 
+    // ------------------------------------------------------ bon de livraison
+
+    /**
+     * Bon de livraison de la commande : quantites commandees et recues. Tant que
+     * la commande n'est pas receptionnee, la colonne « Qte recue » reste vide pour
+     * etre remplie a la main pendant le controle de la marchandise.
+     */
+    public byte[] bonLivraison(Long id) {
+        CommandeFournisseur c = commandes.detail(id).orElseThrow(() -> ResourceNotFoundException.of("Commande fournisseur", id));
+        boolean recue = c.getStatut() == CommandeFournisseur.Statut.RECUE;
+        boolean annulee = c.getStatut() == CommandeFournisseur.Statut.ANNULEE;
+        ByteArrayOutputStream sortie = new ByteArrayOutputStream();
+        Document document = ouvrir(sortie);
+
+        List<String[]> references = new ArrayList<>();
+        references.add(new String[]{"Commande N° :", c.getNumero()});
+        references.add(new String[]{"Commandee le :", DATE.format(c.getDateCommande())});
+        if (recue && c.getRecueLe() != null) {
+            references.add(new String[]{"Livree le :", DATE_HEURE.format(c.getRecueLe().atZone(ZONE))});
+        } else if (c.getLivraisonPrevue() != null) {
+            references.add(new String[]{"Livraison prevue :", DATE.format(c.getLivraisonPrevue())});
+        }
+        if (c.getLieu() != null) {
+            references.add(new String[]{"Livre a :", c.getLieu().getNom()});
+        }
+        String titre = annulee ? "BON DE LIVRAISON - ANNULÉ" : recue ? "BON DE LIVRAISON" : "BON DE LIVRAISON - À CONTRÔLER";
+        enTete(document, titre, "FOURNISSEUR :", c.getFournisseur(),
+                c.getFiche() == null ? List.of() : coordonnees(c.getFiche()), references);
+
+        PdfPTable table = new PdfPTable(new float[]{38f, 11f, 11f, 10f, 15f, 15f});
+        table.setWidthPercentage(100);
+        table.setHeaderRows(1);
+        String[] entetes = {"Désignation", "Qté cdée", "Qté reçue", "Unité", "Prix unitaire", "Montant"};
+        for (int i = 0; i < entetes.length; i++) {
+            table.addCell(entete(entetes[i], i == 0 || i == 3 ? Element.ALIGN_LEFT : Element.ALIGN_RIGHT));
+        }
+        BigDecimal total = BigDecimal.ZERO;
+        boolean ecart = false;
+        boolean pair = false;
+        for (LigneCommandeFournisseur l : c.getLignes()) {
+            Color fond = pair ? FOND_DOUX : null;
+            BigDecimal livree = recue ? (l.getQuantiteRecue() == null ? BigDecimal.ZERO : l.getQuantiteRecue()) : null;
+            boolean different = livree != null && livree.compareTo(l.getQuantite()) != 0;
+            ecart |= different;
+            table.addCell(ligne(l.getArticle().getNom() + "\n" + l.getArticle().getCode(), Element.ALIGN_LEFT, fond));
+            table.addCell(ligne(quantite(l.getQuantite()), Element.ALIGN_RIGHT, fond));
+            table.addCell(livree == null ? ligne(" ", Element.ALIGN_RIGHT, fond)
+                    : cellule(quantite(livree), police(9, Font.BOLD, different ? ROUGE : SOMBRE), Element.ALIGN_RIGHT, fond));
+            table.addCell(ligne(l.getArticle().getUnite() == null ? "" : l.getArticle().getUnite(), Element.ALIGN_LEFT, fond));
+            table.addCell(ligne(l.getCoutUnitaire() == null ? "" : montant(l.getCoutUnitaire()), Element.ALIGN_RIGHT, fond));
+            BigDecimal valeur = l.getCoutUnitaire() == null ? BigDecimal.ZERO
+                    : l.getCoutUnitaire().multiply(livree != null ? livree : l.getQuantite());
+            table.addCell(ligne(montant(valeur), Element.ALIGN_RIGHT, fond));
+            total = total.add(valeur);
+            pair = !pair;
+        }
+        table.setSpacingAfter(10);
+        document.add(table);
+
+        PdfPTable bas = new PdfPTable(new float[]{55f, 45f});
+        bas.setWidthPercentage(100);
+        PdfPCell notes = sansBordure(new PdfPCell());
+        if (ecart) {
+            notes.addElement(new Paragraph("Les quantites en rouge different de la commande.", police(8.5f, Font.ITALIC, ROUGE)));
+        }
+        if (!recue && !annulee) {
+            notes.addElement(new Paragraph("Comptez la marchandise et notez les quantites reellement recues.",
+                    police(8.5f, Font.ITALIC, GRIS)));
+        }
+        if (c.getNote() != null) {
+            notes.addElement(new Paragraph("Note", police(9, Font.BOLD, BLEU)));
+            notes.addElement(new Paragraph(c.getNote(), police(8.5f, Font.NORMAL, GRIS)));
+        }
+        bas.addCell(notes);
+        PdfPTable totaux = new PdfPTable(new float[]{55f, 45f});
+        totaux.setWidthPercentage(100);
+        ligneTotal(totaux, recue ? "VALEUR LIVRÉE :" : "VALEUR COMMANDÉE :", montant(total) + " F");
+        bas.addCell(sansBordure(new PdfPCell(totaux)));
+        bas.setSpacingAfter(30);
+        document.add(bas);
+
+        document.add(signatures("Livre par (fournisseur) :",
+                "Recu par :\n" + (recue && c.getRecuePar() != null ? c.getRecuePar() : ""), "Visa de la direction :"));
+        document.close();
+        return societeService.auFormat(sortie.toByteArray());
+    }
+
+    public String nomBonLivraison(Long id) {
+        return "bon-livraison_" + commandes.findById(id).map(CommandeFournisseur::getNumero).orElse(String.valueOf(id)) + ".pdf";
+    }
+
     // ------------------------------------------------------------ gabarit
 
     private Document ouvrir(ByteArrayOutputStream sortie) {

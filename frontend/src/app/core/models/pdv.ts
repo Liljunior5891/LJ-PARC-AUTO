@@ -167,7 +167,20 @@ export interface CommandeFournisseurResume {
   /** Valeur recue a la reception : la dette envers le fournisseur. */
   montantRecu?: number;
   echeance?: string;
+  /** Etat du paiement au fournisseur ; absent tant que la commande n'est pas receptionnee. */
+  paiement?: EtatPaiementCommande;
+  regle?: number;
+  reste?: number;
 }
+
+export type EtatPaiementCommande = 'PAYEE' | 'PARTIELLE' | 'NON_PAYEE' | 'EN_RETARD';
+
+export const LIBELLES_ETAT_PAIEMENT: Record<EtatPaiementCommande, string> = {
+  PAYEE: 'Payee',
+  PARTIELLE: 'Payee en partie',
+  NON_PAYEE: 'Non payee',
+  EN_RETARD: 'Paiement en retard'
+};
 
 export interface LigneCommandeFournisseur {
   id: number;
@@ -341,6 +354,19 @@ export interface SessionCaisse {
   reglementsRecus?: number;
   /** Rendu a des clients qui ont solde leur reste, deja deduit de parMode. */
   remboursements?: number;
+  /** Sorties demandees et pas encore approuvees (validation des depenses de caisse) : elles ne pesent pas sur le tiroir. */
+  sortiesEnAttente?: SortieEnAttenteSession[];
+}
+
+export interface SortieEnAttenteSession {
+  id: number;
+  numero: string;
+  montant: number;
+  motif: string;
+  auteurNom: string;
+  demandeeLe: string;
+  statut: 'ATTENTE_GERANT' | 'ATTENTE_ADMIN';
+  viseePar?: string;
 }
 
 export interface LigneEncaissement {

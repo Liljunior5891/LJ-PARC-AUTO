@@ -86,6 +86,12 @@ public class CommandeFournisseurController {
         return pdf(pieces.bonCommande(id), pieces.nomBonCommande(id));
     }
 
+    @GetMapping("/{id}/bon-livraison-pdf")
+    @Operation(summary = "Bon de livraison : quantites commandees et recues")
+    public org.springframework.http.ResponseEntity<byte[]> bonLivraison(@PathVariable Long id) {
+        return pdf(pieces.bonLivraison(id), pieces.nomBonLivraison(id));
+    }
+
     private static org.springframework.http.ResponseEntity<byte[]> pdf(byte[] contenu, String nom) {
         return org.springframework.http.ResponseEntity.ok()
                 .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nom + "\"")

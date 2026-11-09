@@ -7,6 +7,7 @@ import {
   ArticlePdv,
   CommandeFournisseurDetail,
   CommandeFournisseurResume,
+  LIBELLES_ETAT_PAIEMENT,
   LIBELLES_STATUT_COMMANDE_FOURNISSEUR,
   MouvementStock,
   StatutCommandeFournisseur,
@@ -16,6 +17,7 @@ import {
 import { AuthService } from '../../../core/auth/auth.service';
 import { LieuxService } from '../../../core/services/lieux.service';
 import { PdvService } from '../../../core/services/pdv.service';
+import { AchatsService } from '../../../core/services/achats.service';
 import { Modale } from '../../../shared/modale';
 import { FormulaireCommande } from './formulaire-commande';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
@@ -38,12 +40,14 @@ export class StockPdv implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly lieuxService = inject(LieuxService);
+  private readonly achats = inject(AchatsService);
   /** Avec des entrepots, un mouvement concerne un lieu. */
   readonly lieux = computed(() => this.lieuxService.etat()?.lieux ?? []);
   lieuId: number | null = null;
 
   readonly onglet = signal<'commandes' | 'mouvements'>('commandes');
   readonly libellesStatut = LIBELLES_STATUT_COMMANDE_FOURNISSEUR;
+  readonly libellesPaiement = LIBELLES_ETAT_PAIEMENT;
   readonly commandes = signal<Page<CommandeFournisseurResume> | null>(null);
   readonly filtreStatut = signal<StatutCommandeFournisseur | null>(null);
   private readonly suiteCommandes = new SuiteDePages();
@@ -57,6 +61,8 @@ export class StockPdv implements OnInit {
   readonly articles = signal<ArticlePdv[]>([]);
   readonly succes = signal<string | null>(null);
   readonly erreur = signal<string | null>(null);
+  /** Erreur d'impression d'un bon depuis la liste des commandes. */
+  readonly erreurCommandes = signal<string | null>(null);
 
   articleFiltre: number | null = null;
   private readonly suite = new SuiteDePages();
@@ -130,6 +136,18 @@ export class StockPdv implements OnInit {
 
   ouvrirCommande(c: CommandeFournisseurResume): void {
     void this.router.navigate(['/pdv/stock/commandes', c.id]);
+  }
+
+  /** Imprime le bon de commande ou le bon de livraison sans ouvrir la commande. */
+  imprimer(evenement: Event, c: CommandeFournisseurResume, piece: 'commande' | 'livraison'): void {
+    evenement.stopPropagation();
+    this.erreurCommandes.set(null);
+    const pdf = piece === 'commande' ? this.achats.bonCommande(c.id) : this.achats.bonLivraison(c.id);
+    pdf.subscribe({
+      next: (fichier) => this.achats.ouvrirPdf(fichier),
+      error: () => this.erreurCommandes.set(
+        `${piece === 'commande' ? 'Bon de commande' : 'Bon de livraison'} de ${c.numero} indisponible.`)
+    });
   }
 
   commandeEnregistree(detail: CommandeFournisseurDetail): void {

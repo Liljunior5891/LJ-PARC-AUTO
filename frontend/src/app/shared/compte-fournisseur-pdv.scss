@@ -1,0 +1,311 @@
+/* Compte d'un fournisseur : fiche et solde a gauche, paiement ou listes en onglets a droite. */
+
+.compte {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* ------------------------------------------------------------------ fiche */
+
+.fiche {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 14px;
+  background: var(--couleur-fond);
+}
+
+.identite {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--couleur-primaire) 12%, var(--couleur-surface));
+    color: var(--couleur-primaire);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+    font-size: 0.78rem;
+  }
+}
+
+/* Le solde est le chiffre qu'on vient chercher : il est mis en avant. */
+.solde {
+  --teinte: #b7791f;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--teinte) 30%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--teinte) 7%, var(--couleur-surface));
+
+  &.retard {
+    --teinte: var(--couleur-danger);
+  }
+
+  &.a-jour {
+    --teinte: var(--couleur-succes);
+  }
+
+  > small:first-child {
+    color: var(--couleur-texte-doux);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  > strong {
+    color: var(--teinte);
+    font-size: 1.75rem;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+
+    span {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+  }
+
+  .detail-jauge {
+    color: var(--couleur-texte-doux);
+    font-size: 0.75rem;
+  }
+
+  .bouton {
+    margin-top: 0.4rem;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.jauge {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--couleur-texte-doux) 18%, transparent);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--couleur-succes);
+  }
+
+  &.petite {
+    width: 70px;
+    height: 4px;
+  }
+}
+
+dl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  dt {
+    color: var(--couleur-texte-doux);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 600;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+}
+
+.chiffres .danger dd {
+  color: var(--couleur-danger);
+}
+
+.contact {
+  padding-top: 0.9rem;
+  border-top: 1px dashed var(--couleur-bordure);
+
+  &:not(:has(div)) {
+    display: none;
+  }
+
+  dd {
+    font-weight: 500;
+  }
+
+  .large {
+    flex-direction: column;
+    gap: 0.15rem;
+
+    dd {
+      text-align: left;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ colonne principale */
+
+.principal {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.liste-compte {
+  max-height: min(56vh, 520px);
+}
+
+.sous-ligne {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--couleur-texte-doux);
+  font-size: 0.75rem;
+}
+
+.doux {
+  color: var(--couleur-texte-doux);
+}
+
+.colonne-jauge {
+  small {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--couleur-texte-doux);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.ligne-retard td:first-child {
+  box-shadow: inset 3px 0 0 var(--couleur-danger);
+}
+
+.moyen {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--couleur-primaire) 9%, transparent);
+  color: var(--couleur-primaire);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+tr.annule {
+  opacity: 0.6;
+
+  .somme {
+    text-decoration: line-through;
+  }
+}
+
+.actions-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: flex-end;
+  align-items: center;
+
+  input {
+    max-width: 160px;
+  }
+}
+
+.vide-ligne {
+  padding: 2rem 1rem !important;
+  text-align: center;
+  color: var(--couleur-texte-doux);
+}
+
+/* ------------------------------------------------------------------ paiement */
+
+.paiement {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--couleur-bordure);
+
+    h3 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    small {
+      color: var(--couleur-texte-doux);
+      font-size: 0.8rem;
+    }
+  }
+
+  .reste {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+
+    strong {
+      font-size: 1.2rem;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  input.montant {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .actions-formulaire {
+    margin-top: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ petits ecrans */
+
+@media (max-width: 860px) {
+  .compte {
+    grid-template-columns: 1fr;
+  }
+
+  .fiche {
+    position: static;
+  }
+}

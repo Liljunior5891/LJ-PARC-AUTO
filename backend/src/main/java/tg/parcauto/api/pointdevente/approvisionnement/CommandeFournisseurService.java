@@ -92,14 +92,35 @@ public class CommandeFournisseurService {
     public record Resume(Long id, String numero, String fournisseur, LocalDate dateCommande,
                          LocalDate livraisonPrevue, CommandeFournisseur.Statut statut, int produits,
                          BigDecimal total, Instant recueLe, Long fournisseurId, BigDecimal montantRecu,
-                         LocalDate echeance) {
+                         LocalDate echeance,
+                         /** Etat du paiement au fournisseur ; nul tant que la commande n'est pas receptionnee. */
+                         EtatPaiement paiement, BigDecimal regle, BigDecimal reste) {
 
         static Resume de(CommandeFournisseur c) {
+            return de(c, null);
+        }
+
+        static Resume de(CommandeFournisseur c, tg.parcauto.api.pointdevente.fournisseur.FournisseurService.Dette dette) {
+            EtatPaiement etat = null;
+            if (c.getStatut() == CommandeFournisseur.Statut.RECUE && dette != null) {
+                if (!c.isDetteSuivie() || dette.reste().signum() == 0) {
+                    etat = EtatPaiement.PAYEE;
+                } else if (dette.enRetard()) {
+                    etat = EtatPaiement.EN_RETARD;
+                } else {
+                    etat = dette.regle().signum() > 0 ? EtatPaiement.PARTIELLE : EtatPaiement.NON_PAYEE;
+                }
+            }
             return new Resume(c.getId(), c.getNumero(), c.getFournisseur(), c.getDateCommande(),
                     c.getLivraisonPrevue(), c.getStatut(), c.getLignes().size(), montant(c.total()), c.getRecueLe(),
-                    c.getFiche() == null ? null : c.getFiche().getId(), c.getMontantRecu(), c.getEcheance());
+                    c.getFiche() == null ? null : c.getFiche().getId(), c.getMontantRecu(), c.getEcheance(), etat,
+                    dette == null ? null : dette.regle(),
+                    dette == null ? null : (c.isDetteSuivie() ? dette.reste() : BigDecimal.ZERO));
         }
     }
+
+    /** Ou en est le paiement d'une commande receptionnee. */
+    public enum EtatPaiement { PAYEE, PARTIELLE, NON_PAYEE, EN_RETARD }
 
     public record Detail(Resume resume, String note, String creePar, String recuePar, Instant annuleeLe,
                          List<Ligne> lignes,
@@ -108,7 +129,7 @@ public class CommandeFournisseurService {
     }
 
     private Detail detailDe(CommandeFournisseur c) {
-        return new Detail(Resume.de(c), c.getNote(), c.getCreePar(), c.getRecuePar(), c.getAnnuleeLe(),
+        return new Detail(Resume.de(c, fournisseurService.dettesDe(List.of(c)).get(c.getId())), c.getNote(), c.getCreePar(), c.getRecuePar(), c.getAnnuleeLe(),
                 c.getLignes().stream().map(Ligne::de).toList(), fournisseurService.situation(c));
     }
 
@@ -117,7 +138,9 @@ public class CommandeFournisseurService {
         Page<CommandeFournisseur> page = statut == null
                 ? repository.findAllByOrderByDateCommandeDescIdDesc(pageable)
                 : repository.findByStatutOrderByDateCommandeDescIdDesc(statut, pageable);
-        return page.map(Resume::de);
+        Map<Long, tg.parcauto.api.pointdevente.fournisseur.FournisseurService.Dette> dettes =
+                fournisseurService.dettesDe(page.getContent());
+        return page.map(c -> Resume.de(c, dettes.get(c.getId())));
     }
 
     @Transactional(readOnly = true)

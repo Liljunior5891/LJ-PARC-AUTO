@@ -1,173 +1,239 @@
 @let c = compte();
 <app-modale [titre]="c ? c.fournisseur.nom : 'Compte fournisseur'"
-            [sousTitre]="c ? c.fournisseur.code + (c.fournisseur.telephone ? ' · ' + c.fournisseur.telephone : '') : ''"
-            largeur="860px" [erreur]="erreur()" (ferme)="ferme.emit()">
+            [sousTitre]="c ? 'Compte fournisseur · ' + c.fournisseur.code : ''"
+            largeur="1180px" [erreur]="erreur()" (ferme)="ferme.emit()">
   @if (succes()) {
     <div class="message succes">{{ succes() }}</div>
   }
   @if (c) {
-    <div class="situation">
-      <div class="indic" [class.alerte]="c.fournisseur.du > 0" [class.succes]="c.fournisseur.du === 0">
-        <small>On lui doit</small>
-        <strong>{{ c.fournisseur.du | number: '1.0-0' }} F</strong>
-      </div>
-      <div class="indic" [class.danger]="c.fournisseur.enRetard > 0">
-        <small>En retard</small>
-        <strong>{{ c.fournisseur.enRetard | number: '1.0-0' }} F</strong>
-      </div>
-      <div class="indic">
-        <small>Prochaine echeance</small>
-        <strong>{{ c.fournisseur.prochaineEcheance ? (c.fournisseur.prochaineEcheance | date: 'dd/MM/yyyy') : '—' }}</strong>
-      </div>
-      <div class="indic">
-        <small>Delai de paiement</small>
-        <strong>{{ c.fournisseur.delaiPaiementJours ? c.fournisseur.delaiPaiementJours + ' jours' : 'A la livraison' }}</strong>
-      </div>
-    </div>
-    @if (c.fournisseur.personneContact || c.fournisseur.email || c.fournisseur.ville || c.fournisseur.nif) {
-      <p class="coordonnees">
-        @if (c.fournisseur.personneContact) { <span>👤 {{ c.fournisseur.personneContact }}</span> }
-        @if (c.fournisseur.email) { <span>✉ {{ c.fournisseur.email }}</span> }
-        @if (c.fournisseur.ville) { <span>📍 {{ c.fournisseur.ville }}</span> }
-        @if (c.fournisseur.nif) { <span>NIF {{ c.fournisseur.nif }}</span> }
-      </p>
-    }
+    <div class="compte">
+      <!-- Colonne de gauche : qui est le fournisseur et ou on en est avec lui. -->
+      <aside class="fiche">
+        <div class="identite">
+          <span class="avatar" aria-hidden="true">{{ initiales() }}</span>
+          <div>
+            <strong>{{ c.fournisseur.nom }}</strong>
+            <small>{{ c.fournisseur.code }}{{ c.fournisseur.actif ? '' : ' · inactif' }}</small>
+          </div>
+        </div>
 
-    @if (paiement()) {
-      <form class="carte paiement" (ngSubmit)="payer()">
-        <h3>Payer {{ c.fournisseur.nom }}{{ commandeChoisie() ? ' · commande ' + commandeChoisie()!.numero : '' }}</h3>
-        <app-choix-sortie [(mode)]="mode" [(sessionId)]="sessionId" />
-        <div class="grille-formulaire">
-          <div class="champ">
-            <label for="p-montant">Montant paye (F) *</label>
-            <input id="p-montant" name="montant" type="number" min="1" step="any" required
-                   [ngModel]="montant()" (ngModelChange)="montant.set($event)" />
-            <small>Reste du : {{ (commandeChoisie()?.reste ?? c.fournisseur.du) | number: '1.0-0' }} F</small>
-          </div>
-          <div class="champ">
-            <label for="p-commande">Sur</label>
-            <select id="p-commande" name="commande" [(ngModel)]="commandeId">
-              <option [ngValue]="null">Les echeances les plus anciennes d'abord</option>
-              @for (d of c.dettes; track d.commandeId) {
-                <option [ngValue]="d.commandeId">{{ d.numero }} — reste {{ d.reste | number: '1.0-0' }} F</option>
-              }
-            </select>
-          </div>
-          <div class="champ">
-            <label for="p-date">Date du paiement</label>
-            <input id="p-date" name="date" type="date" [max]="aujourdhui" [(ngModel)]="dateReglement" />
-          </div>
-          @if (mode() !== 'CAISSE') {
-            <div class="champ">
-              <label for="p-ref">Reference</label>
-              <input id="p-ref" name="reference" maxlength="80" [(ngModel)]="reference" placeholder="N° de cheque, de virement, ID mobile money" />
+        <div class="solde" [class.a-jour]="c.fournisseur.du === 0" [class.retard]="c.fournisseur.enRetard > 0">
+          <small>On lui doit</small>
+          <strong>{{ c.fournisseur.du | number: '1.0-0' }} <span>F</span></strong>
+          @if (totalRecu() > 0) {
+            <div class="jauge" role="img" [attr.aria-label]="'Paye a ' + partPayee() + ' %'">
+              <span [style.width.%]="partPayee()"></span>
             </div>
+            <small class="detail-jauge">{{ totalPaye() | number: '1.0-0' }} F payes sur {{ totalRecu() | number: '1.0-0' }} F recus</small>
           }
-          <div class="champ" style="grid-column: 1 / -1">
-            <label for="p-note">Note</label>
-            <input id="p-note" name="note" maxlength="255" [(ngModel)]="note" />
+          @if (c.fournisseur.du > 0 && !paiement()) {
+            <button class="bouton succes" type="button" (click)="ouvrirPaiement()">Payer le fournisseur</button>
+          }
+        </div>
+
+        <dl class="chiffres">
+          <div [class.danger]="c.fournisseur.enRetard > 0">
+            <dt>En retard</dt>
+            <dd>{{ c.fournisseur.enRetard | number: '1.0-0' }} F</dd>
           </div>
-        </div>
-        <div class="actions-formulaire">
-          <button class="bouton secondaire annuler" type="button" (click)="paiement.set(false)">Retour</button>
-          <button class="bouton succes" type="submit" [disabled]="enCours() || !(montant() ?? 0) || (mode() === 'CAISSE' && !sessionId())">
-            {{ enCours() ? 'Enregistrement...' : 'Payer ' + ((montant() ?? 0) | number: '1.0-0') + ' F' }}
-          </button>
-        </div>
-      </form>
-    } @else if (c.fournisseur.du > 0) {
-      <div class="actions-formulaire" style="margin-top: 0">
-        <button class="bouton succes" type="button" (click)="ouvrirPaiement()">Payer le fournisseur</button>
-      </div>
-    }
+          <div>
+            <dt>Prochaine echeance</dt>
+            <dd>{{ c.fournisseur.prochaineEcheance ? (c.fournisseur.prochaineEcheance | date: 'dd/MM/yyyy') : '—' }}</dd>
+          </div>
+          <div>
+            <dt>Delai de paiement</dt>
+            <dd>{{ c.fournisseur.delaiPaiementJours ? c.fournisseur.delaiPaiementJours + ' jours' : 'A la livraison' }}</dd>
+          </div>
+        </dl>
 
-    <h3>Livraisons a payer</h3>
-    <div class="tableau-conteneur liste-modale">
-      <table class="tableau">
-        <thead>
-          <tr><th>Commande</th><th>Recue le</th><th class="numerique">Valeur recue</th><th class="numerique">Deja paye</th><th class="numerique">Reste</th><th>Echeance</th><th></th></tr>
-        </thead>
-        <tbody>
-          @for (d of c.dettes; track d.commandeId) {
-            <tr>
-              <td><a [routerLink]="['/pdv/stock/commandes', d.commandeId]" (click)="ferme.emit()"><strong>{{ d.numero }}</strong></a></td>
-              <td>{{ d.recueLe | date: 'dd/MM/yyyy' }}</td>
-              <td class="numerique">{{ d.montantRecu | number: '1.0-0' }}</td>
-              <td class="numerique">{{ d.regle | number: '1.0-0' }}</td>
-              <td class="numerique"><strong>{{ d.reste | number: '1.0-0' }}</strong></td>
-              <td>
-                @if (d.echeance) {
-                  <span class="etiquette" [class.immobilise]="d.enRetard" [class.disponible]="!d.enRetard">
-                    {{ d.echeance | date: 'dd/MM/yyyy' }}{{ d.enRetard ? ' · en retard' : '' }}
-                  </span>
-                }
-              </td>
-              <td>
-                @if (!paiement()) {
-                  <button class="bouton secondaire petit succes" type="button" (click)="ouvrirPaiement(d.commandeId, d.reste)">Payer</button>
-                }
-              </td>
-            </tr>
-          } @empty {
-            <tr><td colspan="7" class="vide-ligne">Rien a payer : le fournisseur est a jour.</td></tr>
+        <dl class="contact">
+          @if (c.fournisseur.personneContact) { <div><dt>Contact</dt><dd>{{ c.fournisseur.personneContact }}</dd></div> }
+          @if (c.fournisseur.telephone) {
+            <div><dt>Telephone</dt><dd>{{ c.fournisseur.telephone }}{{ c.fournisseur.telephone2 ? ' · ' + c.fournisseur.telephone2 : '' }}</dd></div>
           }
-        </tbody>
-      </table>
-    </div>
+          @if (c.fournisseur.email) { <div><dt>E-mail</dt><dd>{{ c.fournisseur.email }}</dd></div> }
+          @if (adresse(); as a) { <div><dt>Adresse</dt><dd>{{ a }}</dd></div> }
+          @if (c.fournisseur.nif) { <div><dt>NIF</dt><dd>{{ c.fournisseur.nif }}</dd></div> }
+          @if (c.fournisseur.rccm) { <div><dt>RCCM</dt><dd>{{ c.fournisseur.rccm }}</dd></div> }
+          @if (c.fournisseur.conditions) { <div class="large"><dt>Conditions</dt><dd>{{ c.fournisseur.conditions }}</dd></div> }
+        </dl>
+      </aside>
 
-    <h3>Paiements</h3>
-    <div class="tableau-conteneur liste-modale">
-      <table class="tableau">
-        <thead>
-          <tr><th>Paiement</th><th>Date</th><th>Sur</th><th>Moyen</th><th class="numerique">Montant</th><th></th></tr>
-        </thead>
-        <tbody>
-          @for (g of paiements(); track g.numero) {
-            <tr [style.opacity]="g.statut === 'ANNULE' ? 0.55 : 1">
-              <td><strong>{{ g.numero }}</strong><br /><small>{{ g.auteur }}</small></td>
-              <td>{{ g.date | date: 'dd/MM/yyyy' }}</td>
-              <td><small>{{ g.commandes.join(', ') }}</small></td>
-              <td>{{ g.mode }}@if (g.session) { <br /><small>{{ g.session }}</small> }@if (g.reference) { <br /><small>{{ g.reference }}</small> }</td>
-              <td class="numerique">
-                {{ g.montant | number: '1.0-0' }}{{ g.statut === 'ANNULE' ? ' (annule)' : '' }}
-                @if (g.motif) { <br /><small>{{ g.motif }}</small> }
-              </td>
-              <td class="actions-ligne">
-                @if (g.statut === 'VALIDE') {
-                  @if (aAnnuler() === g.numero) {
-                    <input [(ngModel)]="motif" placeholder="Motif" aria-label="Motif de l'annulation" />
-                    <button class="bouton danger petit" type="button" (click)="annuler(g.numero)">Confirmer</button>
-                  } @else {
-                    <button class="bouton secondaire petit annuler" type="button" (click)="aAnnuler.set(g.numero); motif = ''">Annuler</button>
+      <!-- Colonne principale : le paiement en cours, ou les listes en onglets. -->
+      <div class="principal">
+        @if (paiement()) {
+          <form class="carte paiement" (ngSubmit)="payer()">
+            <header>
+              <div>
+                <h3>Nouveau paiement</h3>
+                <small>{{ commandeChoisie() ? 'Sur la commande ' + commandeChoisie()!.numero : 'Sur les echeances les plus anciennes d\'abord' }}</small>
+              </div>
+              <div class="reste">
+                <small>Reste du</small>
+                <strong>{{ (commandeChoisie()?.reste ?? c.fournisseur.du) | number: '1.0-0' }} F</strong>
+              </div>
+            </header>
+
+            <app-choix-sortie [(mode)]="mode" [(sessionId)]="sessionId" />
+
+            <div class="grille-formulaire">
+              <div class="champ">
+                <label for="p-montant">Montant paye (F) *</label>
+                <input id="p-montant" name="montant" type="number" min="1" step="any" required class="montant"
+                       [ngModel]="montant()" (ngModelChange)="montant.set($event)" />
+              </div>
+              <div class="champ">
+                <label for="p-commande">Sur</label>
+                <select id="p-commande" name="commande" [(ngModel)]="commandeId">
+                  <option [ngValue]="null">Les echeances les plus anciennes d'abord</option>
+                  @for (d of c.dettes; track d.commandeId) {
+                    <option [ngValue]="d.commandeId">{{ d.numero }} — reste {{ d.reste | number: '1.0-0' }} F</option>
                   }
-                }
-              </td>
-            </tr>
-          } @empty {
-            <tr><td colspan="6" class="vide-ligne">Aucun paiement.</td></tr>
-          }
-        </tbody>
-      </table>
-    </div>
-
-    @if (c.commandes.length) {
-      <h3>Dernieres commandes</h3>
-      <div class="tableau-conteneur liste-modale">
-        <table class="tableau">
-          <thead><tr><th>Commande</th><th>Date</th><th>Statut</th><th class="numerique">Montant</th></tr></thead>
-          <tbody>
-            @for (o of c.commandes; track o.id) {
-              <tr>
-                <td><a [routerLink]="['/pdv/stock/commandes', o.id]" (click)="ferme.emit()">{{ o.numero }}</a></td>
-                <td>{{ o.dateCommande | date: 'dd/MM/yyyy' }}</td>
-                <td>{{ o.statut === 'EN_COURS' ? 'A receptionner' : o.statut === 'RECUE' ? 'Receptionnee' : 'Annulee' }}</td>
-                <td class="numerique">{{ (o.montantRecu ?? o.total) | number: '1.0-0' }}</td>
-              </tr>
+                </select>
+              </div>
+              <div class="champ">
+                <label for="p-date">Date du paiement</label>
+                <input id="p-date" name="date" type="date" [max]="aujourdhui" [(ngModel)]="dateReglement" />
+              </div>
+              @if (mode() !== 'CAISSE') {
+                <div class="champ">
+                  <label for="p-ref">Reference</label>
+                  <input id="p-ref" name="reference" maxlength="80" [(ngModel)]="reference" placeholder="N° de cheque, de virement, ID mobile money" />
+                </div>
+              }
+              <div class="champ" style="grid-column: 1 / -1">
+                <label for="p-note">Note</label>
+                <input id="p-note" name="note" maxlength="255" [(ngModel)]="note" />
+              </div>
+            </div>
+            <div class="actions-formulaire">
+              <button class="bouton secondaire annuler" type="button" (click)="paiement.set(false)">Retour</button>
+              <button class="bouton succes" type="submit" [disabled]="enCours() || !(montant() ?? 0) || (mode() === 'CAISSE' && !sessionId())">
+                {{ enCours() ? 'Enregistrement...' : 'Payer ' + ((montant() ?? 0) | number: '1.0-0') + ' F' }}
+              </button>
+            </div>
+          </form>
+        } @else {
+          <div class="onglets-inclines" role="tablist">
+            @for (o of onglets; track o.id; let i = $index) {
+              <button type="button" role="tab" [class.actif]="onglet() === o.id"
+                      [style.z-index]="onglet() === o.id ? onglets.length + 1 : onglets.length - i"
+                      [attr.aria-selected]="onglet() === o.id" (click)="onglet.set(o.id)">
+                <span class="icone" aria-hidden="true">{{ o.icone }}</span>
+                <span>{{ o.libelle }}</span>
+                @if (nombre(o.id); as n) { <span class="compteur">{{ n }}</span> }
+              </button>
             }
-          </tbody>
-        </table>
+          </div>
+
+          @switch (onglet()) {
+            @case ('dettes') {
+              <div class="tableau-conteneur liste-compte">
+                <table class="tableau">
+                  <thead>
+                    <tr><th>Commande</th><th>Echeance</th><th class="numerique">Recu</th><th>Paye</th><th class="numerique">Reste</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    @for (d of c.dettes; track d.commandeId) {
+                      <tr [class.ligne-retard]="d.enRetard">
+                        <td>
+                          <a [routerLink]="['/pdv/stock/commandes', d.commandeId]" (click)="ferme.emit()"><strong>{{ d.numero }}</strong></a>
+                          <small class="sous-ligne">Recue le {{ d.recueLe | date: 'dd/MM/yyyy' }}</small>
+                        </td>
+                        <td>
+                          @if (d.echeance) {
+                            <span class="etiquette" [class.immobilise]="d.enRetard" [class.disponible]="!d.enRetard">
+                              {{ d.echeance | date: 'dd/MM/yyyy' }}{{ d.enRetard ? ' · en retard' : '' }}
+                            </span>
+                          } @else { <span class="doux">—</span> }
+                        </td>
+                        <td class="numerique">{{ d.montantRecu | number: '1.0-0' }}</td>
+                        <td class="colonne-jauge">
+                          <div class="jauge petite"><span [style.width.%]="d.montantRecu ? (d.regle / d.montantRecu) * 100 : 0"></span></div>
+                          <small>{{ d.regle | number: '1.0-0' }}</small>
+                        </td>
+                        <td class="numerique"><strong>{{ d.reste | number: '1.0-0' }}</strong></td>
+                        <td class="actions-ligne">
+                          <button class="bouton secondaire petit succes" type="button" (click)="ouvrirPaiement(d.commandeId, d.reste)">Payer</button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="6" class="vide-ligne">✓ Rien a payer : le fournisseur est a jour.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+            @case ('paiements') {
+              <div class="tableau-conteneur liste-compte">
+                <table class="tableau">
+                  <thead>
+                    <tr><th>Paiement</th><th>Moyen</th><th>Sur</th><th class="numerique">Montant</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    @for (g of paiements(); track g.numero) {
+                      <tr [class.annule]="g.statut === 'ANNULE'">
+                        <td>
+                          <strong>{{ g.numero }}</strong>
+                          <small class="sous-ligne">{{ g.date | date: 'dd/MM/yyyy' }} · {{ g.auteur }}</small>
+                        </td>
+                        <td>
+                          <span class="moyen">{{ g.mode }}</span>
+                          @if (g.session || g.reference) { <small class="sous-ligne">{{ g.session ?? g.reference }}</small> }
+                        </td>
+                        <td><small>{{ g.commandes.join(', ') }}</small></td>
+                        <td class="numerique">
+                          <strong class="somme">{{ g.montant | number: '1.0-0' }}</strong>
+                          @if (g.statut === 'ANNULE') {
+                            <small class="sous-ligne">Annule{{ g.motif ? ' : ' + g.motif : '' }}</small>
+                          }
+                        </td>
+                        <td class="actions-ligne">
+                          @if (g.statut === 'VALIDE') {
+                            @if (aAnnuler() === g.numero) {
+                              <input [(ngModel)]="motif" placeholder="Motif" aria-label="Motif de l'annulation" />
+                              <button class="bouton danger petit" type="button" (click)="annuler(g.numero)">Confirmer</button>
+                              <button class="bouton secondaire petit" type="button" (click)="aAnnuler.set(null)" aria-label="Ne pas annuler">×</button>
+                            } @else {
+                              <button class="bouton secondaire petit annuler" type="button" (click)="aAnnuler.set(g.numero); motif = ''">Annuler</button>
+                            }
+                          }
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5" class="vide-ligne">Aucun paiement.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+            @case ('commandes') {
+              <div class="tableau-conteneur liste-compte">
+                <table class="tableau">
+                  <thead><tr><th>Commande</th><th>Date</th><th>Statut</th><th class="numerique">Montant</th></tr></thead>
+                  <tbody>
+                    @for (o of c.commandes; track o.id) {
+                      <tr>
+                        <td><a [routerLink]="['/pdv/stock/commandes', o.id]" (click)="ferme.emit()"><strong>{{ o.numero }}</strong></a></td>
+                        <td>{{ o.dateCommande | date: 'dd/MM/yyyy' }}</td>
+                        <td>
+                          <span class="etiquette" [class.disponible]="o.statut === 'RECUE'" [class.immobilise]="o.statut === 'ANNULEE'">
+                            {{ o.statut === 'EN_COURS' ? 'A receptionner' : o.statut === 'RECUE' ? 'Receptionnee' : 'Annulee' }}
+                          </span>
+                        </td>
+                        <td class="numerique">{{ (o.montantRecu ?? o.total) | number: '1.0-0' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="4" class="vide-ligne">Aucune commande.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+        }
       </div>
-    }
+    </div>
   } @else if (!erreur()) {
     <p class="vide">Chargement...</p>
   }

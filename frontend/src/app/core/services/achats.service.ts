@@ -20,6 +20,9 @@ import {
   RecuReglementFournisseur,
   ReglementFournisseurRequete,
   SyntheseDepenses,
+  SortieAttente,
+  StatutDepense,
+  ValidationsCaisse,
   TotauxFournisseurs
 } from '../models/achats';
 
@@ -112,7 +115,7 @@ export class AchatsService {
 
   depenses(filtre: {
     debut?: string; fin?: string; categorieId?: number | null; mode?: ModeSortie | '';
-    statut?: 'VALIDE' | 'ANNULEE' | ''; q?: string; page?: number; size?: number;
+    statut?: StatutDepense | ''; q?: string; page?: number; size?: number;
   }): Observable<Page<Depense>> {
     let params = new HttpParams().set('page', filtre.page ?? 0).set('size', filtre.size ?? 30);
     if (filtre.debut) {
@@ -155,6 +158,28 @@ export class AchatsService {
     return this.http.put<Depense>(`${this.depensesUrl}/${id}`, r);
   }
 
+  // ------------------------------------------- validation des depenses de caisse
+
+  validationsCaisse(): Observable<ValidationsCaisse> {
+    return this.http.get<ValidationsCaisse>(`${environment.apiUrl}/pdv/validations-caisse`);
+  }
+
+  validerDepenseCaisse(id: number): Observable<Depense> {
+    return this.http.post<Depense>(`${environment.apiUrl}/pdv/validations-caisse/depenses/${id}/validation`, {});
+  }
+
+  refuserDepenseCaisse(id: number, motif: string): Observable<Depense> {
+    return this.http.post<Depense>(`${environment.apiUrl}/pdv/validations-caisse/depenses/${id}/refus`, { motif });
+  }
+
+  validerSortieCaisse(id: number): Observable<SortieAttente> {
+    return this.http.post<SortieAttente>(`${environment.apiUrl}/pdv/validations-caisse/sorties/${id}/validation`, {});
+  }
+
+  refuserSortieCaisse(id: number, motif: string): Observable<SortieAttente> {
+    return this.http.post<SortieAttente>(`${environment.apiUrl}/pdv/validations-caisse/sorties/${id}/refus`, { motif });
+  }
+
   annulerDepense(id: number, motif: string): Observable<Depense> {
     return this.http.post<Depense>(`${this.depensesUrl}/${id}/annulation`, { motif });
   }
@@ -181,6 +206,10 @@ export class AchatsService {
 
   bonCommande(id: number): Observable<Blob> {
     return this.http.get(`${environment.apiUrl}/pdv/approvisionnement/commandes/${id}/bon-pdf`, { responseType: 'blob' });
+  }
+
+  bonLivraison(id: number): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/pdv/approvisionnement/commandes/${id}/bon-livraison-pdf`, { responseType: 'blob' });
   }
 
   /** Ouvre un PDF dans un nouvel onglet (impression ou enregistrement par le navigateur). */

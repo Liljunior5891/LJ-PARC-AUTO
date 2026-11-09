@@ -141,6 +141,30 @@ export class CommandeFournisseurPdv implements OnInit {
     });
   }
 
+  imprimerLivraison(): void {
+    const c = this.commande();
+    if (!c) {
+      return;
+    }
+    this.achats.bonLivraison(c.resume.id).subscribe({
+      next: (pdf) => this.achats.ouvrirPdf(pdf),
+      error: () => this.erreur.set('Bon de livraison indisponible.')
+    });
+  }
+
+  readonly Math = Math;
+
+  /** Jours jusqu'a l'echeance (negatif : en retard), en dates locales. */
+  joursAvantEcheance(echeance?: string): number | null {
+    if (!echeance) {
+      return null;
+    }
+    const [a, m, j] = echeance.split('-').map(Number);
+    const aujourdhui = new Date();
+    const debut = Date.UTC(aujourdhui.getFullYear(), aujourdhui.getMonth(), aujourdhui.getDate());
+    return Math.round((Date.UTC(a, m - 1, j) - debut) / 86_400_000);
+  }
+
   paiementModifie(): void {
     this.charger();
   }

@@ -423,6 +423,20 @@ public class FournisseurService {
         return recues.stream().map(c -> dette(c, regles, aujourdhui).reste()).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    /** Situation de paiement des commandes receptionnees parmi celles donnees, par id de commande. */
+    @Transactional(readOnly = true)
+    public Map<Long, Dette> dettesDe(List<CommandeFournisseur> commandes) {
+        List<CommandeFournisseur> recues = commandes.stream()
+                .filter(c -> c.getStatut() == CommandeFournisseur.Statut.RECUE).toList();
+        Map<Long, BigDecimal> regles = regles(recues);
+        LocalDate aujourdhui = LocalDate.now(FUSEAU);
+        Map<Long, Dette> dettes = new HashMap<>();
+        for (CommandeFournisseur c : recues) {
+            dettes.put(c.getId(), dette(c, regles, aujourdhui));
+        }
+        return dettes;
+    }
+
     private Map<Long, BigDecimal> regles(List<CommandeFournisseur> commandes) {
         if (commandes.isEmpty()) {
             return Map.of();

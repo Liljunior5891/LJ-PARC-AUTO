@@ -21,6 +21,8 @@ interface Paiement {
   motif?: string;
 }
 
+type OngletCompte = 'dettes' | 'paiements' | 'commandes';
+
 /**
  * Compte d'un fournisseur : ce qu'on lui doit, commande par commande avec
  * l'echeance, les paiements deja faits, et un nouveau paiement (depuis une
@@ -30,7 +32,7 @@ interface Paiement {
   selector: 'app-compte-fournisseur-pdv',
   imports: [FormsModule, DecimalPipe, DatePipe, Modale, RouterLink, ChoixSortie],
   templateUrl: './compte-fournisseur-pdv.html',
-  styleUrl: './achats-pdv.scss'
+  styleUrl: './compte-fournisseur-pdv.scss'
 })
 export class CompteFournisseurPdv implements OnInit {
   private readonly service = inject(AchatsService);
@@ -75,6 +77,31 @@ export class CompteFournisseurPdv implements OnInit {
       }
     }
     return [...groupes.values()];
+  });
+
+  // Onglets des listes
+  readonly onglets: { id: OngletCompte; libelle: string; icone: string }[] = [
+    { id: 'dettes', libelle: 'A payer', icone: '⏳' },
+    { id: 'paiements', libelle: 'Paiements', icone: '💸' },
+    { id: 'commandes', libelle: 'Commandes', icone: '📦' }
+  ];
+  readonly onglet = signal<OngletCompte>('dettes');
+
+  readonly totalRecu = computed(() => (this.compte()?.dettes ?? []).reduce((s, d) => s + d.montantRecu, 0));
+  readonly totalPaye = computed(() => (this.compte()?.dettes ?? []).reduce((s, d) => s + d.regle, 0));
+  readonly partPayee = computed(() => {
+    const recu = this.totalRecu();
+    return recu > 0 ? Math.round((this.totalPaye() / recu) * 100) : 0;
+  });
+
+  readonly initiales = computed(() => {
+    const mots = (this.compte()?.fournisseur.nom ?? '').trim().split(/\s+/).filter(Boolean);
+    return ((mots[0]?.[0] ?? '') + (mots[1]?.[0] ?? '')).toUpperCase() || '?';
+  });
+
+  readonly adresse = computed(() => {
+    const f = this.compte()?.fournisseur;
+    return [f?.adresse, f?.ville, f?.pays].filter((v) => !!v?.trim()).join(', ');
   });
 
   readonly commandeChoisie = computed(() => this.compte()?.dettes.find((d) => d.commandeId === this.commandeId));
@@ -134,6 +161,7 @@ export class CompteFournisseurPdv implements OnInit {
       next: (recu) => {
         this.enCours.set(false);
         this.paiement.set(false);
+        this.onglet.set('paiements');
         this.succes.set(`Paiement ${recu.numero} enregistre : ${this.entier(recu.montant)} F. Reste du : ${this.entier(recu.resteDu)} F.`);
         this.charger();
         this.modifie.emit();
@@ -159,6 +187,14 @@ export class CompteFournisseurPdv implements OnInit {
       },
       error: (e) => this.erreur.set(e?.error?.message ?? 'Annulation impossible.')
     });
+  }
+
+  nombre(id: OngletCompte): number {
+    const c = this.compte();
+    if (!c) {
+      return 0;
+    }
+    return id === 'dettes' ? c.dettes.length : id === 'paiements' ? this.paiements().length : c.commandes.length;
   }
 
   private paiementDe(r: ReglementFournisseur): Paiement {
