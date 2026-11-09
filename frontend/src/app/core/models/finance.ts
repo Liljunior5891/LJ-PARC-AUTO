@@ -106,13 +106,18 @@ export type CategorieDepense =
   | 'EXPLOITATION'
   | 'ADMINISTRATIF'
   | 'PERSONNEL'
-  | 'AUTRE';
+  | 'AUTRE'
+  | 'CHARGE_GENERALE';
+
+/** ATTENTE_ADMIN : saisie par le gestionnaire, la validation etant activee ; ne compte pas encore. */
+export type StatutDepenseParc = 'ATTENTE_ADMIN' | 'VALIDEE' | 'REFUSEE' | 'ANNULEE';
 
 export interface Depense {
   id: number;
   numero: string;
-  camionId: number;
-  camionImmatriculation: string;
+  /** Vide pour une charge generale. */
+  camionId?: number;
+  camionImmatriculation?: string;
   chauffeurId?: number;
   chauffeurNom?: string;
   missionId?: number;
@@ -135,13 +140,42 @@ export interface Depense {
   prixLitre?: number;
   aChargeClient: boolean;
   observations?: string;
+  chargeGenerale: boolean;
+  categorieChargeId?: number;
+  categorieChargeNom?: string;
+  categorieChargeIcone?: string;
+  fournisseurId?: number;
+  fournisseurNom?: string;
+  recurrenteId?: number;
+  periode?: string;
+  /** Dette envers le fournisseur. */
+  aPayer: boolean;
+  echeance?: string;
+  regle: number;
+  resteDu: number;
+  enRetard: boolean;
+  justificatifJoint: boolean;
+  justificatifNom?: string;
+  statut: StatutDepenseParc;
+  statutLibelle: string;
+  auteurNom?: string;
+  creeLe?: string;
+  approuveePar?: string;
+  approuveeLe?: string;
+  refuseePar?: string;
+  refuseeLe?: string;
+  motifRefus?: string;
+  annuleePar?: string;
+  annuleeLe?: string;
+  motifAnnulation?: string;
 }
 
 export interface DepenseRequete {
-  camionId: number;
+  /** Vide pour une charge generale (categorieChargeId est alors obligatoire). */
+  camionId?: number | null;
   chauffeurId?: number | null;
   missionId?: number | null;
-  sousCategorie: string;
+  sousCategorie?: string | null;
   libelle: string;
   montant: number;
   dateDepense: string;
@@ -154,6 +188,141 @@ export interface DepenseRequete {
   prixLitre?: number | null;
   aChargeClient?: boolean;
   observations?: string;
+  categorieChargeId?: number | null;
+  fournisseurId?: number | null;
+  aPayer?: boolean;
+  echeance?: string | null;
+  acompte?: number | null;
+}
+
+export const LIBELLES_STATUT_DEPENSE_PARC: Record<StatutDepenseParc, string> = {
+  ATTENTE_ADMIN: "Attend l'administrateur",
+  VALIDEE: 'Validee',
+  REFUSEE: 'Refusee',
+  ANNULEE: 'Annulee'
+};
+
+export interface CategorieCharge {
+  id: number;
+  nom: string;
+  icone?: string;
+  ordre: number;
+  actif: boolean;
+  depenses: number;
+}
+
+export interface LigneChargeGenerale {
+  categorieId: number;
+  categorie: string;
+  icone?: string;
+  total: number;
+  nombre: number;
+}
+
+export interface DepenseRecurrenteParc {
+  id: number;
+  libelle: string;
+  camionId?: number;
+  camionImmatriculation?: string;
+  sousCategorie?: string;
+  sousCategorieLibelle?: string;
+  categorieChargeId?: number;
+  categorieChargeNom?: string;
+  categorieChargeIcone?: string;
+  fournisseurId?: number;
+  fournisseurNom?: string;
+  montant: number;
+  jourEcheance: number;
+  modePaiement?: ModePaiement;
+  debut: string;
+  fin?: string;
+  actif: boolean;
+  note?: string;
+  paiements: number;
+}
+
+export interface DepenseRecurrenteParcRequete {
+  libelle: string;
+  camionId?: number | null;
+  sousCategorie?: string | null;
+  categorieChargeId?: number | null;
+  fournisseurId?: number | null;
+  montant: number;
+  jourEcheance: number;
+  modePaiement?: ModePaiement | null;
+  debut: string;
+  fin?: string | null;
+  actif: boolean;
+  note?: string;
+}
+
+export interface MoisAPayerParc {
+  recurrenteId: number;
+  libelle: string;
+  cible: string;
+  montant: number;
+  modePaiement?: ModePaiement;
+  fournisseurNom?: string;
+  periode: string;
+  periodeLibelle: string;
+  echeance: string;
+  enRetard: boolean;
+}
+
+export interface FournisseurParc {
+  id: number;
+  nom: string;
+  activite?: string;
+  contact?: string;
+  telephone?: string;
+  email?: string;
+  adresse?: string;
+  nif?: string;
+  delaiPaiementJours: number;
+  note?: string;
+  actif: boolean;
+  achats: number;
+  soldeDu: number;
+  enRetard: number;
+  dettesOuvertes: number;
+}
+
+export interface FournisseurParcRequete {
+  nom: string;
+  activite?: string;
+  contact?: string;
+  telephone?: string;
+  email?: string;
+  adresse?: string;
+  nif?: string;
+  delaiPaiementJours: number;
+  note?: string;
+  actif: boolean;
+}
+
+export interface ReglementFournisseurParc {
+  id: number;
+  numero: string;
+  depenseId: number;
+  depenseNumero: string;
+  depenseLibelle: string;
+  montant: number;
+  dateReglement: string;
+  modePaiement?: ModePaiement;
+  reference?: string;
+  note?: string;
+  auteurNom: string;
+  statut: 'VALIDE' | 'ANNULE';
+  annuleLe?: string;
+  annulePar?: string;
+  motifAnnulation?: string;
+}
+
+export interface FicheFournisseurParc {
+  fournisseur: FournisseurParc;
+  dettes: Depense[];
+  depenses: Depense[];
+  reglements: ReglementFournisseurParc[];
 }
 
 export interface LigneCategorieDepense {
@@ -363,6 +532,11 @@ export interface TableauBordFinances {
   /** Part du chiffre d'affaires faite en ligne (Marketplace), le reste en agence. */
   chiffreEnLigne: number;
   chiffreAgence: number;
+  /** Charges generales (sans vehicule) et resultat de l'entreprise apres ces charges. */
+  chargesGenerales: number;
+  resultatNet: number;
+  /** Depenses saisies par le gestionnaire qui attendent l'administrateur. */
+  depensesAValider: number;
 }
 
 export const MODES_PAIEMENT: { valeur: ModePaiement; libelle: string }[] = [

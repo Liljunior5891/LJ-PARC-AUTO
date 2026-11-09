@@ -104,6 +104,7 @@ public class PilotageService {
                 parKm(rentabilite.totalDepenses(), kilometres),
                 parKm(rentabilite.totalRecettes(), kilometres),
                 coutMaintenance,
+                rentabilite.chargesGenerales(), rentabilite.resultatNet(),
                 kilometres, missions, consommation);
     }
 

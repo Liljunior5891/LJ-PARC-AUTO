@@ -28,6 +28,9 @@ public record KpiDto(
         BigDecimal coutParKm,
         BigDecimal revenuParKm,
         BigDecimal coutMaintenance,
+        /** Charges generales (sans vehicule) et resultat de l'entreprise apres ces charges. */
+        BigDecimal chargesGenerales,
+        BigDecimal resultatNet,
 
         // --- Exploitation ---
         long kilometresParcourus,

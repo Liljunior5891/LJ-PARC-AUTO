@@ -18,13 +18,13 @@ public interface DepenseRepository extends JpaRepository<Depense, Long>,
      */
     @Query("""
             select coalesce(sum(d.montant), 0) from Depense d
-            where d.aChargeClient = false and d.dateDepense between :debut and :fin
+            where d.aChargeClient = false and d.statut = tg.parcauto.api.finance.depense.StatutDepense.VALIDEE and d.dateDepense between :debut and :fin
             """)
     BigDecimal totalSurPeriode(@Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
 
     @Query("""
             select coalesce(sum(d.montant), 0) from Depense d
-            where d.aChargeClient = false and d.camion.id = :camionId
+            where d.aChargeClient = false and d.statut = tg.parcauto.api.finance.depense.StatutDepense.VALIDEE and d.camion.id = :camionId
               and d.dateDepense between :debut and :fin
             """)
     BigDecimal totalParCamion(@Param("camionId") Long camionId,
@@ -34,7 +34,8 @@ public interface DepenseRepository extends JpaRepository<Depense, Long>,
     @Query("""
             select d.camion.id as camionId, coalesce(sum(d.montant), 0) as total
             from Depense d
-            where d.aChargeClient = false and d.dateDepense between :debut and :fin
+            where d.aChargeClient = false and d.statut = tg.parcauto.api.finance.depense.StatutDepense.VALIDEE and d.camion is not null
+              and d.dateDepense between :debut and :fin
             group by d.camion.id
             """)
     List<TotalParCamion> totauxParCamion(@Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
@@ -43,7 +44,7 @@ public interface DepenseRepository extends JpaRepository<Depense, Long>,
     @Query("""
             select d.categorie as categorie, coalesce(sum(d.montant), 0) as total, count(d) as nombre
             from Depense d
-            where d.aChargeClient = false and d.dateDepense between :debut and :fin
+            where d.aChargeClient = false and d.statut = tg.parcauto.api.finance.depense.StatutDepense.VALIDEE and d.dateDepense between :debut and :fin
             group by d.categorie
             """)
     List<TotalParCategorie> totauxParCategorie(@Param("debut") LocalDate debut,
@@ -52,7 +53,7 @@ public interface DepenseRepository extends JpaRepository<Depense, Long>,
     @Query("""
             select d.categorie as categorie, coalesce(sum(d.montant), 0) as total, count(d) as nombre
             from Depense d
-            where d.aChargeClient = false and d.camion.id = :camionId
+            where d.aChargeClient = false and d.statut = tg.parcauto.api.finance.depense.StatutDepense.VALIDEE and d.camion.id = :camionId
               and d.dateDepense between :debut and :fin
             group by d.categorie
             """)
@@ -65,7 +66,7 @@ public interface DepenseRepository extends JpaRepository<Depense, Long>,
             select d.sousCategorie as sousCategorie, coalesce(sum(d.montant), 0) as total,
                    count(d) as nombre
             from Depense d
-            where d.aChargeClient = false and d.camion.id = :camionId
+            where d.aChargeClient = false and d.statut = tg.parcauto.api.finance.depense.StatutDepense.VALIDEE and d.camion.id = :camionId
               and d.dateDepense between :debut and :fin
             group by d.sousCategorie
             """)
@@ -79,6 +80,7 @@ public interface DepenseRepository extends JpaRepository<Depense, Long>,
             join fetch d.camion
             where d.camion.id = :camionId
               and d.categorie = tg.parcauto.api.finance.depense.CategorieDepense.CARBURANT
+              and d.statut = tg.parcauto.api.finance.depense.StatutDepense.VALIDEE
               and d.quantiteLitres is not null and d.kilometrage is not null
               and d.dateDepense between :debut and :fin
             order by d.kilometrage asc, d.dateDepense asc
@@ -108,4 +110,75 @@ public interface DepenseRepository extends JpaRepository<Depense, Long>,
 
         long getNombre();
     }
+
+    /** Total des charges generales validees (sans vehicule) de la periode. */
+    @Query("""
+            select coalesce(sum(d.montant), 0) from Depense d
+            where d.statut = tg.parcauto.api.finance.depense.StatutDepense.VALIDEE and d.camion is null and d.dateDepense between :debut and :fin
+            """)
+    BigDecimal totalChargesGenerales(@Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
+
+    /** [categorie id, nom, icone, total, nombre] des charges generales validees de la periode. */
+    @Query("""
+            select c.id, c.nom, c.icone, coalesce(sum(d.montant), 0), count(d) from Depense d join d.categorieCharge c
+            where d.statut = tg.parcauto.api.finance.depense.StatutDepense.VALIDEE and d.dateDepense between :debut and :fin
+            group by c.id, c.nom, c.icone order by sum(d.montant) desc
+            """)
+    List<Object[]> chargesParCategorie(@Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
+
+    long countByCategorieChargeId(Long categorieChargeId);
+
+    long countByRecurrenteId(Long recurrenteId);
+
+    long countByFournisseurParcId(Long fournisseurId);
+
+    /** Mois deja payes ou en attente des depenses recurrentes : [recurrente id, periode]. */
+    @Query("""
+            select d.recurrente.id, d.periode from Depense d
+            where d.recurrente is not null and d.statut in (tg.parcauto.api.finance.depense.StatutDepense.VALIDEE,
+                  tg.parcauto.api.finance.depense.StatutDepense.ATTENTE_ADMIN)
+            """)
+    List<Object[]> moisPayes();
+
+    @Query("""
+            select count(d) > 0 from Depense d where d.recurrente.id = :id and d.periode = :periode
+              and d.statut in (tg.parcauto.api.finance.depense.StatutDepense.VALIDEE,
+                  tg.parcauto.api.finance.depense.StatutDepense.ATTENTE_ADMIN)
+            """)
+    boolean moisDejaPaye(@Param("id") Long recurrenteId, @Param("periode") String periode);
+
+    /** Depenses qui attendent l'administrateur, les plus anciennes d'abord. */
+    @Query("""
+            select d from Depense d left join fetch d.camion left join fetch d.categorieCharge left join fetch d.fournisseurParc
+            where d.statut = tg.parcauto.api.finance.depense.StatutDepense.ATTENTE_ADMIN
+            order by d.creeLe, d.id
+            """)
+    List<Depense> enAttente();
+
+    long countByStatut(StatutDepense statut);
+
+    /** Depenses a payer validees (dettes), d'un fournisseur ou de tous. */
+    @Query("""
+            select d from Depense d left join fetch d.camion left join fetch d.categorieCharge left join fetch d.fournisseurParc
+            where d.aPayer = true and d.statut = tg.parcauto.api.finance.depense.StatutDepense.VALIDEE
+              and (:fournisseur is null or d.fournisseurParc.id = :fournisseur)
+            order by d.echeance nulls last, d.dateDepense, d.id
+            """)
+    List<Depense> aPayer(@Param("fournisseur") Long fournisseurId);
+
+    /** [fournisseur id, total des depenses validees] : les achats de chaque fournisseur. */
+    @Query("""
+            select d.fournisseurParc.id, coalesce(sum(d.montant), 0) from Depense d
+            where d.fournisseurParc is not null and d.statut = tg.parcauto.api.finance.depense.StatutDepense.VALIDEE
+            group by d.fournisseurParc.id
+            """)
+    List<Object[]> achatsParFournisseur();
+
+    /** Depenses d'un fournisseur, les plus recentes d'abord. */
+    @Query("""
+            select d from Depense d left join fetch d.camion left join fetch d.categorieCharge
+            where d.fournisseurParc.id = :fournisseur
+            order by d.dateDepense desc, d.id desc
+            """)
+    List<Depense> duFournisseur(@Param("fournisseur") Long fournisseurId);
 }

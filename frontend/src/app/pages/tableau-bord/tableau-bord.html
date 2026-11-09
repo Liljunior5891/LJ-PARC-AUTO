@@ -100,14 +100,26 @@
         <ng-container [ngTemplateOutlet]="illustrationPortefeuille" />
       </a>
       <a class="carte-tete violet" routerLink="/rentabilite">
-        <span class="titre">Resultat</span>
-        <strong>{{ grosMontant(f.resultat) }}<small>FCFA</small></strong>
+        <span class="titre">{{ f.chargesGenerales ? "Resultat de l'entreprise" : 'Resultat' }}</span>
+        <strong>{{ grosMontant(f.chargesGenerales ? f.resultatNet : f.resultat) }}<small>FCFA</small></strong>
         <span class="detail">
-          marge {{ f.margePourcent | number }} % · {{ f.creancesRestantes | number }} en creances
+          @if (f.chargesGenerales) {
+            vehicules {{ f.resultat | number }} − charges generales {{ f.chargesGenerales | number }}
+          } @else {
+            marge {{ f.margePourcent | number }} % · {{ f.creancesRestantes | number }} en creances
+          }
         </span>
         <ng-container [ngTemplateOutlet]="illustrationPieces" />
       </a>
     </section>
+  }
+
+  @if (finances(); as fa) {
+    @if (fa.depensesAValider > 0) {
+      <a class="message info" routerLink="/depenses" [queryParams]="{ aValider: 1 }" style="display: block; margin-bottom: 1rem">
+        ⏳ {{ fa.depensesAValider }} depense(s) en attente de l'administrateur : elles ne comptent pas encore dans ces chiffres.
+      </a>
+    }
   }
 
   <!-- Etat du parc, alertes et repartition des depenses : le volet exploitation du bord. -->

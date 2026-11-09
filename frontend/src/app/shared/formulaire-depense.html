@@ -3,45 +3,73 @@
     <div class="message erreur">{{ erreur() }}</div>
   }
 
-  <div class="grille-formulaire">
-    <div class="champ">
-      <label for="camionId">Vehicule</label>
-      @if (camionImpose() !== null) {
-        <!-- Le camion vient de la fiche ouverte : il n'y a rien a choisir. -->
-        <input id="camionId" type="text" readonly [value]="camionLibelle()" />
-      } @else {
-        <app-select-recherche formControlName="camionId" [options]="optionsCamion()"
-                              placeholder="Selectionner un vehicule" />
-      }
+  <!-- Depense d'un vehicule ou charge generale de l'entreprise (loyer, salaires du bureau...). -->
+  @if (camionImpose() === null) {
+    <div class="choix-type" role="radiogroup" aria-label="Type de depense">
+      <button type="button" role="radio" [class.actif]="type() === 'VEHICULE'" [attr.aria-checked]="type() === 'VEHICULE'"
+              (click)="changerType('VEHICULE')">
+        <strong>🚚 Vehicule</strong><small>Carburant, entretien, pneus, peage... sur un vehicule</small>
+      </button>
+      <button type="button" role="radio" [class.actif]="type() === 'GENERALE'" [attr.aria-checked]="type() === 'GENERALE'"
+              (click)="changerType('GENERALE')">
+        <strong>🏢 Charge generale</strong><small>Loyer, salaires du bureau, electricite... sans vehicule</small>
+      </button>
     </div>
+  }
 
-    <!-- Le chauffeur n'est pas saisi : il decoule de l'affectation du camion. -->
-    <div class="champ">
-      <label for="chauffeur">Chauffeur</label>
-      <input id="chauffeur" type="text" readonly
-             [value]="chauffeur() ?? 'Aucun chauffeur affecte'"
-             [class.vide]="!chauffeur()" />
-      <small>Renseigne d'apres l'affectation en cours du vehicule.</small>
-    </div>
-
-    <div class="champ">
-      <label for="categorie">Categorie</label>
-      <select id="categorie" formControlName="categorie" data-recherche="toujours">
-        @for (c of categories; track c.valeur) {
-          <option [value]="c.valeur">{{ c.libelle }}</option>
+  @if (type() === 'VEHICULE') {
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="camionId">Vehicule <span class="requis">*</span></label>
+        @if (camionImpose() !== null) {
+          <!-- Le camion vient de la fiche ouverte : il n'y a rien a choisir. -->
+          <input id="camionId" type="text" readonly [value]="camionLibelle()" />
+        } @else {
+          <app-select-recherche formControlName="camionId" [options]="optionsCamion()"
+                                placeholder="Selectionner un vehicule" />
         }
-      </select>
-    </div>
+      </div>
 
-    <div class="champ">
-      <label for="sousCategorie">Nature</label>
-      <select id="sousCategorie" formControlName="sousCategorie" data-recherche="toujours">
-        @for (nature of naturesDisponibles(); track nature.valeur) {
-          <option [value]="nature.valeur">{{ nature.libelle }}</option>
-        }
-      </select>
+      <!-- Le chauffeur n'est pas saisi : il decoule de l'affectation du camion. -->
+      <div class="champ">
+        <label for="chauffeur">Chauffeur</label>
+        <input id="chauffeur" type="text" readonly
+               [value]="chauffeur() ?? 'Aucun chauffeur affecte'"
+               [class.vide]="!chauffeur()" />
+        <small>Renseigne d'apres l'affectation en cours du vehicule.</small>
+      </div>
+
+      <div class="champ">
+        <label for="categorie">Categorie</label>
+        <select id="categorie" formControlName="categorie" data-recherche="toujours">
+          @for (c of categories; track c.valeur) {
+            <option [value]="c.valeur">{{ c.libelle }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="champ">
+        <label for="sousCategorie">Nature</label>
+        <select id="sousCategorie" formControlName="sousCategorie" data-recherche="toujours">
+          @for (nature of naturesDisponibles(); track nature.valeur) {
+            <option [value]="nature.valeur">{{ nature.libelle }}</option>
+          }
+        </select>
+      </div>
     </div>
-  </div>
+  } @else {
+    <div class="grille-formulaire">
+      <div class="champ">
+        <label for="categorieCharge">Categorie de la charge <span class="requis">*</span></label>
+        <select id="categorieCharge" formControlName="categorieChargeId" data-recherche="toujours">
+          @for (c of categoriesCharge(); track c.id) {
+            <option [ngValue]="c.id">{{ c.icone }} {{ c.nom }}</option>
+          }
+        </select>
+        <small>L'administrateur gere la liste dans l'onglet « Categories » de l'ecran Depenses.</small>
+      </div>
+    </div>
+  }
 
   <!-- Informations du plein : elles n'ont de sens que pour le carburant. -->
   @if (saisieCarburant()) {
@@ -99,8 +127,13 @@
     </div>
 
     <div class="champ">
-      <label for="fournisseur">Fournisseur</label>
-      <input id="fournisseur" type="text" formControlName="fournisseur" />
+      <label for="fournisseurId">Fournisseur</label>
+      <app-select-recherche formControlName="fournisseurId" [options]="optionsFournisseur()"
+                            placeholder="Choisir une fiche fournisseur" />
+      @if (!formulaire.controls.fournisseurId.value) {
+        <input id="nouveauFournisseur" type="text" formControlName="nouveauFournisseur" style="margin-top: 0.35rem"
+               placeholder="… ou nom d'un nouveau fournisseur (fiche creee)" />
+      }
     </div>
 
     <div class="champ">
@@ -119,10 +152,34 @@
              placeholder="Numero de facture, recu..." />
     </div>
 
-    @if (!saisieCarburant()) {
+    @if (type() === 'VEHICULE' && !saisieCarburant()) {
       <div class="champ">
         <label for="kilometrage">Kilometrage au compteur</label>
         <input id="kilometrage" type="number" min="0" step="1" formControlName="kilometrage" />
+      </div>
+    }
+
+    <div class="champ">
+      <label for="justificatif">Justificatif (photo ou PDF)</label>
+      <input id="justificatif" type="file" accept="image/*,application/pdf" (change)="choisirFichier($event)" />
+    </div>
+
+    <!-- Dette : la depense reste a payer au fournisseur, reglee ensuite en une ou plusieurs fois. -->
+    <div class="champ champ-large">
+      <label class="case-a-cocher">
+        <input type="checkbox" formControlName="aPayer" />
+        A payer plus tard (dette envers le fournisseur)
+      </label>
+    </div>
+    @if (aPayer()) {
+      <div class="champ">
+        <label for="echeance">Echeance</label>
+        <input id="echeance" type="date" formControlName="echeance" />
+        <small>Vide : date de la depense + delai du fournisseur ({{ delaiFournisseur() }} jour(s)).</small>
+      </div>
+      <div class="champ">
+        <label for="acompte">Acompte verse (FCFA)</label>
+        <input id="acompte" type="number" min="0" step="1" formControlName="acompte" />
       </div>
     }
 
@@ -131,13 +188,15 @@
       <textarea id="observations" rows="2" formControlName="observations"></textarea>
     </div>
 
-    <div class="champ champ-large">
-      <label class="case-a-cocher">
-        <input type="checkbox" formControlName="aChargeClient" />
-        Depense refacturee au client
-      </label>
-      <small>Une depense refacturee est exclue du resultat du vehicule.</small>
-    </div>
+    @if (type() === 'VEHICULE') {
+      <div class="champ champ-large">
+        <label class="case-a-cocher">
+          <input type="checkbox" formControlName="aChargeClient" />
+          Depense refacturee au client
+        </label>
+        <small>Une depense refacturee est exclue du resultat du vehicule.</small>
+      </div>
+    }
   </div>
 
   <div class="actions-formulaire">

@@ -9,7 +9,9 @@ public enum CategorieDepense {
     EXPLOITATION("Exploitation"),
     ADMINISTRATIF("Administratif"),
     PERSONNEL("Personnel"),
-    AUTRE("Autres depenses");
+    AUTRE("Autres depenses"),
+    /** Charge de l'entreprise sans vehicule (loyer, salaires du bureau...) : le detail est dans sa categorie modifiable. */
+    CHARGE_GENERALE("Charges generales");
 
     private final String libelle;
 

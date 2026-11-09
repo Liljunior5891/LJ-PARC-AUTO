@@ -46,6 +46,7 @@ public class TableauBordService {
     private final LocationRepository locationRepository;
     private final MissionRepository missionRepository;
     private final RentabiliteService rentabiliteService;
+    private final tg.parcauto.api.finance.depense.DepenseService depenseService;
     private final FactureService factureService;
     private final PaiementRepository paiementRepository;
 
@@ -90,7 +91,8 @@ public class TableauBordService {
                 creances.nombreEnRetard(),
                 rentabilite.recetteMoyenneParCamion(),
                 rentabilite.depenseMoyenneParCamion(),
-                enLigne, rentabilite.totalRecettes().subtract(enLigne));
+                enLigne, rentabilite.totalRecettes().subtract(enLigne),
+                rentabilite.chargesGenerales(), rentabilite.resultatNet(), depenseService.nombreAValider());
     }
 
     /**

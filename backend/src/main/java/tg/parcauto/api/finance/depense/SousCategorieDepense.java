@@ -52,7 +52,10 @@ public enum SousCategorieDepense {
     SALAIRE_CHAUFFEUR("Salaire du chauffeur", CategorieDepense.PERSONNEL),
     PRIME_CHAUFFEUR("Prime du chauffeur", CategorieDepense.PERSONNEL),
 
-    AUTRE("Autre depense", CategorieDepense.AUTRE);
+    AUTRE("Autre depense", CategorieDepense.AUTRE),
+
+    /** Nature unique des charges generales : leur categorie modifiable porte le detail. */
+    CHARGE_GENERALE("Charge generale", CategorieDepense.CHARGE_GENERALE);
 
     private final String libelle;
     private final CategorieDepense categorie;

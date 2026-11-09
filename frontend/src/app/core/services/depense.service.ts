@@ -19,6 +19,10 @@ export interface FiltreDepense {
   chauffeurId?: number;
   debut?: string;
   fin?: string;
+  /** VEHICULE, GENERALE ou vide (tout). */
+  type?: string;
+  statut?: string;
+  categorieChargeId?: number | null;
   page?: number;
   size?: number;
 }
@@ -57,6 +61,15 @@ export class DepenseService {
     if (filtre.fin) {
       params = params.set('fin', filtre.fin);
     }
+    if (filtre.type) {
+      params = params.set('type', filtre.type);
+    }
+    if (filtre.statut) {
+      params = params.set('statut', filtre.statut);
+    }
+    if (filtre.categorieChargeId) {
+      params = params.set('categorieChargeId', filtre.categorieChargeId);
+    }
     return this.http.get<Page<Depense>>(this.base, { params });
   }
 
@@ -86,7 +99,4 @@ export class DepenseService {
     return this.http.put<Depense>(`${this.base}/${id}`, requete);
   }
 
-  supprimer(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/${id}`);
-  }
 }

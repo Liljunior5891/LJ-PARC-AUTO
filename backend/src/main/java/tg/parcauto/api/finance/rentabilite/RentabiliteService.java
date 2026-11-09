@@ -78,6 +78,7 @@ public class RentabiliteService {
         BigDecimal totalRecettes = somme(lignes, RentabiliteDto.LigneCamion::recettes);
         BigDecimal totalDepenses = somme(lignes, RentabiliteDto.LigneCamion::depenses);
         BigDecimal resultat = totalRecettes.subtract(totalDepenses);
+        BigDecimal charges = depenseRepository.totalChargesGenerales(debut, fin);
         long nombreCamions = lignes.size();
 
         return new RentabiliteDto.Global(
@@ -87,7 +88,9 @@ public class RentabiliteService {
                 moyenne(totalRecettes, nombreCamions),
                 moyenne(totalDepenses, nombreCamions),
                 lignes,
-                palmares(lignes));
+                palmares(lignes),
+                charges,
+                resultat.subtract(charges));
     }
 
     /** Fiche « performance du camion » du chapitre 7. */

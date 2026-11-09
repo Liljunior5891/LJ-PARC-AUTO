@@ -107,6 +107,14 @@ public class RapportPdfService {
                         global.resultat().signum() >= 0 ? MiseEnPagePdf.VERT : MiseEnPagePdf.ROUGE),
                 MiseEnPagePdf.Indicateur.de("Vehicules", String.valueOf(global.nombreCamions()),
                         MiseEnPagePdf.montant(global.recetteMoyenneParCamion()) + " F de recette moyenne")));
+        if (global.chargesGenerales().signum() > 0) {
+            pdf.indicateurs(List.of(
+                    MiseEnPagePdf.Indicateur.de("Charges generales", MiseEnPagePdf.montant(global.chargesGenerales()) + " F",
+                            "loyer, salaires du bureau... (hors vehicules)"),
+                    new MiseEnPagePdf.Indicateur("Resultat de l'entreprise",
+                            MiseEnPagePdf.montant(global.resultatNet()) + " F", "apres les charges generales",
+                            global.resultatNet().signum() >= 0 ? MiseEnPagePdf.VERT : MiseEnPagePdf.ROUGE)));
+        }
 
         pdf.section("Rentabilite par vehicule");
         List<String[]> lignes = new ArrayList<>();
@@ -295,6 +303,14 @@ public class RapportPdfService {
                 MiseEnPagePdf.Indicateur.de("Creances",
                         MiseEnPagePdf.montant(creances.montantRestant()) + " F",
                         creances.nombreFacturesImpayees() + " facture(s) non soldee(s)")));
+        if (kpi.chargesGenerales().signum() > 0) {
+            pdf.indicateurs(List.of(
+                    MiseEnPagePdf.Indicateur.de("Charges generales", MiseEnPagePdf.montant(kpi.chargesGenerales()) + " F",
+                            "hors vehicules"),
+                    new MiseEnPagePdf.Indicateur("Resultat de l'entreprise",
+                            MiseEnPagePdf.montant(kpi.resultatNet()) + " F", "apres les charges generales",
+                            kpi.resultatNet().signum() >= 0 ? MiseEnPagePdf.VERT : MiseEnPagePdf.ROUGE)));
+        }
 
         pdf.section("Indicateurs");
         pdf.tableau(new float[]{60f, 40f},

@@ -1,0 +1,124 @@
+/* Depenses du parc : onglets, charges generales, dettes et fenetres. */
+.aide {
+  margin-top: 0;
+  color: var(--couleur-texte-doux);
+  font-size: 0.9rem;
+}
+
+.entete-carte {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+
+  .aide {
+    margin: 0;
+    flex: 1 1 320px;
+  }
+}
+
+.carte + .carte {
+  margin-top: 1rem;
+}
+
+.charges-detail {
+  margin-bottom: 1rem;
+
+  h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+  }
+}
+
+.puces-charges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+
+  .puce {
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--couleur-accent) 12%, var(--couleur-surface));
+    font-size: 0.85rem;
+  }
+}
+
+.etiquette-charge {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dette {
+  color: var(--couleur-texte-doux);
+
+  &.retard {
+    color: var(--couleur-danger);
+    font-weight: 600;
+  }
+}
+
+td.retard {
+  color: var(--couleur-danger);
+  font-weight: 600;
+}
+
+tr.annulee td {
+  color: var(--couleur-texte-doux);
+  text-decoration: line-through;
+}
+
+tr.cliquable,
+td.cliquable {
+  cursor: pointer;
+}
+
+.reglage-validation {
+  margin-bottom: 1rem;
+
+  .aide {
+    margin: 0.4rem 0 0;
+  }
+}
+
+.choix-rapide {
+  display: flex;
+  gap: 1.2rem;
+  margin-bottom: 0.8rem;
+}
+
+dl.fiche {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 0.4rem 0.8rem;
+  margin: 0 0 1rem;
+
+  dt {
+    color: var(--couleur-texte-doux);
+  }
+
+  dd {
+    margin: 0;
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lien {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--couleur-primaire);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+.titre-section {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+}

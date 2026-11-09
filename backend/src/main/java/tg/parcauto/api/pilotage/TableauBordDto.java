@@ -42,6 +42,11 @@ public final class TableauBordDto {
             java.math.BigDecimal depenseMoyenneParCamion,
             /** Part du chiffre d'affaires faite en ligne (Marketplace), le reste en agence. */
             java.math.BigDecimal chiffreEnLigne,
-            java.math.BigDecimal chiffreAgence) {
+            java.math.BigDecimal chiffreAgence,
+            /** Charges generales (sans vehicule) et resultat de l'entreprise apres ces charges. */
+            java.math.BigDecimal chargesGenerales,
+            java.math.BigDecimal resultatNet,
+            /** Depenses saisies par le gestionnaire qui attendent l'administrateur. */
+            long depensesAValider) {
     }
 }

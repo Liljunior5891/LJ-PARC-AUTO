@@ -2,22 +2,18 @@
   <div>
     <h1>Depenses</h1>
     <p class="sous-titre">
-      Chapitres 16 et 17 — toute depense est rattachee a un vehicule et ventilee par nature
+      Depenses des vehicules et charges generales de l'entreprise (loyer, salaires du bureau...).
+      Les charges generales ne pesent pas sur la marge des vehicules, mais sur le resultat de l'entreprise.
+      @if (validationActive() && !estAdmin) { Vos depenses attendent l'approbation de l'administrateur avant de compter. }
     </p>
   </div>
   @if (peutGerer) {
-    <button class="bouton" type="button" (click)="basculerFormulaire()">
-      + Nouvelle depense
-    </button>
+    <button class="bouton" type="button" (click)="basculerFormulaire()">+ Nouvelle depense</button>
   }
 </div>
 
-@if (erreur()) {
-  <div class="message erreur">{{ erreur() }}</div>
-}
-@if (succes()) {
-  <div class="message succes">{{ succes() }}</div>
-}
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
 
 @if (formulaireVisible()) {
   <!-- Formulaire partage avec la fiche vehicule : le chauffeur suit l'affectation du vehicule. -->
@@ -30,126 +26,498 @@
   </app-modale>
 }
 
-<div class="carte" style="margin-bottom: 1rem">
-  <div class="grille-formulaire">
-    <div class="champ">
-      <label for="debut">Du</label>
-      <input id="debut" type="date" [(ngModel)]="debut" (change)="filtrer()" />
-    </div>
-    <div class="champ">
-      <label for="fin">Au</label>
-      <input id="fin" type="date" [(ngModel)]="fin" (change)="filtrer()" />
-    </div>
-    <div class="champ">
-      <label for="camionFiltre">Vehicule</label>
-      <select id="camionFiltre" [(ngModel)]="camionId" (change)="filtrer()">
-        <option [ngValue]="undefined">Tout le parc</option>
-        @for (camion of camions(); track camion.id) {
-          <option [ngValue]="camion.id">{{ camion.immatriculation }}</option>
-        }
-      </select>
-    </div>
-    <div class="champ">
-      <label for="categorieFiltre">Categorie</label>
-      <select id="categorieFiltre" [(ngModel)]="categorie" (change)="filtrer()">
-        <option value="">Toutes les categories</option>
-        @for (c of categories; track c.valeur) {
-          <option [value]="c.valeur">{{ c.libelle }}</option>
-        }
-      </select>
-    </div>
-    <div class="champ">
-      <label for="recherche">Recherche</label>
-      <input
-        id="recherche"
-        type="search"
-        placeholder="Numero, libelle, fournisseur, station..."
-        [(ngModel)]="recherche"
-        (keyup.enter)="filtrer()"
-      />
-    </div>
-  </div>
+<app-onglets-inclines [onglets]="onglets()" [actif]="onglet()" (choisir)="changerOnglet($event)" />
 
-  <div class="grille-resume" style="margin-top: 1.25rem">
-    <div>
-      <span class="libelle-resume">Total des depenses</span>
-      <strong class="valeur-resume">{{ totalPeriode() | number }} FCFA</strong>
-      <small>{{ page()?.totalElements ?? 0 }} depense(s) sur la periode</small>
+@switch (onglet()) {
+  @case ('liste') {
+    <div class="carte" style="margin-bottom: 1rem">
+      <div class="filtres-ligne">
+        <div class="dates-periode">
+          <span>Du</span>
+          <input type="date" [(ngModel)]="debut" (change)="filtrer()" aria-label="Du" />
+          <span>au</span>
+          <input type="date" [(ngModel)]="fin" (change)="filtrer()" aria-label="Au" />
+        </div>
+        <div class="filtre">
+          <select [(ngModel)]="type" (change)="filtrer()" aria-label="Type">
+            <option value="">Vehicules et charges generales</option>
+            <option value="VEHICULE">Depenses des vehicules</option>
+            <option value="GENERALE">Charges generales</option>
+          </select>
+        </div>
+        @if (type !== 'GENERALE') {
+          <div class="filtre">
+            <select [(ngModel)]="camionId" (change)="filtrer()" aria-label="Vehicule">
+              <option [ngValue]="undefined">Tout le parc</option>
+              @for (camion of camions(); track camion.id) {
+                <option [ngValue]="camion.id">{{ camion.immatriculation }}</option>
+              }
+            </select>
+          </div>
+        }
+        <div class="filtre">
+          <select [(ngModel)]="categorie" (change)="filtrer()" aria-label="Categorie">
+            <option value="">Toutes les categories</option>
+            @for (c of categories; track c.valeur) { <option [value]="c.valeur">{{ c.libelle }}</option> }
+          </select>
+        </div>
+        <div class="filtre">
+          <select [(ngModel)]="statut" (change)="filtrer()" aria-label="Statut">
+            <option value="">Tous les statuts</option>
+            <option value="VALIDEE">Validees</option>
+            <option value="ATTENTE_ADMIN">Attendent l'administrateur</option>
+            <option value="REFUSEE">Refusees</option>
+            <option value="ANNULEE">Annulees</option>
+          </select>
+        </div>
+        <input class="recherche" type="search" placeholder="Numero, libelle, fournisseur, vehicule..."
+               [(ngModel)]="recherche" (keyup.enter)="filtrer()" (search)="filtrer()" aria-label="Recherche" />
+      </div>
+      <p class="note-phase">
+        Totaux : depenses validees seulement. Les depenses refacturees au client en sont exclues.
+      </p>
     </div>
-    @for (ligne of repartition(); track ligne.categorie) {
-      <div>
-        <span class="libelle-resume">{{ ligne.libelle }}</span>
-        <strong class="valeur-resume">{{ ligne.total | number }}</strong>
-        <small>{{ part(ligne) }} % · {{ ligne.nombre }} operation(s)</small>
+
+    <!-- Chiffres de la periode : total puis une carte par categorie. -->
+    <div class="cartes-apercu resume-depenses">
+      <div class="carte-apercu orange">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M12 9v6M9.5 11.5L12 9l2.5 2.5" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Total des depenses</span>
+          <strong>{{ totalPeriode() | number }}<em> F</em></strong>
+          <small>{{ page()?.totalElements ?? 0 }} depense(s) dans la liste</small>
+        </span>
+      </div>
+      @for (ligne of repartition(); track ligne.categorie) {
+        <div class="carte-apercu {{ couleurCategorie(ligne.categorie) }}">
+          <span class="icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              @switch (ligne.categorie) {
+                @case ('CARBURANT') { <path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h14M8 8h4" /><path d="M15 10h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V9l-3-3" /> }
+                @case ('ENTRETIEN') { <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-2.5z" /> }
+                @case ('PNEUS') { <circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="3" /><path d="M12 3.5V9M12 15v5.5M3.5 12H9M15 12h5.5" /> }
+                @case ('PERSONNEL') { <circle cx="9" cy="8" r="3" /><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" /><circle cx="17" cy="9" r="2.3" /><path d="M16 14.2c2.4-.3 4.1 1.3 4.5 4.3" /> }
+                @case ('ADMINISTRATIF') { <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /> }
+                @case ('EXPLOITATION') { <path d="M3 7h11v10H3zM14 10h4l3 3v4h-7" /><circle cx="7" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /> }
+                @case ('CHARGE_GENERALE') { <path d="M4 21V8l8-5 8 5v13M9 21v-6h6v6" /> }
+                @default { <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> }
+              }
+            </svg>
+          </span>
+          <span class="textes">
+            <span class="libelle">{{ ligne.libelle }}</span>
+            <strong>{{ ligne.total | number }}<em> F</em></strong>
+            <small>{{ part(ligne) }} % · {{ ligne.nombre }} operation(s)</small>
+          </span>
+          <span class="jauge"><i [style.width.%]="part(ligne)"></i></span>
+        </div>
+      }
+    </div>
+
+    @if (repartitionCharges().length && !camionId) {
+      <div class="carte charges-detail">
+        <h3>Charges generales par categorie</h3>
+        <div class="puces-charges">
+          @for (c of repartitionCharges(); track c.categorieId) {
+            <span class="puce">{{ c.icone }} {{ c.categorie }} : <b>{{ c.total | number }} F</b> <small>({{ c.nombre }})</small></span>
+          }
+        </div>
       </div>
     }
-  </div>
-  <p class="note-phase">
-    Les depenses refacturees au client sont exclues de ces totaux : elles n'entament pas le resultat.
-  </p>
-</div>
 
-<div class="carte">
-  <div class="tableau-conteneur">
-    <table class="tableau">
-      <thead>
-        <tr>
-          <th>Numero</th>
-          <th>Date</th>
-          <th>Vehicule</th>
-          <th>Categorie</th>
-          <th>Nature</th>
-          <th>Libelle</th>
-          <th>Fournisseur</th>
-          <th class="numerique">Montant</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (depense of page()?.content ?? []; track depense.id) {
-          <tr>
-            <td><strong>{{ depense.numero }}</strong></td>
-            <td>{{ depense.dateDepense }}</td>
-            <td>{{ depense.camionImmatriculation }}</td>
-            <td>{{ depense.categorieLibelle }}</td>
-            <td>
-              {{ depense.sousCategorieLibelle }}
-              @if (depense.quantiteLitres) {
-                <small> · {{ depense.quantiteLitres | number }} l</small>
-              }
-            </td>
-            <td>{{ depense.libelle }}</td>
-            <td>{{ depense.fournisseur || depense.station || '—' }}</td>
-            <td class="numerique">
-              <strong>{{ depense.montant | number }}</strong>
-              @if (depense.aChargeClient) {
-                <span class="etiquette en_location">client</span>
-              }
-            </td>
-            <td>
-              @if (peutGerer) {
-                <button class="bouton danger petit" type="button" (click)="supprimer(depense)">
-                  Supprimer
-                </button>
-              }
-            </td>
-          </tr>
-        } @empty {
-          <tr>
-            <td colspan="9">
-              <div class="message vide">
-                {{ chargement() ? 'Chargement...' : 'Aucune depense sur cette periode.' }}
-              </div>
-            </td>
-          </tr>
+    <div class="carte">
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead>
+            <tr>
+              <th>Numero</th>
+              <th>Date</th>
+              <th>Vehicule ou charge</th>
+              <th>Nature</th>
+              <th>Libelle</th>
+              <th>Fournisseur</th>
+              <th class="numerique">Montant</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (depense of page()?.content ?? []; track depense.id) {
+              <tr class="cliquable" [class.annulee]="depense.statut === 'ANNULEE' || depense.statut === 'REFUSEE'" (click)="detail.set(depense)">
+                <td><strong>{{ depense.numero }}</strong>@if (depense.justificatifJoint) { <span title="Justificatif"> 📎</span> }</td>
+                <td>{{ depense.dateDepense | date: 'dd/MM/yyyy' }}</td>
+                <td>
+                  @if (depense.chargeGenerale) {
+                    <span class="etiquette-charge">🏢 Charge generale</span>
+                  } @else {
+                    {{ depense.camionImmatriculation }}
+                  }
+                </td>
+                <td>
+                  @if (depense.chargeGenerale) {
+                    {{ depense.categorieChargeIcone }} {{ depense.categorieChargeNom }}
+                  } @else {
+                    {{ depense.sousCategorieLibelle }}
+                    @if (depense.quantiteLitres) { <small> · {{ depense.quantiteLitres | number }} l</small> }
+                  }
+                </td>
+                <td>{{ depense.libelle }}</td>
+                <td>
+                  {{ depense.fournisseurNom || depense.station || '—' }}
+                  @if (depense.aPayer && depense.resteDu > 0) {
+                    <br /><small class="dette" [class.retard]="depense.enRetard">Reste {{ depense.resteDu | number }} F
+                      @if (depense.echeance) { · {{ depense.enRetard ? 'en retard depuis le' : 'echeance' }} {{ depense.echeance | date: 'dd/MM' }} }</small>
+                  }
+                </td>
+                <td class="numerique">
+                  <strong>{{ depense.montant | number }}</strong>
+                  @if (depense.aChargeClient) { <span class="etiquette en_location">client</span> }
+                </td>
+                <td>
+                  @if (enAttente(depense)) {
+                    <span class="badge attente-validation">⏳ {{ libellesStatut[depense.statut] }}</span>
+                  } @else {
+                    <span class="etiquette" [class.actif]="depense.statut === 'VALIDEE'">{{ libellesStatut[depense.statut] }}</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8">
+                  <div class="message vide">{{ chargement() ? 'Chargement...' : 'Aucune depense sur cette periode.' }}</div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (page(); as p) {
+        @if (p.totalPages > 1) {
+          <app-suite-liste [page]="p" (suite)="changerPage()" />
         }
-      </tbody>
-    </table>
-  </div>
-
-  @if (page(); as p) {
-    @if (p.totalPages > 1) {
-      <app-suite-liste [page]="p" (suite)="changerPage()" />
-    }
+      }
+    </div>
   }
-</div>
+
+  @case ('a-payer') {
+    <div class="carte">
+      <p class="aide">Mois dus des depenses recurrentes, les plus anciens d'abord. Un mois paye ne revient pas.</p>
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Echeance</th><th>Depense</th><th>Vehicule ou charge</th><th>Mois</th><th>Fournisseur</th><th class="numerique">Montant</th><th></th></tr></thead>
+          <tbody>
+            @for (m of aPayer(); track m.recurrenteId + m.periode) {
+              <tr>
+                <td [class.retard]="m.enRetard">{{ m.echeance | date: 'dd/MM/yyyy' }}@if (m.enRetard) { <br /><small>en retard</small> }</td>
+                <td><strong>{{ m.libelle }}</strong></td>
+                <td>{{ m.cible }}</td>
+                <td>{{ m.periodeLibelle }}</td>
+                <td>{{ m.fournisseurNom || '—' }}</td>
+                <td class="numerique"><strong>{{ m.montant | number }}</strong></td>
+                <td style="text-align: right">
+                  @if (peutGerer) { <button class="bouton petit succes" type="button" (click)="ouvrirPaiement(m)">Payer</button> }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7"><div class="message vide">Rien a payer : toutes les depenses recurrentes sont a jour.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  @case ('recurrentes') {
+    <div class="carte">
+      <div class="entete-carte">
+        <p class="aide">Modeles mensuels : loyer, salaires, assurance d'un vehicule, abonnements. Ils sont proposes chaque mois dans « A payer ».</p>
+        @if (peutGerer) { <button class="bouton" type="button" (click)="ouvrirModele('nouveau')">+ Nouveau modele</button> }
+      </div>
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Libelle</th><th>Vehicule ou charge</th><th>Fournisseur</th><th>Echeance</th><th>Periode</th><th class="numerique">Montant</th><th></th></tr></thead>
+          <tbody>
+            @for (r of recurrentes(); track r.id) {
+              <tr [class.annulee]="!r.actif">
+                <td><strong>{{ r.libelle }}</strong>@if (!r.actif) { <br /><small>desactivee</small> }</td>
+                <td>
+                  @if (r.camionId) { {{ r.camionImmatriculation }} · {{ r.sousCategorieLibelle }} }
+                  @else { {{ r.categorieChargeIcone }} {{ r.categorieChargeNom }} }
+                </td>
+                <td>{{ r.fournisseurNom || '—' }}</td>
+                <td>le {{ r.jourEcheance }} du mois</td>
+                <td>{{ r.debut }}{{ r.fin ? ' → ' + r.fin : ' → sans fin' }}<br /><small>{{ r.paiements }} paiement(s)</small></td>
+                <td class="numerique"><strong>{{ r.montant | number }}</strong></td>
+                <td style="white-space: nowrap; text-align: right">
+                  @if (peutGerer) {
+                    <button class="bouton secondaire petit" type="button" (click)="ouvrirModele(r)">Modifier</button>
+                    @if (!r.paiements) { <button class="bouton danger petit" type="button" (click)="supprimerModele(r)">Supprimer</button> }
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7"><div class="message vide">Aucune depense recurrente.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  @case ('a-valider') {
+    <div class="carte">
+      <p class="aide">
+        @if (validationActive()) { Les depenses saisies par le gestionnaire attendent votre approbation avant de compter dans les resultats. }
+        @else { La validation est desactivee (onglet « Categories et reglage ») : celles deja en attente restent a traiter ici. }
+      </p>
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Saisie</th><th>Numero</th><th>Vehicule ou charge</th><th>Libelle</th><th>Fournisseur</th><th class="numerique">Montant</th><th></th></tr></thead>
+          <tbody>
+            @for (d of aValider(); track d.id) {
+              <tr>
+                <td>{{ d.dateDepense | date: 'dd/MM/yyyy' }}<br /><small>{{ d.auteurNom }}</small></td>
+                <td class="cliquable" (click)="detail.set(d)"><strong>{{ d.numero }}</strong></td>
+                <td>@if (d.chargeGenerale) { 🏢 {{ d.categorieChargeNom }} } @else { {{ d.camionImmatriculation }} · {{ d.sousCategorieLibelle }} }</td>
+                <td>{{ d.libelle }}</td>
+                <td>{{ d.fournisseurNom || '—' }}@if (d.aPayer) { <br /><small>a payer</small> }</td>
+                <td class="numerique"><strong>{{ d.montant | number }}</strong></td>
+                <td style="white-space: nowrap; text-align: right">
+                  <button class="bouton petit succes" type="button" [disabled]="envoi()" (click)="valider(d)">Approuver</button>
+                  <button class="bouton petit danger" type="button" (click)="demanderRefus(d)">Refuser</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7"><div class="message vide">Aucune depense en attente.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  @case ('categories') {
+    <div class="carte reglage-validation">
+      <label class="case-a-cocher">
+        <input type="checkbox" [ngModel]="validationActive()" (ngModelChange)="basculerValidation($event)" />
+        <strong>Valider les depenses du gestionnaire</strong>
+      </label>
+      <p class="aide">Active, une depense saisie par le gestionnaire de parc (y compris celle creee par un entretien) attend votre
+        approbation avant de compter dans les resultats. Une depense deja validee qu'il corrige repart chez vous.
+        Vos propres depenses comptent tout de suite.</p>
+    </div>
+    <div class="carte">
+      <div class="entete-carte">
+        <p class="aide">Categories des charges generales. Une categorie deja utilisee ne se supprime pas : desactivez-la.</p>
+        <button class="bouton" type="button" (click)="ouvrirCategorie('nouvelle')">+ Nouvelle categorie</button>
+      </div>
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Categorie</th><th>Depenses</th><th>Etat</th><th></th></tr></thead>
+          <tbody>
+            @for (c of categoriesCharge(); track c.id) {
+              <tr [class.annulee]="!c.actif">
+                <td>{{ c.icone }} <strong>{{ c.nom }}</strong></td>
+                <td>{{ c.depenses }}</td>
+                <td>{{ c.actif ? 'Active' : 'Desactivee' }}</td>
+                <td style="white-space: nowrap; text-align: right">
+                  <button class="bouton secondaire petit" type="button" (click)="ouvrirCategorie(c)">Modifier</button>
+                  @if (!c.depenses) { <button class="bouton danger petit" type="button" (click)="supprimerCategorie(c)">Supprimer</button> }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+}
+
+<!-- ======================================================== fenetres -->
+
+@if (detail(); as d) {
+  <app-modale [titre]="d.numero + ' — ' + (d.chargeGenerale ? (d.categorieChargeNom ?? '') : (d.camionImmatriculation ?? ''))"
+              largeur="640px" (ferme)="detail.set(null)">
+    <dl class="fiche">
+      <dt>Date</dt><dd>{{ d.dateDepense | date: 'dd/MM/yyyy' }}@if (d.auteurNom) { · saisie par {{ d.auteurNom }} }</dd>
+      <dt>Libelle</dt><dd>{{ d.libelle }}</dd>
+      <dt>{{ d.chargeGenerale ? 'Charge generale' : 'Nature' }}</dt>
+      <dd>{{ d.chargeGenerale ? (d.categorieChargeIcone ?? '') + ' ' + d.categorieChargeNom : d.categorieLibelle + ' · ' + d.sousCategorieLibelle }}</dd>
+      <dt>Montant</dt><dd><strong>{{ d.montant | number }} F</strong></dd>
+      @if (d.fournisseurNom) { <dt>Fournisseur</dt><dd>{{ d.fournisseurNom }}</dd> }
+      @if (d.modePaiement) { <dt>Paiement</dt><dd>{{ d.modePaiement }}@if (d.reference) { · {{ d.reference }} }</dd> }
+      @if (d.aPayer) {
+        <dt>Dette</dt>
+        <dd>Regle {{ d.regle | number }} F · reste {{ d.resteDu | number }} F
+          @if (d.echeance) { · echeance {{ d.echeance | date: 'dd/MM/yyyy' }} }
+          @if (d.enRetard) { <span class="dette retard"> (en retard)</span> }
+          <br /><small>Les reglements se font depuis la fiche du fournisseur.</small></dd>
+      }
+      @if (d.periode) { <dt>Mois paye</dt><dd>{{ d.periode }}</dd> }
+      @if (d.observations) { <dt>Observations</dt><dd>{{ d.observations }}</dd> }
+      <dt>Statut</dt><dd>{{ libellesStatut[d.statut] }}</dd>
+      @if (d.approuveePar) { <dt>Approbation</dt><dd>{{ d.approuveeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ d.approuveePar }}</dd> }
+      @if (d.statut === 'REFUSEE') { <dt>Refus</dt><dd>{{ d.refuseeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ d.refuseePar }} : {{ d.motifRefus }}</dd> }
+      @if (d.statut === 'ANNULEE') { <dt>Annulation</dt><dd>{{ d.annuleeLe | date: 'dd/MM/yyyy HH:mm' }} par {{ d.annuleePar }} : {{ d.motifAnnulation }}</dd> }
+      <dt>Justificatif</dt>
+      <dd>
+        @if (d.justificatifJoint) {
+          <button type="button" class="lien" (click)="ouvrirJustificatif(d)">📎 {{ d.justificatifNom }}</button>
+        } @else if (peutGerer && (d.statut === 'VALIDEE' || d.statut === 'ATTENTE_ADMIN')) {
+          <label class="bouton secondaire petit">Joindre<input type="file" accept="image/*,application/pdf" (change)="joindre(d, $event)" hidden /></label>
+        } @else { — }
+      </dd>
+    </dl>
+    @if (enAttente(d)) { <div class="message info">En attente de l'administrateur : cette depense ne compte pas encore.</div> }
+    <div class="actions-formulaire">
+      @if (estAdmin && enAttente(d)) {
+        <button class="bouton danger" type="button" (click)="demanderRefus(d)">Refuser</button>
+        <button class="bouton succes" type="button" [disabled]="envoi()" (click)="valider(d)">Approuver</button>
+      }
+      @if (peutGerer && (d.statut === 'VALIDEE' || d.statut === 'ATTENTE_ADMIN')) {
+        <button class="bouton secondaire" type="button" (click)="demanderAnnulation(d)">Annuler la depense</button>
+      }
+    </div>
+  </app-modale>
+}
+
+@if (aAnnuler(); as d) {
+  <app-modale [titre]="'Annuler ' + d.numero" [sousTitre]="d.libelle + ' · ' + (d.montant | number) + ' F'" largeur="500px"
+              [erreur]="erreurModale()" (ferme)="aAnnuler.set(null)">
+    <form (ngSubmit)="annuler()">
+      <div class="message info">La depense reste visible mais ne compte plus dans les resultats.</div>
+      <div class="champ">
+        <label for="motif-annulation">Motif *</label>
+        <input id="motif-annulation" name="motif" maxlength="255" [(ngModel)]="motif" placeholder="Erreur de saisie, doublon..." />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="aAnnuler.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motif.trim()">Annuler la depense</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (aRefuser(); as d) {
+  <app-modale [titre]="'Refuser ' + d.numero" [sousTitre]="d.libelle + ' · ' + (d.montant | number) + ' F'" largeur="500px"
+              [erreur]="erreurModale()" (ferme)="aRefuser.set(null)">
+    <form (ngSubmit)="refuser()">
+      <div class="champ">
+        <label for="motif-refus">Motif *</label>
+        <input id="motif-refus" name="motif" maxlength="255" [(ngModel)]="motif" placeholder="Montant trop eleve, piece manquante..." />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="aRefuser.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motif.trim()">Refuser</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (moisAPayer(); as m) {
+  <app-modale [titre]="'Payer ' + m.libelle" [sousTitre]="m.periodeLibelle + ' · ' + m.cible" largeur="560px"
+              [erreur]="erreurModale()" (ferme)="moisAPayer.set(null)">
+    <form (ngSubmit)="payer()">
+      <div class="grille-formulaire">
+        <div class="champ"><label for="p-date">Date</label><input id="p-date" name="date" type="date" [(ngModel)]="paiement.dateDepense" /></div>
+        <div class="champ"><label for="p-montant">Montant (F)</label><input id="p-montant" name="montant" type="number" min="1" [(ngModel)]="paiement.montant" /></div>
+        <div class="champ">
+          <label for="p-mode">Mode de paiement</label>
+          <select id="p-mode" name="mode" [(ngModel)]="paiement.modePaiement">
+            <option [ngValue]="null">Non precise</option>
+            @for (mode of modes; track mode.valeur) { <option [ngValue]="mode.valeur">{{ mode.libelle }}</option> }
+          </select>
+        </div>
+        <div class="champ"><label for="p-ref">Reference</label><input id="p-ref" name="reference" [(ngModel)]="paiement.reference" /></div>
+        @if (m.fournisseurNom) {
+          <div class="champ champ-large">
+            <label class="case-a-cocher"><input type="checkbox" name="aPayer" [(ngModel)]="paiement.aPayer" /> Pas encore paye : dette envers {{ m.fournisseurNom }}</label>
+          </div>
+        }
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="moisAPayer.set(null)">Retour</button>
+        <button class="bouton succes" type="submit" [disabled]="!paiement.montant">Enregistrer la depense</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (modele() !== null) {
+  <app-modale [titre]="modele() === 'nouveau' ? 'Nouvelle depense recurrente' : 'Modifier la depense recurrente'"
+              sousTitre="Proposee chaque mois dans « A payer »" largeur="760px" [erreur]="erreurModale()" (ferme)="modele.set(null)">
+    <form (ngSubmit)="enregistrerModele()">
+      <div class="choix-rapide">
+        <label class="case-a-cocher"><input type="radio" name="genre" [value]="true" [(ngModel)]="fm.generale" /> Charge generale</label>
+        <label class="case-a-cocher"><input type="radio" name="genre" [value]="false" [(ngModel)]="fm.generale" /> Depense d'un vehicule</label>
+      </div>
+      <div class="grille-formulaire">
+        <div class="champ champ-large"><label for="m-libelle">Libelle *</label><input id="m-libelle" name="libelle" maxlength="150" [(ngModel)]="fm.libelle" placeholder="Loyer du bureau, salaire du comptable, assurance..." /></div>
+        @if (fm.generale) {
+          <div class="champ">
+            <label for="m-categorie">Categorie *</label>
+            <select id="m-categorie" name="categorie" [(ngModel)]="fm.categorieChargeId">
+              <option [ngValue]="null">Choisir</option>
+              @for (c of categoriesCharge(); track c.id) { @if (c.actif) { <option [ngValue]="c.id">{{ c.icone }} {{ c.nom }}</option> } }
+            </select>
+          </div>
+        } @else {
+          <div class="champ">
+            <label for="m-camion">Vehicule *</label>
+            <select id="m-camion" name="camion" [(ngModel)]="fm.camionId">
+              <option [ngValue]="null">Choisir</option>
+              @for (c of camions(); track c.id) { <option [ngValue]="c.id">{{ c.immatriculation }}</option> }
+            </select>
+          </div>
+          <div class="champ">
+            <label for="m-nature">Nature *</label>
+            <select id="m-nature" name="nature" [(ngModel)]="fm.sousCategorie">
+              <option [ngValue]="null">Choisir</option>
+              @for (n of naturesModele(); track n.valeur) { <option [ngValue]="n.valeur">{{ n.categorie }} · {{ n.libelle }}</option> }
+            </select>
+          </div>
+        }
+        <div class="champ">
+          <label for="m-fournisseur">Fournisseur</label>
+          <select id="m-fournisseur" name="fournisseur" [(ngModel)]="fm.fournisseurId">
+            <option [ngValue]="null">Aucun</option>
+            @for (f of fournisseurs(); track f.id) { @if (f.actif) { <option [ngValue]="f.id">{{ f.nom }}</option> } }
+          </select>
+        </div>
+        <div class="champ"><label for="m-montant">Montant (F) *</label><input id="m-montant" name="montant" type="number" min="1" [(ngModel)]="fm.montant" /></div>
+        <div class="champ"><label for="m-jour">Jour d'echeance (1 a 28)</label><input id="m-jour" name="jour" type="number" min="1" max="28" [(ngModel)]="fm.jourEcheance" /></div>
+        <div class="champ">
+          <label for="m-mode">Mode de paiement</label>
+          <select id="m-mode" name="mode" [(ngModel)]="fm.modePaiement">
+            <option [ngValue]="null">Non precise</option>
+            @for (mode of modes; track mode.valeur) { <option [ngValue]="mode.valeur">{{ mode.libelle }}</option> }
+          </select>
+        </div>
+        <div class="champ"><label for="m-debut">Premier mois *</label><input id="m-debut" name="debut" type="month" [(ngModel)]="fm.debut" /></div>
+        <div class="champ"><label for="m-fin">Dernier mois (vide : sans fin)</label><input id="m-fin" name="fin" type="month" [(ngModel)]="fm.fin" /></div>
+        <div class="champ champ-large"><label for="m-note">Note</label><input id="m-note" name="note" maxlength="255" [(ngModel)]="fm.note" /></div>
+        <div class="champ champ-large"><label class="case-a-cocher"><input type="checkbox" name="actif" [(ngModel)]="fm.actif" /> Active (proposee chaque mois)</label></div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="modele.set(null)">Retour</button>
+        <button class="bouton" type="submit" [disabled]="!fm.libelle.trim() || !fm.montant || !fm.debut">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (categorieOuverte() !== null) {
+  <app-modale [titre]="categorieOuverte() === 'nouvelle' ? 'Nouvelle categorie' : 'Modifier la categorie'" sousTitre="Charge generale"
+              largeur="520px" [erreur]="erreurModale()" (ferme)="categorieOuverte.set(null)">
+    <form (ngSubmit)="enregistrerCategorie()">
+      <div class="grille-formulaire">
+        <div class="champ"><label for="c-nom">Nom *</label><input id="c-nom" name="nom" maxlength="80" [(ngModel)]="fc.nom" /></div>
+        <div class="champ"><label for="c-icone">Icone (emoji)</label><input id="c-icone" name="icone" maxlength="16" [(ngModel)]="fc.icone" /></div>
+        <div class="champ champ-large"><label class="case-a-cocher"><input type="checkbox" name="actif" [(ngModel)]="fc.actif" /> Active (proposee a la saisie)</label></div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="categorieOuverte.set(null)">Retour</button>
+        <button class="bouton" type="submit" [disabled]="!fc.nom.trim()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}

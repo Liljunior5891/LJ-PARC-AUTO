@@ -1,0 +1,231 @@
+<div class="entete-page">
+  <div>
+    <h1>Fournisseurs</h1>
+    <p class="sous-titre">Garages, stations, assureurs... Une depense « a payer » devient une dette, reglee ici en une ou plusieurs fois.</p>
+  </div>
+  @if (peutGerer) {
+    <button class="bouton" type="button" (click)="ouvrirEdition('nouveau')">+ Nouveau fournisseur</button>
+  }
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+<section class="cartes-apercu" style="margin-bottom: 1rem">
+  <div class="carte-apercu orange">
+    <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M3 10h18" /></svg></span>
+    <span class="textes"><span class="libelle">Solde du aux fournisseurs</span><strong>{{ totalDu() | number: '1.0-0' }}<em> F</em></strong>
+      <small>{{ dettes().length }} dette(s) ouverte(s)</small></span>
+  </div>
+  <div class="carte-apercu rouge" [class.calme]="!totalRetard()">
+    <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg></span>
+    <span class="textes"><span class="libelle">Dont en retard</span><strong>{{ totalRetard() | number: '1.0-0' }}<em> F</em></strong>
+      <small>echeance depassee</small></span>
+  </div>
+</section>
+
+<app-onglets-inclines [onglets]="onglets()" [actif]="onglet()" (choisir)="changerOnglet($event)" />
+
+@if (onglet() === 'fournisseurs') {
+  <div class="carte">
+    <div class="filtres-ligne">
+      <input class="recherche" type="search" placeholder="Nom, activite, telephone..." [(ngModel)]="recherche" aria-label="Recherche" />
+    </div>
+    <div class="tableau-conteneur" style="margin-top: 0.8rem">
+      <table class="tableau">
+        <thead><tr><th>Fournisseur</th><th>Activite</th><th>Telephone</th><th>Delai</th><th class="numerique">Achats</th><th class="numerique">Solde du</th></tr></thead>
+        <tbody>
+          @for (f of filtres(); track f.id) {
+            <tr class="cliquable" [class.annulee]="!f.actif" (click)="ouvrirFiche(f)">
+              <td><strong>{{ f.nom }}</strong>@if (f.contact) { <br /><small>{{ f.contact }}</small> }</td>
+              <td>{{ f.activite || '—' }}</td>
+              <td>{{ f.telephone || '—' }}</td>
+              <td>{{ f.delaiPaiementJours ? f.delaiPaiementJours + ' j' : 'comptant' }}</td>
+              <td class="numerique">{{ f.achats | number: '1.0-0' }}</td>
+              <td class="numerique">
+                <strong>{{ f.soldeDu | number: '1.0-0' }}</strong>
+                @if (f.enRetard > 0) { <br /><small class="dette retard">{{ f.enRetard | number: '1.0-0' }} en retard</small> }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6"><div class="message vide">Aucun fournisseur.</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+} @else {
+  <div class="carte">
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead><tr><th>Echeance</th><th>Depense</th><th>Fournisseur</th><th>Vehicule ou charge</th><th class="numerique">Montant</th><th class="numerique">Reste du</th><th></th></tr></thead>
+        <tbody>
+          @for (d of dettes(); track d.id) {
+            <tr>
+              <td [class.retard]="d.enRetard">{{ d.echeance ? (d.echeance | date: 'dd/MM/yyyy') : '—' }}@if (d.enRetard) { <br /><small>en retard</small> }</td>
+              <td><strong>{{ d.numero }}</strong><br /><small>{{ d.libelle }}</small></td>
+              <td class="cliquable" (click)="ouvrirFiche(d.fournisseurId!)">{{ d.fournisseurNom }}</td>
+              <td>@if (d.chargeGenerale) { 🏢 {{ d.categorieChargeNom }} } @else { {{ d.camionImmatriculation }} }</td>
+              <td class="numerique">{{ d.montant | number: '1.0-0' }}</td>
+              <td class="numerique"><strong>{{ d.resteDu | number: '1.0-0' }}</strong></td>
+              <td style="text-align: right">
+                @if (peutGerer) { <button class="bouton petit succes" type="button" (click)="ouvrirReglement(d)">Regler</button> }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7"><div class="message vide">Aucune dette ouverte.</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+<!-- ============================================================ fiche -->
+@if (fiche(); as fi) {
+  <app-modale [titre]="fi.fournisseur.nom" [sousTitre]="(fi.fournisseur.activite || 'Fournisseur') + (fi.fournisseur.telephone ? ' · ' + fi.fournisseur.telephone : '')"
+              largeur="960px" (ferme)="fiche.set(null)">
+    <section class="cartes-apercu" style="margin-bottom: 1rem">
+      <div class="carte-apercu bleu"><span class="textes"><span class="libelle">Achats valides</span><strong>{{ fi.fournisseur.achats | number: '1.0-0' }}<em> F</em></strong></span></div>
+      <div class="carte-apercu orange"><span class="textes"><span class="libelle">Solde du</span><strong>{{ fi.fournisseur.soldeDu | number: '1.0-0' }}<em> F</em></strong>
+        <small>{{ fi.fournisseur.dettesOuvertes }} dette(s)</small></span></div>
+      <div class="carte-apercu rouge" [class.calme]="!fi.fournisseur.enRetard"><span class="textes"><span class="libelle">En retard</span><strong>{{ fi.fournisseur.enRetard | number: '1.0-0' }}<em> F</em></strong></span></div>
+    </section>
+
+    <h3 class="titre-section">Dettes ouvertes</h3>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead><tr><th>Echeance</th><th>Depense</th><th class="numerique">Montant</th><th class="numerique">Regle</th><th class="numerique">Reste</th><th></th></tr></thead>
+        <tbody>
+          @for (d of fi.dettes; track d.id) {
+            <tr>
+              <td [class.retard]="d.enRetard">{{ d.echeance ? (d.echeance | date: 'dd/MM/yyyy') : '—' }}</td>
+              <td><strong>{{ d.numero }}</strong> · {{ d.libelle }}</td>
+              <td class="numerique">{{ d.montant | number: '1.0-0' }}</td>
+              <td class="numerique">{{ d.regle | number: '1.0-0' }}</td>
+              <td class="numerique"><strong>{{ d.resteDu | number: '1.0-0' }}</strong></td>
+              <td style="text-align: right">@if (peutGerer) { <button class="bouton petit succes" type="button" (click)="ouvrirReglement(d)">Regler</button> }</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6"><div class="message vide">Aucune dette ouverte.</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="titre-section">Reglements</h3>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead><tr><th>Date</th><th>Reglement</th><th>Depense</th><th>Mode</th><th class="numerique">Montant</th><th></th></tr></thead>
+        <tbody>
+          @for (r of fi.reglements; track r.id) {
+            <tr [class.annulee]="r.statut === 'ANNULE'">
+              <td>{{ r.dateReglement | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ r.numero }}<br /><small>{{ r.auteurNom }}</small>
+                @if (r.statut === 'ANNULE') { <br /><small>Annule : {{ r.motifAnnulation }}</small> }</td>
+              <td>{{ r.depenseNumero }}</td>
+              <td>{{ r.modePaiement || '—' }}@if (r.reference) { · {{ r.reference }} }</td>
+              <td class="numerique">{{ r.montant | number: '1.0-0' }}</td>
+              <td style="text-align: right">
+                @if (peutGerer && r.statut === 'VALIDE') { <button class="bouton petit danger" type="button" (click)="demanderAnnulation(r)">Annuler</button> }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6"><div class="message vide">Aucun reglement.</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="titre-section">Toutes les depenses</h3>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead><tr><th>Date</th><th>Depense</th><th>Vehicule ou charge</th><th>Statut</th><th class="numerique">Montant</th></tr></thead>
+        <tbody>
+          @for (d of fi.depenses; track d.id) {
+            <tr [class.annulee]="d.statut === 'ANNULEE' || d.statut === 'REFUSEE'">
+              <td>{{ d.dateDepense | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ d.numero }} · {{ d.libelle }}</td>
+              <td>@if (d.chargeGenerale) { 🏢 {{ d.categorieChargeNom }} } @else { {{ d.camionImmatriculation }} }</td>
+              <td>{{ d.statutLibelle }}@if (d.aPayer) { · a payer }</td>
+              <td class="numerique">{{ d.montant | number: '1.0-0' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5"><div class="message vide">Aucune depense.</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (peutGerer) {
+      <div class="actions-formulaire">
+        @if (!fi.depenses.length) { <button class="bouton danger" type="button" (click)="supprimer(fi.fournisseur)">Supprimer la fiche</button> }
+        <button class="bouton secondaire" type="button" (click)="ouvrirEdition(fi.fournisseur)">Modifier la fiche</button>
+      </div>
+    }
+  </app-modale>
+}
+
+@if (edition() !== null) {
+  <app-modale [titre]="edition() === 'nouveau' ? 'Nouveau fournisseur' : 'Modifier ' + f.nom" largeur="760px"
+              [erreur]="erreurModale()" (ferme)="edition.set(null)">
+    <form (ngSubmit)="enregistrer()">
+      <div class="grille-formulaire">
+        <div class="champ"><label for="f-nom">Nom *</label><input id="f-nom" name="nom" maxlength="180" [(ngModel)]="f.nom" /></div>
+        <div class="champ"><label for="f-activite">Activite</label><input id="f-activite" name="activite" maxlength="80" [(ngModel)]="f.activite" placeholder="Garage, station, assureur, pieces..." /></div>
+        <div class="champ"><label for="f-contact">Contact</label><input id="f-contact" name="contact" maxlength="150" [(ngModel)]="f.contact" /></div>
+        <div class="champ"><label for="f-tel">Telephone</label><input id="f-tel" name="telephone" maxlength="40" [(ngModel)]="f.telephone" /></div>
+        <div class="champ"><label for="f-email">E-mail</label><input id="f-email" name="email" type="email" maxlength="150" [(ngModel)]="f.email" /></div>
+        <div class="champ"><label for="f-nif">NIF</label><input id="f-nif" name="nif" maxlength="60" [(ngModel)]="f.nif" /></div>
+        <div class="champ"><label for="f-delai">Delai de paiement (jours)</label><input id="f-delai" name="delai" type="number" min="0" max="365" [(ngModel)]="f.delaiPaiementJours" />
+          <small>Donne l'echeance d'une depense a payer.</small></div>
+        <div class="champ champ-large"><label for="f-adresse">Adresse</label><input id="f-adresse" name="adresse" maxlength="255" [(ngModel)]="f.adresse" /></div>
+        <div class="champ champ-large"><label for="f-note">Note</label><input id="f-note" name="note" maxlength="500" [(ngModel)]="f.note" /></div>
+        <div class="champ champ-large"><label class="case-a-cocher"><input type="checkbox" name="actif" [(ngModel)]="f.actif" /> Actif (propose a la saisie des depenses)</label></div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="edition.set(null)">Retour</button>
+        <button class="bouton" type="submit" [disabled]="!f.nom.trim()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (aRegler(); as d) {
+  <app-modale [titre]="'Regler ' + d.numero" [sousTitre]="(d.fournisseurNom ?? '') + ' · reste ' + (d.resteDu | number: '1.0-0') + ' F'"
+              largeur="560px" [erreur]="erreurModale()" (ferme)="aRegler.set(null)">
+    <form (ngSubmit)="regler()">
+      <div class="grille-formulaire">
+        <div class="champ"><label for="r-montant">Montant (F) *</label><input id="r-montant" name="montant" type="number" min="1" [max]="d.resteDu" [(ngModel)]="reglement.montant" />
+          <small>Un reglement partiel laisse le reste du sur la dette.</small></div>
+        <div class="champ"><label for="r-date">Date</label><input id="r-date" name="date" type="date" [(ngModel)]="reglement.dateReglement" /></div>
+        <div class="champ">
+          <label for="r-mode">Mode de paiement</label>
+          <select id="r-mode" name="mode" [(ngModel)]="reglement.modePaiement">
+            <option [ngValue]="null">Non precise</option>
+            @for (mode of modes; track mode.valeur) { <option [ngValue]="mode.valeur">{{ mode.libelle }}</option> }
+          </select>
+        </div>
+        <div class="champ"><label for="r-ref">Reference</label><input id="r-ref" name="reference" maxlength="80" [(ngModel)]="reglement.reference" /></div>
+        <div class="champ champ-large"><label for="r-note">Note</label><input id="r-note" name="note" maxlength="255" [(ngModel)]="reglement.note" /></div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="aRegler.set(null)">Retour</button>
+        <button class="bouton succes" type="submit" [disabled]="!reglement.montant || reglement.montant > d.resteDu">Enregistrer le reglement</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (reglementAAnnuler(); as r) {
+  <app-modale [titre]="'Annuler ' + r.numero" [sousTitre]="(r.montant | number: '1.0-0') + ' F sur ' + r.depenseNumero" largeur="500px"
+              [erreur]="erreurModale()" (ferme)="reglementAAnnuler.set(null)">
+    <form (ngSubmit)="annulerReglement()">
+      <div class="champ"><label for="a-motif">Motif *</label><input id="a-motif" name="motif" maxlength="255" [(ngModel)]="motif" /></div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="reglementAAnnuler.set(null)">Retour</button>
+        <button class="bouton danger" type="submit" [disabled]="!motif.trim()">Annuler le reglement</button>
+      </div>
+    </form>
+  </app-modale>
+}

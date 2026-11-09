@@ -40,7 +40,11 @@ public final class RentabiliteDto {
             BigDecimal recetteMoyenneParCamion,
             BigDecimal depenseMoyenneParCamion,
             List<LigneCamion> camions,
-            Palmares palmares) {
+            Palmares palmares,
+            /** Charges generales de l'entreprise (sans vehicule), hors marge des vehicules. */
+            BigDecimal chargesGenerales,
+            /** Resultat de l'entreprise : resultat des vehicules moins les charges generales. */
+            BigDecimal resultatNet) {
     }
 
     /** Comparaison des camions, chapitre 30. */

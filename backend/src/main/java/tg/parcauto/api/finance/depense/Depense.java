@@ -23,9 +23,11 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 
 /**
- * Depense rattachee a un camion, chapitres 16 et 18 du cahier des charges.
- * Les colonnes station, quantite et prix au litre ne sont renseignees que
- * pour les pleins de carburant.
+ * Depense du parc, chapitres 16 et 18 du cahier des charges : rattachee a un
+ * camion, ou charge generale de l'entreprise (sans camion, avec sa categorie
+ * modifiable). Les colonnes station, quantite et prix au litre ne sont
+ * renseignees que pour les pleins de carburant. Une depense a payer est la
+ * dette envers son fournisseur, soldee par ses reglements.
  */
 @Entity
 @Table(name = "depense")
@@ -37,9 +39,74 @@ public class Depense extends BaseEntity {
     @Column(nullable = false, unique = true, length = 40)
     private String numero;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "camion_id", nullable = false)
+    /** Vide pour une charge generale. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "camion_id")
     private Camion camion;
+
+    /** Categorie d'une charge generale (camion vide). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "categorie_charge_id")
+    private CategorieCharge categorieCharge;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "fournisseur_id")
+    private FournisseurParc fournisseurParc;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recurrente_id")
+    private DepenseRecurrenteParc recurrente;
+
+    /** Mois paye (AAAA-MM) d'une depense recurrente. */
+    @Column(length = 7)
+    private String periode;
+
+    /** A payer : la depense est une dette envers le fournisseur, soldee par les reglements. */
+    @Column(name = "a_payer", nullable = false)
+    private boolean aPayer;
+
+    @Column
+    private LocalDate echeance;
+
+    @Column(name = "justificatif_chemin", length = 255)
+    private String justificatifChemin;
+
+    @Column(name = "justificatif_nom", length = 255)
+    private String justificatifNom;
+
+    @Column(name = "justificatif_type", length = 100)
+    private String justificatifType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private StatutDepense statut = StatutDepense.VALIDEE;
+
+    @Column(name = "auteur_nom", length = 150)
+    private String auteurNom;
+
+    @Column(name = "approuvee_par", length = 150)
+    private String approuveePar;
+
+    @Column(name = "approuvee_le")
+    private java.time.Instant approuveeLe;
+
+    @Column(name = "refusee_par", length = 150)
+    private String refuseePar;
+
+    @Column(name = "refusee_le")
+    private java.time.Instant refuseeLe;
+
+    @Column(name = "motif_refus", length = 255)
+    private String motifRefus;
+
+    @Column(name = "annulee_par", length = 150)
+    private String annuleePar;
+
+    @Column(name = "annulee_le")
+    private java.time.Instant annuleeLe;
+
+    @Column(name = "motif_annulation", length = 255)
+    private String motifAnnulation;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chauffeur_id")
@@ -111,6 +178,10 @@ public class Depense extends BaseEntity {
         if (sousCategorie != null) {
             this.categorie = sousCategorie.getCategorie();
         }
+    }
+
+    public boolean estChargeGenerale() {
+        return categorie == CategorieDepense.CHARGE_GENERALE;
     }
 
     public boolean estPleinCarburant() {
