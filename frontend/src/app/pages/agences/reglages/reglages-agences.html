@@ -8,6 +8,7 @@
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }
 
+<div class="cote-a-cote" [class.seul]="!(administrateur && droits())">
 @if (reglages(); as r) {
   <form class="carte bloc" (ngSubmit)="enregistrerReglages()">
     <h2>Regles des agences</h2>
@@ -103,3 +104,4 @@
     </div>
   </section>
 }
+</div>
