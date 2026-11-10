@@ -33,6 +33,8 @@ import java.util.Set;
 @Transactional
 public class UtilisateurService {
 
+    private final tg.parcauto.api.plateforme.abonnement.AbonnementService abonnement;
+
     private final UtilisateurRepository repository;
     private final PasswordEncoder encodeur;
     private final ModuleService moduleService;
@@ -51,6 +53,7 @@ public class UtilisateurService {
     }
 
     public UtilisateurDto.Reponse creer(UtilisateurDto.Creation demande) {
+        abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.UTILISATEURS);
         if (repository.existsByEmailIgnoreCase(demande.email())) {
             throw new BusinessException("Un compte existe deja avec l'adresse " + demande.email());
         }
@@ -103,6 +106,9 @@ public class UtilisateurService {
             if (utilisateur.getRoles().contains(Role.ADMIN)) {
                 verifierDernierAdministrateur(id);
             }
+        }
+        if (actif && !utilisateur.isActif()) {
+            abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.UTILISATEURS);
         }
         utilisateur.setActif(actif);
         return versDto(utilisateur);

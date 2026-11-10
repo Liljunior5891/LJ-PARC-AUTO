@@ -1,0 +1,204 @@
+@use './abonnements-commun';
+
+.devise {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--couleur-texte-doux);
+}
+
+.evolution.hausse { color: var(--couleur-succes); }
+.evolution.baisse { color: var(--couleur-danger); }
+
+.cartes-apercu.entreprises {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  margin-bottom: 1rem;
+
+  .carte-apercu {
+    padding: 0.8rem 0.9rem 0.75rem;
+  }
+
+  .carte-apercu strong {
+    font-size: 1.4rem;
+  }
+}
+
+.grille-bord {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.bloc {
+  margin: 0;
+  min-width: 0;
+
+  &.large {
+    grid-column: span 2;
+  }
+
+  > header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 12px;
+    margin-bottom: 0.8rem;
+
+    h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    small {
+      color: var(--couleur-texte-doux);
+      font-size: 0.78rem;
+    }
+  }
+}
+
+@media (max-width: 700px) {
+  .bloc.large {
+    grid-column: auto;
+  }
+}
+
+/* Repartitions : barres horizontales fines, libelle a gauche, valeur a droite. */
+.barres {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  li {
+    display: grid;
+    grid-template-columns: minmax(0, 11rem) 1fr auto;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+  }
+
+  .lib {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .piste {
+    height: 8px;
+    border-radius: 4px;
+    background: #eef1f5;
+    overflow: hidden;
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: 4px;
+      background: var(--couleur-primaire-clair);
+      min-width: 2px;
+    }
+  }
+
+  strong {
+    min-width: 2.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .vide {
+    display: block;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.pastille {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.pastille, .piste i {
+  &.bleu { background: var(--couleur-info); }
+  &.vert { background: var(--couleur-succes); }
+  &.orange { background: #d98a00; }
+  &.rouge { background: var(--couleur-danger); }
+}
+
+.activite {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+
+  .tuile {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 10px;
+
+    .libelle {
+      font-size: 0.78rem;
+      color: var(--couleur-texte-doux);
+    }
+
+    strong {
+      font-size: 1.25rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    small {
+      color: var(--couleur-succes);
+      font-size: 0.75rem;
+    }
+  }
+}
+
+.echeances {
+  max-height: 320px;
+
+  .nombre {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .doux {
+    display: block;
+    color: var(--couleur-texte-doux);
+  }
+
+  .vide {
+    text-align: center;
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.entreprises-courtes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--couleur-bordure);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    small {
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  .vide {
+    color: var(--couleur-texte-doux);
+  }
+}

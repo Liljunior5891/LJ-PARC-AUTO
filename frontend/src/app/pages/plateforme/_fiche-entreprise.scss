@@ -1,0 +1,150 @@
+/* Menu Entreprises : ligne d'abonnement des cartes, creation et fiche d'abonnement. */
+.ligne-abonnement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px dashed var(--couleur-bordure);
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--couleur-primaire-clair);
+    background: #f6f9fc;
+  }
+
+  .formule {
+    font-weight: 600;
+  }
+
+  .echeance {
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.choix-modules {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  margin-bottom: 1rem;
+
+  .choix-module {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 10px;
+
+    &.coche {
+      border-color: var(--couleur-primaire-clair);
+      background: #f3f8fd;
+    }
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+  }
+}
+
+.resume-abonnement {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 1rem;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 10px;
+  }
+
+  .libelle {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--couleur-texte-doux);
+  }
+
+  small {
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.grille-usages {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px 18px;
+  margin-bottom: 1rem;
+}
+
+.actions-fiche {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 1rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--couleur-bordure);
+  border-bottom: 1px solid var(--couleur-bordure);
+
+  .prolonger {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+
+    input {
+      width: 80px;
+    }
+  }
+}
+
+.paiements-fiche {
+  max-height: 260px;
+}
+
+.nombre {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.doux {
+  display: block;
+  color: var(--couleur-texte-doux);
+}
+
+td.actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+td.vide {
+  text-align: center;
+  color: var(--couleur-texte-doux);
+}
+
+.paiement-recu {
+  margin-top: 1rem;
+}
+
+.aide {
+  font-size: 0.82rem;
+  color: var(--couleur-texte-doux);
+}

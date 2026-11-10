@@ -1,0 +1,128 @@
+<div class="entete-page">
+  <div>
+    <h1>Mon abonnement</h1>
+    <p class="sous-titre">Formule, modules, echeance et factures de votre entreprise.</p>
+  </div>
+  <div class="actions-entete">
+    @if (!choix()) {
+      <button class="bouton" type="button" [disabled]="!offre() || abonnement()?.paiementEnAttente" (click)="ouvrirChoix()">
+        {{ abonnement()?.essai ? 'Choisir ma formule' : 'Renouveler ou changer' }}
+      </button>
+    }
+  </div>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+@if (abonnement(); as a) {
+  @if (a.lectureSeule) {
+    <div class="message erreur">Votre abonnement a expire le {{ a.fin | date: 'dd/MM/yyyy' }} : l'application est en lecture seule.
+      Declarez votre paiement ci-dessous pour reprendre la saisie des sa validation.</div>
+  } @else if (a.etat === 'GRACE') {
+    <div class="message avertissement">Echeance depassee depuis le {{ a.fin | date: 'dd/MM/yyyy' }} : tout fonctionne encore jusqu'au
+      {{ a.finGrace | date: 'dd/MM/yyyy' }}, puis l'application passera en lecture seule.</div>
+  }
+  @if (a.paiementEnAttente) {
+    <div class="message avertissement">Un paiement attend la validation de la plateforme. Vous pouvez y joindre une preuve ou l'annuler ci-dessous.</div>
+  }
+
+  <section class="carte etat-abonnement">
+    <div class="principal">
+      <span class="etiquette-abo {{ teintes[a.etat] }}">{{ a.etatLibelle }}</span>
+      <h2>{{ a.essai ? 'Essai gratuit' : 'Formule ' + a.formuleNom }}</h2>
+      <p>
+        @if (a.joursRestants >= 0) {
+          {{ a.essai ? 'Essai' : 'Abonnement' }} valable jusqu'au <strong>{{ a.fin | date: 'dd/MM/yyyy' }}</strong>
+          ({{ a.joursRestants === 0 ? 'dernier jour' : a.joursRestants + ' jour(s) restant(s)' }})
+        } @else {
+          Echeance depassee depuis le <strong>{{ a.fin | date: 'dd/MM/yyyy' }}</strong>
+        }
+      </p>
+      @if (!a.essai) {
+        <p class="doux">{{ a.periodiciteLibelle }} · {{ a.mensualite | number: '1.0-0' }} {{ offre()?.parametres?.devise }} / mois</p>
+        <div class="modules">
+          @for (m of a.modules; track m) { <span class="pastille-module">{{ presentation[m].icone }} {{ libellesModules[m] }}</span> }
+        </div>
+      } @else {
+        <p class="doux">Pendant l'essai, tous les modules et volumes sont ouverts. Choisissez une formule avant la fin de l'essai.</p>
+      }
+    </div>
+    <div class="usages">
+      <h3 class="titre-section">Utilisation</h3>
+      @for (u of a.usages; track u.ressource) {
+        <div class="usage" [class.plein]="!!u.limite && u.utilise >= u.limite">
+          <div class="ligne"><span>{{ u.libelle }}</span><strong>{{ u.utilise }} / {{ u.limite ?? '∞' }}</strong></div>
+          <span class="piste"><i [style.width.%]="partUsage(u.utilise, u.limite)"></i></span>
+        </div>
+      }
+    </div>
+  </section>
+}
+
+@if (choix() && offre(); as o) {
+  <section class="carte">
+    <h2 class="titre-bloc">Choisir ma formule</h2>
+    <app-choix-formule [formules]="o.formules" [parametres]="o.parametres"
+                       [(formuleId)]="formuleId" [(periodicite)]="periodicite" [(modules)]="modules" />
+
+    <h3 class="titre-section espace-haut">Payer puis declarer le paiement</h3>
+    @if (o.parametres.instructionsPaiement) {
+      <div class="instructions">{{ o.parametres.instructionsPaiement }}</div>
+    }
+    <div class="grille-formulaire">
+      <div class="champ"><label for="ma-moyen">Moyen de paiement</label>
+        <select id="ma-moyen" [(ngModel)]="moyen">
+          @for (m of moyens; track m.code) { <option [value]="m.code">{{ m.libelle }}</option> }
+        </select></div>
+      <div class="champ"><label for="ma-ref">Reference de la transaction</label>
+        <input id="ma-ref" [(ngModel)]="reference" maxlength="100" placeholder="N° de transaction, de bordereau..." /></div>
+      <div class="champ"><label for="ma-preuve">Preuve (capture, recu)</label>
+        <input id="ma-preuve" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="choisirPreuve($event)" /></div>
+      <div class="champ"><label for="ma-note">Note pour la plateforme</label>
+        <input id="ma-note" [(ngModel)]="note" maxlength="500" /></div>
+    </div>
+    <p class="doux">Votre abonnement s'ouvre des que la plateforme a verifie le paiement. Les modules actifs deviennent alors ceux choisis ici.</p>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="choix.set(false)">Annuler</button>
+      <button class="bouton" type="button" [disabled]="enCours()" (click)="declarer()">{{ enCours() ? 'Envoi...' : 'Declarer mon paiement' }}</button>
+    </div>
+  </section>
+}
+
+<section class="carte">
+  <h2 class="titre-bloc">Paiements et factures</h2>
+  <div class="tableau-conteneur">
+    <table class="tableau">
+      <thead><tr><th>Date</th><th>Formule</th><th>Modules</th><th>Paiement</th><th class="nombre">Montant</th><th>Statut</th><th></th></tr></thead>
+      <tbody>
+        @for (p of paiements(); track p.id) {
+          <tr>
+            <td>{{ p.creeLe | date: 'dd/MM/yyyy' }}</td>
+            <td>{{ p.formuleNom }} <small class="doux">{{ p.periodiciteLibelle }}</small></td>
+            <td>{{ libellesListe(p.modules) }}</td>
+            <td>{{ p.moyenLibelle }} @if (p.reference) { <small class="doux">{{ p.reference }}</small> }</td>
+            <td class="nombre">{{ p.montant | number: '1.0-0' }} {{ p.devise }}</td>
+            <td>
+              <span class="etiquette-abo {{ p.statut === 'VALIDE' ? 'vert' : p.statut === 'REJETE' ? 'rouge' : 'orange' }}">
+                {{ p.statut === 'VALIDE' ? 'Valide' : p.statut === 'REJETE' ? 'Rejete' : 'En verification' }}</span>
+              @if (p.statut === 'VALIDE') { <small class="doux">{{ p.periodeDebut | date: 'dd/MM/yy' }} → {{ p.periodeFin | date: 'dd/MM/yy' }}</small> }
+              @if (p.motifRejet) { <small class="doux rejet">{{ p.motifRejet }}</small> }
+            </td>
+            <td class="actions">
+              @if (p.preuve) { <button class="bouton secondaire petit" type="button" (click)="voirPreuve(p)">Preuve</button> }
+              @if (p.statut === 'EN_ATTENTE') {
+                <label class="bouton secondaire petit">{{ p.preuve ? 'Remplacer' : 'Joindre' }} la preuve
+                  <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="joindre(p, $event)" /></label>
+                <button class="bouton secondaire petit danger" type="button" (click)="annuler(p)">Annuler</button>
+              }
+              @if (p.numeroFacture) { <button class="bouton secondaire petit" type="button" (click)="imprimer(p)">🧾 Facture</button> }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="vide">Aucun paiement pour le moment.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

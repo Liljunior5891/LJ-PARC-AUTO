@@ -17,6 +17,8 @@ import java.util.Map;
 @Transactional
 public class CamionService {
 
+    private final tg.parcauto.api.plateforme.abonnement.AbonnementService abonnement;
+
     private final CamionRepository repository;
     private final MarqueCamionRepository marqueRepository;
     private final TypeCamionRepository typeRepository;
@@ -73,6 +75,7 @@ public class CamionService {
     }
 
     public CamionDto.Reponse creer(CamionDto.Requete requete) {
+        abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.VEHICULES);
         if (repository.existsByImmatriculationIgnoreCase(requete.immatriculation())) {
             throw new BusinessException("Un vehicule existe deja avec l'immatriculation " + requete.immatriculation());
         }

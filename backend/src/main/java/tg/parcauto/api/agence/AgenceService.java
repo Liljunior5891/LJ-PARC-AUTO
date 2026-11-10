@@ -32,6 +32,8 @@ import java.util.stream.Collectors;
 @Transactional
 public class AgenceService {
 
+    private final tg.parcauto.api.plateforme.abonnement.AbonnementService abonnement;
+
     private static final Set<Role> PROFILS_AGENCE = EnumSet.of(Role.SUPERVISEUR_AGENCE, Role.CAISSIER_AGENCE);
 
     private final AgenceRepository repository;
@@ -84,6 +86,7 @@ public class AgenceService {
     }
 
     public Reponse creer(Requete r) {
+        abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.AGENCES);
         initialisation.assurer();
         Agence agence = new Agence();
         verifierUnicite(r, null);

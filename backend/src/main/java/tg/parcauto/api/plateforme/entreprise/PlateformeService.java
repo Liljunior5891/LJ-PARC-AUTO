@@ -30,6 +30,7 @@ public class PlateformeService {
     private final EntrepriseRepository repository;
     private final UtilisateurRepository utilisateurRepository;
     private final ModuleService moduleService;
+    private final tg.parcauto.api.plateforme.inscription.InscriptionService inscription;
 
     public record EntrepriseResume(
             Long id, String nom, String pays, String email, String telephone,
@@ -41,6 +42,19 @@ public class PlateformeService {
 
     public record Statistiques(long entreprises, long entreprisesActives, long utilisateurs,
                                Map<String, Long> activationsParModule) {
+    }
+
+    /**
+     * Creation d'une entreprise par l'exploitant : meme traitement que l'inscription en
+     * libre-service (entreprise, parametrage, administrateur, modules), avec un essai
+     * dont la duree peut differer du reglage.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    public EntrepriseResume creer(tg.parcauto.api.plateforme.inscription.InscriptionService.Demande demande,
+                                  Integer joursEssai) {
+        String email = inscription.inscrire(demande, joursEssai);
+        Long id = utilisateurRepository.findByEmailIgnoreCase(email).orElseThrow().getEntrepriseId();
+        return resume(repository.findById(id).orElseThrow());
     }
 
     @Transactional(readOnly = true)

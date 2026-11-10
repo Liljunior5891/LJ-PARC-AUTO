@@ -144,7 +144,7 @@ export class AuthService {
    */
   pageAccueil(): string {
     if (this.estSuperAdmin()) {
-      return '/plateforme';
+      return '/plateforme/tableau-bord';
     }
     const module = (['GESTION_PARC', 'POINT_DE_VENTE', 'AGENCES'] as CodeModule[]).find((m) => this.peutUtiliser(m));
     if (module) {

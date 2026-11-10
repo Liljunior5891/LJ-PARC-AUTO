@@ -34,6 +34,8 @@ import java.util.stream.Collectors;
 @Transactional
 public class PresenceService {
 
+    private final tg.parcauto.api.plateforme.abonnement.AbonnementService abonnement;
+
     private static final Duration VALIDITE_CODE_APPAIRAGE = Duration.ofMinutes(15);
 
     private final EmployePresenceRepository employes;
@@ -120,6 +122,7 @@ public class PresenceService {
     }
 
     public EmployeAvecPin creerEmploye(EmployeRequete r, UtilisateurPrincipal p) {
+        abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.EMPLOYES);
         EmployePresence e = new EmployePresence();
         e.setMatricule(numerotation.prochainNumero("EMP"));
         appliquer(e, r, p);
@@ -154,6 +157,9 @@ public class PresenceService {
         e.setService(vide(r.service()));
         e.setDateEmbauche(r.dateEmbauche());
         if (r.actif() != null) {
+            if (r.actif() && !e.isActif() && e.getId() != null) {
+                abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.EMPLOYES);
+            }
             e.setActif(r.actif());
         }
         if (r.utilisateurId() != null && !r.utilisateurId().equals(e.getUtilisateurId())) {

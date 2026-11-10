@@ -41,6 +41,7 @@ public class InscriptionService {
     private final UtilisateurRepository utilisateurRepository;
     private final SocieteRepository societeRepository;
     private final ModuleService moduleService;
+    private final tg.parcauto.api.plateforme.abonnement.AbonnementService abonnementService;
     private final PasswordEncoder encodeur;
     private final TransactionTemplate transaction;
 
@@ -60,11 +61,16 @@ public class InscriptionService {
 
     /** @return l'adresse du compte administrateur cree, pour ouvrir sa session */
     public String inscrire(Demande demande) {
-        // La transaction s'ouvre dans le mode systeme : la session Hibernate fixe son entreprise a l'ouverture.
-        return ContexteEntreprise.enModeSysteme(() -> transaction.execute(statut -> creer(demande)));
+        return inscrire(demande, null);
     }
 
-    private String creer(Demande demande) {
+    /** Creation par le super-administrateur : la duree d'essai peut differer du reglage (nulle = reglage). */
+    public String inscrire(Demande demande, Integer joursEssai) {
+        // La transaction s'ouvre dans le mode systeme : la session Hibernate fixe son entreprise a l'ouverture.
+        return ContexteEntreprise.enModeSysteme(() -> transaction.execute(statut -> creer(demande, joursEssai)));
+    }
+
+    private String creer(Demande demande, Integer joursEssai) {
         String email = demande.email().trim();
         if (utilisateurRepository.existsByEmailIgnoreCase(email)) {
             throw new BusinessException("Un compte existe deja avec l'adresse " + email);
@@ -95,6 +101,7 @@ public class InscriptionService {
         admin.setRoles(EnumSet.of(Role.ADMIN));
         admin.setActif(true);
         utilisateurRepository.save(admin);
+        abonnementService.ouvrirEssai(entreprise.getId(), joursEssai);
 
         if (demande.modules() != null) {
             for (ModuleApplicatif module : demande.modules()) {

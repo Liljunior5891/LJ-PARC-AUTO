@@ -1,0 +1,267 @@
+<div class="entete-page">
+  <div>
+    <h1>Abonnements</h1>
+    <p class="sous-titre">Formules, modules en option, paiements declares par les entreprises et echeances. Une validation ouvre la periode et numerote la facture.</p>
+  </div>
+  <div class="actions-entete">
+    <button class="bouton secondaire" type="button" (click)="charger()">↻ Actualiser</button>
+  </div>
+</div>
+
+<app-onglets-inclines [onglets]="onglets()" [actif]="vue()" (choisir)="choisirOnglet($event)" />
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+
+@switch (vue()) {
+  @case ('paiements') {
+    <div class="carte barre-filtres">
+      <div class="filtres-ligne">
+        <div class="filtre">
+          <select [ngModel]="statutPaiement()" (ngModelChange)="statutPaiement.set($event)" aria-label="Statut">
+            <option value="EN_ATTENTE">A valider</option>
+            <option value="VALIDE">Valides</option>
+            <option value="REJETE">Rejetes</option>
+            <option value="">Tous</option>
+          </select>
+        </div>
+        <input class="recherche" type="search" placeholder="Entreprise, reference, n° de facture..." aria-label="Recherche"
+               [ngModel]="recherchePaiement()" (ngModelChange)="recherchePaiement.set($event)" />
+      </div>
+    </div>
+
+    <div class="liste-paiements liste-defilante">
+      @for (p of paiementsAffiches(); track p.id) {
+        <article class="carte paiement" [class.attente]="p.statut === 'EN_ATTENTE'">
+          <header>
+            <div>
+              <h2>{{ p.entrepriseNom }}</h2>
+              <small>{{ p.creeLe | date: 'dd/MM/yyyy HH:mm' }}{{ p.saisiPlateforme ? ' · saisi par la plateforme' : (p.creePar ? ' · declare par ' + p.creePar : '') }}</small>
+            </div>
+            <strong class="montant">{{ p.montant | number: '1.0-0' }} {{ p.devise }}</strong>
+          </header>
+          <dl>
+            <div><dt>Formule</dt><dd>{{ p.formuleNom }} · {{ p.periodiciteLibelle }}</dd></div>
+            <div><dt>Modules</dt><dd>
+              @for (l of p.lignes; track l.module) {
+                <span class="ligne-module">{{ libellesModules[l.module] }} <small>{{ l.prixMensuel | number: '1.0-0' }} / mois</small></span>
+              } @empty { {{ libellesListe(p.modules) }} }</dd></div>
+            <div><dt>Paiement</dt><dd>{{ p.moyenLibelle }}{{ p.reference ? ' · ' + p.reference : '' }}</dd></div>
+            @if (p.note) { <div><dt>Note</dt><dd>{{ p.note }}</dd></div> }
+            @if (p.statut === 'VALIDE') {
+              <div><dt>Periode</dt><dd>{{ p.periodeDebut | date: 'dd/MM/yyyy' }} → {{ p.periodeFin | date: 'dd/MM/yyyy' }}</dd></div>
+            }
+            @if (p.statut === 'REJETE') { <div><dt>Motif du rejet</dt><dd>{{ p.motifRejet }}</dd></div> }
+          </dl>
+          <footer>
+            <span class="etiquette-abo {{ p.statut === 'VALIDE' ? 'vert' : p.statut === 'REJETE' ? 'rouge' : 'orange' }}">
+              {{ p.statut === 'VALIDE' ? 'Valide' : p.statut === 'REJETE' ? 'Rejete' : 'A valider' }}</span>
+            <span class="espace"></span>
+            @if (p.preuve) {
+              <button class="bouton secondaire petit" type="button" (click)="voirPreuve(p)">📎 Preuve</button>
+            } @else if (p.statut === 'EN_ATTENTE') {
+              <small class="doux">sans preuve jointe</small>
+            }
+            @if (p.statut === 'EN_ATTENTE') {
+              <button class="bouton secondaire petit danger" type="button" [disabled]="enCours()" (click)="ouvrirRejet(p)">Rejeter</button>
+              <button class="bouton petit" type="button" [disabled]="enCours()" (click)="valider(p)">✔ Valider</button>
+            }
+            @if (p.numeroFacture) {
+              <button class="bouton secondaire petit" type="button" (click)="imprimer(p)">🧾 {{ p.numeroFacture }}</button>
+            }
+          </footer>
+        </article>
+      } @empty {
+        <p class="message vide">{{ statutPaiement() === 'EN_ATTENTE' ? 'Aucun paiement a valider.' : 'Aucun paiement.' }}</p>
+      }
+    </div>
+  }
+
+  @case ('echeances') {
+    <div class="carte barre-filtres">
+      <div class="filtres-ligne">
+        <div class="filtre">
+          <select [ngModel]="etatFiltre()" (ngModelChange)="etatFiltre.set($event)" aria-label="Etat">
+            <option value="">Tous les etats</option>
+            <option value="ESSAI">Essai gratuit</option>
+            <option value="ACTIF">Actif</option>
+            <option value="A_RENOUVELER">A renouveler</option>
+            <option value="GRACE">Periode de grace</option>
+            <option value="EXPIRE">Expire (lecture seule)</option>
+          </select>
+        </div>
+        <span class="total-mensuel">Revenu mensuel recurrent : <strong>{{ totalMensuel() | number: '1.0-0' }} {{ parametres()?.devise }}</strong></span>
+      </div>
+    </div>
+    <div class="carte tableau-conteneur liste-defilante">
+      <table class="tableau">
+        <thead><tr><th>Entreprise</th><th>Etat</th><th>Formule</th><th>Modules</th><th>Echeance</th><th class="nombre">Mensualite</th></tr></thead>
+        <tbody>
+          @for (a of abonnementsAffiches(); track a.entrepriseId) {
+            <tr>
+              <td><strong>{{ a.entrepriseNom }}</strong>
+                @if (a.paiementEnAttente) { <span class="etiquette-abo orange">paiement a valider</span> }</td>
+              <td><span class="etiquette-abo {{ teintes[a.etat] }}">{{ a.etatLibelle }}</span></td>
+              <td>{{ a.essai ? 'Essai gratuit' : a.formuleNom }} @if (a.periodiciteLibelle) { <small class="doux">{{ a.periodiciteLibelle }}</small> }</td>
+              <td>@for (m of a.modules; track m) { <span [title]="libellesModules[m]">{{ presentation[m].icone }}</span> } @empty { — }</td>
+              <td>{{ a.fin | date: 'dd/MM/yyyy' }}
+                <small class="doux">{{ a.joursRestants >= 0 ? 'dans ' + a.joursRestants + ' j' : 'depasse de ' + (-a.joursRestants) + ' j' }}</small></td>
+              <td class="nombre">{{ a.essai ? '—' : (a.mensualite | number: '1.0-0') }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="vide">Aucun abonnement.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="aide">Pour enregistrer un paiement ou offrir des jours, ouvrez l'entreprise dans le menu Entreprises (bouton Abonnement).</p>
+  }
+
+  @case ('formules') {
+    <div class="barre-actions">
+      <p class="aide">Chaque formule fixe un prix mensuel pour chaque module et des limites (vide = illimite). L'entreprise paie la somme des modules qu'elle choisit, au prix de sa formule.</p>
+      <button class="bouton" type="button" (click)="editerFormule(null)">+ Nouvelle formule</button>
+    </div>
+    <div class="grille-formules">
+      @for (f of formules(); track f.id) {
+        <article class="carte formule" [class.inactive]="!f.active">
+          <header>
+            <h2>{{ f.nom }} @if (f.miseEnAvant) { <span class="etiquette-abo orange">conseillee</span> }
+              @if (!f.active) { <span class="etiquette-abo gris">non proposee</span> }</h2>
+          </header>
+          @if (f.description) { <p class="doux">{{ f.description }}</p> }
+          <h3 class="sous-titre-formule">Prix par module ({{ parametres()?.devise }} / mois)</h3>
+          <ul class="limites prix">
+            @for (m of catalogue; track m.code) {
+              <li><span>{{ presentation[m.code].icone }} {{ m.libelle }}</span><strong>{{ prixDe(f, m.code) | number: '1.0-0' }}</strong></li>
+            }
+          </ul>
+          <h3 class="sous-titre-formule">Limites</h3>
+          <ul class="limites">
+            <li><span>Comptes</span><strong>{{ limite(f.maxUtilisateurs) }}</strong></li>
+            <li><span>Vehicules</span><strong>{{ limite(f.maxVehicules) }}</strong></li>
+            <li><span>Agences</span><strong>{{ limite(f.maxAgences) }}</strong></li>
+            <li><span>Caisses</span><strong>{{ limite(f.maxCaisses) }}</strong></li>
+            <li><span>Employes pointes</span><strong>{{ limite(f.maxEmployes) }}</strong></li>
+          </ul>
+          <footer>
+            <small class="doux">{{ f.abonnes }} entreprise(s) abonnee(s)</small>
+            <button class="bouton secondaire petit" type="button" (click)="editerFormule(f)">Modifier</button>
+          </footer>
+        </article>
+      } @empty {
+        <p class="message vide">Aucune formule.</p>
+      }
+    </div>
+  }
+
+  @case ('reglages') {
+    @if (parametres(); as p) {
+      <form class="carte" (ngSubmit)="enregistrerParametres()">
+        <h3 class="titre-section">Essai, rappels et expiration</h3>
+        <div class="grille-formulaire">
+          <div class="champ"><label for="rg-devise">Devise</label>
+            <input id="rg-devise" name="devise" [(ngModel)]="p.devise" maxlength="10" required /></div>
+          <div class="champ"><label for="rg-essai">Duree de l'essai gratuit (jours)</label>
+            <input id="rg-essai" name="dureeEssaiJours" type="number" min="0" max="365" [(ngModel)]="p.dureeEssaiJours" /></div>
+          <div class="champ"><label for="rg-rappel">Rappel avant l'echeance (jours)</label>
+            <input id="rg-rappel" name="joursRappel" type="number" min="0" max="60" [(ngModel)]="p.joursRappel" /></div>
+          <div class="champ"><label for="rg-grace">Jours de grace apres l'echeance</label>
+            <input id="rg-grace" name="joursGrace" type="number" min="0" max="90" [(ngModel)]="p.joursGrace" />
+            <small class="doux">Ensuite, l'entreprise passe en lecture seule jusqu'au paiement.</small></div>
+        </div>
+
+        <h3 class="titre-section">Remises pour paiement d'avance (%)</h3>
+        <div class="grille-formulaire">
+          <div class="champ"><label for="rg-tri">Trimestriel</label>
+            <input id="rg-tri" name="remiseTrimestrielle" type="number" min="0" max="90" step="0.5" [(ngModel)]="p.remiseTrimestrielle" /></div>
+          <div class="champ"><label for="rg-sem">Semestriel</label>
+            <input id="rg-sem" name="remiseSemestrielle" type="number" min="0" max="90" step="0.5" [(ngModel)]="p.remiseSemestrielle" /></div>
+          <div class="champ"><label for="rg-an">Annuel</label>
+            <input id="rg-an" name="remiseAnnuelle" type="number" min="0" max="90" step="0.5" [(ngModel)]="p.remiseAnnuelle" /></div>
+        </div>
+
+        <h3 class="titre-section">Paiement et facture</h3>
+        <div class="grille-formulaire large">
+          <div class="champ"><label for="rg-instr">Instructions de paiement, affichees aux entreprises</label>
+            <textarea id="rg-instr" name="instructionsPaiement" rows="5" maxlength="2000" [(ngModel)]="p.instructionsPaiement"
+                      placeholder="Ex. : Flooz 90 00 00 00 (LJ SAAS) — TMoney 70 00 00 00 — Virement : banque, IBAN..."></textarea></div>
+          <div class="champ"><label for="rg-mentions">Coordonnees imprimees sur les factures</label>
+            <textarea id="rg-mentions" name="mentionsFacture" rows="5" maxlength="2000" [(ngModel)]="p.mentionsFacture"
+                      placeholder="Raison sociale, adresse, NIF, RCCM, telephone..."></textarea></div>
+        </div>
+
+        <div class="actions-formulaire">
+          <button class="bouton" type="submit" [disabled]="enCours()">Enregistrer les reglages</button>
+        </div>
+      </form>
+    }
+  }
+}
+
+@if (aRejeter(); as p) {
+  <app-modale titre="Rejeter le paiement" [sousTitre]="p.entrepriseNom + ' — ' + (p.montant | number: '1.0-0') + ' ' + p.devise"
+              largeur="520px" (ferme)="aRejeter.set(null)">
+    <div class="champ">
+      <label for="rj-motif">Motif, visible par l'entreprise *</label>
+      <textarea id="rj-motif" rows="3" maxlength="300" [(ngModel)]="motifRejet"
+                placeholder="Ex. : aucun versement recu avec cette reference"></textarea>
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="aRejeter.set(null)">Annuler</button>
+      <button class="bouton danger" type="button" [disabled]="!motifRejet.trim() || enCours()" (click)="rejeter()">Rejeter</button>
+    </div>
+  </app-modale>
+}
+
+@if (formuleEditee(); as f) {
+  <app-modale [titre]="f === 'nouvelle' ? 'Nouvelle formule' : 'Modifier la formule'" largeur="720px"
+              [erreur]="erreurFormule()" (ferme)="formuleEditee.set(null)">
+    <form (ngSubmit)="enregistrerFormule()">
+      <div class="grille-formulaire">
+        <div class="champ"><label for="fo-nom">Nom *</label>
+          <input id="fo-nom" name="nom" [(ngModel)]="saisieFormule.nom" maxlength="60" required /></div>
+        <div class="champ"><label for="fo-ordre">Ordre d'affichage</label>
+          <input id="fo-ordre" name="ordre" type="number" [(ngModel)]="saisieFormule.ordre" /></div>
+      </div>
+
+      <h3 class="titre-section">Prix mensuel de chaque module ({{ parametres()?.devise }})</h3>
+      <div class="grille-formulaire">
+        @for (m of catalogue; track m.code) {
+          <div class="champ"><label [for]="'fo-p-' + m.code">{{ presentation[m.code].icone }} {{ m.libelle }}</label>
+            <input [id]="'fo-p-' + m.code" [name]="'prix-' + m.code" type="number" min="0" step="500"
+                   [(ngModel)]="saisieFormule.prix[m.code]" /></div>
+        }
+      </div>
+      <div class="champ"><label for="fo-desc">Description</label>
+        <input id="fo-desc" name="description" maxlength="300" [(ngModel)]="saisieFormule.description" /></div>
+
+      <h3 class="titre-section">Limites (vide = illimite)</h3>
+      <div class="grille-formulaire">
+        <div class="champ"><label for="fo-u">Comptes utilisateurs</label>
+          <input id="fo-u" name="maxUtilisateurs" type="number" min="1" [(ngModel)]="saisieFormule.maxUtilisateurs" placeholder="Illimite" /></div>
+        <div class="champ"><label for="fo-v">Vehicules</label>
+          <input id="fo-v" name="maxVehicules" type="number" min="0" [(ngModel)]="saisieFormule.maxVehicules" placeholder="Illimite" /></div>
+        <div class="champ"><label for="fo-a">Agences</label>
+          <input id="fo-a" name="maxAgences" type="number" min="0" [(ngModel)]="saisieFormule.maxAgences" placeholder="Illimite" /></div>
+        <div class="champ"><label for="fo-c">Caisses de point de vente</label>
+          <input id="fo-c" name="maxCaisses" type="number" min="0" [(ngModel)]="saisieFormule.maxCaisses" placeholder="Illimite" /></div>
+        <div class="champ"><label for="fo-e">Employes pointes</label>
+          <input id="fo-e" name="maxEmployes" type="number" min="0" [(ngModel)]="saisieFormule.maxEmployes" placeholder="Illimite" /></div>
+      </div>
+
+      <div class="cases">
+        <label><input type="checkbox" name="active" [(ngModel)]="saisieFormule.active" /> Proposee aux entreprises</label>
+        <label><input type="checkbox" name="miseEnAvant" [(ngModel)]="saisieFormule.miseEnAvant" /> Mise en avant (« Conseillee »)</label>
+      </div>
+
+      <div class="actions-formulaire">
+        @if (f !== 'nouvelle') {
+          <button class="bouton secondaire danger" type="button" [disabled]="enCours()" (click)="supprimerFormule(f)">Supprimer</button>
+        }
+        <button class="bouton secondaire annuler" type="button" (click)="formuleEditee.set(null)">Annuler</button>
+        <button class="bouton" type="submit" [disabled]="enCours()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modale>
+}

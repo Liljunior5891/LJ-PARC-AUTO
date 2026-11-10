@@ -1,0 +1,48 @@
+/* Etiquettes d'etat d'abonnement, partagees par la console et Mon abonnement. */
+.etiquette-abo {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #eceff3;
+  color: var(--couleur-texte-doux);
+
+  &.bleu { background: #e5effb; color: var(--couleur-info); }
+  &.vert { background: #e3f5ea; color: var(--couleur-succes); }
+  &.orange { background: #fdf0d5; color: #8a5a00; }
+  &.rouge { background: #fce9e9; color: var(--couleur-danger); }
+  &.gris { background: #eceff3; color: var(--couleur-texte-doux); }
+}
+
+/* Consommation d'une limite : barre fine, rouge quand la limite est atteinte. */
+.usage {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+
+  .ligne {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .piste {
+    height: 6px;
+    border-radius: 3px;
+    background: #eef1f5;
+    overflow: hidden;
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: 3px;
+      background: var(--couleur-primaire-clair);
+    }
+  }
+
+  &.plein .piste i { background: var(--couleur-danger); }
+  &.plein strong { color: var(--couleur-danger); }
+}

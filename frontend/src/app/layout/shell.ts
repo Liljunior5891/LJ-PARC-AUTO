@@ -21,6 +21,7 @@ import { CodeModule, Role } from '../core/models/models';
 import { LieuxService } from '../core/services/lieux.service';
 import { OptionsPdvService } from '../core/services/options-pdv.service';
 import { environment } from '../../environments/environment';
+import { BandeauAbonnement } from '../shared/bandeau-abonnement';
 
 interface EntreeMenu {
   libelle: string;
@@ -63,7 +64,7 @@ interface Onglet {
 @Component({
   selector: 'app-shell',
   host: { '(document:click)': 'clicDocument($event)' },
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, EtatHorsLigneAgences, IconeDemandesEnLigne, VerrouCaisse, SansCaisse, NotificationsPdv, AlertesPdv, PanneauCompte, BonsAImprimer],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, EtatHorsLigneAgences, IconeDemandesEnLigne, VerrouCaisse, SansCaisse, NotificationsPdv, AlertesPdv, PanneauCompte, BonsAImprimer, BandeauAbonnement],
   templateUrl: './shell.html',
   styleUrl: './shell.scss'
 })
@@ -331,6 +332,7 @@ export class Shell {
         { libelle: 'Ma boutique', route: '/marketplace/boutique', description: 'Boutique en ligne : vitrine, livraison, paiement et lien', module: 'MARKETPLACE', avecUnDesModules: ['POINT_DE_VENTE', 'GESTION_PARC'], roles: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Utilisateurs', route: '/utilisateurs', description: 'Comptes et profils d\'acces', roles: ['ADMIN'] },
         { libelle: 'Parametrage', route: '/parametrage', description: 'Societe, logo et referentiels', roles: ['ADMIN'] },
+        { libelle: 'Mon abonnement', route: '/abonnement', description: 'Formule, echeance, paiements et factures', roles: ['ADMIN'] },
         { libelle: 'Journal d\'audit', route: '/journal-audit', description: 'Toute l\'entreprise : donnees et connexions', roles: ['ADMIN'] }
       ]
     }
@@ -339,9 +341,24 @@ export class Shell {
   /** L'exploitant de la plateforme n'a que sa console : il ne travaille dans aucune entreprise. */
   private readonly menuPlateforme: Onglet[] = [
     {
-      id: 'plateforme', libelle: 'Plateforme',
+      id: 'plateforme-bord', libelle: 'Tableau de bord',
       entrees: [
-        { libelle: 'Entreprises', route: '/plateforme', description: 'Abonnes, modules et suspensions' }
+        { libelle: 'Vue d\'ensemble', route: '/plateforme/tableau-bord', description: 'Croissance, revenus, usage et echeances' }
+      ]
+    },
+    {
+      id: 'plateforme-entreprises', libelle: 'Entreprises',
+      entrees: [
+        { libelle: 'Entreprises', route: '/plateforme/entreprises', description: 'Fiches, creation, abonnement, modules et suspension' }
+      ]
+    },
+    {
+      id: 'plateforme-abonnements', libelle: 'Abonnements',
+      entrees: [
+        { libelle: 'Paiements', route: '/plateforme/abonnements/paiements', description: 'Paiements declares a valider, factures' },
+        { libelle: 'Echeances', route: '/plateforme/abonnements/echeances', description: 'Etat et echeance de chaque entreprise' },
+        { libelle: 'Formules', route: '/plateforme/abonnements/formules', description: 'Prix, modules compris et limites' },
+        { libelle: 'Reglages', route: '/plateforme/abonnements/reglages', description: 'Essai, grace, remises et facture' }
       ]
     }
   ];

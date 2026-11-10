@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 @Transactional
 public class GestionCaisseService {
 
+    private final tg.parcauto.api.plateforme.abonnement.AbonnementService abonnement;
+
     private final CaisseRepository repository;
     private final SessionCaisseRepository sessionRepository;
     private final PersonnelService personnel;
@@ -77,6 +79,7 @@ public class GestionCaisseService {
     }
 
     public Reponse creer(Requete r) {
+        abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.CAISSES);
         if (repository.existsByNomIgnoreCase(r.nom().trim())) {
             throw new BusinessException("Une caisse porte deja le nom " + r.nom().trim());
         }

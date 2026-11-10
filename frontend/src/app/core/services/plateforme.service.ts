@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { CodeModule, LoginResponse } from '../models/models';
+import { TableauBordPlateforme } from '../models/abonnement';
 import {
   DemandeInscription,
   EntrepriseResume,
@@ -42,6 +43,15 @@ export class PlateformeService {
 
   desactiver(module: CodeModule): Observable<ModuleCatalogue[]> {
     return this.http.delete<ModuleCatalogue[]>(`${this.api}/modules/${module}/activation`);
+  }
+
+  tableauBord(): Observable<TableauBordPlateforme> {
+    return this.http.get<TableauBordPlateforme>(`${this.api}/plateforme/tableau-bord`);
+  }
+
+  /** Cree une entreprise, son administrateur et ses modules, en essai gratuit. */
+  creerEntreprise(entreprise: DemandeInscription, joursEssai?: number | null): Observable<EntrepriseResume> {
+    return this.http.post<EntrepriseResume>(`${this.api}/plateforme/entreprises`, { entreprise, joursEssai });
   }
 
   statistiques(): Observable<StatistiquesPlateforme> {

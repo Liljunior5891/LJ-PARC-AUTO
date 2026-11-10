@@ -682,11 +682,31 @@ export const routes: Routes = [
       },
 
       // --- Console de l'exploitant de la plateforme --------------------------
+      { path: 'plateforme', pathMatch: 'full', redirectTo: 'plateforme/tableau-bord' },
       {
-        path: 'plateforme',
+        path: 'plateforme/tableau-bord',
+        loadComponent: () => import('./pages/plateforme/tableau-bord-plateforme').then((m) => m.TableauBordPlateformeComponent),
+        canActivate: [roleGuard('SUPER_ADMIN')],
+        title: 'Tableau de bord — LJ SaaS'
+      },
+      {
+        path: 'plateforme/entreprises',
         loadComponent: () => import('./pages/plateforme/plateforme').then((m) => m.Plateforme),
         canActivate: [roleGuard('SUPER_ADMIN')],
-        title: 'Console plateforme — LJ SaaS'
+        title: 'Entreprises — LJ SaaS'
+      },
+      { path: 'plateforme/abonnements', pathMatch: 'full', redirectTo: 'plateforme/abonnements/paiements' },
+      {
+        path: 'plateforme/abonnements/:vue',
+        loadComponent: () => import('./pages/plateforme/abonnements-plateforme').then((m) => m.AbonnementsPlateforme),
+        canActivate: [roleGuard('SUPER_ADMIN')],
+        title: 'Abonnements — LJ SaaS'
+      },
+      {
+        path: 'abonnement',
+        loadComponent: () => import('./pages/abonnement/mon-abonnement').then((m) => m.MonAbonnement),
+        canActivate: [entrepriseGuard, roleGuard('ADMIN')],
+        title: 'Mon abonnement — LJ SaaS'
       }
     ]
   },

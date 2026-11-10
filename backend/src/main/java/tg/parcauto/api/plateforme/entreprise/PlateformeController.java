@@ -23,11 +23,29 @@ import java.util.List;
 public class PlateformeController {
 
     private final PlateformeService service;
+    private final TableauBordPlateformeService tableauBord;
+
+    public record NouvelleEntreprise(@jakarta.validation.Valid @jakarta.validation.constraints.NotNull
+                                     tg.parcauto.api.plateforme.inscription.InscriptionService.Demande entreprise,
+                                     @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(365) Integer joursEssai) {
+    }
 
     @GetMapping("/statistiques")
     @Operation(summary = "Chiffres cles de la plateforme")
     public PlateformeService.Statistiques statistiques() {
         return service.statistiques();
+    }
+
+    @GetMapping("/tableau-bord")
+    @Operation(summary = "Tableau de bord de l'exploitant : croissance, revenus, usage et echeances")
+    public TableauBordPlateformeService.TableauBord tableauBord() {
+        return tableauBord.tableauBord();
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/entreprises")
+    @Operation(summary = "Cree une entreprise, son administrateur et ses modules, en essai gratuit")
+    public PlateformeService.EntrepriseResume creer(@jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody NouvelleEntreprise r) {
+        return service.creer(r.entreprise(), r.joursEssai());
     }
 
     @GetMapping("/entreprises")

@@ -16,6 +16,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final ContexteTableInterceptor contexteTable;
     private final ContexteBoutiqueInterceptor contexteBoutique;
     private final tg.parcauto.api.presence.ContextePresenceInterceptor contextePresence;
+    private final tg.parcauto.api.plateforme.abonnement.LectureSeuleInterceptor lectureSeule;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -28,5 +29,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(contextePresence)
                 .addPathPatterns("/api/public/presence/lieux/**", "/api/public/presence/bornes/**").order(0);
         registry.addInterceptor(controleModule).addPathPatterns("/api/**").order(1);
+        // Abonnement expire : plus aucune ecriture, sauf pour se connecter, payer et changer son mot de passe.
+        registry.addInterceptor(lectureSeule).addPathPatterns("/api/**")
+                .excludePathPatterns("/api/auth/**", "/api/public/**", "/api/abonnement/**", "/api/plateforme/**",
+                        "/api/utilisateurs/moi/**")
+                .order(2);
     }
 }

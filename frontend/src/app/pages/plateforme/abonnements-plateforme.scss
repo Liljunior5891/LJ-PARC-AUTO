@@ -1,0 +1,236 @@
+@use './abonnements-commun';
+
+app-onglets-inclines {
+  display: block;
+  margin-bottom: 0.8rem;
+}
+
+.doux {
+  display: block;
+  color: var(--couleur-texte-doux);
+  font-size: 0.8rem;
+}
+
+.aide {
+  font-size: 0.85rem;
+  color: var(--couleur-texte-doux);
+  margin: 0.5rem 0;
+}
+
+.nombre {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+
+  input {
+    width: 130px;
+    text-align: right;
+  }
+}
+
+td.vide {
+  text-align: center;
+  color: var(--couleur-texte-doux);
+}
+
+.total-mensuel {
+  margin-left: auto;
+  font-size: 0.88rem;
+}
+
+/* Paiements : une carte par paiement, ceux a valider soulignes. */
+.liste-paiements {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.paiement {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &.attente {
+    border-left: 4px solid #d98a00;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+
+    h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    small {
+      color: var(--couleur-texte-doux);
+    }
+  }
+
+  .montant {
+    font-size: 1.15rem;
+    white-space: nowrap;
+  }
+
+  dl {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+
+    div {
+      display: grid;
+      grid-template-columns: 7rem 1fr;
+      gap: 8px;
+    }
+
+    dt {
+      color: var(--couleur-texte-doux);
+    }
+
+    dd {
+      margin: 0;
+    }
+  }
+
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid var(--couleur-bordure);
+
+    .espace {
+      flex: 1;
+    }
+  }
+}
+
+.barre-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 0.8rem;
+
+  .aide {
+    flex: 1;
+    min-width: 260px;
+  }
+}
+
+.grille-formules {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.formule {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &.inactive {
+    opacity: 0.65;
+  }
+
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+
+    strong {
+      font-size: 1.4rem;
+    }
+
+    small {
+      font-size: 0.75rem;
+      color: var(--couleur-texte-doux);
+      font-weight: 500;
+    }
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .limites {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.85rem;
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      border-bottom: 1px dotted var(--couleur-bordure);
+    }
+  }
+
+  footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+  }
+}
+
+.sous-titre-formule {
+  margin: 0.3rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--couleur-texte-doux);
+}
+
+.ligne-module {
+  display: block;
+
+  small {
+    color: var(--couleur-texte-doux);
+  }
+}
+
+.grille-formulaire.large {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.cases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 1rem 0;
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+}

@@ -187,6 +187,9 @@
   }
 
   <main class="contenu" #contenu>
+    @if (!estSuperAdmin && utilisateur()?.entrepriseId) {
+      <app-bandeau-abonnement />
+    }
     @if (!sansCaisse()) {
       <router-outlet />
     }

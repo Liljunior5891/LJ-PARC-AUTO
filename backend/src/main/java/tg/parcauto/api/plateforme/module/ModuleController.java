@@ -27,6 +27,8 @@ import java.util.List;
 @Tag(name = "Modules")
 public class ModuleController {
 
+    private final tg.parcauto.api.plateforme.abonnement.AbonnementService abonnement;
+
     private final ModuleService service;
 
     /** Type d'activite choisi pour un module qui se decline (boutique ou restaurant). */
@@ -46,6 +48,7 @@ public class ModuleController {
     public List<ModuleService.ModuleCatalogue> activer(@PathVariable ModuleApplicatif module,
                                                        @RequestBody(required = false) ChoixVariante choix) {
         Long entreprise = ContexteEntreprise.exiger();
+        abonnement.verifierModuleAutorise(entreprise, module);
         service.activer(entreprise, module, choix == null ? null : choix.variante());
         return service.catalogue(entreprise);
     }
