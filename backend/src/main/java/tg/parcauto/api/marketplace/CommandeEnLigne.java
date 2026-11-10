@@ -161,6 +161,14 @@ public class CommandeEnLigne extends BaseEntity {
     @Column(name = "pdv_commande_id")
     private Long pdvCommandeId;
 
+    /** References des transactions de paiement lancees avant la derniere (separees par des virgules). */
+    @Column(name = "references_precedentes", length = 1000)
+    private String referencesPrecedentes;
+
+    /** Paiement confirme en ligne par le fournisseur (et non encaisse a la caisse). */
+    @Column(name = "payee_en_ligne", nullable = false)
+    private boolean payeeEnLigne;
+
     /** Ticket de la caisse boutique qui a regle la commande. */
     @Column(name = "vente_id")
     private Long venteId;

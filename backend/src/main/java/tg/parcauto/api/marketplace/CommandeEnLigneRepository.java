@@ -26,7 +26,8 @@ public interface CommandeEnLigneRepository extends JpaRepository<CommandeEnLigne
             where c.enCaisse = true and c.pdvCommandeId is null
               and c.statut in (tg.parcauto.api.marketplace.CommandeEnLigne.Statut.NOUVELLE,
                                tg.parcauto.api.marketplace.CommandeEnLigne.Statut.CONFIRMEE,
-                               tg.parcauto.api.marketplace.CommandeEnLigne.Statut.PRETE)
+                               tg.parcauto.api.marketplace.CommandeEnLigne.Statut.PRETE,
+                               tg.parcauto.api.marketplace.CommandeEnLigne.Statut.EN_LIVRAISON)
             order by c.dateCommande
             """)
     java.util.List<CommandeEnLigne> aTraiterEnCaisse();

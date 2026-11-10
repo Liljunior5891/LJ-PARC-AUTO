@@ -26,10 +26,14 @@ public class ClientEnLigneService {
     private final ClientRepository clientRepository;
     private final NumerotationService numerotation;
 
-    /** Fiche client de l'acheteur : celle qui porte deja ce telephone, sinon une nouvelle. */
+    /**
+     * Fiche client de l'acheteur : celle qui porte deja ce telephone ET ce nom,
+     * sinon une nouvelle. Un inconnu qui saisit le numero d'un client n'est pas
+     * rattache a sa fiche (historique, credit).
+     */
     public Client trouverOuCreer(String nom, String prenoms, String telephone, String email) {
         String numero = telephone.trim();
-        return clientRepository.findFirstByTelephoneOrderByIdAsc(numero).orElseGet(() -> {
+        return clientRepository.findFirstByTelephoneAndNomIgnoreCaseOrderByIdAsc(numero, nom.trim()).orElseGet(() -> {
             Client client = new Client();
             client.setCode(numerotation.prochainNumero("CLI"));
             client.setType(TypeClient.PARTICULIER);

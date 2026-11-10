@@ -140,4 +140,10 @@ public interface RecetteRepository extends JpaRepository<Recette, Long>,
 
         long getNombre();
     }
+
+    List<Recette> findByFactureId(Long factureId);
+
+    List<Recette> findByLocationIdAndFactureIsNull(Long locationId);
+
+    List<Recette> findByMissionIdAndFactureIsNull(Long missionId);
 }

@@ -174,11 +174,13 @@ export const routes: Routes = [
           },
           {
             path: 'recettes',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/recettes/recettes').then((m) => m.Recettes),
             title: 'Recettes — LJ SaaS'
           },
           {
             path: 'depenses',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/depenses/depenses').then((m) => m.Depenses),
             title: 'Depenses — LJ SaaS'
           },
@@ -190,16 +192,19 @@ export const routes: Routes = [
           },
           {
             path: 'carburant',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/carburant/carburant').then((m) => m.Carburant),
             title: 'Carburant — LJ SaaS'
           },
           {
             path: 'facturation',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/factures/factures').then((m) => m.Factures),
             title: 'Facturation — LJ SaaS'
           },
           {
             path: 'rentabilite',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/rentabilite/rentabilite').then((m) => m.Rentabilite),
             title: 'Rentabilite — LJ SaaS'
           },

@@ -34,6 +34,7 @@ public class ContexteBoutiqueInterceptor implements HandlerInterceptor {
     private static final Pattern FORME_JETON = Pattern.compile("^[a-f0-9]{32}$");
 
     private final JdbcTemplate jdbc;
+    private final tg.parcauto.api.plateforme.abonnement.AbonnementService abonnements;
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
@@ -51,9 +52,19 @@ public class ContexteBoutiqueInterceptor implements HandlerInterceptor {
             if (!FORME_SLUG.matcher(slug).matches()) {
                 throw new ResourceNotFoundException("Boutique introuvable");
             }
-            entreprise = premier("select entreprise_id from mkt_boutique where slug = ?", slug);
+            // Une entreprise suspendue n'a plus de vitrine (comme sur la place de marche).
+            entreprise = premier("""
+                    select b.entreprise_id from mkt_boutique b
+                    join entreprise e on e.id = b.entreprise_id and e.statut = 'ACTIVE'
+                    where b.slug = ?
+                    """, slug);
             if (entreprise == null) {
                 throw new ResourceNotFoundException("Boutique introuvable");
+            }
+            // Abonnement expire (lecture seule) : la vitrine reste visible, mais ne prend plus de commande.
+            if (!"GET".equalsIgnoreCase(request.getMethod()) && abonnements.lectureSeule(entreprise)) {
+                throw new tg.parcauto.api.common.BusinessException(
+                        "Cette boutique ne prend pas de commande en ligne pour le moment : contactez-la directement");
             }
         } else if (jeton != null) {
             if (!FORME_JETON.matcher(jeton).matches()) {

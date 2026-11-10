@@ -40,14 +40,13 @@ public class AppairageBorneController {
     @Operation(summary = "Echange le code d'appairage contre le jeton de la borne")
     public PointageService.Appairage appairer(@RequestBody Demande demande, jakarta.servlet.http.HttpServletRequest requete) {
         String appareil = "appairage:" + requete.getRemoteAddr();
-        securite.verifierEssais(appareil);
+        long essai = securite.reserverEssai(appareil);
         String code = demande.code() == null ? "" : demande.code().trim();
         List<long[]> trouvees = code.matches("\\d{6}")
                 ? jdbc.query("select id, entreprise_id from pres_borne where code_appairage = ? and code_expire_le > ? and actif",
                 (rs, i) -> new long[]{rs.getLong(1), rs.getLong(2)}, code, Timestamp.from(Instant.now()))
                 : List.of();
         if (trouvees.isEmpty()) {
-            securite.echec(appareil);
             throw new BusinessException("Code inconnu ou expire : demandez un nouveau code au gerant");
         }
         try {
@@ -55,7 +54,7 @@ public class AppairageBorneController {
             if (!modules.estActif(trouvees.get(0)[1], ModuleApplicatif.PRESENCE)) {
                 throw new BusinessException("Le module Gestion de presence n'est pas active pour cette entreprise");
             }
-            securite.succes(appareil);
+            securite.reussi(appareil, essai);
             return service.appairer(trouvees.get(0)[0]);
         } finally {
             ContexteEntreprise.effacer();

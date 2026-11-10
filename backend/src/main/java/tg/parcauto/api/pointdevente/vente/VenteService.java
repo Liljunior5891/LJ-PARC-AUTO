@@ -59,15 +59,20 @@ public class VenteService {
     private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
     private final tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetre;
     private final tg.parcauto.api.pointdevente.impression.ImpressionService impression;
+    private final org.springframework.beans.factory.ObjectProvider<PrixCommandesEnLigne> prixCommandesEnLigne;
 
     public VenteDto.Ticket encaisser(VenteDto.Encaissement demande, UtilisateurPrincipal caissier) {
         List<LigneVente> lignes = new ArrayList<>();
+        // Commande en ligne : chaque article garde le prix paye par le client.
+        java.util.Map<Long, BigDecimal> prixEnLigne = demande.commandeEnLigneId() == null ? java.util.Map.of()
+                : prixCommandesEnLigne.getIfAvailable(() -> id -> java.util.Map.of()).prixParArticle(demande.commandeEnLigneId());
         for (VenteDto.LigneDemande demandeLigne : demande.lignes()) {
             Article article = articleRepository.findById(demandeLigne.articleId())
                     .orElseThrow(() -> ResourceNotFoundException.of("Article", demandeLigne.articleId()));
             Conditionnement conditionnement = demandeLigne.conditionnementId() == null ? null
                     : conditionnement(article, demandeLigne.conditionnementId());
-            LigneVente ligne = ligne(article, conditionnement, demandeLigne.quantite(), demandeLigne.remise(), null);
+            LigneVente ligne = ligne(article, conditionnement, demandeLigne.quantite(), demandeLigne.remise(),
+                    conditionnement == null ? prixEnLigne.get(article.getId()) : null);
             emporter(ligne, demandeLigne.quantiteLivree());
             if (demandeLigne.note() != null && !demandeLigne.note().isBlank()) {
                 ligne.setNote(demandeLigne.note().trim());
@@ -91,7 +96,7 @@ public class VenteService {
         if (demande.commandeEnLigneId() != null) {
             // Commande en ligne remise et reglee : la boutique en ligne la clot (et peut refuser l'encaissement).
             vente.setEnLigne(true);
-            evenements.publishEvent(new VenteEnLigneEncaissee(demande.commandeEnLigneId(), vente.getId()));
+            evenements.publishEvent(new VenteEnLigneEncaissee(demande.commandeEnLigneId(), vente.getId(), vente.getTotalBrut()));
         }
         return VenteDto.Ticket.de(vente);
     }
@@ -459,6 +464,6 @@ public class VenteService {
     }
 
     /** Ticket encaisse pour une commande de la boutique en ligne. */
-    public record VenteEnLigneEncaissee(Long commandeEnLigneId, Long venteId) {
+    public record VenteEnLigneEncaissee(Long commandeEnLigneId, Long venteId, BigDecimal totalBrut) {
     }
 }

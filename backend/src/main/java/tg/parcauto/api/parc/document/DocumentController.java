@@ -69,11 +69,7 @@ public class DocumentController {
         DocumentDto.Reponse meta = service.parId(id);
         Resource resource = service.telecharger(id);
         String nom = meta.fichierNom() == null ? "document-" + id : meta.fichierNom();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nom + "\"")
-                .contentType(meta.fichierType() == null ? MediaType.APPLICATION_OCTET_STREAM
-                        : MediaType.parseMediaType(meta.fichierType()))
-                .body(resource);
+        return tg.parcauto.api.common.FichierServi.reponse(resource, nom, false);
     }
 
     @PostMapping(consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})

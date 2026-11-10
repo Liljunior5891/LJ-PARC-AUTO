@@ -168,6 +168,8 @@ export interface Depense {
   annuleePar?: string;
   annuleeLe?: string;
   motifAnnulation?: string;
+  /** Correction proposee d'une depense deja validee, a approuver. */
+  correctionProposee?: string | null;
 }
 
 export interface DepenseRequete {
@@ -477,6 +479,9 @@ export interface RentabiliteGlobale {
   depenseMoyenneParCamion: number;
   camions: LigneRentabilite[];
   palmares: Palmares;
+  /** Charges generales (loyer, salaires...) et resultat apres ces charges. */
+  chargesGenerales: number;
+  resultatNet: number;
 }
 
 export interface UtilisationCamion {

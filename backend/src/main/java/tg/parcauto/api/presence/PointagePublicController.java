@@ -34,7 +34,7 @@ public class PointagePublicController {
     private final LieuPresenceRepository lieux;
     private final BornePresenceRepository bornes;
 
-    public record DemandeHistorique(String pin, String mois) {
+    public record DemandeHistorique(String pin, String mois, String code) {
     }
 
     // ------------------------------------------------------------- telephone
@@ -43,22 +43,26 @@ public class PointagePublicController {
     @Operation(summary = "Lieu designe par le code QR scanne, et validite du code")
     public PointageService.Accueil accueil(@PathVariable String jeton, @RequestParam(required = false) String c,
                                            HttpServletRequest requete) {
-        return service.accueil(lieu(requete), c, entreprise(requete));
+        return service.accueil(lieu(requete), c, entreprise(requete), appareil(requete));
     }
 
     @PostMapping("/lieux/{jeton}/pointage")
     @Operation(summary = "Pointe l'arrivee depuis le telephone : code QR, position GPS et PIN")
     public PointageService.Resultat pointer(@PathVariable String jeton, @RequestBody PointageService.PointageTelephone d,
                                             HttpServletRequest requete) {
-        return service.pointerTelephone(lieu(requete), d, appareil(requete));
+        try {
+            return service.pointerTelephone(lieu(requete), d, appareil(requete));
+        } catch (org.springframework.dao.DataIntegrityViolationException doublon) {
+            // Deux envois quasi simultanes (double appui) : le second trouve le premier, « deja pointe ».
+            return service.pointerTelephone(lieu(requete), d, appareil(requete));
+        }
     }
 
     @PostMapping("/lieux/{jeton}/historique")
     @Operation(summary = "L'employe consulte son propre historique avec son PIN")
     public PointageService.Historique historique(@PathVariable String jeton, @RequestBody DemandeHistorique d,
                                                  HttpServletRequest requete) {
-        lieu(requete);
-        return service.monHistorique(d.pin(), mois(d.mois()), appareil(requete));
+        return service.monHistorique(lieu(requete), d.code(), d.pin(), mois(d.mois()), appareil(requete));
     }
 
     // ------------------------------------------------------------- borne
@@ -76,7 +80,11 @@ public class PointagePublicController {
     @Operation(summary = "Pointe l'arrivee sur la borne avec le PIN")
     public PointageService.Resultat pointerBorne(@PathVariable String jeton, @RequestBody PointageService.PointageBorne d,
                                                  HttpServletRequest requete) {
-        return service.pointerBorne(borne(requete), d);
+        try {
+            return service.pointerBorne(borne(requete), d);
+        } catch (org.springframework.dao.DataIntegrityViolationException doublon) {
+            return service.pointerBorne(borne(requete), d);
+        }
     }
 
     @PostMapping("/bornes/{jeton}/historique")
@@ -103,10 +111,14 @@ public class PointagePublicController {
         return (String) requete.getAttribute(ContextePresenceInterceptor.ENTREPRISE);
     }
 
-    /** Appareil qui tape les PIN : son adresse, pour bloquer qui essaie de les deviner. */
+    /**
+     * Appareil qui tape les PIN : son adresse vue par le serveur. L'en-tete
+     * X-Forwarded-For n'est pas lu, le client pourrait en changer a chaque essai.
+     * Derriere un proxy, configurer server.forward-headers-strategy pour que
+     * l'adresse reelle remonte ici.
+     */
     private static String appareil(HttpServletRequest requete) {
-        String transmise = requete.getHeader("X-Forwarded-For");
-        return "ip:" + (transmise != null && !transmise.isBlank() ? transmise.split(",")[0].trim() : requete.getRemoteAddr());
+        return "ip:" + requete.getRemoteAddr();
     }
 
     private static YearMonth mois(String mois) {

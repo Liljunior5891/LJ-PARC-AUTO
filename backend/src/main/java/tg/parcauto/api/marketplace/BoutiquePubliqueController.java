@@ -28,6 +28,7 @@ import tg.parcauto.api.plateforme.module.ModuleRequis;
 public class BoutiquePubliqueController {
 
     private final BoutiqueService boutiqueService;
+    private final tg.parcauto.api.common.LimiteurRequetes limiteur;
     private final OffreService offreService;
     private final CommandeEnLigneService commandeService;
     private final DemandeLocationService demandeService;
@@ -59,7 +60,11 @@ public class BoutiquePubliqueController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Passe une commande (sans compte : nom et telephone)")
     public MarketplaceDto.Suivi commander(@PathVariable String slug,
-                                          @Valid @RequestBody MarketplaceDto.DemandeCommande demande) {
+                                          @Valid @RequestBody MarketplaceDto.DemandeCommande demande,
+                                          jakarta.servlet.http.HttpServletRequest requete) {
+        // Point public : quelques commandes par heure et par connexion, contre les commandes en serie.
+        limiteur.exiger("commande:" + requete.getRemoteAddr(), 10, java.time.Duration.ofHours(1),
+                "Trop de commandes depuis cette connexion : reessayez plus tard ou appelez la boutique");
         return commandeService.commander(demande);
     }
 
@@ -67,7 +72,10 @@ public class BoutiquePubliqueController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Demande la location d'un vehicule sur une periode")
     public MarketplaceDto.Suivi demanderLocation(@PathVariable String slug,
-                                                 @Valid @RequestBody MarketplaceDto.DemandeLocationPublique demande) {
+                                                 @Valid @RequestBody MarketplaceDto.DemandeLocationPublique demande,
+                                                 jakarta.servlet.http.HttpServletRequest requete) {
+        limiteur.exiger("location:" + requete.getRemoteAddr(), 5, java.time.Duration.ofHours(1),
+                "Trop de demandes depuis cette connexion : reessayez plus tard ou appelez la boutique");
         return demandeService.demander(demande);
     }
 }

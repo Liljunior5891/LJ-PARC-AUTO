@@ -122,8 +122,9 @@ export class PresenceService {
     return this.http.post<ResultatPointage>(`${this.public}/lieux/${jeton}/pointage`, demande);
   }
 
-  monHistorique(jeton: string, pin: string, mois?: string): Observable<HistoriquePresence> {
-    return this.http.post<HistoriquePresence>(`${this.public}/lieux/${jeton}/historique`, { pin, mois });
+  /** Le code QR du moment est exige : l'historique se consulte sur place, comme on pointe. */
+  monHistorique(jeton: string, pin: string, code: string | null, mois?: string): Observable<HistoriquePresence> {
+    return this.http.post<HistoriquePresence>(`${this.public}/lieux/${jeton}/historique`, { pin, mois, code });
   }
 
   // ------------------------------------------------------------ borne

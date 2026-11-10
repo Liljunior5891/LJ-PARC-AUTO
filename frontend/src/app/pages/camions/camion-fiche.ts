@@ -265,7 +265,13 @@ export class CamionFiche implements OnInit {
   }
 
   /** Toutes les recettes du camion, quel que soit leur type. */
+  /** Recettes et depenses du vehicule : gestionnaires et administrateur seulement. */
+  readonly voitFinances = inject(AuthService).aRole('ADMIN', 'GESTIONNAIRE_PARC');
+
   private chargerRecettes(camionId: number): void {
+    if (!this.voitFinances) {
+      return;
+    }
     this.recetteService.lister({ camionId, size: 200 }).subscribe({
       next: (page) => this.recettes.set(page.content)
     });
@@ -290,6 +296,9 @@ export class CamionFiche implements OnInit {
   }
 
   private chargerDepenses(camionId: number): void {
+    if (!this.voitFinances) {
+      return;
+    }
     this.depenseService.lister({ camionId, size: 200 }).subscribe({
       next: (page) => this.depenses.set(page.content)
     });

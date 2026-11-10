@@ -120,9 +120,6 @@ public class MouvementController {
         MouvementService.MouvementDto m = service.detail(id);
         Resource fichier = service.piece(id);
         String nom = m.pieceNom() == null ? "piece-" + m.reference() : m.pieceNom();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nom.replace("\"", "") + "\"")
-                .contentType(MediaTypeFactory.getMediaType(nom).orElse(MediaType.APPLICATION_OCTET_STREAM))
-                .body(fichier);
+        return tg.parcauto.api.common.FichierServi.reponse(fichier, nom, true);
     }
 }

@@ -162,7 +162,7 @@ export class Shell {
       entrees: [
         { libelle: 'Tableau de bord', route: '/tableau-bord', description: 'Chiffre d\'affaires, depenses et resultat' },
         { libelle: 'Direction', route: '/direction', description: 'Indicateurs de pilotage et decisions' },
-        { libelle: 'Rentabilite', route: '/rentabilite', description: 'Marge par vehicule sur la periode' }
+        { libelle: 'Rentabilite', route: '/rentabilite', description: 'Marge par vehicule sur la periode', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] }
       ]
     },
     {
@@ -187,10 +187,10 @@ export class Shell {
     {
       id: 'finances', module: 'GESTION_PARC', libelle: 'Finances',
       entrees: [
-        { libelle: 'Recettes', route: '/recettes', description: 'Locations, transports et livraisons' },
-        { libelle: 'Depenses', route: '/depenses', description: 'Vehicules, charges generales, recurrentes' },
+        { libelle: 'Recettes', route: '/recettes', description: 'Locations, transports et livraisons', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
+        { libelle: 'Depenses', route: '/depenses', description: 'Vehicules, charges generales, recurrentes', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Fournisseurs', route: '/fournisseurs-parc', description: 'Fiches, dettes et reglements', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
-        { libelle: 'Facturation', route: '/facturation', description: 'Factures clients et reglements' },
+        { libelle: 'Facturation', route: '/facturation', description: 'Factures clients et reglements', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
         // Gestion de parc avec Marketplace : les vehicules reserves en ligne, a valider.
         { libelle: 'Demandes en ligne', route: '/marketplace/locations', description: 'Vehicules reserves dans la boutique en ligne', module: 'MARKETPLACE', roles: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC'] }
       ]

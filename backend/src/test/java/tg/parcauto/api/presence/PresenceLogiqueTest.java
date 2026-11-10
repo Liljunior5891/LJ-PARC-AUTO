@@ -77,14 +77,26 @@ class PresenceLogiqueTest {
     }
 
     @Test
-    @DisplayName("Apres 5 PIN faux, l'appareil est bloque")
+    @DisplayName("Apres 10 PIN faux, l'appareil est bloque ; son propre bon PIN n'efface pas les faux")
     void blocage() {
-        for (int i = 0; i < 4; i++) {
-            assertThat(securite.echec("ip:1")).isFalse();
+        for (int i = 0; i < 9; i++) {
+            securite.reserverEssai("ip:1");
         }
-        assertThat(securite.echec("ip:1")).isTrue();
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> securite.verifierEssais("ip:1"))
+        // Un bon PIN au milieu : il ne compte pas, mais les 9 faux restent.
+        securite.reussi("ip:1", securite.reserverEssai("ip:1"));
+        securite.reserverEssai("ip:1");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> securite.reserverEssai("ip:1"))
                 .hasMessageContaining("Trop de PIN faux");
-        securite.verifierEssais("ip:2");
+        securite.reserverEssai("ip:2");
+    }
+
+    @Test
+    @DisplayName("La borne partagee tolere plus d'erreurs avant de se bloquer")
+    void blocageBorne() {
+        for (int i = 0; i < 15; i++) {
+            securite.reserverEssai("borne:1");
+        }
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> securite.reserverEssai("borne:1"))
+                .hasMessageContaining("Trop de PIN faux");
     }
 }

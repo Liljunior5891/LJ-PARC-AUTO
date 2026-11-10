@@ -40,6 +40,7 @@ public class PointageService {
     private final BornePresenceRepository bornes;
     private final PresenceService presence;
     private final SecuritePresence securite;
+    private final tg.parcauto.api.common.LimiteurRequetes limiteur;
 
     // ------------------------------------------------------------- pointage
 
@@ -60,24 +61,30 @@ public class PointageService {
     }
 
     @Transactional(readOnly = true)
-    public Accueil accueil(LieuPresence lieu, String code, String entreprise) {
+    public Accueil accueil(LieuPresence lieu, String code, String entreprise, String appareil) {
+        // Chaque appareil ne teste qu'un nombre limite de codes : deviner le code du moment est impraticable.
+        limiteur.exiger("qr:" + appareil, 30, java.time.Duration.ofMinutes(10),
+                "Trop de codes QR verifies depuis cet appareil : rescannez la borne dans quelques minutes");
         return new Accueil(lieu.getNom(), entreprise, securite.codeValide(lieu.getSecretQr(), code), true);
     }
 
     /** Pointage depuis le telephone : code QR encore valable, telephone dans le rayon du lieu, puis PIN. */
     public Resultat pointerTelephone(LieuPresence lieu, PointageTelephone d, String appareil) {
-        securite.verifierEssais(appareil);
         if (!lieu.isActif()) {
             throw new BusinessException("Ce lieu n'accepte plus de pointage");
         }
-        if (!securite.codeValide(lieu.getSecretQr(), d.code())) {
-            throw new BusinessException("Ce code QR a expire : scannez celui affiche en ce moment sur la borne");
-        }
+        exigerCode(lieu, d.code(), appareil);
         if (!lieu.aPosition()) {
             throw new BusinessException("La position de ce lieu n'est pas encore enregistree : pointez sur la borne ou prevenez le gerant");
         }
         if (d.latitude() == null || d.longitude() == null) {
             throw new BusinessException("Autorisez la localisation de votre telephone pour pointer");
+        }
+        // NaN ou infini rendraient la distance nulle : une position hors des bornes terrestres est refusee.
+        if (!Double.isFinite(d.latitude()) || !Double.isFinite(d.longitude())
+                || Math.abs(d.latitude()) > 90 || Math.abs(d.longitude()) > 180
+                || (d.precision() != null && (!Double.isFinite(d.precision()) || d.precision() < 0))) {
+            throw new BusinessException("Position du telephone invalide : reactivez la localisation et reessayez");
         }
         int distance = (int) Math.round(distanceMetres(lieu.getLatitude(), lieu.getLongitude(), d.latitude(), d.longitude()));
         int precision = d.precision() == null ? 0 : (int) Math.round(d.precision());
@@ -91,7 +98,6 @@ public class PointageService {
     /** Pointage sur la borne du lieu : la tablette ne bouge pas, seul le PIN est demande. */
     public Resultat pointerBorne(BornePresence borne, PointageBorne d) {
         String appareil = "borne:" + borne.getId();
-        securite.verifierEssais(appareil);
         if (!borne.getLieu().isActif()) {
             throw new BusinessException("Ce lieu n'accepte plus de pointage");
         }
@@ -146,18 +152,25 @@ public class PointageService {
 
     private EmployePresence reconnaitre(String pin, String appareil) {
         if (!SecuritePresence.pinValide(pin)) {
-            securite.echec(appareil);
             throw new BusinessException("Tapez votre PIN a 6 chiffres");
         }
+        long essai = securite.reserverEssai(appareil);
         EmployePresence e = employes.findByPinEmpreinte(securite.empreintePin(ContexteEntreprise.exiger(), pin))
                 .filter(EmployePresence::isActif).orElse(null);
         if (e == null) {
-            boolean bloque = securite.echec(appareil);
-            throw new BusinessException(bloque ? "Trop de PIN faux : pointage bloque 10 minutes sur cet appareil"
-                    : "PIN inconnu : verifiez votre code");
+            throw new BusinessException("PIN inconnu : verifiez votre code");
         }
-        securite.succes(appareil);
+        securite.reussi(appareil, essai);
         return e;
+    }
+
+    /** Code QR du moment : un code faux compte comme un essai de l'appareil (pas de devinette a volonte). */
+    private void exigerCode(LieuPresence lieu, String code, String appareil) {
+        long essai = securite.reserverEssai(appareil);
+        if (!securite.codeValide(lieu.getSecretQr(), code)) {
+            throw new BusinessException("Ce code QR a expire : scannez celui affiche en ce moment sur la borne");
+        }
+        securite.reussi(appareil, essai);
     }
 
     /** Distance en metres entre deux points GPS (formule de haversine). */
@@ -307,6 +320,10 @@ public class PointageService {
         if (e.getDateEmbauche() != null && date.isBefore(e.getDateEmbauche())) {
             return Statut.NON_EMBAUCHE;
         }
+        // Desactive : plus attendu a partir de ce jour (ni absent, ni compte dans la ponctualite).
+        if (e.getDesactiveLe() != null && !date.isBefore(e.getDesactiveLe())) {
+            return Statut.NON_EMBAUCHE;
+        }
         if (!reglage.travaille(date.getDayOfWeek())) {
             return Statut.REPOS;
         }
@@ -396,7 +413,13 @@ public class PointageService {
     /** L'employe consulte son propre historique avec son PIN, depuis la page de pointage. */
     @Transactional(readOnly = true)
     public Historique monHistorique(String pin, YearMonth mois, String appareil) {
-        securite.verifierEssais(appareil);
+        EmployePresence e = reconnaitre(pin, appareil);
+        return historique(e, mois == null ? YearMonth.now(FUSEAU) : mois);
+    }
+
+    /** Depuis le telephone : le code QR du moment est exige, comme pour pointer (on est sur place). */
+    public Historique monHistorique(LieuPresence lieu, String code, String pin, YearMonth mois, String appareil) {
+        exigerCode(lieu, code, appareil);
         EmployePresence e = reconnaitre(pin, appareil);
         return historique(e, mois == null ? YearMonth.now(FUSEAU) : mois);
     }

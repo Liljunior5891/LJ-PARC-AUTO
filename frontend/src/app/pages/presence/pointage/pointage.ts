@@ -87,7 +87,7 @@ export class PointagePage implements OnInit {
     this.erreur.set(null);
     this.etape.set('envoi');
     if (this.mode() === 'historique') {
-      this.service.monHistorique(this.jeton, pin).subscribe({
+      this.service.monHistorique(this.jeton, pin, this.code).subscribe({
         next: (h) => {
           this.historique.set(h);
           this.etape.set('historique');

@@ -146,11 +146,7 @@ public class TresorerieController {
     public org.springframework.http.ResponseEntity<org.springframework.core.io.Resource> piece(@PathVariable Long id) {
         DegagementCoffre d = service.degagementAvecPiece(id);
         String nom = d.getPieceNom() == null ? "depot-" + d.getNumero() : d.getPieceNom();
-        return org.springframework.http.ResponseEntity.ok()
-                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nom.replace("\"", "") + "\"")
-                .contentType(d.getPieceType() == null ? org.springframework.http.MediaType.APPLICATION_OCTET_STREAM
-                        : org.springframework.http.MediaType.parseMediaType(d.getPieceType()))
-                .body(service.piece(d));
+        return tg.parcauto.api.common.FichierServi.reponse(service.piece(d), nom, true);
     }
 
     @PostMapping("/degagements/{id}/refus")

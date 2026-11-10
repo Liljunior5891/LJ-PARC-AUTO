@@ -40,6 +40,8 @@ import java.util.Map;
  * Depenses du parc : depenses des vehicules et charges generales. Saisie par
  * l'administrateur ou le gestionnaire ; validation et refus par l'administrateur.
  */
+// Donnees financieres : gestionnaires et administrateur seulement (pas les chauffeurs).
+@org.springframework.security.access.prepost.PreAuthorize(tg.parcauto.api.security.Autorisations.GESTION)
 @RestController
 @ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/depenses")
@@ -166,12 +168,8 @@ public class DepenseController {
     @GetMapping("/{id}/justificatif")
     @Operation(summary = "Telecharge le justificatif")
     public ResponseEntity<Resource> justificatif(@PathVariable Long id) {
-        String type = service.typeJustificatif(id);
         String nom = service.nomJustificatif(id);
-        return ResponseEntity.ok()
-                .contentType(type == null ? MediaType.APPLICATION_OCTET_STREAM : MediaType.parseMediaType(type))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + (nom == null ? "justificatif" : nom.replace("\"", "")) + "\"")
-                .body(service.justificatif(id));
+        return tg.parcauto.api.common.FichierServi.reponse(service.justificatif(id), nom == null ? "justificatif" : nom, true);
     }
 
     @DeleteMapping("/{id}/justificatif")

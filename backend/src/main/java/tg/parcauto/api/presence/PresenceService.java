@@ -160,6 +160,9 @@ public class PresenceService {
             if (r.actif() && !e.isActif() && e.getId() != null) {
                 abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.EMPLOYES);
             }
+            if (r.actif() != e.isActif()) {
+                e.setDesactiveLe(r.actif() ? null : LocalDate.now(PointageService.FUSEAU));
+            }
             e.setActif(r.actif());
         }
         if (r.utilisateurId() != null && !r.utilisateurId().equals(e.getUtilisateurId())) {
@@ -178,8 +181,21 @@ public class PresenceService {
             throw new BusinessException("Un des lieux choisis n'existe pas");
         }
         Set<Long> perimetre = perimetre(p);
-        if (perimetre != null && (choisis.isEmpty() || choisis.stream().anyMatch(l -> !perimetre.contains(l.getId())))) {
-            throw new BusinessException("Rattachez l'employe a l'un de vos lieux");
+        if (perimetre != null) {
+            // Un responsable ne gere que ses lieux : ceux d'un autre responsable restent tels quels.
+            Set<Long> dejaHors = e.getLieux().stream().map(LieuPresence::getId)
+                    .filter(id -> !perimetre.contains(id)).collect(java.util.stream.Collectors.toSet());
+            if (choisis.stream().anyMatch(l -> !perimetre.contains(l.getId()) && !dejaHors.contains(l.getId()))) {
+                throw new BusinessException("Vous ne pouvez rattacher l'employe qu'a vos propres lieux");
+            }
+            if (choisis.stream().noneMatch(l -> perimetre.contains(l.getId()))) {
+                throw new BusinessException("Rattachez l'employe a l'un de vos lieux");
+            }
+            List<LieuPresence> gardes = e.getLieux().stream().filter(l -> dejaHors.contains(l.getId())).toList();
+            e.getLieux().clear();
+            e.getLieux().addAll(gardes);
+            choisis.stream().filter(l -> perimetre.contains(l.getId())).forEach(e.getLieux()::add);
+            return;
         }
         e.getLieux().clear();
         e.getLieux().addAll(choisis);

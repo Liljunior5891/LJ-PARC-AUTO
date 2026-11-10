@@ -151,6 +151,7 @@ public interface DepenseRepository extends JpaRepository<Depense, Long>,
     @Query("""
             select d from Depense d left join fetch d.camion left join fetch d.categorieCharge left join fetch d.fournisseurParc
             where d.statut = tg.parcauto.api.finance.depense.StatutDepense.ATTENTE_ADMIN
+               or d.correctionEnAttente is not null
             order by d.creeLe, d.id
             """)
     List<Depense> enAttente();
@@ -181,4 +182,6 @@ public interface DepenseRepository extends JpaRepository<Depense, Long>,
             order by d.dateDepense desc, d.id desc
             """)
     List<Depense> duFournisseur(@Param("fournisseur") Long fournisseurId);
+
+    long countByCorrectionEnAttenteIsNotNull();
 }

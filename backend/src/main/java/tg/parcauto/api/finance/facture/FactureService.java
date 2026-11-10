@@ -95,6 +95,10 @@ public class FactureService {
      */
     public FactureDto.Reponse genererDepuisContrat(FactureDto.DepuisContrat requete) {
         Location contrat = locationService.charger(requete.locationId());
+        if (repository.existsByLocationIdAndStatutNot(contrat.getId(), StatutFacture.ANNULEE)) {
+            throw new BusinessException("Le contrat " + contrat.getNumero()
+                    + " est deja facture : annulez d'abord la facture existante pour en refaire une");
+        }
         Client client = contrat.getClient();
 
         Facture facture = nouvelleFacture(client, requete.dateEmission(),
@@ -119,6 +123,10 @@ public class FactureService {
     /** Genere une facture a partir d'une mission terminee. */
     public FactureDto.Reponse genererDepuisMission(FactureDto.DepuisMission requete) {
         Mission mission = missionService.charger(requete.missionId());
+        if (repository.existsByMissionIdAndStatutNot(mission.getId(), StatutFacture.ANNULEE)) {
+            throw new BusinessException("La mission " + mission.getNumero()
+                    + " est deja facturee : annulez d'abord la facture existante pour en refaire une");
+        }
         if (mission.getClient() == null) {
             throw new BusinessException("La mission " + mission.getNumero()
                     + " n'a pas de client : impossible de la facturer");
@@ -197,7 +205,12 @@ public class FactureService {
         ligne.setDesignation(recette.getLibelle());
         ligne.setQuantite(BigDecimal.ONE);
         ligne.setUnite("forfait");
-        ligne.setPrixUnitaire(recette.getMontant());
+        // Recette deja encaissee : le montant recu est le total TTC de la facture, qui nait reglee.
+        boolean encaissee = recette.getModePaiement() != null;
+        ligne.setPrixUnitaire(encaissee
+                ? recette.getMontant().multiply(BigDecimal.valueOf(100))
+                        .divide(BigDecimal.valueOf(100).add(facture.getTauxTva()), 2, java.math.RoundingMode.HALF_UP)
+                : recette.getMontant());
         facture.ajouterLigne(ligne);
         facture.recalculer();
         facture = repository.save(facture);
@@ -206,6 +219,18 @@ public class FactureService {
         recetteRepository.save(recette);
 
         facture.setStatut(StatutFacture.NON_PAYEE);
+        if (encaissee) {
+            Paiement paiement = new Paiement();
+            paiement.setFacture(facture);
+            paiement.setMontant(facture.getMontantTtc());
+            paiement.setDatePaiement(recette.getDateRecette());
+            paiement.setModePaiement(recette.getModePaiement());
+            paiement.setReference(recette.getNumero());
+            paiement.setObservations("Encaisse a la saisie de la recette");
+            paiementRepository.save(paiement);
+            facture.getPaiements().add(paiement);
+            facture.reevaluerStatut();
+        }
         return repository.save(facture);
     }
 
@@ -250,6 +275,15 @@ public class FactureService {
         if (motif != null && !motif.isBlank()) {
             facture.setObservations(motif);
         }
+        // Les recettes nees de l'emission disparaissent avec la facture ; une recette saisie a part
+        // (puis facturee) est seulement detachee : elle reste comptee et pourra etre refacturee.
+        for (Recette recette : recetteRepository.findByFactureId(facture.getId())) {
+            if (facture.getNumero() != null && facture.getNumero().equals(recette.getReference())) {
+                recetteRepository.delete(recette);
+            } else {
+                recette.setFacture(null);
+            }
+        }
         return FactureDto.Reponse.complete(repository.save(facture));
     }
 
@@ -290,6 +324,15 @@ public class FactureService {
      */
     private void enregistrerRecettes(Facture facture) {
         if (recetteRepository.existsByFactureId(facture.getId())) {
+            return;
+        }
+        // La prestation a deja sa recette (saisie sans facture) : on la rattache au lieu d'en creer une seconde.
+        List<Recette> existantes = facture.getLocation() != null
+                ? recetteRepository.findByLocationIdAndFactureIsNull(facture.getLocation().getId())
+                : facture.getMission() != null ? recetteRepository.findByMissionIdAndFactureIsNull(facture.getMission().getId())
+                : List.of();
+        if (!existantes.isEmpty()) {
+            existantes.forEach(r -> r.setFacture(facture));
             return;
         }
         for (FactureLigne ligne : facture.getLignes()) {

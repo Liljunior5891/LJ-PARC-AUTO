@@ -79,6 +79,7 @@ public class CommandeEnLigneService {
     private final ArticleRepository articleRepository;
     private final StockService stockService;
     private final PaiementService paiementService;
+    private final tg.parcauto.api.common.LimiteurRequetes limiteur;
     private final NumerotationService numerotation;
     private final ModuleService moduleService;
     private final SessionTravailService sessionsTravail;
@@ -113,6 +114,8 @@ public class CommandeEnLigneService {
         boolean enCaisse = moduleService.estActif(entreprise, ModuleApplicatif.POINT_DE_VENTE);
         boolean restaurant = enCaisse
                 && "RESTAURATION".equals(moduleService.variante(entreprise, ModuleApplicatif.POINT_DE_VENTE));
+        // Memes regles que la vitrine : avec le point de vente ou la gestion de parc, pas d'offre libre.
+        boolean libresMasquees = enCaisse || moduleService.estActif(entreprise, ModuleApplicatif.GESTION_PARC);
         if (enCaisse && !sessionsTravail.uneCaisseOuverte()) {
             throw new BusinessException(MESSAGE_FERMETURE);
         }
@@ -145,7 +148,7 @@ public class CommandeEnLigneService {
             if (offre.getType() == Offre.Type.VEHICULE) {
                 throw new BusinessException("Un vehicule se loue par une demande de location, pas par le panier");
             }
-            if (enCaisse && offre.getType() == Offre.Type.LIBRE) {
+            if (libresMasquees && offre.getType() == Offre.Type.LIBRE) {
                 throw new BusinessException(offre.getTitre() + " n'est plus en vente");
             }
             if (!offreService.disponible(offre)) {
@@ -177,15 +180,34 @@ public class CommandeEnLigneService {
             urlPaiement = paiementService.initier(commande);
         }
         repository.save(commande);
-        if (restaurant) {
-            Commande salle = commandeSalleService.commandeEnLigne("En ligne · " + commande.getClientNom(),
-                    noteSalle(commande),
-                    commande.getLignes().stream().map(l -> new RestaurationDto.AjoutLigne(l.getArticleId(),
-                            BigDecimal.valueOf(l.getQuantite()), null)).toList(),
-                    commande.getId());
-            commande.setPdvCommandeId(salle.getId());
+        // Au restaurant, une commande a payer en ligne n'arrive en salle (et en cuisine) qu'une fois payee.
+        if (restaurant && d.modePaiement() != CommandeEnLigne.ModePaiement.MOBILE_MONEY) {
+            ouvrirEnSalle(commande);
         }
         return suivi(boutique, commande, urlPaiement);
+    }
+
+    /** Restaurant : la commande en ligne devient une commande de salle, a valider puis a preparer. */
+    private void ouvrirEnSalle(CommandeEnLigne commande) {
+        Commande salle = commandeSalleService.commandeEnLigne("En ligne · " + commande.getClientNom(),
+                noteSalle(commande),
+                commande.getLignes().stream().map(l -> new RestaurationDto.AjoutLigne(l.getArticleId(),
+                        BigDecimal.valueOf(l.getQuantite()), null)).toList(),
+                commande.getId());
+        commande.setPdvCommandeId(salle.getId());
+    }
+
+    /** Paiement en ligne confirme : la commande d'un restaurant part alors en salle. */
+    private void apresPaiement(CommandeEnLigne commande) {
+        if (commande.getPdvCommandeId() != null || commande.getStatut().terminal()) {
+            return;
+        }
+        Long entreprise = ContexteEntreprise.exiger();
+        boolean restaurant = moduleService.estActif(entreprise, ModuleApplicatif.POINT_DE_VENTE)
+                && "RESTAURATION".equals(moduleService.variante(entreprise, ModuleApplicatif.POINT_DE_VENTE));
+        if (restaurant && commande.getStatutPaiement() == CommandeEnLigne.StatutPaiement.PAYEE) {
+            ouvrirEnSalle(commande);
+        }
     }
 
     /** Ce que la caisse et la cuisine doivent savoir de la commande en ligne. */
@@ -213,6 +235,8 @@ public class CommandeEnLigneService {
 
     /** Relance le paiement en ligne d'une commande qui l'attend encore. */
     public MarketplaceDto.Suivi relancerPaiement(String jeton) {
+        limiteur.exiger("relance:" + jeton, 5, java.time.Duration.ofMinutes(15),
+                "Trop de relances du paiement : patientez quelques minutes, un paiement deja fait sera pris en compte");
         CommandeEnLigne commande = parJeton(jeton);
         if (!attendPaiement(commande)) {
             throw new BusinessException("Cette commande n'attend pas de paiement en ligne");
@@ -232,6 +256,7 @@ public class CommandeEnLigneService {
             throw new BusinessException("Cette commande n'attend pas de paiement en ligne");
         }
         paiementService.confirmer(commande, commande.getReferencePaiement());
+        apresPaiement(commande);
         return suivi(boutiqueService.courante(), repository.save(commande), null);
     }
 
@@ -274,6 +299,13 @@ public class CommandeEnLigneService {
             throw new BusinessException("La commande en ligne " + commande.getNumero() + " est deja "
                     + commande.getStatut().getLibelle().toLowerCase());
         }
+        // Le ticket reprend les articles et les prix de la commande : un ecart veut dire un panier modifie.
+        if (evenement.totalBrut() != null && evenement.totalBrut().compareTo(commande.getSousTotal()) != 0) {
+            throw new BusinessException("Le ticket (" + evenement.totalBrut().stripTrailingZeros().toPlainString()
+                    + " F) ne correspond pas a la commande en ligne " + commande.getNumero() + " ("
+                    + commande.getSousTotal().stripTrailingZeros().toPlainString()
+                    + " F hors livraison) : encaissez exactement les articles commandes");
+        }
         commande.setStatut(Statut.LIVREE);
         commande.setStatutPaiement(CommandeEnLigne.StatutPaiement.PAYEE);
         commande.setVenteId(evenement.venteId());
@@ -288,7 +320,9 @@ public class CommandeEnLigneService {
     public void venteAnnulee(VenteService.VenteAnnulee evenement) {
         repository.findFirstByVenteId(evenement.venteId()).ifPresent(commande -> {
             commande.setStatut(Statut.PRETE);
-            commande.setStatutPaiement(CommandeEnLigne.StatutPaiement.EN_ATTENTE);
+            // Payee en ligne : l'argent est deja recu, l'annulation du ticket ne le fait pas redemander.
+            commande.setStatutPaiement(commande.isPayeeEnLigne()
+                    ? CommandeEnLigne.StatutPaiement.PAYEE : CommandeEnLigne.StatutPaiement.EN_ATTENTE);
             commande.setVenteId(null);
         });
     }
@@ -418,11 +452,12 @@ public class CommandeEnLigneService {
                         article.getPrixAchat(), "Commande en ligne " + numero, null);
             }
         } else if (offre.getStock() != null) {
-            if (offre.getStock() < quantite) {
+            // Deux clients sur la derniere unite : un seul passe.
+            if (offreRepository.retirerStock(offre.getId(), quantite) == 0) {
+                Integer reste = offreRepository.findById(offre.getId()).map(Offre::getStock).orElse(0);
                 throw new BusinessException("Stock insuffisant pour " + offre.getTitre() + " : "
-                        + offre.getStock() + " disponible(s)");
+                        + Math.max(0, reste == null ? 0 : reste) + " disponible(s)");
             }
-            offre.setStock(offre.getStock() - quantite);
         }
     }
 

@@ -29,12 +29,18 @@ public class SecuritePresence {
     static final int PAS_SECONDES = 30;
     /** Un code scanne reste valable ce nombre de pas : le temps d'autoriser la position et de taper le PIN. */
     private static final int PAS_ACCEPTES = 6;
-    private static final int ESSAIS_MAX = 5;
-    private static final Duration BLOCAGE = Duration.ofMinutes(10);
+    /** Telephone (adresse) : PIN faux tolere dans la fenetre, avant blocage. */
+    private static final int ESSAIS_MAX_TELEPHONE = 10;
+    /** Borne partagee par tout le personnel : un peu plus large, et un blocage plus court. */
+    private static final int ESSAIS_MAX_BORNE = 15;
+    private static final Duration FENETRE = Duration.ofMinutes(10);
+    private static final Duration BLOCAGE_TELEPHONE = Duration.ofMinutes(10);
+    private static final Duration BLOCAGE_BORNE = Duration.ofMinutes(3);
 
     private final SecureRandom aleatoire = new SecureRandom();
     private final byte[] cle;
     private final Map<String, Essais> essais = new ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicLong numeros = new java.util.concurrent.atomic.AtomicLong();
 
     public SecuritePresence(@Value("${parcauto.security.jwt.secret}") String secret) {
         this.cle = ("presence:" + secret).getBytes(StandardCharsets.UTF_8);
@@ -119,33 +125,70 @@ public class SecuritePresence {
 
     // ------------------------------------------------------------- blocage apres PIN faux
 
-    /** Refuse un appareil bloque apres trop de PIN faux. */
-    public void verifierEssais(String appareil) {
-        Essais e = essais.get(appareil);
-        if (e != null && e.bloqueJusqua != null && Instant.now().isBefore(e.bloqueJusqua)) {
-            long minutes = Math.max(1, Duration.between(Instant.now(), e.bloqueJusqua).toMinutes() + 1);
-            throw new BusinessException("Trop de PIN faux : reessayez dans " + minutes + " min");
+    /**
+     * Reserve un essai de PIN pour l'appareil, en une operation atomique : les
+     * essais de la fenetre glissante sont comptes AVANT la verification, si bien
+     * que des envois paralleles ne depassent pas la limite. Un essai reussi est
+     * rendu ({@link #reussi}) ; un essai faux reste compte jusqu'a la fin de la
+     * fenetre, meme si l'appareil tape ensuite un bon PIN.
+     */
+    public long reserverEssai(String appareil) {
+        boolean borne = appareil.startsWith("borne:");
+        int maximum = borne ? ESSAIS_MAX_BORNE : ESSAIS_MAX_TELEPHONE;
+        Duration blocage = borne ? BLOCAGE_BORNE : BLOCAGE_TELEPHONE;
+        long numero = numeros.incrementAndGet();
+        Instant maintenant = Instant.now();
+        Instant[] bloque = {null};
+        essais.compute(appareil, (k, v) -> {
+            Essais e = v == null ? new Essais() : v;
+            if (e.bloqueJusqua != null && maintenant.isBefore(e.bloqueJusqua)) {
+                bloque[0] = e.bloqueJusqua;
+                return e;
+            }
+            e.bloqueJusqua = null;
+            e.essais.removeIf(t -> t.instant().isBefore(maintenant.minus(FENETRE)));
+            if (e.essais.size() >= maximum) {
+                e.bloqueJusqua = maintenant.plus(blocage);
+                e.essais.clear();
+                bloque[0] = e.bloqueJusqua;
+                return e;
+            }
+            e.essais.add(new Essai(numero, maintenant));
+            return e;
+        });
+        if (bloque[0] != null) {
+            long minutes = Math.max(1, Duration.between(maintenant, bloque[0]).toMinutes() + 1);
+            throw new BusinessException("Trop de PIN faux sur cet appareil : reessayez dans " + minutes + " min");
         }
+        return numero;
     }
 
-    /** Un PIN faux de plus ; vrai si l'appareil vient d'etre bloque. */
-    public boolean echec(String appareil) {
-        Essais e = essais.compute(appareil, (k, v) -> v == null || (v.bloqueJusqua != null && Instant.now().isAfter(v.bloqueJusqua))
-                ? new Essais() : v);
-        e.nombre++;
-        if (e.nombre >= ESSAIS_MAX) {
-            e.bloqueJusqua = Instant.now().plus(BLOCAGE);
-            return true;
-        }
-        return false;
+    /** L'essai reserve etait le bon PIN : il ne compte pas. Les faux precedents restent comptes. */
+    public void reussi(String appareil, long numero) {
+        essais.computeIfPresent(appareil, (k, e) -> {
+            e.essais.removeIf(t -> t.numero() == numero);
+            return e.essais.isEmpty() && e.bloqueJusqua == null ? null : e;
+        });
     }
 
-    public void succes(String appareil) {
-        essais.remove(appareil);
+    /** Oublie les appareils sans essai recent (la table ne grossit pas sans fin). */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 600_000)
+    public void purger() {
+        Instant limite = Instant.now().minus(FENETRE);
+        essais.entrySet().removeIf(en -> {
+            Essais e = en.getValue();
+            synchronized (e) {
+                return (e.bloqueJusqua == null || e.bloqueJusqua.isBefore(Instant.now()))
+                        && e.essais.stream().allMatch(t -> t.instant().isBefore(limite));
+            }
+        });
+    }
+
+    private record Essai(long numero, Instant instant) {
     }
 
     private static final class Essais {
-        private int nombre;
+        private final java.util.List<Essai> essais = new java.util.ArrayList<>();
         private Instant bloqueJusqua;
     }
 

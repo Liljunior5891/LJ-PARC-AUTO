@@ -99,6 +99,10 @@ public class Depense extends BaseEntity {
     @Column(name = "motif_refus", length = 255)
     private String motifRefus;
 
+    /** Correction proposee (saisie JSON) d'une depense deja validee, en attente de l'administrateur. */
+    @jakarta.persistence.Column(name = "correction_en_attente", columnDefinition = "TEXT")
+    private String correctionEnAttente;
+
     @Column(name = "annulee_par", length = 150)
     private String annuleePar;
 

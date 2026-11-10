@@ -120,7 +120,9 @@ public final class DepenseDto {
             String motifRefus,
             String annuleePar,
             Instant annuleeLe,
-            String motifAnnulation) {
+            String motifAnnulation,
+            /** Correction proposee d'une depense validee, a approuver : « libelle · montant · date ». */
+            String correctionProposee) {
 
         public static Reponse de(Depense d) {
             return de(d, null);
@@ -160,7 +162,20 @@ public final class DepenseDto {
                     d.getJustificatifChemin() != null, d.getJustificatifNom(),
                     d.getStatut(), d.getStatut().getLibelle(), d.getAuteurNom(), d.getCreeLe(),
                     d.getApprouveePar(), d.getApprouveeLe(), d.getRefuseePar(), d.getRefuseeLe(), d.getMotifRefus(),
-                    d.getAnnuleePar(), d.getAnnuleeLe(), d.getMotifAnnulation());
+                    d.getAnnuleePar(), d.getAnnuleeLe(), d.getMotifAnnulation(), resumeCorrection(d));
+        }
+
+        private static String resumeCorrection(Depense d) {
+            if (d.getCorrectionEnAttente() == null) {
+                return null;
+            }
+            try {
+                var n = new com.fasterxml.jackson.databind.ObjectMapper().readTree(d.getCorrectionEnAttente());
+                return n.path("libelle").asText("") + " · " + n.path("montant").asText("") + " F · "
+                        + n.path("dateDepense").asText("");
+            } catch (Exception e) {
+                return "Correction proposee";
+            }
         }
     }
 

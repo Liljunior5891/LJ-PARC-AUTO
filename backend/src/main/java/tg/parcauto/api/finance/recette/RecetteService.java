@@ -172,6 +172,15 @@ public class RecetteService {
     public RecetteDto.Reponse modifier(Long id, RecetteDto.Requete requete) {
         verifierDisponibilite(requete, id);
         Recette recette = charger(id);
+        if (recette.getFacture() != null && recette.getFacture().getStatut() != tg.parcauto.api.finance.facture.StatutFacture.ANNULEE) {
+            boolean montant = recette.getMontant().compareTo(requete.montant()) != 0;
+            boolean camion = !recette.getCamion().getId().equals(requete.camionId());
+            boolean client = !java.util.Objects.equals(recette.getClient() == null ? null : recette.getClient().getId(), requete.clientId());
+            if (montant || camion || client) {
+                throw new BusinessException("La recette est rattachee a la facture " + recette.getFacture().getNumero()
+                        + " : son montant, son vehicule et son client ne changent plus. Annulez la facture pour corriger.");
+            }
+        }
         appliquer(recette, requete);
         return RecetteDto.Reponse.de(repository.save(recette));
     }

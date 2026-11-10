@@ -20,10 +20,10 @@
 <div class="carte barre-filtres">
   <div class="filtres-ligne">
     <button class="bouton secondaire" type="button" (click)="decaler(-1)" aria-label="Jour precedent">‹</button>
-    <input type="date" [max]="aujourdhui" [ngModel]="date()" (ngModelChange)="changerDate($event)" aria-label="Date" />
-    <button class="bouton secondaire" type="button" (click)="decaler(1)" [disabled]="date() >= aujourdhui" aria-label="Jour suivant">›</button>
-    @if (date() !== aujourdhui) {
-      <button class="bouton secondaire info" type="button" (click)="changerDate(aujourdhui)">Aujourd'hui</button>
+    <input type="date" [max]="aujourdhui()" [ngModel]="date()" (ngModelChange)="changerDate($event)" aria-label="Date" />
+    <button class="bouton secondaire" type="button" (click)="decaler(1)" [disabled]="date() >= aujourdhui()" aria-label="Jour suivant">›</button>
+    @if (date() !== aujourdhui()) {
+      <button class="bouton secondaire info" type="button" (click)="changerDate(aujourdhui())">Aujourd'hui</button>
     }
     @if (lieux().length > 1) {
       <div class="filtre">

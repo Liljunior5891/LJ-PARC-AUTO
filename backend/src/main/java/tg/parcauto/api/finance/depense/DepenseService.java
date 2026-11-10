@@ -57,6 +57,7 @@ public class DepenseService {
     private final DepenseRecurrenteParcRepository recurrentes;
     private final ReglageParcRepository reglages;
     private final StockageFichierService stockage;
+    private final com.fasterxml.jackson.databind.ObjectMapper json;
 
     // ---------------------------------------------------------------- lecture
 
@@ -151,6 +152,10 @@ public class DepenseService {
         Depense enregistree = repository.save(depense);
         BigDecimal acompte = requete.acompte();
         if (enregistree.isAPayer() && acompte != null && acompte.signum() > 0) {
+            if (enregistree.getStatut() == StatutDepense.ATTENTE_ADMIN) {
+                throw new BusinessException("Avec la validation des depenses, l'acompte se regle apres l'approbation"
+                        + " de l'administrateur : enregistrez la depense sans acompte, puis reglez-la une fois validee");
+            }
             if (acompte.compareTo(enregistree.getMontant()) > 0) {
                 throw new BusinessException("L'acompte depasse le montant de la depense");
             }
@@ -174,6 +179,21 @@ public class DepenseService {
      */
     public DepenseDto.Reponse modifier(Long id, DepenseDto.Requete requete) {
         Depense depense = chargerActive(id);
+        if (depense.getStatut() == StatutDepense.VALIDEE && validationRequise()) {
+            // Depense validee (peut-etre deja reglee) : la correction attend l'administrateur a cote,
+            // la depense et ses reglements restent tels quels jusqu'a sa decision.
+            BigDecimal dejaRegle = reglements.regle(id);
+            if (requete.montant().compareTo(dejaRegle) < 0) {
+                throw new BusinessException("Le montant ne peut pas etre inferieur au total deja regle ("
+                        + dejaRegle.setScale(0, RoundingMode.HALF_UP).toPlainString() + " F)");
+            }
+            try {
+                depense.setCorrectionEnAttente(json.writeValueAsString(requete));
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+                throw new IllegalStateException(e);
+            }
+            return reponse(repository.save(depense));
+        }
         appliquer(depense, requete);
         BigDecimal regle = depense.isAPayer() ? reglements.regle(id) : BigDecimal.ZERO;
         if (!depense.isAPayer() && reglements.regle(id).signum() > 0) {
@@ -182,11 +202,6 @@ public class DepenseService {
         if (regle.compareTo(depense.getMontant()) > 0) {
             throw new BusinessException("Le montant ne peut pas etre inferieur au total deja regle ("
                     + regle.setScale(0, RoundingMode.HALF_UP).toPlainString() + " F)");
-        }
-        if (depense.getStatut() == StatutDepense.VALIDEE && validationRequise()) {
-            depense.setStatut(StatutDepense.ATTENTE_ADMIN);
-            depense.setApprouveePar(null);
-            depense.setApprouveeLe(null);
         }
         return reponse(repository.save(depense));
     }
@@ -216,11 +231,28 @@ public class DepenseService {
 
     @Transactional(readOnly = true)
     public long nombreAValider() {
-        return repository.countByStatut(StatutDepense.ATTENTE_ADMIN);
+        return repository.countByStatut(StatutDepense.ATTENTE_ADMIN) + repository.countByCorrectionEnAttenteIsNotNull();
     }
 
     /** Approbation de l'administrateur : la depense compte dans les resultats. */
     public DepenseDto.Reponse valider(Long id) {
+        Depense correction = charger(id);
+        if (correction.getCorrectionEnAttente() != null) {
+            // Correction approuvee : elle s'applique maintenant a la depense validee.
+            DepenseDto.Requete requete;
+            try {
+                requete = json.readValue(correction.getCorrectionEnAttente(), DepenseDto.Requete.class);
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+                throw new BusinessException("Correction illisible : refusez-la et faites-la ressaisir");
+            }
+            correction.setCorrectionEnAttente(null);
+            appliquer(correction, requete);
+            UtilisateurPrincipal admin = courant();
+            correction.setApprouveePar(admin == null ? null : admin.getNomComplet());
+            correction.setApprouveeLe(Instant.now());
+            mettreAJourCompteurCamion(correction);
+            return reponse(repository.save(correction));
+        }
         Depense depense = enAttente(id);
         UtilisateurPrincipal admin = courant();
         depense.setStatut(StatutDepense.VALIDEE);
@@ -231,6 +263,16 @@ public class DepenseService {
 
     /** Refus de l'administrateur : un acompte saisi avec la depense est annule avec elle. */
     public DepenseDto.Reponse refuser(Long id, String motif) {
+        Depense correction = charger(id);
+        if (correction.getCorrectionEnAttente() != null) {
+            // Correction refusee : la depense validee et ses reglements ne bougent pas.
+            correction.setCorrectionEnAttente(null);
+            UtilisateurPrincipal admin = courant();
+            correction.setRefuseePar(admin == null ? null : admin.getNomComplet());
+            correction.setRefuseeLe(Instant.now());
+            correction.setMotifRefus("Correction refusee : " + motif.trim());
+            return reponse(correction);
+        }
         Depense depense = enAttente(id);
         UtilisateurPrincipal admin = courant();
         String nom = admin == null ? null : admin.getNomComplet();

@@ -170,10 +170,7 @@ public class DepenseAgenceController {
     public ResponseEntity<Resource> justificatif(@PathVariable Long id) {
         DepenseAgenceService.DepenseDto d = service.detail(id);
         String nom = d.justificatifNom() == null ? "justificatif-" + d.numero() : d.justificatifNom();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nom.replace("\"", "") + "\"")
-                .contentType(MediaTypeFactory.getMediaType(nom).orElse(MediaType.APPLICATION_OCTET_STREAM))
-                .body(service.justificatif(id));
+        return tg.parcauto.api.common.FichierServi.reponse(service.justificatif(id), nom, true);
     }
 
     @GetMapping("/recurrentes")

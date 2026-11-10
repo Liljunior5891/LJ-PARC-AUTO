@@ -30,8 +30,9 @@ export class TableauBordPresence implements OnInit {
   private readonly service = inject(PresenceService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly aujourdhui = new Date().toISOString().slice(0, 10);
-  readonly date = signal(this.aujourdhui);
+  /** Jour courant, avance a minuit : un ecran laisse ouvert passe tout seul au jour suivant. */
+  readonly aujourdhui = signal(new Date().toISOString().slice(0, 10));
+  readonly date = signal(this.aujourdhui());
   readonly lieuId = signal<number | null>(null);
   readonly filtre = signal<StatutPresence | 'TOUS'>('TOUS');
   readonly recherche = signal('');
@@ -67,7 +68,15 @@ export class TableauBordPresence implements OnInit {
     this.charger();
     this.service.lieux().subscribe({ next: (l) => this.lieux.set(l) });
     const minuterie = setInterval(() => {
-      if (this.date() === this.aujourdhui && !document.hidden) {
+      const veille = this.aujourdhui();
+      const jour = new Date().toISOString().slice(0, 10);
+      if (jour !== veille) {
+        this.aujourdhui.set(jour);
+        if (this.date() === veille) {
+          this.date.set(jour);
+        }
+      }
+      if (this.date() === this.aujourdhui() && !document.hidden) {
         this.charger();
       }
     }, INTERVALLE);
@@ -75,7 +84,7 @@ export class TableauBordPresence implements OnInit {
   }
 
   changerDate(date: string): void {
-    this.date.set(date || this.aujourdhui);
+    this.date.set(date || this.aujourdhui());
     this.charger();
   }
 
@@ -83,7 +92,7 @@ export class TableauBordPresence implements OnInit {
     const d = new Date(this.date() + 'T12:00:00');
     d.setDate(d.getDate() + jours);
     const iso = d.toISOString().slice(0, 10);
-    if (iso <= this.aujourdhui) {
+    if (iso <= this.aujourdhui()) {
       this.changerDate(iso);
     }
   }

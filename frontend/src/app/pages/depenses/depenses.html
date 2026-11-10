@@ -313,7 +313,9 @@
                 <td>{{ d.dateDepense | date: 'dd/MM/yyyy' }}<br /><small>{{ d.auteurNom }}</small></td>
                 <td class="cliquable" (click)="detail.set(d)"><strong>{{ d.numero }}</strong></td>
                 <td>@if (d.chargeGenerale) { 🏢 {{ d.categorieChargeNom }} } @else { {{ d.camionImmatriculation }} · {{ d.sousCategorieLibelle }} }</td>
-                <td>{{ d.libelle }}</td>
+                <td>{{ d.libelle }}
+                  @if (d.correctionProposee) { <br /><small class="correction">Correction proposee : {{ d.correctionProposee }}</small> }
+                </td>
                 <td>{{ d.fournisseurNom || '—' }}@if (d.aPayer) { <br /><small>a payer</small> }</td>
                 <td class="numerique"><strong>{{ d.montant | number }}</strong></td>
                 <td style="white-space: nowrap; text-align: right">
@@ -337,7 +339,8 @@
         <strong>Valider les depenses du gestionnaire</strong>
       </label>
       <p class="aide">Active, une depense saisie par le gestionnaire de parc (y compris celle creee par un entretien) attend votre
-        approbation avant de compter dans les resultats. Une depense deja validee qu'il corrige repart chez vous.
+        approbation avant de compter dans les resultats. S'il corrige une depense deja validee, la correction vous attend ici :
+        la depense et ses reglements ne changent qu'a votre approbation.
         Vos propres depenses comptent tout de suite.</p>
     </div>
     <div class="carte">

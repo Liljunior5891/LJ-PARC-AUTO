@@ -64,4 +64,8 @@ public interface FactureRepository extends JpaRepository<Facture, Long>,
               and f.dateEmission between :debut and :fin
             """)
     BigDecimal chiffreFactureSurPeriode(@Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
+
+    boolean existsByLocationIdAndStatutNot(Long locationId, StatutFacture statut);
+
+    boolean existsByMissionIdAndStatutNot(Long missionId, StatutFacture statut);
 }

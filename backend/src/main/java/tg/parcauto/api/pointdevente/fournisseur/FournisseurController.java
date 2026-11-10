@@ -153,11 +153,7 @@ public class FournisseurController {
             throw ResourceNotFoundException.of("Document", documentId);
         }
         String nom = meta.fichierNom() == null ? "document-" + documentId : meta.fichierNom();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nom + "\"")
-                .contentType(meta.fichierType() == null ? MediaType.APPLICATION_OCTET_STREAM
-                        : MediaType.parseMediaType(meta.fichierType()))
-                .body(pieces.telecharger(documentId));
+        return tg.parcauto.api.common.FichierServi.reponse(pieces.telecharger(documentId), nom, false);
     }
 
     @PostMapping("/documents/{documentId}/archivage")

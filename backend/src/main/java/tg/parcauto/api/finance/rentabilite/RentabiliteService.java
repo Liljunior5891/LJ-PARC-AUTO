@@ -67,7 +67,8 @@ public class RentabiliteService {
                                 Function.identity()));
 
         List<RentabiliteDto.LigneCamion> lignes = camionRepository.findAll().stream()
-                .filter(Camion::isActif)
+                // Un vehicule vendu ou archive reste compte pour les periodes ou il a eu recettes ou depenses.
+                .filter(c -> c.isActif() || recettes.containsKey(c.getId()) || depenses.containsKey(c.getId()))
                 .sorted(Comparator.comparing(Camion::getImmatriculation))
                 .map(camion -> ligne(camion,
                         recettes.getOrDefault(camion.getId(), BigDecimal.ZERO),

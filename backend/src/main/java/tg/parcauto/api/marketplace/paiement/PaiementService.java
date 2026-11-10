@@ -34,6 +34,13 @@ public class PaiementService {
         FournisseurPaiement f = fournisseur.orElseThrow(() ->
                 new BusinessException("Le paiement en ligne n'est pas disponible pour le moment"));
         FournisseurPaiement.Initiation initiation = f.initier(commande);
+        // Relance : l'ancienne transaction peut encore aboutir, sa reference reste reconnue.
+        String ancienne = commande.getReferencePaiement();
+        if (ancienne != null && !ancienne.equals(initiation.reference())) {
+            String liste = commande.getReferencesPrecedentes() == null ? ancienne
+                    : commande.getReferencesPrecedentes() + "," + ancienne;
+            commande.setReferencesPrecedentes(liste.length() > 1000 ? liste.substring(liste.length() - 1000) : liste);
+        }
         commande.setReferencePaiement(initiation.reference());
         return initiation.urlPaiement();
     }
@@ -43,9 +50,20 @@ public class PaiementService {
      * transaction lancee pour cette commande.
      */
     public void confirmer(CommandeEnLigne commande, String reference) {
-        if (commande.getReferencePaiement() == null || !commande.getReferencePaiement().equals(reference)) {
+        boolean courante = reference != null && reference.equals(commande.getReferencePaiement());
+        boolean precedente = reference != null && commande.getReferencesPrecedentes() != null
+                && java.util.Arrays.asList(commande.getReferencesPrecedentes().split(",")).contains(reference);
+        if (!courante && !precedente) {
             throw new BusinessException("Reference de paiement inconnue pour cette commande");
         }
+        if (commande.isPayeeEnLigne()) {
+            // Deja payee : une seconde transaction confirmee est un double paiement a rembourser.
+            org.slf4j.LoggerFactory.getLogger(PaiementService.class).warn(
+                    "Commande {} deja payee en ligne : la transaction {} est un double paiement a rembourser",
+                    commande.getNumero(), reference);
+            return;
+        }
         commande.setStatutPaiement(CommandeEnLigne.StatutPaiement.PAYEE);
+        commande.setPayeeEnLigne(true);
     }
 }

@@ -40,6 +40,7 @@ export class TableauBord implements OnInit {
   readonly finances = signal<TableauBordFinances | null>(null);
   /** Gestion de parc avec Marketplace : le chiffre d'affaires se detaille, en ligne et en agence. */
   readonly avecEnLigne = inject(AuthService).aModule('MARKETPLACE');
+  readonly voitFinances = inject(AuthService).aRole('ADMIN', 'GESTIONNAIRE_PARC');
   readonly evolution = signal<EvolutionMensuelle[]>([]);
   readonly depensesParCategorie = signal<LigneCategorieDepense[]>([]);
   /** Recettes, depenses et kilometres de chaque camion sur le mois en cours. */
@@ -233,6 +234,13 @@ export class TableauBord implements OnInit {
       }
     });
     const { debut, fin } = this.intervalle();
+    // Les chiffres financiers ne sont servis qu'aux gestionnaires et a l'administrateur.
+    if (!this.voitFinances) {
+      this.missionService.lister({ size: 5 }).subscribe({
+        next: (page) => this.dernieresMissions.set(page.content)
+      });
+      return;
+    }
     this.rentabiliteService.finances(debut, fin).subscribe({
       next: (donnees) => this.finances.set(donnees)
     });

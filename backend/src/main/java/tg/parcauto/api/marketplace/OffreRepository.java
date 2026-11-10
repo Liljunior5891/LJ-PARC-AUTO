@@ -13,4 +13,11 @@ public interface OffreRepository extends JpaRepository<Offre, Long> {
     boolean existsByArticleId(Long articleId);
 
     boolean existsByCamionId(Long camionId);
+
+    /** Retire du stock si assez reste, en une operation : 0 ligne touchee = stock insuffisant. */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query(
+            "update Offre o set o.stock = o.stock - :quantite where o.id = :id and o.stock >= :quantite")
+    int retirerStock(@org.springframework.data.repository.query.Param("id") Long id,
+                     @org.springframework.data.repository.query.Param("quantite") int quantite);
 }

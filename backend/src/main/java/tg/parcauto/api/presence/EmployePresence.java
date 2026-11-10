@@ -59,6 +59,10 @@ public class EmployePresence extends BaseEntity {
     @Column(nullable = false)
     private boolean actif = true;
 
+    /** Jour de la desactivation : des ce jour, l'employe n'est plus attendu. */
+    @Column(name = "desactive_le")
+    private LocalDate desactiveLe;
+
     /** Lieux ou l'employe peut pointer. */
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "pres_employe_lieu",
