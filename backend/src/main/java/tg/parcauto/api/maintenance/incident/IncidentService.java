@@ -39,6 +39,9 @@ import java.util.List;
 public class IncidentService {
 
     private final IncidentRepository repository;
+    private final tg.parcauto.api.maintenance.EtatVehicule etatVehicule;
+    private final tg.parcauto.api.parc.affectation.AffectationRepository affectations;
+    private final tg.parcauto.api.exploitation.mission.MissionRepository missions;
     private final CamionService camionService;
     private final CamionRepository camionRepository;
     private final ChauffeurService chauffeurService;
@@ -65,12 +68,25 @@ public class IncidentService {
     /** Declare un incident et notifie le responsable. */
     public IncidentDto.Reponse declarer(IncidentDto.Requete requete) {
         Camion camion = camionService.charger(requete.camionId());
+        Long chauffeurDeclare = requete.chauffeurId();
+        if (tg.parcauto.api.security.Terrain.chauffeurSeul()) {
+            // Sur le terrain, on declare pour son vehicule et en son nom.
+            Long moi = tg.parcauto.api.security.Terrain.chauffeurId();
+            boolean confie = moi != null && (affectations.affectationCouranteDuCamion(camion.getId())
+                    .map(a -> a.getChauffeur().getId().equals(moi)).orElse(false)
+                    || missions.missionEnCoursDuCamion(camion.getId())
+                    .map(m -> m.getChauffeur() != null && m.getChauffeur().getId().equals(moi)).orElse(false));
+            if (!confie) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Le vehicule " + camion.getImmatriculation() + " ne vous est pas confie");
+            }
+            chauffeurDeclare = moi;
+        }
 
         Incident incident = new Incident();
         incident.setNumero(numerotation.prochainNumero("INC"));
         incident.setCamion(camion);
-        incident.setChauffeur(requete.chauffeurId() == null
-                ? null : chauffeurService.charger(requete.chauffeurId()));
+        incident.setChauffeur(chauffeurDeclare == null ? null : chauffeurService.charger(chauffeurDeclare));
         incident.setMission(requete.missionId() == null
                 ? null : missionService.charger(requete.missionId()));
         incident.setType(requete.type());
@@ -102,6 +118,12 @@ public class IncidentService {
         if (incident.getStatut() == StatutIncident.CLOS) {
             throw new BusinessException("Cet incident est clos");
         }
+        // Resolu : il ne reste qu'a le clore (rouvrir un incident resolu le laisserait incoherent).
+        if (incident.getStatut() == StatutIncident.RESOLU
+                && (traitement.statut() != StatutIncident.CLOS || Boolean.TRUE.equals(traitement.ouvrirEntretien()))) {
+            throw new BusinessException("Cet incident est resolu : il ne peut plus que etre clos."
+                    + " Declarez un nouvel incident si le probleme revient");
+        }
 
         incident.setStatut(traitement.statut());
         if (traitement.resolution() != null && !traitement.resolution().isBlank()) {
@@ -114,7 +136,7 @@ public class IncidentService {
             incident.setResoluLe(Instant.now());
             libererCamion(incident);
         }
-        if (Boolean.TRUE.equals(traitement.ouvrirEntretien()) && incident.getEntretien() == null) {
+        if (Boolean.TRUE.equals(traitement.ouvrirEntretien()) && incident.getEntretien() == null && !traitement.statut().clos()) {
             ouvrirEntretien(incident);
         }
         return IncidentDto.Reponse.de(repository.save(incident));
@@ -125,7 +147,10 @@ public class IncidentService {
         return repository.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Incident", id));
     }
 
-    /** Le camion redevient disponible s'il n'est pas retenu par un autre incident ouvert. */
+    /**
+     * L'incident resolu ne retient plus le vehicule : son statut est recalcule
+     * (autre incident ouvert, atelier, mission ou contrat en cours).
+     */
     private void libererCamion(Incident incident) {
         Camion camion = incident.getCamion();
         boolean immobilisePar = camion.getStatut() == StatutCamion.IMMOBILISE
@@ -133,13 +158,9 @@ public class IncidentService {
         if (!incident.isImmobilisant() || !immobilisePar) {
             return;
         }
-        long autresOuverts = repository.countByCamionIdAndStatutIn(camion.getId(),
-                List.of(StatutIncident.DECLARE, StatutIncident.PRIS_EN_CHARGE,
-                        StatutIncident.EN_REPARATION)) - 1;
-        if (autresOuverts <= 0) {
-            camion.setStatut(StatutCamion.DISPONIBLE);
-            camionRepository.save(camion);
-        }
+        repository.saveAndFlush(incident);
+        etatVehicule.recalculer(camion);
+        camionRepository.save(camion);
     }
 
     /** Ouvre une intervention de reparation rattachee a l'incident. */

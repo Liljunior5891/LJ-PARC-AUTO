@@ -44,4 +44,17 @@ public interface PositionGpsRepository extends JpaRepository<PositionGps, Long> 
     List<PositionGps> dernieres(@Param("camionId") Long camionId, Pageable pageable);
 
     long countByCamionIdAndHorodatageBetween(Long camionId, Instant debut, Instant fin);
+
+    /** Point qui precede, dans le temps de la mesure, celui que l'on recoit (meme arrive en retard). */
+    Optional<PositionGps> findFirstByCamionIdAndHorodatageLessThanOrderByHorodatageDesc(Long camionId, Instant horodatage);
+
+    /** Dernier point connu a cet instant ou avant. */
+    Optional<PositionGps> findFirstByCamionIdAndHorodatageLessThanEqualOrderByHorodatageDesc(Long camionId, Instant horodatage);
+
+    /** Points « en mouvement » (plus de 3 km/h) sur la periode. */
+    @Query("""
+            select count(p) from PositionGps p
+            where p.camion.id = :camionId and p.horodatage > :debut and p.horodatage <= :fin and p.vitesseKmh > 3
+            """)
+    long compterEnMouvement(@Param("camionId") Long camionId, @Param("debut") Instant debut, @Param("fin") Instant fin);
 }

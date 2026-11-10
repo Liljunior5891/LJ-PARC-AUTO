@@ -30,20 +30,28 @@ public class AdaptateurTraccar implements AdaptateurGps {
         if (charge == null || charge.isNull()) {
             return positions;
         }
-        JsonNode elements = charge.isArray() ? charge : charge.path("positions");
-        if (elements.isMissingNode() || elements.isNull()) {
-            positions.add(lire(charge));
+        // Transfert Traccar (forward.json) : {"position": {...}, "device": {"uniqueId": "IMEI"}}.
+        if (charge.has("position") && charge.get("position").isObject()) {
+            positions.add(lire(charge.get("position"), charge.path("device").path("uniqueId").asText(null)));
             return positions;
         }
-        elements.forEach(noeud -> positions.add(lire(noeud)));
+        JsonNode elements = charge.isArray() ? charge : charge.path("positions");
+        if (elements.isMissingNode() || elements.isNull()) {
+            positions.add(lire(charge, null));
+            return positions;
+        }
+        elements.forEach(noeud -> positions.add(noeud.has("position") && noeud.get("position").isObject()
+                ? lire(noeud.get("position"), noeud.path("device").path("uniqueId").asText(null))
+                : lire(noeud, null)));
         return positions;
     }
 
-    private PositionBrute lire(JsonNode noeud) {
+    private PositionBrute lire(JsonNode noeud, String uniqueIdAppareil) {
         JsonNode attributs = noeud.path("attributes");
         BigDecimal vitesseNoeuds = AdaptateurGenerique.decimal(noeud, "speed");
         return new PositionBrute(
-                noeud.hasNonNull("uniqueId") ? noeud.get("uniqueId").asText()
+                uniqueIdAppareil != null ? uniqueIdAppareil
+                        : noeud.hasNonNull("uniqueId") ? noeud.get("uniqueId").asText()
                         : AdaptateurGenerique.texte(noeud, "deviceId"),
                 AdaptateurGenerique.decimal(noeud, "latitude"),
                 AdaptateurGenerique.decimal(noeud, "longitude"),

@@ -30,7 +30,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import tg.parcauto.api.security.Autorisations;
-
+
+// Donnees de gestion (clients, contrats, personnel, pieces) : pas pour les chauffeurs.
+@org.springframework.security.access.prepost.PreAuthorize(tg.parcauto.api.security.Autorisations.GESTION)
 @RestController
 @ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/documents")

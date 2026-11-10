@@ -11,6 +11,7 @@ import {
   TypeMission
 } from '../../core/models/exploitation';
 import { Camion, Chauffeur } from '../../core/models/models';
+import { AuthService } from '../../core/auth/auth.service';
 import { CamionService } from '../../core/services/camion.service';
 import { ChauffeurService } from '../../core/services/chauffeur.service';
 import { ClientService } from '../../core/services/client.service';
@@ -26,6 +27,7 @@ import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 export class MissionFiche implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(MissionService);
+  private readonly auth = inject(AuthService);
   private readonly clientService = inject(ClientService);
   private readonly camionService = inject(CamionService);
   private readonly chauffeurService = inject(ChauffeurService);
@@ -73,6 +75,14 @@ export class MissionFiche implements OnInit {
   }
 
   ngOnInit(): void {
+    // Listes du formulaire : seul le gestionnaire modifie une mission (le chauffeur la demarre et la cloture).
+    if (this.auth.peutGererParc()) {
+      this.chargerListes();
+    }
+    this.chargerMission();
+  }
+
+  private chargerListes(): void {
     this.clientService.lister({ actif: true, size: 200 }).subscribe({
       next: (page) => this.clients.set(page.content)
     });
@@ -85,6 +95,9 @@ export class MissionFiche implements OnInit {
     this.locationService.actives().subscribe({
       next: (contrats) => this.contrats.set(contrats)
     });
+  }
+
+  private chargerMission(): void {
 
     const parametre = this.route.snapshot.paramMap.get('id');
     if (parametre && parametre !== 'nouvelle') {

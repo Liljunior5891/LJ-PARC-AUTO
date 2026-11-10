@@ -12,10 +12,10 @@ import java.util.Optional;
 public interface AffectationRepository extends JpaRepository<Affectation, Long>,
         JpaSpecificationExecutor<Affectation> {
 
-    @Query("select a from Affectation a join fetch a.chauffeur where a.camion.id = :camionId and a.dateFin is null")
+    @Query("select a from Affectation a join fetch a.chauffeur where a.camion.id = :camionId and a.dateDebut <= CURRENT_DATE and (a.dateFin is null or a.dateFin >= CURRENT_DATE)")
     Optional<Affectation> affectationCouranteDuCamion(@Param("camionId") Long camionId);
 
-    @Query("select a from Affectation a join fetch a.camion where a.chauffeur.id = :chauffeurId and a.dateFin is null")
+    @Query("select a from Affectation a join fetch a.camion where a.chauffeur.id = :chauffeurId and a.dateDebut <= CURRENT_DATE and (a.dateFin is null or a.dateFin >= CURRENT_DATE)")
     Optional<Affectation> affectationCouranteDuChauffeur(@Param("chauffeurId") Long chauffeurId);
 
     /**
@@ -32,8 +32,9 @@ public interface AffectationRepository extends JpaRepository<Affectation, Long>,
                                              @Param("chauffeurId") Long chauffeurId,
                                              @Param("debut") LocalDate debut);
 
-    @Query("select a from Affectation a join fetch a.camion join fetch a.chauffeur where a.dateFin is null")
+    @Query("select a from Affectation a join fetch a.camion join fetch a.chauffeur where a.dateDebut <= CURRENT_DATE and (a.dateFin is null or a.dateFin >= CURRENT_DATE)")
     List<Affectation> affectationsEnCours();
 
-    long countByDateFinIsNull();
+    @Query("select count(a) from Affectation a where a.dateDebut <= CURRENT_DATE and (a.dateFin is null or a.dateFin >= CURRENT_DATE)")
+    long compterEnCours();
 }

@@ -34,18 +34,37 @@ public class GpsController {
     private final CarteParcService carteService;
     private final tg.parcauto.api.gps.position.PositionGpsService positionService;
     private final RegistreAdaptateurs registre;
+    private final JetonGpsService jetons;
 
     /**
-     * Point d'entree des traceurs. Le fournisseur figure dans l'URL : la charge
-     * utile est traduite par l'adaptateur correspondant (chapitre 22).
+     * Saisie manuelle de positions par l'administrateur (essais). Les traceurs
+     * envoient sur /api/public/gps/positions/{fournisseur} avec le jeton GPS.
      */
     @PostMapping("/positions/{fournisseur}")
-    @PreAuthorize(Autorisations.GESTION)
+    @PreAuthorize(Autorisations.ADMINISTRATION)
     @ResponseStatus(HttpStatus.ACCEPTED)
     @Operation(summary = "Recoit les positions d'un fournisseur de traceurs")
     public int ingerer(@PathVariable String fournisseur, @RequestBody JsonNode charge) {
         var positions = registre.pour(fournisseur).convertir(charge);
         return positionService.enregistrer(positions, fournisseur).size();
+    }
+
+    @GetMapping("/jeton")
+    @PreAuthorize(Autorisations.ADMINISTRATION)
+    @Operation(summary = "Etat du jeton GPS de l'entreprise (sans le jeton lui-meme)")
+    public JetonGpsService.Etat etatJeton() {
+        return jetons.etat();
+    }
+
+    public record NouveauJeton(String jeton, String adresse) {
+    }
+
+    @PostMapping("/jeton")
+    @PreAuthorize(Autorisations.ADMINISTRATION)
+    @Operation(summary = "Genere (ou remplace) le jeton GPS de l'entreprise ; il n'est montre qu'une fois")
+    public NouveauJeton genererJeton() {
+        String jeton = jetons.generer();
+        return new NouveauJeton(jeton, "/api/public/gps/positions/traccar?jeton=" + jeton);
     }
 
     @GetMapping("/fournisseurs")
@@ -70,6 +89,10 @@ public class GpsController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fin) {
         Instant finRetenue = fin == null ? Instant.now() : fin;
         Instant debutRetenu = debut == null ? finRetenue.minusSeconds(86_400) : debut;
+        // Un trajet se lit sur un mois au plus.
+        if (debutRetenu.isBefore(finRetenue.minus(java.time.Duration.ofDays(31)))) {
+            debutRetenu = finRetenue.minus(java.time.Duration.ofDays(31));
+        }
         return carteService.trajet(camionId, debutRetenu, finRetenue);
     }
 

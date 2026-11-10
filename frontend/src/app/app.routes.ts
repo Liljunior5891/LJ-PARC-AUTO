@@ -102,26 +102,31 @@ export const routes: Routes = [
           },
           {
             path: 'chauffeurs',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/chauffeurs/chauffeurs-liste').then((m) => m.ChauffeursListe),
             title: 'Chauffeurs — LJ SaaS'
           },
           {
             path: 'chauffeurs/nouveau',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/chauffeurs/chauffeur-fiche').then((m) => m.ChauffeurFiche),
             title: 'Nouveau chauffeur — LJ SaaS'
           },
           {
             path: 'chauffeurs/:id',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/chauffeurs/chauffeur-fiche').then((m) => m.ChauffeurFiche),
             title: 'Fiche chauffeur — LJ SaaS'
           },
           {
             path: 'affectations',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/affectations/affectations').then((m) => m.Affectations),
             title: 'Affectations — LJ SaaS'
           },
           {
             path: 'documents',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/documents/documents').then((m) => m.Documents),
             title: 'Documents — LJ SaaS'
           },
@@ -129,31 +134,37 @@ export const routes: Routes = [
           // --- Exploitation ----------------------------------------------------
           {
             path: 'clients',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/clients/clients-liste').then((m) => m.ClientsListe),
             title: 'Clients — LJ SaaS'
           },
           {
             path: 'clients/nouveau',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/clients/client-fiche').then((m) => m.ClientFiche),
             title: 'Nouveau client — LJ SaaS'
           },
           {
             path: 'clients/:id',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/clients/client-fiche').then((m) => m.ClientFiche),
             title: 'Fiche client — LJ SaaS'
           },
           {
             path: 'locations',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             redirectTo: '/recettes',
             title: 'Contrats de location — LJ SaaS'
           },
           {
             path: 'locations/nouveau',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             redirectTo: '/recettes',
             title: 'Nouveau contrat — LJ SaaS'
           },
           {
             path: 'locations/:id',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             redirectTo: '/recettes',
             title: 'Contrat de location — LJ SaaS'
           },
@@ -215,6 +226,7 @@ export const routes: Routes = [
           },
           {
             path: 'maintenance',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/maintenance/maintenance').then((m) => m.Maintenance),
             title: 'Maintenance — LJ SaaS'
           },

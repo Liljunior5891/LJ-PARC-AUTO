@@ -28,6 +28,11 @@ public enum StatutCamion {
         return this != VENDU && this != HORS_SERVICE;
     }
 
+    /** Statut pose par une operation (contrat, mission, livraison), jamais a la main. */
+    public boolean engage() {
+        return this == EN_LOCATION || this == EN_MISSION || this == EN_LIVRAISON;
+    }
+
     /** Le camion peut recevoir une nouvelle affectation ou mission. */
     public boolean affectable() {
         return this == DISPONIBLE;

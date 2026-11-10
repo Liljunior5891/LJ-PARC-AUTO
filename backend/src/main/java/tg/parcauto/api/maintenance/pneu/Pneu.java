@@ -81,6 +81,10 @@ public class Pneu extends BaseEntity {
     @Column(name = "kilometrage_depose")
     private Long kilometrageDepose;
 
+    /** Kilometres faits lors des montages precedents (le pneu garde son usure d'un vehicule a l'autre). */
+    @Column(name = "kilometres_anterieurs", nullable = false)
+    private long kilometresAnterieurs;
+
     @Column(name = "duree_vie_prevue_km")
     private Long dureeViePrevueKm;
 
@@ -100,7 +104,7 @@ public class Pneu extends BaseEntity {
         }
         Long fin = kilometrageDepose != null ? kilometrageDepose
                 : camion != null ? camion.getKilometrageActuel() : null;
-        return fin == null ? null : Math.max(0L, fin - kilometrageMontage);
+        return fin == null ? null : kilometresAnterieurs + Math.max(0L, fin - kilometrageMontage);
     }
 
     /** Part de la duree de vie consommee, en pourcentage. */

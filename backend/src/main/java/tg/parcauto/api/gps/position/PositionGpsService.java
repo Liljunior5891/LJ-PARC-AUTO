@@ -35,6 +35,15 @@ public class PositionGpsService {
 
     /** Au-dela de ce delai sans trame, le traceur est considere hors connexion. */
     private static final Duration SEUIL_DECONNEXION = Duration.ofHours(2);
+    /** Positions par envoi, au plus. */
+    private static final int LOT_MAX = 1000;
+    /** Horloge du traceur en avance toleree. */
+    private static final Duration AVANCE_TOLEREE = Duration.ofMinutes(5);
+    /** Trames rejouees acceptees jusqu'a cet age. */
+    private static final Duration RETARD_MAX = Duration.ofDays(30);
+    /** Compteur : saut accepte en plus de la distance faisable depuis le point precedent. */
+    private static final long SAUT_COMPTEUR_KM = 50;
+    private static final long VITESSE_PLAUSIBLE_KMH = 150;
 
     private final PositionGpsRepository repository;
     private final CamionRepository camionRepository;
@@ -47,47 +56,82 @@ public class PositionGpsService {
      */
     @Transactional
     public List<PositionGps> enregistrer(List<PositionBrute> brutes, String fournisseur) {
+        if (brutes.size() > LOT_MAX) {
+            throw new BusinessException("Lot de " + brutes.size() + " positions : envoyez-en au plus " + LOT_MAX + " a la fois");
+        }
         List<PositionGps> enregistrees = new ArrayList<>();
+        List<Runnable> diffusions = new ArrayList<>();
+        Instant maintenant = Instant.now();
 
         for (PositionBrute brute : brutes) {
+            // Une position inutilisable est ecartee seule : elle ne fait pas perdre le reste du lot.
             if (!brute.coordonneesValides()) {
                 log.warn("Position ignoree : coordonnees invalides pour le traceur {}", brute.deviceId());
                 continue;
             }
             if (brute.deviceId() == null || brute.deviceId().isBlank()) {
-                throw new BusinessException("Position sans identifiant de traceur");
+                log.warn("Position ignoree : pas d'identifiant de traceur");
+                continue;
             }
-            Camion camion = camionRepository.findByGpsDeviceId(brute.deviceId())
-                    .orElseThrow(() -> new BusinessException(
-                            "Aucun vehicule n'est associe au traceur " + brute.deviceId()));
+            Camion camion = camionRepository.findByGpsDeviceId(brute.deviceId()).orElse(null);
+            if (camion == null) {
+                log.warn("Position ignoree : aucun vehicule n'est associe au traceur {}", brute.deviceId());
+                continue;
+            }
+            // Horloge du traceur dans le futur : on retient l'heure de reception ; trop ancienne : ignoree.
+            Instant horodatage = brute.horodatage() == null || brute.horodatage().isAfter(maintenant.plus(AVANCE_TOLEREE))
+                    ? maintenant : brute.horodatage();
+            if (horodatage.isBefore(maintenant.minus(RETARD_MAX))) {
+                log.warn("Position ignoree : trame du {} trop ancienne pour {}", horodatage, brute.deviceId());
+                continue;
+            }
 
             PositionGps precedente = repository
-                    .findFirstByCamionIdOrderByHorodatageDesc(camion.getId())
+                    .findFirstByCamionIdAndHorodatageLessThanOrderByHorodatageDesc(camion.getId(), horodatage)
                     .orElse(null);
 
             PositionGps position = new PositionGps();
             position.setCamion(camion);
             position.setLatitude(brute.latitude());
             position.setLongitude(brute.longitude());
-            position.setVitesseKmh(brute.vitesseKmh());
-            position.setDirection(brute.direction());
+            position.setVitesseKmh(brute.vitesseKmh() == null || brute.vitesseKmh().signum() < 0
+                    || brute.vitesseKmh().doubleValue() > 400 ? null : brute.vitesseKmh());
+            position.setDirection(brute.direction() == null ? null : Math.floorMod(brute.direction(), 360));
             position.setAltitude(brute.altitude());
             position.setKilometrage(brute.kilometrage());
             position.setMoteurAllume(brute.moteurAllume());
-            position.setHorodatage(brute.horodatage() == null ? Instant.now() : brute.horodatage());
+            position.setHorodatage(horodatage);
             position.setFournisseur(fournisseur);
             position.setDeviceId(brute.deviceId());
             PositionGps sauvegardee = repository.save(position);
 
-            // Le compteur du camion suit le traceur lorsque celui-ci le transmet.
+            // Le compteur du camion suit le traceur, si la valeur est plausible (pas de saut aberrant definitif).
             if (brute.kilometrage() != null && brute.kilometrage() > camion.getKilometrageActuel()) {
-                camion.setKilometrageActuel(brute.kilometrage());
-                camionRepository.save(camion);
+                long ecart = brute.kilometrage() - camion.getKilometrageActuel();
+                long heures = precedente == null ? 24 : Math.max(1, Duration.between(precedente.getHorodatage(), horodatage).toHours() + 1);
+                if (ecart <= SAUT_COMPTEUR_KM + heures * VITESSE_PLAUSIBLE_KMH) {
+                    camion.setKilometrageActuel(brute.kilometrage());
+                    camionRepository.save(camion);
+                } else {
+                    log.warn("Compteur du traceur {} ignore : saut de {} km", brute.deviceId(), ecart);
+                }
             }
 
             List<AlerteGps> alertes = surveillance.analyser(sauvegardee, precedente);
-            diffuser(sauvegardee, alertes);
+            diffusions.add(() -> diffuser(sauvegardee, alertes));
             enregistrees.add(sauvegardee);
+        }
+        // La carte et les alertes ne sont prevenues qu'une fois le lot reellement enregistre.
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            diffusions.forEach(Runnable::run);
+                        }
+                    });
+        } else {
+            diffusions.forEach(Runnable::run);
         }
         return enregistrees;
     }
@@ -95,7 +139,11 @@ public class PositionGpsService {
     /** Derniere position connue de chaque camion, pour la carte du parc. */
     @Transactional(readOnly = true)
     public List<PositionGps> dernieresPositions() {
-        return repository.dernieresPositions();
+        // Deux points au meme instant : un seul marqueur par vehicule.
+        java.util.Map<Long, PositionGps> parCamion = new java.util.LinkedHashMap<>();
+        repository.dernieresPositions().forEach(p -> parCamion.merge(p.getCamion().getId(), p,
+                (a, b) -> a.getId() >= b.getId() ? a : b));
+        return new ArrayList<>(parCamion.values());
     }
 
     @Transactional(readOnly = true)
@@ -110,7 +158,7 @@ public class PositionGpsService {
 
     @Transactional(readOnly = true)
     public List<PositionGps> dernieres(Long camionId, int nombre) {
-        return repository.dernieres(camionId, PageRequest.of(0, nombre));
+        return repository.dernieres(camionId, PageRequest.of(0, Math.max(1, Math.min(nombre, 500))));
     }
 
     /** Vrai si le traceur n'a plus donne signe de vie depuis le seuil admis. */

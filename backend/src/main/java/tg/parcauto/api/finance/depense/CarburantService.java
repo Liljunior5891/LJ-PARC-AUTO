@@ -38,6 +38,7 @@ public class CarburantService {
         BigDecimal totalMontant = BigDecimal.ZERO;
         long distanceCouverte = 0L;
         BigDecimal litresAvecDistance = BigDecimal.ZERO;
+        BigDecimal montantAvecDistance = BigDecimal.ZERO;
 
         Depense precedent = null;
         for (Depense plein : pleins) {
@@ -55,6 +56,7 @@ public class CarburantService {
                             .divide(BigDecimal.valueOf(distance), 2, RoundingMode.HALF_UP);
                     distanceCouverte += distance;
                     litresAvecDistance = litresAvecDistance.add(plein.getQuantiteLitres());
+                    montantAvecDistance = montantAvecDistance.add(plein.getMontant());
                 }
             }
 
@@ -70,8 +72,9 @@ public class CarburantService {
                 ? litresAvecDistance.multiply(CENT)
                         .divide(BigDecimal.valueOf(distanceCouverte), 2, RoundingMode.HALF_UP)
                 : null;
+        // Cout au km : seulement les pleins qui ont des kilometres en face (pas le premier de la periode).
         BigDecimal coutParKm = distanceCouverte > 0
-                ? totalMontant.divide(BigDecimal.valueOf(distanceCouverte), 2, RoundingMode.HALF_UP)
+                ? montantAvecDistance.divide(BigDecimal.valueOf(distanceCouverte), 2, RoundingMode.HALF_UP)
                 : null;
         BigDecimal prixMoyenLitre = totalLitres.signum() > 0
                 ? totalMontant.divide(totalLitres, 2, RoundingMode.HALF_UP)

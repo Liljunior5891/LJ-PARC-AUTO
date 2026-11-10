@@ -20,6 +20,8 @@ public class CamionService {
     private final tg.parcauto.api.plateforme.abonnement.AbonnementService abonnement;
 
     private final CamionRepository repository;
+    private final tg.parcauto.api.parc.affectation.AffectationRepository affectations;
+    private final tg.parcauto.api.exploitation.mission.MissionRepository missions;
     private final MarqueCamionRepository marqueRepository;
     private final TypeCamionRepository typeRepository;
     private final CouleurCamionRepository couleurRepository;
@@ -98,8 +100,41 @@ public class CamionService {
         return CamionDto.Reponse.de(repository.save(camion));
     }
 
+    /**
+     * Location, mission et livraison posent et levent elles-memes leur statut :
+     * a la main, on ne met pas un vehicule « en location » ni on ne libere un vehicule engage.
+     */
+    private static void verifierStatutManuel(Camion camion, StatutCamion cible) {
+        if (cible.engage()) {
+            throw new BusinessException("Le statut « " + cible.getLibelle() + " » vient du contrat, de la mission ou"
+                    + " de la livraison : il ne se choisit pas a la main");
+        }
+        if (camion.getStatut().engage()) {
+            throw new BusinessException("Le vehicule " + camion.getImmatriculation() + " est " + camion.getStatut().getLibelle()
+                    .toLowerCase() + " : cloturez d'abord le contrat, la mission ou la livraison");
+        }
+    }
+
+    /** Un chauffeur ne releve que le compteur du vehicule qui lui est confie, par sauts plausibles. */
+    private static final long SAUT_MAX_CHAUFFEUR_KM = 5_000;
+
     public CamionDto.Reponse majKilometrage(Long id, long kilometrage) {
         Camion camion = charger(id);
+        if (tg.parcauto.api.security.Terrain.chauffeurSeul()) {
+            Long moi = tg.parcauto.api.security.Terrain.chauffeurId();
+            boolean confie = moi != null && (affectations.affectationCouranteDuCamion(camion.getId())
+                    .map(a -> a.getChauffeur().getId().equals(moi)).orElse(false)
+                    || missions.missionEnCoursDuCamion(camion.getId())
+                    .map(m -> m.getChauffeur() != null && m.getChauffeur().getId().equals(moi)).orElse(false));
+            if (!confie) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Le vehicule " + camion.getImmatriculation() + " n'est pas le votre");
+            }
+            if (kilometrage - camion.getKilometrageActuel() > SAUT_MAX_CHAUFFEUR_KM) {
+                throw new BusinessException("Plus de " + SAUT_MAX_CHAUFFEUR_KM + " km d'un coup : verifiez le compteur,"
+                        + " ou faites corriger par le gestionnaire");
+            }
+        }
         if (kilometrage < camion.getKilometrageActuel()) {
             throw new BusinessException("Le nouveau kilometrage (" + kilometrage
                     + ") ne peut pas etre inferieur au kilometrage actuel (" + camion.getKilometrageActuel() + ")");
@@ -110,6 +145,9 @@ public class CamionService {
 
     public CamionDto.Reponse majStatut(Long id, StatutCamion statut) {
         Camion camion = charger(id);
+        if (statut != camion.getStatut()) {
+            verifierStatutManuel(camion, statut);
+        }
         camion.setStatut(statut);
         if (statut == StatutCamion.VENDU || statut == StatutCamion.HORS_SERVICE) {
             camion.setActif(false);
@@ -173,11 +211,20 @@ public class CamionService {
         if (r.kilometrageInitial() != null) {
             camion.setKilometrageInitial(r.kilometrageInitial());
         }
-        if (r.kilometrageActuel() != null) {
+        // Le compteur ne recule pas : une fiche ouverte avant une mission ne l'efface pas en s'enregistrant.
+        if (r.kilometrageActuel() != null && (camion.getId() == null || r.kilometrageActuel() > camion.getKilometrageActuel())) {
             camion.setKilometrageActuel(r.kilometrageActuel());
         }
-        if (r.statut() != null) {
-            camion.setStatut(r.statut());
+        if (r.statut() != null && r.statut() != camion.getStatut()) {
+            if (camion.getId() == null) {
+                if (r.statut().engage()) {
+                    throw new BusinessException("Un nouveau vehicule ne peut pas etre deja engage");
+                }
+                camion.setStatut(r.statut());
+            } else {
+                verifierStatutManuel(camion, r.statut());
+                camion.setStatut(r.statut());
+            }
         }
         if (r.actif() != null) {
             if (r.actif() && !camion.isActif() && camion.getId() != null) {

@@ -22,6 +22,7 @@ import java.util.List;
 public class PneuService {
 
     private final PneuRepository repository;
+    private final tg.parcauto.api.finance.depense.DepenseService depenseService;
     private final CamionService camionService;
 
     @Transactional(readOnly = true)
@@ -49,7 +50,7 @@ public class PneuService {
     }
 
     public PneuDto.Reponse creer(PneuDto.Requete requete) {
-        if (repository.existsByReferenceIgnoreCase(requete.reference())) {
+        if (repository.existsByReferenceIgnoreCase(requete.reference().trim())) {
             throw new BusinessException("Un pneu porte deja la reference " + requete.reference());
         }
         Pneu pneu = new Pneu();
@@ -86,6 +87,11 @@ public class PneuService {
         long kilometrage = montage.kilometrageMontage() == null
                 ? camion.getKilometrageActuel() : montage.kilometrageMontage();
 
+        // Remonte apres une depose : les kilometres deja faits restent dans son usure.
+        if (pneu.getKilometrageMontage() != null && pneu.getKilometrageDepose() != null) {
+            pneu.setKilometresAnterieurs(pneu.getKilometresAnterieurs()
+                    + Math.max(0L, pneu.getKilometrageDepose() - pneu.getKilometrageMontage()));
+        }
         pneu.setCamion(camion);
         pneu.setPosition(position);
         pneu.setStatut(StatutPneu.MONTE);
@@ -94,6 +100,16 @@ public class PneuService {
         pneu.setDateDepose(null);
         pneu.setKilometrageDepose(null);
         pneu.setMotifDepose(null);
+        // Premier montage d'un pneu achete : son prix devient une depense du vehicule.
+        if (pneu.getDepense() == null && pneu.getPrixAchat() != null && pneu.getPrixAchat().signum() > 0) {
+            var depense = depenseService.creer(new tg.parcauto.api.finance.depense.DepenseDto.Requete(
+                    camion.getId(), null, null, null, tg.parcauto.api.finance.depense.SousCategorieDepense.ACHAT_PNEU,
+                    "Pneu " + pneu.getReference() + (pneu.getMarque() == null ? "" : " " + pneu.getMarque()),
+                    pneu.getPrixAchat(), pneu.getDateAchat() != null ? pneu.getDateAchat() : montage.dateMontage(),
+                    null, null, pneu.getReference(), null, kilometrage, null, null, null, false,
+                    "Achat du pneu " + pneu.getReference() + ", monte en " + position));
+            pneu.setDepense(depenseService.charger(depense.id()));
+        }
         return PneuDto.Reponse.de(repository.save(pneu));
     }
 

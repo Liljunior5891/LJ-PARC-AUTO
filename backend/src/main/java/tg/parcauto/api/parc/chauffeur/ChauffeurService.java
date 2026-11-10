@@ -111,7 +111,10 @@ public class ChauffeurService {
         c.setUniteTarif(vide(r.uniteTarif()));
         c.setIdentifiantFiscal(vide(r.identifiantFiscal()));
         c.setGroupeSanguin(vide(r.groupeSanguin()));
-        if (r.statut() != null) {
+        if (r.statut() != null && r.statut() != c.getStatut()) {
+            if (r.statut() == StatutChauffeur.EN_MISSION || c.getStatut() == StatutChauffeur.EN_MISSION) {
+                throw new BusinessException("Le statut « En mission » vient des missions : demarrez ou cloturez la mission");
+            }
             c.setStatut(r.statut());
         }
         if (r.actif() != null) {

@@ -31,6 +31,7 @@ import java.util.List;
 public class EntretienService {
 
     private final EntretienRepository repository;
+    private final tg.parcauto.api.maintenance.EtatVehicule etatVehicule;
     private final CamionService camionService;
     private final CamionRepository camionRepository;
     private final DepenseService depenseService;
@@ -78,7 +79,33 @@ public class EntretienService {
             throw new BusinessException("Cette intervention est " + entretien.getStatut().getLibelle()
                     + " : elle n'est plus modifiable");
         }
+        // A l'atelier, le vehicule est immobilise : on ne change pas de vehicule en cours d'intervention.
+        if (entretien.getStatut() == StatutEntretien.EN_COURS && !entretien.getCamion().getId().equals(requete.camionId())) {
+            throw new BusinessException("L'intervention " + entretien.getNumero() + " est en cours sur "
+                    + entretien.getCamion().getImmatriculation() + " : annulez-la et planifiez-en une autre pour l'autre vehicule");
+        }
         appliquer(entretien, requete);
+        return EntretienDto.Reponse.de(repository.save(entretien));
+    }
+
+    /**
+     * Refait la depense d'une intervention realisee dont la depense a ete
+     * refusee ou annulee (ou jamais creee) : le cout revient dans les resultats.
+     */
+    public EntretienDto.Reponse refaireDepense(Long id) {
+        Entretien entretien = charger(id);
+        if (entretien.getStatut() != StatutEntretien.REALISE || entretien.getCout() == null || entretien.getCout().signum() <= 0) {
+            throw new BusinessException("Seule une intervention realisee avec un cout a une depense");
+        }
+        var actuelle = entretien.getDepense();
+        if (actuelle != null && actuelle.getStatut() != tg.parcauto.api.finance.depense.StatutDepense.REFUSEE
+                && actuelle.getStatut() != tg.parcauto.api.finance.depense.StatutDepense.ANNULEE) {
+            throw new BusinessException("La depense " + actuelle.getNumero() + " de cette intervention existe deja");
+        }
+        enregistrerDepense(entretien, new EntretienDto.Realisation(
+                entretien.getDateRealisation(), entretien.getKilometrageRealise(), entretien.getCout(),
+                entretien.getFournisseur(), entretien.getPiecesRemplacees(), entretien.getImmobilisationJours(),
+                null, true, false));
         return EntretienDto.Reponse.de(repository.save(entretien));
     }
 
@@ -88,8 +115,12 @@ public class EntretienService {
         if (entretien.getStatut() != StatutEntretien.PLANIFIE) {
             throw new BusinessException("Seule une intervention planifiee peut etre demarree");
         }
-        entretien.setStatut(StatutEntretien.EN_COURS);
         Camion camion = entretien.getCamion();
+        if (camion.getStatut().engage()) {
+            throw new BusinessException("Le vehicule " + camion.getImmatriculation() + " est "
+                    + camion.getStatut().getLibelle().toLowerCase() + " : il passera a l'atelier a son retour");
+        }
+        entretien.setStatut(StatutEntretien.EN_COURS);
         camion.setStatut(StatutCamion.EN_MAINTENANCE);
         camionRepository.save(camion);
         return EntretienDto.Reponse.de(repository.save(entretien));
@@ -127,7 +158,9 @@ public class EntretienService {
             camion.setKilometrageActuel(realisation.kilometrageRealise());
         }
         if (camion.getStatut() == StatutCamion.EN_MAINTENANCE) {
-            camion.setStatut(StatutCamion.DISPONIBLE);
+            // Sorti d'atelier : accidente si l'incident reste ouvert, en location si le contrat court, etc.
+            repository.saveAndFlush(entretien);
+            etatVehicule.recalculer(camion);
         }
         camionRepository.save(camion);
 
@@ -156,7 +189,8 @@ public class EntretienService {
         if (immobilisait) {
             Camion camion = entretien.getCamion();
             if (camion.getStatut() == StatutCamion.EN_MAINTENANCE) {
-                camion.setStatut(StatutCamion.DISPONIBLE);
+                repository.saveAndFlush(entretien);
+                etatVehicule.recalculer(camion);
                 camionRepository.save(camion);
             }
         }

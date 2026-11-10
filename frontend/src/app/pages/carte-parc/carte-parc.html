@@ -19,6 +19,9 @@
             [attr.aria-pressed]="afficherZones()" title="Afficher ou masquer les zones">◎</button>
     <button type="button" (click)="cadrerParc()" title="Voir tout le parc">⤢</button>
     <button type="button" (click)="charger()" title="Actualiser les positions">↻</button>
+    @if (estAdmin) {
+      <button type="button" (click)="ouvrirJeton()" title="Relier les traceurs GPS (jeton)">🔑</button>
+    }
     <label class="date-trajet" title="Journee du trajet">
       <input type="date" [(ngModel)]="dateTrajet" aria-label="Journee du trajet" />
     </label>
@@ -179,3 +182,27 @@
     </div>
   </div>
 </div>
+
+@if (panneauJeton()) {
+  <div class="voile-jeton" (click)="panneauJeton.set(false)"></div>
+  <section class="panneau-jeton" role="dialog" aria-label="Jeton des traceurs GPS">
+    <header>
+      <strong>Relier les traceurs GPS</strong>
+      <button type="button" class="fermer" (click)="panneauJeton.set(false)" aria-label="Fermer">×</button>
+    </header>
+    <p>Les boitiers (ou la passerelle Traccar) envoient leurs positions avec ce jeton, propre a votre entreprise.
+      Il n'expire pas ; en generer un nouveau coupe l'ancien.</p>
+    @if (etatJeton(); as e) {
+      <p class="etat">@if (e.actif) { Jeton actif · dernier envoi : {{ e.dernierUsage ? (e.dernierUsage | date: 'dd/MM/yyyy HH:mm') : 'aucun' }} }
+        @else { Aucun jeton : les traceurs ne peuvent pas encore envoyer de positions. }</p>
+    }
+    @if (nouveauJeton(); as j) {
+      <p class="avertissement">Copiez-le maintenant : il ne sera plus affiche.</p>
+      <label>Jeton<input type="text" readonly [value]="j.jeton" (focus)="$any($event.target).select()" /></label>
+      <label>Adresse a donner a Traccar (forward.url)<input type="text" readonly [value]="j.adresse" (focus)="$any($event.target).select()" /></label>
+    }
+    <footer>
+      <button type="button" class="bouton" (click)="genererJeton()">{{ etatJeton()?.actif ? 'Generer un nouveau jeton' : 'Generer le jeton' }}</button>
+    </footer>
+  </section>
+}

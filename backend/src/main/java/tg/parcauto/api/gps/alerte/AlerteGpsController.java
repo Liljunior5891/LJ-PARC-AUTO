@@ -38,7 +38,7 @@ public class AlerteGpsController {
     @GetMapping("/recentes")
     @Operation(summary = "Dernieres alertes non traitees")
     public List<AlerteGpsDto.Reponse> recentes(@RequestParam(defaultValue = "10") int nombre) {
-        return service.dernieresNonTraitees(nombre);
+        return service.dernieresNonTraitees(Math.max(1, Math.min(nombre, 200)));
     }
 
     @GetMapping("/synthese")

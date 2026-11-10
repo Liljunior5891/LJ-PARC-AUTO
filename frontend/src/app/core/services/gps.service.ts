@@ -19,6 +19,15 @@ export class GpsService {
   private readonly base = `${environment.apiUrl}/gps`;
 
   /** Marqueurs de la carte du parc (chapitre 23). */
+  /** Jeton des traceurs de l'entreprise : etat (sans le jeton) et generation (montre une fois). */
+  etatJeton(): Observable<{ actif: boolean; creeLe?: string | null; dernierUsage?: string | null }> {
+    return this.http.get<{ actif: boolean; creeLe?: string | null; dernierUsage?: string | null }>(`${this.base}/jeton`);
+  }
+
+  genererJeton(): Observable<{ jeton: string; adresse: string }> {
+    return this.http.post<{ jeton: string; adresse: string }>(`${this.base}/jeton`, {});
+  }
+
   carte(): Observable<MarqueurCarte[]> {
     return this.http.get<MarqueurCarte[]>(`${this.base}/carte`);
   }

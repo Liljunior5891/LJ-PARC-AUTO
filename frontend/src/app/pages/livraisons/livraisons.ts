@@ -79,6 +79,9 @@ export class Livraisons implements OnInit {
 
   ngOnInit(): void {
     this.charger();
+    if (!this.peutGerer) {
+      return;
+    }
     this.clientService.lister({ actif: true, size: 200 }).subscribe({
       next: (page) => this.clients.set(page.content)
     });

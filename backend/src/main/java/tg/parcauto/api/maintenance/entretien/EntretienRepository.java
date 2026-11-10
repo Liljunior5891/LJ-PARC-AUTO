@@ -51,4 +51,6 @@ public interface EntretienRepository extends JpaRepository<Entretien, Long>,
             """)
     long joursImmobilisationSurPeriode(@Param("debut") java.time.LocalDate debut,
                                        @Param("fin") java.time.LocalDate fin);
+
+    boolean existsByCamionIdAndStatut(Long camionId, StatutEntretien statut);
 }

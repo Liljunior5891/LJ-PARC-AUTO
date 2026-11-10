@@ -170,9 +170,9 @@ export class Shell {
       autresRoutes: ['/camions'],
       entrees: [
         { libelle: 'Vue du parc', route: '/vue-parc', description: 'Chaque vehicule, son etat et sa marge' },
-        { libelle: 'Affectations', route: '/affectations', description: 'Qui conduit quel vehicule' },
-        { libelle: 'Documents', route: '/documents', description: 'Assurances, visites et echeances' },
-        { libelle: 'Maintenance', route: '/maintenance', description: 'Entretiens, pannes et atelier' },
+        { libelle: 'Affectations', route: '/affectations', description: 'Qui conduit quel vehicule', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
+        { libelle: 'Documents', route: '/documents', description: 'Assurances, visites et echeances', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
+        { libelle: 'Maintenance', route: '/maintenance', description: 'Entretiens, pannes et atelier', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Carte du parc', route: '/gps', description: 'Positions GPS et trajets du jour' }
       ]
     },
@@ -180,8 +180,8 @@ export class Shell {
       id: 'exploitation', module: 'GESTION_PARC', libelle: 'Exploitation',
       autresRoutes: ['/missions', '/livraisons'],
       entrees: [
-        { libelle: 'Chauffeurs', route: '/chauffeurs', description: 'Equipe, permis et disponibilite' },
-        { libelle: 'Clients', route: '/clients', description: 'Portefeuille et contrats en cours' },
+        { libelle: 'Chauffeurs', route: '/chauffeurs', description: 'Equipe, permis et disponibilite', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
+        { libelle: 'Clients', route: '/clients', description: 'Portefeuille et contrats en cours', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
       ]
     },
     {

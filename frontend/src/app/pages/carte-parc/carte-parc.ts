@@ -1,3 +1,5 @@
+import { environment } from '../../../environments/environment';
+import { AuthService } from '../../core/auth/auth.service';
 import { DessinVehicule } from '../../shared/dessin-vehicule';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import {
@@ -43,6 +45,28 @@ export class CarteParc implements AfterViewInit, OnDestroy {
   readonly trajet = signal<Trajet | null>(null);
   readonly camionSuivi = signal<MarqueurCarte | null>(null);
   readonly erreur = signal<string | null>(null);
+
+  // ------------------------------------------------ jeton des traceurs (administrateur)
+  readonly estAdmin = inject(AuthService).aRole('ADMIN');
+  readonly panneauJeton = signal(false);
+  readonly etatJeton = signal<{ actif: boolean; creeLe?: string | null; dernierUsage?: string | null } | null>(null);
+  readonly nouveauJeton = signal<{ jeton: string; adresse: string } | null>(null);
+
+  ouvrirJeton(): void {
+    this.nouveauJeton.set(null);
+    this.panneauJeton.set(true);
+    this.service.etatJeton().subscribe({ next: (e) => this.etatJeton.set(e) });
+  }
+
+  genererJeton(): void {
+    this.service.genererJeton().subscribe({
+      next: (j) => {
+        // Adresse complete de l'API (la ou Traccar doit envoyer), pas celle de l'interface.
+        this.nouveauJeton.set({ ...j, adresse: environment.apiUrl.replace(/\/api$/, '') + j.adresse });
+        this.service.etatJeton().subscribe({ next: (e) => this.etatJeton.set(e) });
+      }
+    });
+  }
   readonly derniereMaj = signal<Date | null>(null);
   readonly alertesOuvertes = signal(false);
   readonly afficherZones = signal(true);

@@ -44,8 +44,10 @@ public class Affectation extends BaseEntity {
     @Column(columnDefinition = "text")
     private String observations;
 
+    /** En cours aujourd'hui : commencee, et sans fin ou avec une fin pas encore passee. */
     public boolean enCours() {
-        return dateFin == null;
+        LocalDate aujourdhui = LocalDate.now();
+        return !dateDebut.isAfter(aujourdhui) && (dateFin == null || !dateFin.isBefore(aujourdhui));
     }
 
     /** Vrai si l'affectation chevauche la periode [debut, fin] (fin nulle = ouverte). */

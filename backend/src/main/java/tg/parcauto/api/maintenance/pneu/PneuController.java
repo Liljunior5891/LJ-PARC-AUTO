@@ -20,7 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import tg.parcauto.api.security.Autorisations;
-
+
+// Couts et historique d'atelier : gestionnaires et administrateur.
+@org.springframework.security.access.prepost.PreAuthorize(tg.parcauto.api.security.Autorisations.GESTION)
 @RestController
 @ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/pneus")

@@ -15,6 +15,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final ControleModuleInterceptor controleModule;
     private final ContexteTableInterceptor contexteTable;
     private final ContexteBoutiqueInterceptor contexteBoutique;
+    private final tg.parcauto.api.gps.ContexteGpsInterceptor contexteGps;
     private final tg.parcauto.api.presence.ContextePresenceInterceptor contextePresence;
     private final tg.parcauto.api.plateforme.abonnement.LectureSeuleInterceptor lectureSeule;
 
@@ -28,6 +29,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // Pointage sans compte : l'entreprise vient du jeton du lieu (code QR) ou de la borne.
         registry.addInterceptor(contextePresence)
                 .addPathPatterns("/api/public/presence/lieux/**", "/api/public/presence/bornes/**").order(0);
+        // Traceurs GPS : l'entreprise vient du jeton GPS.
+        registry.addInterceptor(contexteGps).addPathPatterns("/api/public/gps/**").order(0);
         registry.addInterceptor(controleModule).addPathPatterns("/api/**").order(1);
         // Abonnement expire : plus aucune ecriture, sauf pour se connecter, payer et changer son mot de passe.
         registry.addInterceptor(lectureSeule).addPathPatterns("/api/**")

@@ -36,6 +36,8 @@ public class SurveillanceGpsService {
 
     /** Duree pendant laquelle une alerte identique n'est pas repetee. */
     private static final Duration ANTI_REPETITION = Duration.ofMinutes(30);
+    /** Entrees et sorties d'une meme zone : pas plus d'une alerte de chaque sorte dans ce delai (derive GPS en bordure). */
+    private static final Duration ANTI_REPETITION_ZONE = Duration.ofMinutes(15);
     /** Vitesse retenue quand aucun seuil n'est defini sur le camion. */
     private static final int VITESSE_MAX_PAR_DEFAUT = 90;
     private static final ZoneId ZONE_LOCALE = ZoneId.systemDefault();
@@ -89,6 +91,11 @@ public class SurveillanceGpsService {
             boolean etaitDedans = precedente != null && dansLaZone(precedente, zone);
 
             if (dedans && !etaitDedans) {
+                TypeAlerteGps type = zone.getType().surveillanceObligatoire() ? TypeAlerteGps.ZONE_INTERDITE : TypeAlerteGps.ENTREE_ZONE;
+                if (repository.existsByCamionIdAndZoneIdAndTypeAndHorodatageAfter(position.getCamion().getId(), zone.getId(),
+                        type, position.getHorodatage().minus(ANTI_REPETITION_ZONE))) {
+                    continue;
+                }
                 if (zone.getType().surveillanceObligatoire()) {
                     alertes.add(construire(position, TypeAlerteGps.ZONE_INTERDITE, zone,
                             "%s est entre dans la zone interdite %s".formatted(
@@ -98,7 +105,9 @@ public class SurveillanceGpsService {
                             "%s est entre dans la zone %s".formatted(
                                     position.getCamion().getImmatriculation(), zone.getNom())));
                 }
-            } else if (!dedans && etaitDedans && zone.isAlerteSortie()) {
+            } else if (!dedans && etaitDedans && zone.isAlerteSortie()
+                    && !repository.existsByCamionIdAndZoneIdAndTypeAndHorodatageAfter(position.getCamion().getId(), zone.getId(),
+                    TypeAlerteGps.SORTIE_ZONE, position.getHorodatage().minus(ANTI_REPETITION_ZONE))) {
                 alertes.add(construire(position, TypeAlerteGps.SORTIE_ZONE, zone,
                         "%s a quitte la zone %s".formatted(
                                 position.getCamion().getImmatriculation(), zone.getNom())));
@@ -118,12 +127,13 @@ public class SurveillanceGpsService {
             return java.util.Optional.empty();
         }
         Instant limite = position.getHorodatage().minus(Duration.ofMinutes(zone.getDureeMaxMinutes()));
-        List<PositionGps> anterieures = positionRepository.trajet(
-                position.getCamion().getId(), limite, position.getHorodatage());
-        boolean immobileDepuisLeDebut = anterieures.size() > 1
-                && anterieures.stream().noneMatch(PositionGps::enMouvement)
-                && anterieures.stream().allMatch(p -> dansLaZone(p, zone))
-                && !anterieures.get(0).getHorodatage().isAfter(limite.plusSeconds(60));
+        // Le vehicule etait deja la, arrete, au debut de la fenetre (dernier point connu a ce moment),
+        // et aucun point en mouvement depuis : peu importe l'espacement des trames a l'arret.
+        Long camionId = position.getCamion().getId();
+        PositionGps auDebut = positionRepository
+                .findFirstByCamionIdAndHorodatageLessThanEqualOrderByHorodatageDesc(camionId, limite).orElse(null);
+        boolean immobileDepuisLeDebut = auDebut != null && !auDebut.enMouvement() && dansLaZone(auDebut, zone)
+                && positionRepository.compterEnMouvement(camionId, limite, position.getHorodatage()) == 0;
         if (!immobileDepuisLeDebut
                 || dejaAlerteDansZone(position.getCamion().getId(), zone.getId(),
                         TypeAlerteGps.STATIONNEMENT_PROLONGE, position.getHorodatage())) {

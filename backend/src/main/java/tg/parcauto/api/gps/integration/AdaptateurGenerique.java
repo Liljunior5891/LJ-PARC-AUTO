@@ -65,6 +65,18 @@ public class AdaptateurGenerique implements AdaptateurGps {
             long brut = valeur.asLong();
             return brut > 100_000_000_000L ? Instant.ofEpochMilli(brut) : Instant.ofEpochSecond(brut);
         }
-        return Instant.parse(valeur.asText());
+        // ISO-8601 avec « Z », « +01:00 » ou « +0000 » (format de Traccar) ; illisible : heure de reception.
+        String texte = valeur.asText().trim();
+        try {
+            return java.time.OffsetDateTime.parse(texte, LECTURE_DATE).toInstant();
+        } catch (java.time.format.DateTimeParseException e) {
+            return Instant.now();
+        }
     }
+
+    private static final java.time.format.DateTimeFormatter LECTURE_DATE = new java.time.format.DateTimeFormatterBuilder()
+            .append(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            .optionalStart().appendOffset("+HH:MM", "Z").optionalEnd()
+            .optionalStart().appendOffset("+HHMM", "Z").optionalEnd()
+            .toFormatter();
 }
