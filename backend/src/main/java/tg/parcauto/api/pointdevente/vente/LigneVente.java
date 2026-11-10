@@ -78,6 +78,10 @@ public class LigneVente extends BaseEntity {
     @JoinColumn(name = "lieu_id")
     private tg.parcauto.api.pointdevente.lieu.LieuStock lieu;
 
+    /** Suivi de stock de l'article au moment de la vente ; nul sur les lignes anciennes. */
+    @Column(name = "suivi_stock")
+    private Boolean suiviStock;
+
     /** Sauf indication contraire, tout est remis a la vente. */
     @jakarta.persistence.PrePersist
     void completerQuantiteBase() {
@@ -90,6 +94,11 @@ public class LigneVente extends BaseEntity {
         if (quantiteBaseLivree == null) {
             quantiteBaseLivree = quantiteBase;
         }
+    }
+
+    /** Le stock a-t-il bouge pour cette ligne : le reglage fige a la vente, a defaut celui de l'article. */
+    public boolean stockSuivi() {
+        return suiviStock != null ? suiviStock : article.isSuiviStock();
     }
 
     /** Reste a remettre, dans l'unite de vente de la ligne. */

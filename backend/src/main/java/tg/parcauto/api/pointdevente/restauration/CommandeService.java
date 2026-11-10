@@ -57,6 +57,7 @@ public class CommandeService {
     private final tg.parcauto.api.pointdevente.caisse.SessionTravailService sessionsTravail;
     private final NumerotationService numerotation;
     private final tg.parcauto.api.pointdevente.impression.ImpressionService impression;
+    private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
 
     public RestaurationDto.CommandeDetail ouvrir(RestaurationDto.Ouverture o, UtilisateurPrincipal serveur) {
         Commande commande = new Commande();
@@ -208,7 +209,7 @@ public class CommandeService {
         if (brouillons.isEmpty()) {
             throw new BusinessException("Aucun article a envoyer");
         }
-        envoyerLignes(commande, brouillons);
+        envoyerLignes(commande, brouillons, caissier);
         impression.bonsEnvoi(commande, brouillons, commande.getEnvois(), caissier.getNomComplet());
         return RestaurationDto.CommandeDetail.de(commande);
     }
@@ -242,7 +243,11 @@ public class CommandeService {
         if (proposees.isEmpty()) {
             throw new BusinessException("Aucun article a valider");
         }
-        envoyerLignes(commande, proposees);
+        // Un serveur qui valide la demande d'une table QR sans serveur la prend en charge.
+        if (caissier.getAuthorities().stream().anyMatch(a -> "ROLE_SERVEUR".equals(a.getAuthority()))) {
+            prendreEnCharge(commande, caissier);
+        }
+        envoyerLignes(commande, proposees, caissier);
         impression.bonsEnvoi(commande, proposees, commande.getEnvois(), caissier.getNomComplet());
         return RestaurationDto.CommandeDetail.de(commande);
     }
@@ -314,7 +319,7 @@ public class CommandeService {
         }
         if (!validation) {
             // Envoi direct sans la caisse : rien ne s'imprime (seule une validation par la caisse imprime).
-            envoyerLignes(commande, nouvelles);
+            envoyerLignes(commande, nouvelles, null);
         }
         return repository.saveAndFlush(commande);
     }
@@ -394,8 +399,9 @@ public class CommandeService {
      * Envoi en preparation : un nouveau bon par poste, les articles sans
      * preparation prets aussitot, le stock sorti. Une rupture bloque l'envoi.
      */
-    private void envoyerLignes(Commande commande, List<LigneCommande> lignes) {
+    private void envoyerLignes(Commande commande, List<LigneCommande> lignes, UtilisateurPrincipal auteur) {
         Instant maintenant = Instant.now();
+        tg.parcauto.api.pointdevente.lieu.LieuStock magasin = magasinDEnvoi(auteur);
         int envoi = commande.getEnvois() + 1;
         commande.setEnvois(envoi);
         // Categories imprimees sans ecran : personne ne les fera avancer, elles sont pretes des l'impression.
@@ -412,8 +418,10 @@ public class CommandeService {
                 ligne.setStatut(LigneCommande.Statut.A_PREPARER);
             }
             if (ligne.getArticle().isSuiviStock()) {
-                stockService.appliquer(ligne.getArticle(), TypeMouvementStock.VENTE, ligne.getQuantite(),
+                stockService.appliquer(ligne.getArticle(), magasin, TypeMouvementStock.VENTE, ligne.getQuantite(),
                         null, "Commande " + commande.getNumero() + " - " + commande.repere(), null);
+                ligne.setStockSorti(true);
+                ligne.setLieu(magasin);
             }
         }
     }
@@ -616,10 +624,26 @@ public class CommandeService {
         ligne.setStatut(LigneCommande.Statut.ANNULEE);
         ligne.setAnnuleeLe(Instant.now());
         ligne.setAnnuleePar(auteur.getNomComplet());
-        if (ligne.getArticle().isSuiviStock()) {
-            stockService.appliquer(ligne.getArticle(), TypeMouvementStock.RETOUR, ligne.getQuantite(),
+        // Ne revient que ce qui est sorti, la ou il est sorti.
+        if (ligne.isStockSorti()) {
+            stockService.appliquer(ligne.getArticle(), ligne.getLieu(), TypeMouvementStock.RETOUR, ligne.getQuantite(),
                     null, "Annulation sur la commande " + commande.getNumero(), null);
+            ligne.setStockSorti(false);
         }
+    }
+
+    /**
+     * Avec des entrepots, le stock sort du magasin de la caisse de celui qui
+     * envoie ; a defaut (commande QR envoyee sans la caisse), de la seule caisse
+     * ouverte, sinon du magasin principal.
+     */
+    private tg.parcauto.api.pointdevente.lieu.LieuStock magasinDEnvoi(UtilisateurPrincipal auteur) {
+        if (!lieux.actif()) {
+            return null;
+        }
+        java.util.Optional<tg.parcauto.api.pointdevente.caisse.SessionCaisse> session = auteur != null
+                ? sessionsTravail.courante(auteur, null) : java.util.Optional.empty();
+        return session.map(s -> lieux.lieuDeCaisse(s.getCaisse())).orElse(null);
     }
 
     /** Partie en preparation et pas encore servie : la cuisine doit savoir qu'elle est annulee. */

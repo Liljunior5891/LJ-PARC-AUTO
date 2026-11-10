@@ -73,7 +73,7 @@ public class DevisService {
         devis.setNumero(numerotation.prochainNumero("DEV"));
         devis.setDateDevis(LocalDate.now());
         devis.setVendeurNom(vendeur.getNomComplet());
-        remplir(devis, r, reglage);
+        remplir(devis, r, reglage, java.util.Map.of());
         return MateriauxDto.DevisReponse.de(repository.save(devis), true);
     }
 
@@ -81,8 +81,14 @@ public class DevisService {
     public MateriauxDto.DevisReponse modifier(Long id, MateriauxDto.DevisRequete r) {
         ReglageMateriaux reglage = exigerDevis();
         Devis devis = enCours(id);
+        // Les prix promis au client restent : un article deja au devis garde son prix, meme si le catalogue a change.
+        java.util.Map<String, BigDecimal> prixPromis = new java.util.HashMap<>();
+        for (LigneDevis l : devis.getLignes()) {
+            prixPromis.putIfAbsent(cleLigne(l.getArticle().getId(),
+                    l.getConditionnement() == null ? null : l.getConditionnement().getId()), l.getPrixUnitaire());
+        }
         devis.getLignes().clear();
-        remplir(devis, r, reglage);
+        remplir(devis, r, reglage, prixPromis);
         return MateriauxDto.DevisReponse.de(devis, true);
     }
 
@@ -171,7 +177,12 @@ public class DevisService {
         return reglage;
     }
 
-    private void remplir(Devis devis, MateriauxDto.DevisRequete r, ReglageMateriaux reglage) {
+    private static String cleLigne(Long articleId, Long conditionnementId) {
+        return articleId + ":" + conditionnementId;
+    }
+
+    private void remplir(Devis devis, MateriauxDto.DevisRequete r, ReglageMateriaux reglage,
+                         java.util.Map<String, BigDecimal> prixPromis) {
         ClientPdv client = r.clientId() == null ? null : comptes.client(r.clientId());
         String nom = client != null ? client.getNom() : vide(r.clientNom());
         if (nom == null) {
@@ -194,7 +205,8 @@ public class DevisService {
             Conditionnement conditionnement = demande.conditionnementId() == null ? null
                     : venteService.conditionnement(article, demande.conditionnementId());
             // Memes regles de prix et de remise qu'en caisse ; le devis garde le prix ainsi fixe.
-            LigneVente modele = venteService.ligne(article, conditionnement, demande.quantite(), demande.remise(), null);
+            BigDecimal promis = prixPromis.get(cleLigne(article.getId(), conditionnement == null ? null : conditionnement.getId()));
+            LigneVente modele = venteService.ligne(article, conditionnement, demande.quantite(), demande.remise(), promis);
             LigneDevis ligne = new LigneDevis();
             ligne.setArticle(article);
             ligne.setConditionnement(conditionnement);

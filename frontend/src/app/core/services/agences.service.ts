@@ -7,7 +7,7 @@ import { Page } from '../models/models';
 import { MembrePersonnel } from '../models/pdv';
 import { Rapport } from '../models/rapport';
 import { FichierRecu } from './rapport.service';
-import { AgencesHorsLigneService } from './agences-hors-ligne.service';
+import { AgencesHorsLigneService, ENTETE_CLE_OPERATION } from './agences-hors-ligne.service';
 import {
   Agence,
   AttenteOperateur,
@@ -245,8 +245,13 @@ export class AgencesService {
       { context: new HttpContext().set(SANS_SUIVI, true) });
   }
 
-  enregistrerTransaction(s: SaisieTransaction): Observable<Transaction> {
-    return this.http.post<Transaction>(`${this.base}/transactions`, s);
+  enregistrerTransaction(s: SaisieTransaction, cle?: string): Observable<Transaction> {
+    return this.http.post<Transaction>(`${this.base}/transactions`, s, this.avecCle(cle));
+  }
+
+  /** Cle de l'operation : un renvoi par la file hors ligne sera reconnu par le serveur. */
+  private avecCle(cle?: string): { headers?: Record<string, string> } {
+    return cle ? { headers: { [ENTETE_CLE_OPERATION]: cle } } : {};
   }
 
   annulerTransaction(id: number, motif: string): Observable<Transaction> {
@@ -417,8 +422,8 @@ export class AgencesService {
 
   creerDepense(r: { agenceId: number; categorieId: number; libelle: string; montant: number; compteId?: number | null;
                     beneficiaire?: string; reference?: string; observations?: string; recurrenteId?: number | null;
-                    periode?: string }): Observable<DepenseAgence> {
-    return this.http.post<DepenseAgence>(`${this.base}/depenses`, r);
+                    periode?: string }, cle?: string): Observable<DepenseAgence> {
+    return this.http.post<DepenseAgence>(`${this.base}/depenses`, r, this.avecCle(cle));
   }
 
   depensesAValider(agenceId: number | null): Observable<DepenseAgence[]> {
@@ -504,8 +509,8 @@ export class AgencesService {
   }
 
   vendreCartes(r: { agenceId: number; produitId: number; numeros: string[]; clientNom?: string; clientPrenom?: string;
-                    clientTelephone: string }): Observable<VenteCarte> {
-    return this.http.post<VenteCarte>(`${this.base}/cartes/ventes`, r);
+                    clientTelephone: string }, cle?: string): Observable<VenteCarte> {
+    return this.http.post<VenteCarte>(`${this.base}/cartes/ventes`, r, this.avecCle(cle));
   }
 
   annulerVenteCartes(id: number, motif: string): Observable<VenteCarte> {

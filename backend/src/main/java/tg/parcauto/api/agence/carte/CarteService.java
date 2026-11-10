@@ -303,6 +303,7 @@ public class CarteService {
             throw new BusinessException("Le motif de l'annulation est obligatoire");
         }
         verrou.exigerOuverte(v.getAgenceId(), v.getJournee(), "l'annulation de " + v.getReference());
+        sessions.exigerSessionOuverte(v.getSessionId(), "l'annulation de " + v.getReference());
         if (v.getEcritureId() != null) {
             v.setAnnulationEcritureId(registre.contrePasser(v.getEcritureId(), motif.trim()).getId());
         }

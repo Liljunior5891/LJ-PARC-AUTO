@@ -421,6 +421,8 @@ public class DepenseAgenceService {
             throw new BusinessException("Le motif de l'annulation est obligatoire");
         }
         verrou.exigerOuverte(d.getAgenceId(), d.getJournee(), "l'annulation de " + d.getNumero());
+        sessions.exigerCaisseOuverte(d.getCompteId(), d.getApprouveeLe() != null ? d.getApprouveeLe() : d.getDateDepense(),
+                "l'annulation de " + d.getNumero());
         Ecriture inverse = registre.contrePasser(d.getEcritureId(), motif.trim());
         d.setStatut(DepenseAgence.Statut.ANNULEE);
         d.setAnnulationEcritureId(inverse.getId());

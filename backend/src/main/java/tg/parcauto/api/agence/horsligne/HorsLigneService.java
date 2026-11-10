@@ -74,6 +74,34 @@ public class HorsLigneService {
     public record Abandon(@NotBlank @Size(max = 500) String note) {
     }
 
+    // ------------------------------------------------------------- envoi en ligne
+
+    /**
+     * Operation envoyee en ligne avec sa cle : la cle est retenue dans la meme
+     * transaction que l'ecriture. Si la reponse se perd et que l'appareil
+     * renvoie l'operation par la file hors ligne, la synchronisation la
+     * reconnait et ne la refait pas. Sans cle, l'operation passe telle quelle.
+     */
+    @Transactional
+    public <T> T enLigne(String cle, OperationHorsLigne.Type type, Object saisie, UtilisateurPrincipal auteur,
+                         java.util.function.Supplier<T> action, java.util.function.Function<T, String> reference) {
+        if (cle == null || cle.isBlank()) {
+            return action.get();
+        }
+        if (cle.length() > 64) {
+            throw new BusinessException("Cle d'operation trop longue");
+        }
+        repository.findByCle(cle).ifPresent(o -> {
+            throw new BusinessException("Operation deja recue" + (o.getReference() == null ? "" : " : " + o.getReference()));
+        });
+        T resultat = action.get();
+        OperationHorsLigne o = trace(new OperationEnvoyee(cle, type, Instant.now(), "Envoi en ligne", json.valueToTree(saisie)),
+                auteur, OperationHorsLigne.Statut.ENREGISTREE, null);
+        o.setReference(reference.apply(resultat));
+        repository.save(o);
+        return resultat;
+    }
+
     // ---------------------------------------------------------- synchronisation
 
     /**

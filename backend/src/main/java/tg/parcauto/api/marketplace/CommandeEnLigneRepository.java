@@ -11,6 +11,8 @@ public interface CommandeEnLigneRepository extends JpaRepository<CommandeEnLigne
 
     Optional<CommandeEnLigne> findByJeton(String jeton);
 
+    Optional<CommandeEnLigne> findFirstByVenteId(Long venteId);
+
     Page<CommandeEnLigne> findByStatutInOrderByDateCommandeDesc(Collection<CommandeEnLigne.Statut> statuts,
                                                                 Pageable pageable);
 

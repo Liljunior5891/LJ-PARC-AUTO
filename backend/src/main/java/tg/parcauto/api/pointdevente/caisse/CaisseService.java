@@ -61,6 +61,7 @@ public class CaisseService {
     private final tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository soldeRepository;
     private final tg.parcauto.api.pointdevente.tresorerie.RemiseCaisseRepository remiseRepository;
     private final SortieAttenteRepository sortiesAttente;
+    private final tg.parcauto.api.pointdevente.depense.DepensePdvRepository depensesPdv;
     private final CircuitDepensesCaisse circuit;
 
     /** Quantite comptee d'une valeur de billet ou de piece. */
@@ -171,7 +172,7 @@ public class CaisseService {
         if (demande.type() == MouvementCaisse.Type.SORTIE) {
             CircuitDepensesCaisse.Etape etape = circuit.etapeInitiale(auteur);
             if (etape != CircuitDepensesCaisse.Etape.DIRECTE) {
-                SessionCaisse session = controlerMouvement(id, demande.type(), demande.montant(), auteur);
+                SessionCaisse session = controlerMouvement(id, demande.type(), demande.montant(), auteur, true);
                 SortieAttente s = new SortieAttente();
                 s.setNumero(numerotation.prochainNumero("SOR"));
                 s.setSession(session);
@@ -191,14 +192,14 @@ public class CaisseService {
                 return versDto(session);
             }
         }
-        MouvementCaisse m = enregistrerMouvement(id, demande.type(), demande.montant(), demande.motif(), auteur);
+        MouvementCaisse m = enregistrerMouvement(id, demande.type(), demande.montant(), demande.motif(), auteur, true);
         return versDto(m.getSession());
     }
 
     /** Verifie qu'une sortie demandee est possible (caisse ouverte et affectee, especes suffisantes), sans rien sortir. */
     @Transactional(readOnly = true)
     public SessionCaisse controlerSortie(Long sessionId, BigDecimal montant, UtilisateurPrincipal auteur) {
-        return controlerMouvement(sessionId, MouvementCaisse.Type.SORTIE, montant, auteur);
+        return controlerMouvement(sessionId, MouvementCaisse.Type.SORTIE, montant, auteur, true);
     }
 
     /**
@@ -208,7 +209,7 @@ public class CaisseService {
     public MouvementCaisse sortieApprouvee(SessionCaisse origine, BigDecimal montant, String motif, UtilisateurPrincipal admin) {
         SessionCaisse session = circuit.sessionPourSortie(origine);
         return enregistrerMouvement(session.getId(), MouvementCaisse.Type.SORTIE, montant,
-                motif.length() <= 255 ? motif : motif.substring(0, 255), admin);
+                motif.length() <= 255 ? motif : motif.substring(0, 255), admin, false);
     }
 
     /**
@@ -216,7 +217,7 @@ public class CaisseService {
      * les especes attendues de la session, comme une sortie saisie a la caisse.
      */
     public MouvementCaisse sortie(Long sessionId, BigDecimal montant, String motif, UtilisateurPrincipal auteur) {
-        return enregistrerMouvement(sessionId, MouvementCaisse.Type.SORTIE, montant, motif, auteur);
+        return enregistrerMouvement(sessionId, MouvementCaisse.Type.SORTIE, montant, motif, auteur, true);
     }
 
     /** Especes attendues dans le tiroir d'une session ouverte (fond, ventes, entrees, sorties). */
@@ -260,8 +261,8 @@ public class CaisseService {
     }
 
     private MouvementCaisse enregistrerMouvement(Long id, MouvementCaisse.Type type, BigDecimal montant, String motif,
-                                                 UtilisateurPrincipal auteur) {
-        SessionCaisse session = controlerMouvement(id, type, montant, auteur);
+                                                 UtilisateurPrincipal auteur, boolean deduireAttente) {
+        SessionCaisse session = controlerMouvement(id, type, montant, auteur, deduireAttente);
         MouvementCaisse m = new MouvementCaisse();
         m.setSession(session);
         m.setType(type);
@@ -274,17 +275,26 @@ public class CaisseService {
     }
 
     /** Caisse ouverte et affectee ; une sortie ne depasse pas les especes attendues du tiroir. */
+    /**
+     * deduireAttente : une nouvelle sortie ne peut prendre que les especes que
+     * les demandes deja en attente (sorties, depenses) ne se sont pas reservees.
+     * L'approbation de l'une d'elles ne se deduit pas elle-meme.
+     */
     private SessionCaisse controlerMouvement(Long id, MouvementCaisse.Type type, BigDecimal montant,
-                                             UtilisateurPrincipal auteur) {
+                                             UtilisateurPrincipal auteur, boolean deduireAttente) {
         SessionCaisse session = chargerOuverte(id);
         if (!PersonnelService.gestionnaire(auteur) && !session.getCaisse().getUtilisateurIds().contains(auteur.getId())) {
             throw new BusinessException("La caisse " + session.getCaisse().getNom() + " ne vous est pas affectee");
         }
         if (type == MouvementCaisse.Type.SORTIE) {
             BigDecimal disponible = especesAttendues(session, totaux(session.getId()), mouvements(session.getId()));
-            if (montant.compareTo(disponible) > 0) {
+            BigDecimal reserve = deduireAttente
+                    ? sortiesAttente.enAttenteSession(session.getId()).add(depensesPdv.enAttenteSession(session.getId()))
+                    : BigDecimal.ZERO;
+            if (montant.compareTo(disponible.subtract(reserve)) > 0) {
                 throw new BusinessException("Sortie impossible : il n'y a que " + entier(disponible)
-                        + " F d'especes attendues dans le tiroir de " + session.getCaisse().getNom());
+                        + " F d'especes attendues dans le tiroir de " + session.getCaisse().getNom()
+                        + (reserve.signum() > 0 ? ", dont " + entier(reserve) + " F deja demandes et en attente d'approbation" : ""));
             }
         }
         return session;

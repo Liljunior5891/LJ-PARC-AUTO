@@ -184,7 +184,8 @@ public class MateriauxController {
     @GetMapping("/soldes/{id}/pdf")
     @PreAuthorize(Autorisations.PDV_CAISSE)
     @Operation(summary = "Avoir au format PDF (A4), a signer par le client")
-    public ResponseEntity<byte[]> soldePdf(@PathVariable Long id) {
+    public ResponseEntity<byte[]> soldePdf(@PathVariable Long id, @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        livraisons.exigerSolde(id, principal);
         return pdf(documents.avoir(id), documents.nomAvoir(id));
     }
 
@@ -217,7 +218,8 @@ public class MateriauxController {
     @GetMapping("/livraisons/{id}/pdf")
     @PreAuthorize(Autorisations.PDV_CAISSE)
     @Operation(summary = "Bon de livraison au format PDF (A4), a signer par le client")
-    public ResponseEntity<byte[]> bonPdf(@PathVariable Long id) {
+    public ResponseEntity<byte[]> bonPdf(@PathVariable Long id, @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        livraisons.exigerBon(id, principal);
         return pdf(documents.bonLivraison(id), documents.nomBonLivraison(id));
     }
 
@@ -288,8 +290,8 @@ public class MateriauxController {
     @GetMapping("/reglements/{numero}")
     @PreAuthorize(Autorisations.PDV_CAISSE)
     @Operation(summary = "Recu d'un versement, pour reimpression")
-    public MateriauxDto.RecuReglement recu(@PathVariable String numero) {
-        return comptes.recu(numero);
+    public MateriauxDto.RecuReglement recu(@PathVariable String numero, @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return comptes.recu(numero, principal);
     }
 
     @PostMapping("/reglements/{numero}/annulation")

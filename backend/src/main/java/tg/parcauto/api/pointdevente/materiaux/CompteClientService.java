@@ -46,6 +46,7 @@ public class CompteClientService {
     private final SessionTravailService sessionsTravail;
     private final NumerotationService numerotation;
     private final SoldeResteRepository soldeRepository;
+    private final tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetre;
 
     /** Encours d'un client : tout ce qu'il doit, et la part dont l'echeance est passee. */
     private record Encours(BigDecimal total, BigDecimal echu) {
@@ -276,6 +277,13 @@ public class CompteClientService {
 
     /** Recu d'un versement, pour reimpression. */
     @Transactional(readOnly = true)
+    public MateriauxDto.RecuReglement recu(String numero, UtilisateurPrincipal lecteur) {
+        reglages.exiger();
+        // Chaque caisse ne voit que ses operations : le recu se lit depuis la caisse qui l'a encaisse.
+        perimetre.exiger(lignesDuRecu(numero).get(0).getSession(), lecteur);
+        return recu(numero);
+    }
+
     public MateriauxDto.RecuReglement recu(String numero) {
         reglages.exiger();
         List<ReglementClient> lignes = lignesDuRecu(numero);

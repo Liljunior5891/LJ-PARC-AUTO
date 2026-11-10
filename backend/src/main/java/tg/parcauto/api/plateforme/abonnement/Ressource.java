@@ -1,11 +1,15 @@
 package tg.parcauto.api.plateforme.abonnement;
 
-/** Volumes limites par la formule d'abonnement, et la table ou les compter. */
+/**
+ * Volumes limites par la formule d'abonnement, et la table ou les compter.
+ * Seuls les elements actifs comptent : archiver ou desactiver libere une place,
+ * et la reactivation repasse par la limite.
+ */
 public enum Ressource {
     UTILISATEURS("Comptes utilisateurs", "utilisateur", " AND actif"),
-    VEHICULES("Vehicules", "camion", ""),
-    AGENCES("Agences", "agc_agence", ""),
-    CAISSES("Caisses de point de vente", "pdv_caisse", ""),
+    VEHICULES("Vehicules", "camion", " AND actif"),
+    AGENCES("Agences", "agc_agence", " AND actif"),
+    CAISSES("Caisses de point de vente", "pdv_caisse", " AND actif"),
     EMPLOYES("Employes (presence)", "pres_employe", " AND actif");
 
     private final String libelle;

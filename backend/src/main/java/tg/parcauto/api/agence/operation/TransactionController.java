@@ -37,6 +37,7 @@ import java.util.List;
 public class TransactionController {
 
     private final TransactionService service;
+    private final tg.parcauto.api.agence.horsligne.HorsLigneService horsLigne;
 
     public record Annulation(@NotBlank @Size(max = 500) String motif) {
     }
@@ -53,8 +54,11 @@ public class TransactionController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Valide une transaction : ecriture au registre (cash, virtuel, commission)")
     public TransactionService.TransactionDto enregistrer(@Valid @RequestBody TransactionService.Saisie saisie,
+                                                         @org.springframework.web.bind.annotation.RequestHeader(
+                                                                 value = "X-Cle-Operation", required = false) String cle,
                                                          @AuthenticationPrincipal UtilisateurPrincipal principal) {
-        return service.enregistrer(saisie, principal);
+        return horsLigne.enLigne(cle, tg.parcauto.api.agence.horsligne.OperationHorsLigne.Type.TRANSACTION, saisie, principal,
+                () -> service.enregistrer(saisie, principal), TransactionService.TransactionDto::reference);
     }
 
     @PostMapping("/{id}/annulation")

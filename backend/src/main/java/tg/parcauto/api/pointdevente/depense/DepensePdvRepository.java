@@ -105,4 +105,12 @@ public interface DepensePdvRepository extends JpaRepository<DepensePdv, Long> {
             where d.statut in :statuts order by d.creeLe, d.id
             """)
     List<DepensePdv> enAttente(@Param("statuts") java.util.Collection<DepensePdv.Statut> statuts);
+
+    /** Depenses a payer par le tiroir de la session, en attente d'approbation. */
+    @Query("""
+            select coalesce(sum(d.montant), 0) from DepensePdv d where d.session.id = :sessionId
+              and d.statut in (tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_GERANT,
+                               tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_ADMIN)
+            """)
+    java.math.BigDecimal enAttenteSession(@Param("sessionId") Long sessionId);
 }

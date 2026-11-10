@@ -247,7 +247,8 @@ public class AbonnementService {
         if (abonnements.findByEntrepriseId(entrepriseId).isPresent()) {
             return;
         }
-        int duree = Math.max(1, jours == null ? parametres().getDureeEssaiJours() : jours);
+        // Duree 0 : pas d'essai, l'entreprise entre directement dans la grace et doit payer.
+        int duree = Math.max(0, jours == null ? parametres().getDureeEssaiJours() : jours);
         Abonnement a = new Abonnement();
         a.setEntrepriseId(entrepriseId);
         a.setEssai(true);
@@ -304,7 +305,8 @@ public class AbonnementService {
         }
         String nom = entreprises.findById(entrepriseId).map(Entreprise::getNom).orElse(null);
         return vue(a, nom, parametres(), utilises,
-                paiements.existsByEntrepriseIdAndStatut(entrepriseId, StatutPaiementAbonnement.EN_ATTENTE));
+                paiements.existsByEntrepriseIdAndStatut(entrepriseId, StatutPaiementAbonnement.EN_ATTENTE),
+                paiementsEnVigueur().get(entrepriseId));
     }
 
     /** Abonnements de toutes les entreprises, pour la console (cinq requetes de comptage en tout). */
@@ -320,6 +322,7 @@ public class AbonnementService {
                 .filter(p -> p.getStatut() == StatutPaiementAbonnement.EN_ATTENTE)
                 .map(PaiementAbonnement::getEntrepriseId).collect(Collectors.toSet());
         ParametresAbonnement p = parametres();
+        Map<Long, PaiementAbonnement> enVigueur = paiementsEnVigueur();
         List<AbonnementVue> vues = new ArrayList<>();
         for (Entreprise e : liste) {
             Abonnement a = parEntreprise.get(e.getId());
@@ -330,7 +333,7 @@ public class AbonnementService {
             for (Ressource r : Ressource.values()) {
                 utilises.put(r, comptes.get(r).getOrDefault(e.getId(), 0L));
             }
-            vues.add(vue(a, e.getNom(), p, utilises, enAttente.contains(e.getId())));
+            vues.add(vue(a, e.getNom(), p, utilises, enAttente.contains(e.getId()), enVigueur.get(e.getId())));
         }
         return vues;
     }
@@ -392,10 +395,16 @@ public class AbonnementService {
         if (!entreprises.existsById(entrepriseId)) {
             throw ResourceNotFoundException.of("Entreprise", entrepriseId);
         }
+        // Une declaration en attente est sans doute ce meme paiement : la saisir en plus le compterait deux fois.
+        if (paiements.existsByEntrepriseIdAndStatut(entrepriseId, StatutPaiementAbonnement.EN_ATTENTE)) {
+            throw new BusinessException("L'entreprise a declare un paiement qui attend votre decision :"
+                    + " validez-le ou rejetez-le dans Abonnements > Paiements avant d'en saisir un autre");
+        }
         Formule f = formule(s.formuleId());
         Devis devis = devis(f, s.periodicite(), s.modules());
+        boolean sansMontant = s.montant() == null || s.montant().signum() == 0;
         PaiementAbonnement p = nouveauPaiement(entrepriseId, f, s.periodicite(), devis, s.moyen(),
-                s.reference(), s.note(), s.montant() == null ? devis.montant() : s.montant());
+                s.reference(), s.note(), sansMontant ? devis.montant() : s.montant());
         p.setSaisiPlateforme(true);
         paiements.save(p);
         appliquer(p, auteur);
@@ -578,7 +587,8 @@ public class AbonnementService {
     private void appliquer(PaiementAbonnement p, String auteur) {
         Abonnement a = abonnement(p.getEntrepriseId());
         LocalDate jour = LocalDate.now();
-        boolean continuite = !a.isEssai() && !a.getFin().isBefore(jour);
+        // Paye pendant l'essai ou avant l'echeance : la periode payee commence apres, rien n'est perdu.
+        boolean continuite = !a.getFin().isBefore(jour);
         LocalDate debut = continuite ? a.getFin().plusDays(1) : jour;
         LocalDate fin = debut.plusMonths(p.getPeriodicite().getMois()).minusDays(1);
 
@@ -590,12 +600,15 @@ public class AbonnementService {
         Long numero = jdbc.queryForObject("SELECT nextval('abo_facture_seq')", Long.class);
         p.setNumeroFacture("FA-" + jour.getYear() + "-" + String.format("%05d", numero));
 
+        boolean etaitEssai = a.isEssai();
         if (!continuite) {
             a.setDebut(debut);
         }
         a.setFin(fin);
         a.setEssai(false);
-        if (!debut.isAfter(jour)) {
+        // Pendant un essai, rien de paye n'est a proteger : la formule s'applique aussitot,
+        // et la periode payee commence quand meme apres l'essai.
+        if (!debut.isAfter(jour) || etaitEssai) {
             mettreEnVigueur(a, p);
         }
     }
@@ -721,8 +734,35 @@ public class AbonnementService {
                 p.getInstructionsPaiement(), p.getMentionsFacture());
     }
 
+    /** Dernier paiement valide dont la periode a commence, par entreprise. */
+    private Map<Long, PaiementAbonnement> paiementsEnVigueur() {
+        Map<Long, PaiementAbonnement> parEntreprise = new HashMap<>();
+        for (PaiementAbonnement p : paiements.findByStatutAndPeriodeDebutLessThanEqualOrderByPeriodeDebutDescIdDesc(
+                StatutPaiementAbonnement.VALIDE, LocalDate.now())) {
+            parEntreprise.putIfAbsent(p.getEntrepriseId(), p);
+        }
+        return parEntreprise;
+    }
+
+    /**
+     * Mensualite reellement payee : le montant du paiement en vigueur ramene au
+     * mois (remise de periodicite et montant saisi compris). Changer le prix
+     * d'une formule ne touche donc pas les abonnes avant leur renouvellement.
+     * Sans paiement connu, le prix actuel des modules de la formule.
+     */
+    private BigDecimal mensualite(Abonnement a, PaiementAbonnement paye) {
+        if (a.isEssai() || a.getFormule() == null) {
+            return BigDecimal.ZERO;
+        }
+        if (paye != null && paye.getMontant() != null && paye.getPeriodicite() != null) {
+            return paye.getMontant().divide(BigDecimal.valueOf(paye.getPeriodicite().getMois()), 0, RoundingMode.HALF_UP);
+        }
+        Formule f = a.getFormule();
+        return a.modulesPayes().stream().map(f::prixDe).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
     private AbonnementVue vue(Abonnement a, String nom, ParametresAbonnement p, Map<Ressource, Long> utilises,
-                              boolean enAttente) {
+                              boolean enAttente, PaiementAbonnement paye) {
         LocalDate jour = LocalDate.now();
         EtatAbonnement etat = etat(a, p, jour);
         Formule f = a.getFormule();
@@ -730,10 +770,7 @@ public class AbonnementService {
                 .map(r -> new Usage(r.name(), r.getLibelle(), utilises.getOrDefault(r, 0L),
                         a.isEssai() || f == null ? null : f.limite(r)))
                 .toList();
-        BigDecimal mensualite = BigDecimal.ZERO;
-        if (!a.isEssai() && f != null) {
-            mensualite = a.modulesPayes().stream().map(f::prixDe).reduce(BigDecimal.ZERO, BigDecimal::add);
-        }
+        BigDecimal mensualite = mensualite(a, paye);
         boolean rappel = etat == EtatAbonnement.A_RENOUVELER || etat == EtatAbonnement.GRACE
                 || etat == EtatAbonnement.EXPIRE
                 || (etat == EtatAbonnement.ESSAI && ChronoUnit.DAYS.between(jour, a.getFin()) < p.getJoursRappel());

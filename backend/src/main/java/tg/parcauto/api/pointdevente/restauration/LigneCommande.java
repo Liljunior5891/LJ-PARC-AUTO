@@ -57,6 +57,15 @@ public class LigneCommande extends BaseEntity {
     @JoinColumn(name = "article_id", nullable = false)
     private Article article;
 
+    /** Le stock est sorti a l'envoi : seule une ligne sortie se rend a l'annulation. */
+    @Column(name = "stock_sorti", nullable = false)
+    private boolean stockSorti;
+
+    /** Magasin d'ou le stock est sorti (celui de la caisse) ; nul sans entrepots. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lieu_id")
+    private tg.parcauto.api.pointdevente.lieu.LieuStock lieu;
+
     @Column(nullable = false, length = 150)
     private String libelle;
 

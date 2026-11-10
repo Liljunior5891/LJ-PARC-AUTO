@@ -276,7 +276,21 @@ public class CommandeEnLigneService {
         }
         commande.setStatut(Statut.LIVREE);
         commande.setStatutPaiement(CommandeEnLigne.StatutPaiement.PAYEE);
+        commande.setVenteId(evenement.venteId());
         repository.save(commande);
+    }
+
+    /**
+     * Le ticket qui reglait la commande est annule : elle n'est plus ni remise
+     * ni payee. Elle redevient prete, a encaisser de nouveau ou a annuler.
+     */
+    @EventListener
+    public void venteAnnulee(VenteService.VenteAnnulee evenement) {
+        repository.findFirstByVenteId(evenement.venteId()).ifPresent(commande -> {
+            commande.setStatut(Statut.PRETE);
+            commande.setStatutPaiement(CommandeEnLigne.StatutPaiement.EN_ATTENTE);
+            commande.setVenteId(null);
+        });
     }
 
     /**

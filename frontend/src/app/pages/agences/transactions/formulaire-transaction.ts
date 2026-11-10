@@ -12,7 +12,7 @@ import {
 } from '../../../core/models/agences';
 import { AgencesService } from '../../../core/services/agences.service';
 import { LogoService, attributsOption } from '../../../shared/logo-service';
-import { AgencesHorsLigneService, erreurReseau } from '../../../core/services/agences-hors-ligne.service';
+import { AgencesHorsLigneService, erreurReseau, nouvelleCleOperation } from '../../../core/services/agences-hors-ligne.service';
 import { Modale } from '../../../shared/modale';
 
 const PIECES = ['CNI', 'Passeport', 'Permis de conduire', 'Carte consulaire', 'Carte d\'electeur', 'Autre'];
@@ -315,7 +315,8 @@ export class FormulaireTransaction implements OnInit, OnDestroy {
     }
     this.envoi.set(true);
     this.erreur.set(null);
-    this.service.enregistrerTransaction(saisie).subscribe({
+    const cle = nouvelleCleOperation();
+    this.service.enregistrerTransaction(saisie, cle).subscribe({
       next: (t) => {
         this.envoi.set(false);
         this.enregistree.emit(t);
@@ -330,9 +331,10 @@ export class FormulaireTransaction implements OnInit, OnDestroy {
       error: (e) => {
         this.envoi.set(false);
         // Coupure pendant l'envoi : la transaction part dans la file plutot que de se perdre.
+        // Meme cle : si le serveur l'avait deja enregistree, le rejeu ne la refera pas.
         if (erreurReseau(e)) {
           this.sansReseau.set(true);
-          this.mettreEnFile(saisie, continuer);
+          this.mettreEnFile(saisie, continuer, cle);
           return;
         }
         this.erreur.set(this.message(e, 'Transaction refusee.'));
@@ -342,10 +344,10 @@ export class FormulaireTransaction implements OnInit, OnDestroy {
   }
 
   /** Sans connexion : la transaction est gardee sur l'appareil et envoyee au retour du reseau. */
-  private mettreEnFile(saisie: NonNullable<ReturnType<FormulaireTransaction['saisie']>>, continuer: boolean): void {
+  private mettreEnFile(saisie: NonNullable<ReturnType<FormulaireTransaction['saisie']>>, continuer: boolean, cle?: string): void {
     const resume = `${this.typeChoisi()?.libelle ?? 'Operation'} ${this.nomReseau() ?? this.serviceChoisi()?.nom ?? ''} `
       + `${Math.round(this.montant || 0).toLocaleString('fr-FR')} F`;
-    const reference = this.horsLigne.ajouter('TRANSACTION', { ...saisie, confirmerDoublon: true }, resume.trim());
+    const reference = this.horsLigne.ajouter('TRANSACTION', { ...saisie, confirmerDoublon: true }, resume.trim(), cle);
     this.derniereHorsLigne.set(`${reference} · ${resume.trim()}`);
     this.derniere.set(null);
     this.reinitialiser();

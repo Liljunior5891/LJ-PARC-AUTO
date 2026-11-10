@@ -247,6 +247,7 @@ public class TransactionService {
             throw new BusinessException("Le motif de l'annulation est obligatoire");
         }
         verrou.exigerOuverte(t.getAgenceId(), t.getJournee(), "l'annulation de " + t.getReference());
+        sessions.exigerSessionOuverte(t.getSessionId(), "l'annulation de " + t.getReference());
         if (t.getVersementId() != null) {
             throw new BusinessException("La commission de " + t.getReference() + " est deja rapprochee d'un versement de l'operateur :"
                     + " annulez d'abord ce versement");
@@ -374,7 +375,7 @@ public class TransactionService {
 
         // Commission : celle du bareme, sauf modification autorisee.
         p.commission = baremes.commission(p.service.getId(), p.type.getId(), p.reseau == null ? null : p.reseau.getId(),
-                montant, LocalDate.now(JourneeCaisse.FUSEAU));
+                montant, registre.journee(Instant.now()));
         p.commissionRetenue = p.commission.commission();
         if (s.commission() != null && s.commission() != p.commission.commission()) {
             droits.exiger(PermissionAgence.COMMISSION_MODIFIER);

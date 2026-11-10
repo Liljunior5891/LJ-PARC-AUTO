@@ -45,6 +45,7 @@ import java.util.List;
 public class DepenseAgenceController {
 
     private final DepenseAgenceService service;
+    private final tg.parcauto.api.agence.horsligne.HorsLigneService horsLigne;
 
     public record Motif(@NotBlank @Size(max = 500) String motif) {
     }
@@ -119,8 +120,11 @@ public class DepenseAgenceController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Enregistre une depense : le compte choisi (ou la caisse du caissier) est debite")
     public DepenseAgenceService.DepenseDto creer(@Valid @RequestBody DepenseAgenceService.Requete r,
+                                                 @org.springframework.web.bind.annotation.RequestHeader(
+                                                         value = "X-Cle-Operation", required = false) String cle,
                                                  @AuthenticationPrincipal UtilisateurPrincipal principal) {
-        return service.creer(r, principal);
+        return horsLigne.enLigne(cle, tg.parcauto.api.agence.horsligne.OperationHorsLigne.Type.DEPENSE, r, principal,
+                () -> service.creer(r, principal), DepenseAgenceService.DepenseDto::numero);
     }
 
     @GetMapping("/a-valider")

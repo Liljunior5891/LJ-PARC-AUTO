@@ -75,6 +75,52 @@ public class SessionCaisseService {
     private final AuditAgenceService audit;
     private final ObjectMapper json;
 
+    /**
+     * Une annulation reecrit la caisse du caissier : elle n'est permise que tant
+     * que la session de l'operation est ouverte. Comptee (soumise) ou fermee, ses
+     * chiffres sont arretes ; on corrige alors par une operation sur la caisse generale.
+     */
+    @Transactional(readOnly = true)
+    public void exigerSessionOuverte(Long sessionId, String action) {
+        if (sessionId == null) {
+            return;
+        }
+        repository.findById(sessionId)
+                .filter(s -> s.getStatut() != SessionCaisseAgence.Statut.OUVERTE)
+                .ifPresent(s -> {
+                    throw new BusinessException(refusCaisseArretee(s.getCaissierNom(), s.getStatut(), action));
+                });
+    }
+
+    /**
+     * Meme regle pour une operation qui ne note pas sa session (depense) : si
+     * elle a touche la caisse d'un caissier, la session ouverte de cette caisse
+     * doit dater d'avant l'operation.
+     */
+    @Transactional(readOnly = true)
+    public void exigerCaisseOuverte(Long compteId, Instant dateOperation, String action) {
+        if (compteId == null) {
+            return;
+        }
+        CompteAgence compte = compteRepository.findById(compteId).orElse(null);
+        if (compte == null || compte.getType() != TypeCompte.CAISSE_CAISSIER || compte.getUtilisateurId() == null) {
+            return;
+        }
+        SessionCaisseAgence ouverte = repository.findByCaissierIdAndStatut(compte.getUtilisateurId(), SessionCaisseAgence.Statut.OUVERTE)
+                .filter(s -> s.getCompteId().equals(compteId))
+                .orElse(null);
+        if (ouverte == null || (dateOperation != null && ouverte.getOuverteLe() != null && ouverte.getOuverteLe().isAfter(dateOperation))) {
+            throw new BusinessException(refusCaisseArretee(compte.getLibelle(), null, action));
+        }
+    }
+
+    private static String refusCaisseArretee(String caisse, SessionCaisseAgence.Statut statut, String action) {
+        String etat = statut == SessionCaisseAgence.Statut.SOUMISE ? "est comptee et attend la decision du superviseur"
+                : "a ete fermee depuis";
+        return "La caisse de " + caisse + " " + etat + " : " + action + " changerait des comptes deja arretes."
+                + " Corrigez par une operation sur la caisse generale.";
+    }
+
     public record LigneBillettage(@NotNull Long valeur, @NotNull @PositiveOrZero Integer quantite) {
     }
 

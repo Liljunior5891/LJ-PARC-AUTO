@@ -32,4 +32,12 @@ public interface SortieAttenteRepository extends JpaRepository<SortieAttente, Lo
                   and s.approuveeLe >= :depuis))
             """)
     List<SortieAttente> trancheesPour(@Param("auteur") Long auteurId, @Param("depuis") java.time.Instant depuis);
+
+    /** Especes deja demandees sur la session et pas encore tranchees. */
+    @Query("""
+            select coalesce(sum(s.montant), 0) from SortieAttente s where s.session.id = :sessionId
+              and s.statut in (tg.parcauto.api.pointdevente.caisse.SortieAttente.Statut.ATTENTE_GERANT,
+                               tg.parcauto.api.pointdevente.caisse.SortieAttente.Statut.ATTENTE_ADMIN)
+            """)
+    java.math.BigDecimal enAttenteSession(@Param("sessionId") Long sessionId);
 }

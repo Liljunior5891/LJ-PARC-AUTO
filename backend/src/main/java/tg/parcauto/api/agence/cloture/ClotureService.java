@@ -138,8 +138,11 @@ public class ClotureService {
         if (c.getStatut() == ClotureAgence.Statut.VALIDEE) {
             throw new BusinessException("La journee du " + s.journee().format(JJ_MM_AAAA) + " est deja cloturee");
         }
+        // Seules comptent les caisses ouvertes pendant cette journee ou avant : celles du lendemain n'y ont rien.
         List<SessionCaisseAgence> ouvertes = sessions.findByAgenceIdAndStatutIn(agence.getId(),
-                tg.parcauto.api.agence.caisse.SessionCaisseService.EN_COURS);
+                        tg.parcauto.api.agence.caisse.SessionCaisseService.EN_COURS).stream()
+                .filter(o -> o.getOuverteLe() == null || !registre.journee(o.getOuverteLe()).isAfter(s.journee()))
+                .toList();
         if (!ouvertes.isEmpty()) {
             throw new BusinessException("Fermez ou validez d'abord les caisses des caissiers : " + ouvertes.stream()
                     .map(SessionCaisseAgence::getCaissierNom).collect(Collectors.joining(", ")));

@@ -88,7 +88,7 @@ class CommandeServiceTest {
         service = new CommandeService(repository, mock(LigneCommandeRepository.class),
                 mock(TableRestaurantRepository.class), articles, stockService, venteService,
                 mock(tg.parcauto.api.pointdevente.caisse.SessionTravailService.class), mock(NumerotationService.class),
-                impression);
+                impression, mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class));
     }
 
     private tg.parcauto.api.pointdevente.impression.ImpressionService impression;

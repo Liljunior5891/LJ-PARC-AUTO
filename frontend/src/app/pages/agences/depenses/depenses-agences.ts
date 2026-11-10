@@ -11,7 +11,7 @@ import { AgencesService } from '../../../core/services/agences.service';
 import { Modale } from '../../../shared/modale';
 import { OngletsInclines } from '../../../shared/onglets-inclines';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
-import { AgencesHorsLigneService, erreurReseau } from '../../../core/services/agences-hors-ligne.service';
+import { AgencesHorsLigneService, erreurReseau, nouvelleCleOperation } from '../../../core/services/agences-hors-ligne.service';
 
 type Onglet = 'liste' | 'a-valider' | 'suivi' | 'recurrentes';
 
@@ -238,7 +238,8 @@ export class DepensesAgences implements OnInit {
       compteId: this.caissierSeul ? null : f.compteId, beneficiaire: f.beneficiaire.trim() || undefined,
       reference: f.reference.trim() || undefined, observations: f.observations.trim() || undefined
     };
-    this.service.creerDepense(depense).subscribe({
+    const cle = nouvelleCleOperation();
+    this.service.creerDepense(depense, cle).subscribe({
       next: (d) => {
         const fin = () => {
           this.saisie.set(false);
@@ -262,7 +263,7 @@ export class DepensesAgences implements OnInit {
         }
         // Sans connexion : la depense part dans la file (le justificatif se joindra ensuite, en ligne).
         const reference = this.horsLigne.ajouter('DEPENSE', depense,
-          `Depense ${depense.libelle} ${depense.montant.toLocaleString('fr-FR')} F`);
+          `Depense ${depense.libelle} ${depense.montant.toLocaleString('fr-FR')} F`, cle);
         this.saisie.set(false);
         this.succes.set(`${reference} : depense gardee hors ligne (${depense.montant.toLocaleString('fr-FR')} F). `
           + `Elle partira au retour du reseau${this.fichier ? ' ; joignez le justificatif une fois en ligne' : ''}.`);

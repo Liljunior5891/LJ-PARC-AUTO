@@ -161,6 +161,10 @@ public class CommandeEnLigne extends BaseEntity {
     @Column(name = "pdv_commande_id")
     private Long pdvCommandeId;
 
+    /** Ticket de la caisse boutique qui a regle la commande. */
+    @Column(name = "vente_id")
+    private Long venteId;
+
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id")
     private List<LigneCommandeEnLigne> lignes = new ArrayList<>();

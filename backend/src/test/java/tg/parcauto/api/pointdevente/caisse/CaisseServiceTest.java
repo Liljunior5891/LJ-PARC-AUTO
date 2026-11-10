@@ -65,7 +65,9 @@ class CaisseServiceTest {
                 mock(GestionCaisseService.class), mock(SessionTravailService.class),
                 mock(tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository.class),
                 mock(tg.parcauto.api.pointdevente.tresorerie.RemiseCaisseRepository.class),
-                sortiesAttente, new CircuitDepensesCaisse(reglages, sessions));
+                sortiesAttente, depensesEnAttente(), new CircuitDepensesCaisse(reglages, sessions));
+        org.mockito.Mockito.lenient().when(sortiesAttente.enAttenteSession(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(BigDecimal.ZERO);
 
         Caisse caisse = new Caisse();
         caisse.setId(3L);
@@ -262,5 +264,11 @@ class CaisseServiceTest {
         u.setActif(true);
         u.setEntrepriseId(1L);
         return new UtilisateurPrincipal(u, "Maquis Test", true);
+    }
+
+    private static tg.parcauto.api.pointdevente.depense.DepensePdvRepository depensesEnAttente() {
+        tg.parcauto.api.pointdevente.depense.DepensePdvRepository repo = mock(tg.parcauto.api.pointdevente.depense.DepensePdvRepository.class);
+        org.mockito.Mockito.lenient().when(repo.enAttenteSession(org.mockito.ArgumentMatchers.any())).thenReturn(BigDecimal.ZERO);
+        return repo;
     }
 }

@@ -407,7 +407,7 @@ public class LieuStockService {
         List<BonRetrait> existants = new ArrayList<>(bonRepository.findByVenteIdOrderByIdAsc(vente.getId()));
         Map<Long, LieuStock> lieux = new LinkedHashMap<>();
         for (LigneVente ligne : vente.getLignes()) {
-            if (ligne.getArticle().isSuiviStock() && ligne.resteALivrer().signum() > 0) {
+            if (ligne.stockSuivi() && ligne.resteALivrer().signum() > 0) {
                 if (ligne.getLieu() == null) {
                     ligne.setLieu(principal());
                 }

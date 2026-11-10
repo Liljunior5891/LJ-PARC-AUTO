@@ -46,6 +46,7 @@ public class LivraisonClientService {
     private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
     private final tg.parcauto.api.pointdevente.lieu.BonRetraitRepository retraits;
     private final tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetre;
+    private final tg.parcauto.api.pointdevente.caisse.CaisseService caisses;
 
     /** Ventes dont il reste de la marchandise a remettre, les plus anciennes d'abord ; un caissier, celles de sa caisse. */
     @Transactional(readOnly = true)
@@ -74,6 +75,19 @@ public class LivraisonClientService {
     public void exigerVente(Long venteId, UtilisateurPrincipal utilisateur) {
         Vente vente = venteRepository.detail(venteId).orElseThrow(() -> ResourceNotFoundException.of("Vente", venteId));
         perimetre.exiger(vente.getSession(), utilisateur);
+    }
+
+    /** Un bon de livraison ne se lit que depuis la caisse de sa vente (ou par un gerant). */
+    @Transactional(readOnly = true)
+    public void exigerBon(Long bonId, UtilisateurPrincipal utilisateur) {
+        BonLivraison bon = repository.findById(bonId).orElseThrow(() -> ResourceNotFoundException.of("Bon de livraison", bonId));
+        perimetre.exiger(bon.getVente().getSession(), utilisateur);
+    }
+
+    /** Meme regle pour l'avoir d'un solde. */
+    @Transactional(readOnly = true)
+    public void exigerSolde(Long soldeId, UtilisateurPrincipal utilisateur) {
+        perimetre.exiger(chargerSolde(soldeId).getVente().getSession(), utilisateur);
     }
 
     /** Enregistre une remise : le stock sort, la reservation diminue, un bon est emis. */
@@ -236,6 +250,14 @@ public class LivraisonClientService {
                 throw new BusinessException("Choisissez comment rembourser le client");
             }
             solde.setSession(sessionsTravail.exiger(auteur, demande.sessionId()));
+            if (demande.modeRemboursement() == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.ESPECES) {
+                BigDecimal tiroir = caisses.especesDuTiroir(solde.getSession().getId());
+                if (rembourse.compareTo(tiroir) > 0) {
+                    throw new BusinessException("Remboursement impossible en especes : il n'y a que "
+                            + tiroir.setScale(0, RoundingMode.HALF_UP).toPlainString() + " F attendus dans le tiroir."
+                            + " Remboursez par un autre moyen ou faites d'abord une entree de caisse.");
+                }
+            }
             solde.setModeRemboursement(demande.modeRemboursement());
             solde.setReferencePaiement(vide(demande.referencePaiement()));
         }
@@ -302,7 +324,7 @@ public class LivraisonClientService {
         Vente vente = evenement.vente();
         BonLivraison bon = null;
         for (LigneVente ligne : vente.getLignes()) {
-            if (ligne.getArticle().isSuiviStock() && ligne.getQuantiteLivree().signum() > 0) {
+            if (ligne.stockSuivi() && ligne.getQuantiteLivree().signum() > 0) {
                 if (bon == null) {
                     bon = nouveauBon(vente, vente.getCaissierNom());
                     bon.setDateBon(vente.getDateVente());

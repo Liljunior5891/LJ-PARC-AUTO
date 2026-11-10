@@ -180,6 +180,9 @@ public class CamionService {
             camion.setStatut(r.statut());
         }
         if (r.actif() != null) {
+            if (r.actif() && !camion.isActif() && camion.getId() != null) {
+                abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.VEHICULES);
+            }
             camion.setActif(r.actif());
         }
     }

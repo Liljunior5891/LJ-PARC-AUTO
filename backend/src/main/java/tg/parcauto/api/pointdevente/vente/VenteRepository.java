@@ -161,9 +161,9 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
 
     /** [produit, quantite, total, commandes] des ventes validees d'une session, du plus gros chiffre au plus petit. */
     @Query("""
-            select l.libelle, sum(l.quantite), sum(l.total), count(distinct v.id) from LigneVente l join l.vente v
+            select l.libelle, sum(l.quantite), sum(case when coalesce(l.vente.totalBrut, 0) > 0 then l.total * l.vente.total / l.vente.totalBrut else l.total end), count(distinct v.id) from LigneVente l join l.vente v
             where v.session.id = :sessionId and v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
-            group by l.libelle order by sum(l.total) desc
+            group by l.libelle order by sum(case when coalesce(l.vente.totalBrut, 0) > 0 then l.total * l.vente.total / l.vente.totalBrut else l.total end) desc
             """)
     List<Object[]> parProduitSession(@Param("sessionId") Long sessionId);
 
@@ -199,14 +199,18 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
             """)
     long annuleesPeriode(@Param("debut") Instant debut, @Param("fin") Instant fin);
 
-    /** [articleId, libelle, quantite, chiffre d'affaires, cout d'achat] des articles les plus vendus. */
+    /**
+     * [articleId, libelle, quantite, chiffre d'affaires, cout d'achat] des articles les plus vendus.
+     * Ici comme dans les autres repartitions par produit ou categorie, le chiffre d'une ligne est net
+     * de la remise faite sur tout le ticket, repartie au prorata des lignes.
+     */
     @Query("""
-            select l.article.id, l.libelle, sum(l.quantite), sum(l.total),
+            select l.article.id, l.libelle, sum(l.quantite), sum(case when coalesce(l.vente.totalBrut, 0) > 0 then l.total * l.vente.total / l.vente.totalBrut else l.total end),
                    coalesce(sum(l.quantite * coalesce(l.prixAchat, 0)), 0) from LigneVente l
             where l.vente.dateVente >= :debut and l.vente.dateVente < :fin
               and l.vente.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
             group by l.article.id, l.libelle
-            order by sum(l.total) desc
+            order by sum(case when coalesce(l.vente.totalBrut, 0) > 0 then l.total * l.vente.total / l.vente.totalBrut else l.total end) desc
             """)
     List<Object[]> meilleursArticles(@Param("debut") Instant debut, @Param("fin") Instant fin, Pageable pageable);
 
@@ -233,35 +237,35 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
 
     /** [categorie, couleur, icone, chiffre d'affaires] : la repartition des ventes par categorie. */
     @Query("""
-            select c.nom, c.couleur, c.icone, sum(l.total) from LigneVente l
+            select c.nom, c.couleur, c.icone, sum(case when coalesce(l.vente.totalBrut, 0) > 0 then l.total * l.vente.total / l.vente.totalBrut else l.total end) from LigneVente l
             left join l.article a left join a.categorie c
             where l.vente.dateVente >= :debut and l.vente.dateVente < :fin
               and l.vente.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
             group by c.nom, c.couleur, c.icone
-            order by sum(l.total) desc
+            order by sum(case when coalesce(l.vente.totalBrut, 0) > 0 then l.total * l.vente.total / l.vente.totalBrut else l.total end) desc
             """)
     List<Object[]> ventesParCategorie(@Param("debut") Instant debut, @Param("fin") Instant fin);
 
     /** [code, produit, categorie, quantite (unite de base), chiffre d'affaires, cout d'achat] par produit vendu. */
     @Query("""
-            select a.code, a.nom, c.nom, sum(l.quantiteBase), sum(l.total),
+            select a.code, a.nom, c.nom, sum(l.quantiteBase), sum(case when coalesce(l.vente.totalBrut, 0) > 0 then l.total * l.vente.total / l.vente.totalBrut else l.total end),
                    coalesce(sum(l.quantite * coalesce(l.prixAchat, 0)), 0)
             from LigneVente l join l.article a left join a.categorie c
             where l.vente.dateVente >= :debut and l.vente.dateVente < :fin
               and l.vente.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
             group by a.code, a.nom, c.nom
-            order by sum(l.total) desc
+            order by sum(case when coalesce(l.vente.totalBrut, 0) > 0 then l.total * l.vente.total / l.vente.totalBrut else l.total end) desc
             """)
     List<Object[]> ventesParProduit(@Param("debut") Instant debut, @Param("fin") Instant fin);
 
     /** [categorie, quantite, chiffre d'affaires, cout d'achat] par categorie. */
     @Query("""
-            select c.nom, sum(l.quantiteBase), sum(l.total), coalesce(sum(l.quantite * coalesce(l.prixAchat, 0)), 0)
+            select c.nom, sum(l.quantiteBase), sum(case when coalesce(l.vente.totalBrut, 0) > 0 then l.total * l.vente.total / l.vente.totalBrut else l.total end), coalesce(sum(l.quantite * coalesce(l.prixAchat, 0)), 0)
             from LigneVente l left join l.article a left join a.categorie c
             where l.vente.dateVente >= :debut and l.vente.dateVente < :fin
               and l.vente.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
             group by c.nom
-            order by sum(l.total) desc
+            order by sum(case when coalesce(l.vente.totalBrut, 0) > 0 then l.total * l.vente.total / l.vente.totalBrut else l.total end) desc
             """)
     List<Object[]> ventesCategoriesAvecCout(@Param("debut") Instant debut, @Param("fin") Instant fin);
 

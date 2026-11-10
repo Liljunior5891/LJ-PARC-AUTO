@@ -43,6 +43,19 @@ export interface ConflitHorsLigne {
   reference?: string | null;
 }
 
+/**
+ * En-tete portant la cle d'une operation envoyee en ligne. Si la reponse se
+ * perd, la meme cle part avec la file hors ligne : le serveur reconnait
+ * l'operation deja enregistree au lieu de la refaire.
+ */
+export const ENTETE_CLE_OPERATION = 'X-Cle-Operation';
+
+/** Cle unique d'une operation (envoi en ligne puis, au besoin, file hors ligne). */
+export function nouvelleCleOperation(): string {
+  return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 /** Une erreur sans reponse du serveur : reseau coupe ou serveur injoignable. */
 export function erreurReseau(e: unknown): boolean {
   return (e as { status?: number })?.status === 0;
@@ -69,14 +82,15 @@ export class AgencesHorsLigneService {
   /** Resultats des derniers envois (conflits a montrer au caissier). */
   readonly derniersResultats = signal<ResultatHorsLigne[]>([]);
   private demarre = false;
+  /** Utilisateur dont la file est en memoire : un autre caissier sur le meme poste a la sienne. */
+  private utilisateurCharge: number | null | undefined = undefined;
 
   demarrer(): void {
+    this.suivreUtilisateur();
     if (this.demarre) {
       return;
     }
     this.demarre = true;
-    this.enAttente.set(this.lire(this.cleFile(), []));
-    this.derniersResultats.set(this.lire(this.cleResultats(), []));
     window.addEventListener('online', () => {
       this.enLigne.set(true);
       this.envoyer();
@@ -90,10 +104,27 @@ export class AgencesHorsLigneService {
     this.envoyer();
   }
 
-  /** Met une operation dans la file ; elle part des que le serveur repond. Renvoie sa reference provisoire. */
-  ajouter(type: TypeOperationHorsLigne, donnees: Record<string, unknown>, resume: string): string {
-    const cle = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  /**
+   * Recharge la file et les resultats quand l'utilisateur connecte change
+   * (deconnexion puis connexion d'un autre caissier sans recharger la page).
+   */
+  private suivreUtilisateur(): void {
+    const id = this.auth.utilisateur()?.id ?? null;
+    if (id === this.utilisateurCharge) {
+      return;
+    }
+    this.utilisateurCharge = id;
+    this.enAttente.set(id == null ? [] : this.lire(this.cleFile(), []));
+    this.derniersResultats.set(id == null ? [] : this.lire(this.cleResultats(), []));
+  }
+
+  /**
+   * Met une operation dans la file ; elle part des que le serveur repond. Renvoie sa reference provisoire.
+   * Cle fournie : celle deja envoyee en ligne, pour que le serveur reconnaisse un envoi deja enregistre.
+   */
+  ajouter(type: TypeOperationHorsLigne, donnees: Record<string, unknown>, resume: string, cleConnue?: string): string {
+    this.suivreUtilisateur();
+    const cle = cleConnue ?? nouvelleCleOperation();
     const op: OperationEnAttente = { cle, type, saisieLe: new Date().toISOString(), resume, donnees };
     this.enAttente.update((f) => [...f, op]);
     this.ecrire(this.cleFile(), this.enAttente());
@@ -108,8 +139,13 @@ export class AgencesHorsLigneService {
 
   /** Envoie la file au serveur ; chaque operation revient enregistree ou en conflit. */
   envoyer(): void {
+    if (!this.auth.connecte()) {
+      return;
+    }
+    this.suivreUtilisateur();
     const file = this.enAttente();
-    if (!file.length || this.envoiEnCours() || !this.auth.connecte()) {
+    const proprietaire = this.utilisateurCharge;
+    if (!file.length || this.envoiEnCours()) {
       return;
     }
     this.envoiEnCours.set(true);
@@ -117,6 +153,9 @@ export class AgencesHorsLigneService {
       next: (resultats) => {
         this.envoiEnCours.set(false);
         this.enLigne.set(true);
+        if (proprietaire !== this.utilisateurCharge) {
+          return;
+        }
         const parCle = new Map(file.map((o) => [o.cle, o]));
         const traites = new Set(resultats.map((r) => r.cle));
         this.enAttente.update((f) => f.filter((o) => !traites.has(o.cle)));

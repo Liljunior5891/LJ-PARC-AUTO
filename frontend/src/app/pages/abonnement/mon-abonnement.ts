@@ -16,6 +16,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { AbonnementService } from '../../core/services/abonnement.service';
 import { environment } from '../../../environments/environment';
 import { imprimerFactureAbonnement } from '../../shared/facture-abonnement';
+import { ouvrirFichier } from '../../shared/ouvrir-fichier';
 import { ChoixFormule } from '../plateforme/choix-formule';
 
 const LIBELLES_MODULES: Record<string, string> = {
@@ -81,7 +82,10 @@ export class MonAbonnement implements OnInit {
   }
 
   partUsage(utilise: number, limite?: number | null): number {
-    return limite ? Math.min(100, Math.round((utilise * 100) / limite)) : 0;
+    if (limite == null) {
+      return 0;
+    }
+    return limite === 0 ? 100 : Math.min(100, Math.round((utilise * 100) / limite));
   }
 
   /** Ouvre le choix : la formule et les modules en cours, a defaut les modules deja actives. */
@@ -199,7 +203,7 @@ export class MonAbonnement implements OnInit {
   }
 
   voirPreuve(p: PaiementAbonnement): void {
-    this.service.preuve(p.id).subscribe({ next: (b) => window.open(URL.createObjectURL(b), '_blank') });
+    ouvrirFichier(this.service.preuve(p.id), p.preuveNom ?? 'preuve');
   }
 
   imprimer(p: PaiementAbonnement): void {

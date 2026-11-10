@@ -116,6 +116,7 @@ public class VenteService {
         }
         LigneVente ligne = new LigneVente();
         ligne.setArticle(article);
+        ligne.setSuiviStock(article.isSuiviStock());
         ligne.setConditionnement(conditionnement);
         ligne.setLibelle(libelle(article, conditionnement));
         ligne.setPrixUnitaire(prix);
@@ -135,7 +136,7 @@ public class VenteService {
      * Un service, sans stock, n'a rien a remettre : il compte comme livre.
      */
     public void emporter(LigneVente ligne, BigDecimal emporte) {
-        if (emporte == null || !ligne.getArticle().isSuiviStock()) {
+        if (emporte == null || !ligne.stockSuivi()) {
             return;
         }
         if (emporte.signum() < 0 || emporte.compareTo(ligne.getQuantite()) > 0) {
@@ -194,7 +195,7 @@ public class VenteService {
             }
         }
         for (LigneVente ligne : vente.getLignes()) {
-            if (ligne.getArticle().isSuiviStock()) {
+            if (ligne.stockSuivi()) {
                 if (multiLieux) {
                     if (ligne.getLieu() == null) {
                         ligne.setLieu(magasin);
@@ -296,6 +297,11 @@ public class VenteService {
         if (vente.getStatut() == Vente.Statut.ANNULEE) {
             throw new BusinessException("La commande " + vente.getNumero() + " est deja annulee");
         }
+        // Session fermee : ses especes sont comptees et remises ; l'annulation fausserait son rapport.
+        if (!vente.getSession().ouverte()) {
+            throw new BusinessException("La session " + vente.getSession().getNumero() + " est fermee :"
+                    + " la commande " + vente.getNumero() + " ne peut plus etre annulee");
+        }
         if (reglementRepository.existeValidePourVente(vente.getId())) {
             throw new BusinessException("Le client a deja verse des reglements sur la commande " + vente.getNumero()
                     + " : annulez-les d'abord depuis son compte");
@@ -323,7 +329,7 @@ public class VenteService {
             stockService.retournerVente(vente.getId(), "Annulation de la commande " + vente.getNumero());
         }
         for (LigneVente ligne : vente.getLignes()) {
-            if (ligne.getArticle().isSuiviStock()) {
+            if (ligne.stockSuivi()) {
                 // Seul ce qui a ete remis revient en stock ; le reste n'etait que reserve.
                 if (!multiLieux && ligne.baseDejaLivree().signum() > 0) {
                     stockService.appliquer(ligne.getArticle(), TypeMouvementStock.RETOUR, ligne.baseDejaLivree(),

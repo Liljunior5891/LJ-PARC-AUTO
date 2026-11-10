@@ -52,7 +52,8 @@ class CompteClientServiceTest {
         NumerotationService numerotation = mock(NumerotationService.class);
         when(numerotation.prochainNumero("REG")).thenReturn("REG-2026-0001");
         service = new CompteClientService(clients, mock(ReglementClientRepository.class), ventes, reglages,
-                sessions, numerotation, mock(SoldeResteRepository.class));
+                sessions, numerotation, mock(SoldeResteRepository.class),
+                mock(tg.parcauto.api.pointdevente.caisse.PerimetreCaisse.class));
 
         reglage = new ReglageMateriaux();
         reglage.setPlafondDefaut(BigDecimal.valueOf(500_000));

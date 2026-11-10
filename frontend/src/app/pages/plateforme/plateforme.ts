@@ -25,6 +25,7 @@ import { AbonnementService } from '../../core/services/abonnement.service';
 import { PlateformeService } from '../../core/services/plateforme.service';
 import { environment } from '../../../environments/environment';
 import { imprimerFactureAbonnement } from '../../shared/facture-abonnement';
+import { ouvrirFichier } from '../../shared/ouvrir-fichier';
 import { Modale } from '../../shared/modale';
 import { ChoixFormule } from './choix-formule';
 
@@ -204,7 +205,10 @@ export class Plateforme implements OnInit {
 
   /** Part d'une limite consommee, en pourcentage (0 si illimitee). */
   partUsage(utilise: number, limite?: number | null): number {
-    return limite ? Math.min(100, Math.round((utilise * 100) / limite)) : 0;
+    if (limite == null) {
+      return 0;
+    }
+    return limite === 0 ? 100 : Math.min(100, Math.round((utilise * 100) / limite));
   }
 
   // ------------------------------------------------------------ creation
@@ -277,8 +281,13 @@ export class Plateforme implements OnInit {
     this.erreurFiche.set(null);
     this.ficheAbonnement.set(this.abonnement(e.id) ?? null);
     this.fichePaiements.set([]);
-    this.abonnementService.abonnementEntreprise(e.id).subscribe({ next: (a) => this.ficheAbonnement.set(a) });
-    this.abonnementService.paiementsEntreprise(e.id).subscribe({ next: (p) => this.fichePaiements.set(p) });
+    const encoreOuverte = () => this.fiche()?.id === e.id;
+    this.abonnementService.abonnementEntreprise(e.id).subscribe({
+      next: (a) => encoreOuverte() && this.ficheAbonnement.set(a)
+    });
+    this.abonnementService.paiementsEntreprise(e.id).subscribe({
+      next: (p) => encoreOuverte() && this.fichePaiements.set(p)
+    });
   }
 
   fermerFiche(): void {
@@ -320,8 +329,9 @@ export class Plateforme implements OnInit {
     this.modeFiche.set('paiement');
     this.abonnementService.formules().subscribe({
       next: (f) => {
-        this.formules.set(f.filter((x) => x.active || x.id === a?.formuleId));
-        this.formuleId.set(a?.formuleId ?? f.find((x) => x.miseEnAvant)?.id ?? f[0]?.id ?? null);
+        const affichees = f.filter((x) => x.active || x.id === a?.formuleId);
+        this.formules.set(affichees);
+        this.formuleId.set(a?.formuleId ?? affichees.find((x) => x.miseEnAvant)?.id ?? affichees[0]?.id ?? null);
       }
     });
     this.abonnementService.parametres().subscribe({ next: (p) => this.parametres.set(p) });
@@ -362,9 +372,7 @@ export class Plateforme implements OnInit {
   }
 
   voirPreuve(p: PaiementAbonnement): void {
-    this.abonnementService.preuve(p.id, true).subscribe({
-      next: (blob) => window.open(URL.createObjectURL(blob), '_blank')
-    });
+    ouvrirFichier(this.abonnementService.preuve(p.id, true), p.preuveNom ?? 'preuve');
   }
 
   /** Option du module Agences : une seule agence (par defaut) ou plusieurs. */

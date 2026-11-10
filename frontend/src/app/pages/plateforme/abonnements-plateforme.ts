@@ -19,6 +19,7 @@ import { AbonnementService } from '../../core/services/abonnement.service';
 import { environment } from '../../../environments/environment';
 import { imprimerFactureAbonnement } from '../../shared/facture-abonnement';
 import { Modale } from '../../shared/modale';
+import { ouvrirFichier } from '../../shared/ouvrir-fichier';
 import { OngletsInclines } from '../../shared/onglets-inclines';
 
 type Vue = 'paiements' | 'echeances' | 'formules' | 'reglages';
@@ -171,7 +172,7 @@ export class AbonnementsPlateforme implements OnInit {
   }
 
   voirPreuve(p: PaiementAbonnement): void {
-    this.service.preuve(p.id, true).subscribe({ next: (b) => window.open(URL.createObjectURL(b), '_blank') });
+    ouvrirFichier(this.service.preuve(p.id, true), p.preuveNom ?? 'preuve');
   }
 
   imprimer(p: PaiementAbonnement): void {

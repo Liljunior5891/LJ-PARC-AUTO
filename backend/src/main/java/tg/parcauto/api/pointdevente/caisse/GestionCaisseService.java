@@ -143,6 +143,9 @@ public class GestionCaisseService {
         c.setNom(r.nom().trim());
         c.setDescription(r.description() == null || r.description().isBlank() ? null : r.description().trim());
         if (r.actif() != null) {
+            if (r.actif() && !c.isActif() && c.getId() != null) {
+                abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.CAISSES);
+            }
             c.setActif(r.actif());
         }
         if (r.utilisateurIds() != null) {

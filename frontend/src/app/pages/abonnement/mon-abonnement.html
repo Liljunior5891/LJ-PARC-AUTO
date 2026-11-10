@@ -51,7 +51,7 @@
     <div class="usages">
       <h3 class="titre-section">Utilisation</h3>
       @for (u of a.usages; track u.ressource) {
-        <div class="usage" [class.plein]="!!u.limite && u.utilise >= u.limite">
+        <div class="usage" [class.plein]="u.limite != null && u.utilise >= u.limite">
           <div class="ligne"><span>{{ u.libelle }}</span><strong>{{ u.utilise }} / {{ u.limite ?? '∞' }}</strong></div>
           <span class="piste"><i [style.width.%]="partUsage(u.utilise, u.limite)"></i></span>
         </div>

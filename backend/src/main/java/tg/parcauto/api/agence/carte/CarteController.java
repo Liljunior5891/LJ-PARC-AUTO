@@ -39,6 +39,7 @@ import java.util.List;
 public class CarteController {
 
     private final CarteService service;
+    private final tg.parcauto.api.agence.horsligne.HorsLigneService horsLigne;
 
     public record Motif(@NotBlank @Size(max = 500) String motif) {
     }
@@ -83,8 +84,12 @@ public class CarteController {
     @PreAuthorize("@droitsAgence.a('TRANSACTION_SAISIR')")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Vend des cartes : lots les plus anciens d'abord, prix encaisse en caisse")
-    public CarteService.VenteDto vendre(@Valid @RequestBody CarteService.Vente v, @AuthenticationPrincipal UtilisateurPrincipal principal) {
-        return service.vendre(v, principal);
+    public CarteService.VenteDto vendre(@Valid @RequestBody CarteService.Vente v,
+                                        @org.springframework.web.bind.annotation.RequestHeader(
+                                                value = "X-Cle-Operation", required = false) String cle,
+                                        @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return horsLigne.enLigne(cle, tg.parcauto.api.agence.horsligne.OperationHorsLigne.Type.VENTE_CARTE, v, principal,
+                () -> service.vendre(v, principal), CarteService.VenteDto::reference);
     }
 
     @PostMapping("/ventes/{id}/annulation")

@@ -271,7 +271,7 @@
         <h3 class="titre-section">Consommation des limites</h3>
         <div class="grille-usages">
           @for (u of a.usages; track u.ressource) {
-            <div class="usage" [class.plein]="!!u.limite && u.utilise >= u.limite">
+            <div class="usage" [class.plein]="u.limite != null && u.utilise >= u.limite">
               <div class="ligne"><span>{{ u.libelle }}</span><strong>{{ u.utilise }} / {{ u.limite ?? '∞' }}</strong></div>
               <span class="piste"><i [style.width.%]="partUsage(u.utilise, u.limite)"></i></span>
             </div>

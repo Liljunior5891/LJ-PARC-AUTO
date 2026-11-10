@@ -100,10 +100,12 @@ public class AgenceService {
     }
 
     public Reponse modifier(Long id, Requete r) {
-        Agence agence = repository.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Agence", id));
+        // Seul un utilisateur rattache a l'agence (ou l'administrateur) la modifie.
+        Agence agence = perimetre.exiger(id);
         verifierUnicite(r, id);
         if (!agence.isActif() && Boolean.TRUE.equals(r.actif())) {
             verifierLimite(id, true);
+            abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.AGENCES);
         }
         Reponse avant = versDto(agence, Map.of());
         appliquer(agence, r);

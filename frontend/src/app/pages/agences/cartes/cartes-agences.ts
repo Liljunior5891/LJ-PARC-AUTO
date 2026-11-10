@@ -9,7 +9,7 @@ import { Modale } from '../../../shared/modale';
 import { OngletsInclines } from '../../../shared/onglets-inclines';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 import { BANQUES_UEMOA } from '../../../shared/banques-uemoa';
-import { AgencesHorsLigneService, erreurReseau } from '../../../core/services/agences-hors-ligne.service';
+import { AgencesHorsLigneService, erreurReseau, nouvelleCleOperation } from '../../../core/services/agences-hors-ligne.service';
 
 type Onglet = 'ventes' | 'stock';
 
@@ -195,7 +195,8 @@ export class CartesAgences implements OnInit {
     const vente = { agenceId: this.agenceId, produitId: this.fv.produitId, numeros: this.fv.numeros,
       clientNom: this.fv.clientNom.trim() || undefined, clientPrenom: this.fv.clientPrenom.trim() || undefined,
       clientTelephone: this.fv.clientTelephone.trim() };
-    this.service.vendreCartes(vente).subscribe({
+    const cle = nouvelleCleOperation();
+    this.service.vendreCartes(vente, cle).subscribe({
       next: (v) => {
         this.vente.set(false);
         this.succes.set(`${v.reference} : ${v.quantite} ${v.produitNom} vendue(s), ${v.montant.toLocaleString('fr-FR')} F encaisses (marge ${v.marge.toLocaleString('fr-FR')} F).`);
@@ -209,7 +210,7 @@ export class CartesAgences implements OnInit {
         // Sans connexion : la vente est gardee sur l'appareil, le stock local diminue aussitot.
         const s = this.stockChoisi();
         const resume = `Vente de ${vente.numeros.length} ${s?.nom ?? 'carte(s)'} (${vente.numeros.join(', ')})`;
-        const reference = this.horsLigne.ajouter('VENTE_CARTE', vente, resume);
+        const reference = this.horsLigne.ajouter('VENTE_CARTE', vente, resume, cle);
         this.stock.update((liste) => liste.map((x) => x.produitId === vente.produitId
           ? { ...x, disponible: Math.max(0, x.disponible - vente.numeros.length) } : x));
         this.vente.set(false);
