@@ -34,7 +34,8 @@ public class JwtService {
         Map<String, Object> claims = new java.util.HashMap<>(Map.of(
                 "uid", principal.getId(),
                 "nom", principal.getNomComplet(),
-                "roles", roles));
+                "roles", roles,
+                "ver", principal.getVersionJetons()));
         if (principal.getEntrepriseId() != null) {
             claims.put("eid", principal.getEntrepriseId());
         }

@@ -469,6 +469,21 @@ export class Shell {
   constructor() {
     // Tableaux de tous les ecrans : les lignes defilent dans la hauteur restante de la fenetre.
     const destroyRef = inject(DestroyRef);
+    // Profils et modules relus au serveur : a l'ouverture, toutes les 5 minutes et au retour sur l'onglet.
+    this.auth.rafraichirProfil();
+    const relire = () => document.visibilityState === 'visible' && this.auth.rafraichirProfil();
+    const minuterie = setInterval(() => this.auth.rafraichirProfil(), 5 * 60_000);
+    document.addEventListener('visibilitychange', relire);
+    destroyRef.onDestroy(() => {
+      clearInterval(minuterie);
+      document.removeEventListener('visibilitychange', relire);
+    });
+    // Mot de passe provisoire : « Mon compte » s'ouvre tant qu'il n'est pas change.
+    effect(() => {
+      if (this.auth.utilisateur()?.motDePasseAChanger) {
+        this.compteOuvert.set(true);
+      }
+    });
     // Les ecrans de retrait et de transfert n'apparaissent qu'avec un entrepot.
     if (this.auth.estMateriaux() && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'MAGASINIER')) {
       this.lieux.chargerEtat();

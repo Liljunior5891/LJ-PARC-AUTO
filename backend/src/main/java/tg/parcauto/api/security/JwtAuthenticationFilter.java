@@ -37,9 +37,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             String token = entete.substring(PREFIXE.length());
             try {
-                String email = jwtService.extraireEmail(token);
-                UserDetails details = utilisateurDetailsService.loadUserByUsername(email);
-                if (details.isEnabled()) {
+                io.jsonwebtoken.Claims claims = jwtService.lire(token);
+                UserDetails details = utilisateurDetailsService.loadUserByUsername(claims.getSubject());
+                UtilisateurPrincipal compte = (UtilisateurPrincipal) details;
+                // Le jeton vaut pour un compte precis (uid) et pour la version courante de ses jetons :
+                // apres un changement de mot de passe ou d'adresse, les anciens ne rouvrent rien.
+                Object uid = claims.get("uid");
+                boolean memeCompte = uid instanceof Number n && n.longValue() == compte.getId();
+                if (details.isEnabled() && memeCompte && !compte.jetonPerime(claims.get("ver"))) {
+                    if (compte.isMotDePasseAChanger() && !permisAvantChangement(request)) {
+                        motDePasseAChanger(response);
+                        return;
+                    }
                     var auth = new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);
@@ -57,5 +66,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Les fils du serveur sont recycles : le contexte ne doit pas survivre a la requete.
             ContexteEntreprise.effacer();
         }
+    }
+
+    /** Avec un mot de passe provisoire, seuls son compte et la deconnexion restent accessibles. */
+    private static boolean permisAvantChangement(HttpServletRequest request) {
+        String chemin = request.getRequestURI();
+        return chemin.startsWith("/api/auth/") || chemin.startsWith("/api/utilisateurs/moi");
+    }
+
+    private static void motDePasseAChanger(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"code\":\"MOT_DE_PASSE_A_CHANGER\",\"message\":"
+                + "\"Changez d'abord votre mot de passe provisoire depuis Mon compte\"}");
     }
 }

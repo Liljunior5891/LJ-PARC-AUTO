@@ -146,7 +146,7 @@ export class AuthService {
     if (this.estSuperAdmin()) {
       return '/plateforme/tableau-bord';
     }
-    const module = (['GESTION_PARC', 'POINT_DE_VENTE', 'AGENCES'] as CodeModule[]).find((m) => this.peutUtiliser(m));
+    const module = (['GESTION_PARC', 'POINT_DE_VENTE', 'AGENCES', 'PRESENCE'] as CodeModule[]).find((m) => this.peutUtiliser(m));
     if (module) {
       return this.accueilModule(module);
     }
@@ -154,6 +154,33 @@ export class AuthService {
       return '/modules';
     }
     return this.peutUtiliser('MARKETPLACE') ? '/marketplace/commandes' : '/mon-compte';
+  }
+
+  /**
+   * Relit le profil au serveur : profils, modules et variantes changent sans
+   * reconnexion (formule baissee, profil retire), les menus suivent.
+   */
+  rafraichirProfil(): void {
+    if (!this.token) {
+      return;
+    }
+    this.http.get<UtilisateurCourant>(`${environment.apiUrl}/auth/moi`).subscribe({
+      next: (u) => {
+        if (this.utilisateurSignal()) {
+          this.memoriser(u);
+        }
+      },
+      error: () => undefined
+    });
+  }
+
+  /** Le serveur exige le changement du mot de passe provisoire. */
+  exigerChangementMotDePasse(): void {
+    const utilisateur = this.utilisateurSignal();
+    if (utilisateur) {
+      // Nouvel objet a chaque refus : « Mon compte » se rouvre s'il avait ete ferme.
+      this.memoriser({ ...utilisateur, motDePasseAChanger: true });
+    }
   }
 
   /** Nom change depuis « Mon compte » : la barre du haut suit sans reconnexion. */

@@ -42,6 +42,8 @@ export interface UtilisateurCourant {
   modules: CodeModule[];
   /** Type d'activite des modules qui se declinent (POINT_DE_VENTE : BOUTIQUE ou RESTAURATION). */
   variantes?: Partial<Record<CodeModule, string>>;
+  /** Mot de passe provisoire : « Mon compte » s'ouvre pour le changer, rien d'autre n'est permis. */
+  motDePasseAChanger?: boolean;
 }
 
 export interface LoginResponse {

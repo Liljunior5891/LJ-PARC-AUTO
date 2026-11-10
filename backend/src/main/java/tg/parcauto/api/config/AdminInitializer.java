@@ -37,6 +37,16 @@ public class AdminInitializer {
                                                            PasswordEncoder encoder) {
         return args -> {
             if (repository.existeAvecRole(Role.SUPER_ADMIN)) {
+                // Compte encore protege par le mot de passe par defaut : il devra le changer a la connexion.
+                repository.findByEmailIgnoreCase(email)
+                        .filter(u -> u.getRoles().contains(Role.SUPER_ADMIN) && !u.isMotDePasseAChanger())
+                        .filter(u -> encoder.matches(GardeSecrets.MOT_DE_PASSE_ADMIN_PAR_DEFAUT, u.getMotDePasse()))
+                        .ifPresent(u -> {
+                            u.setMotDePasseAChanger(true);
+                            repository.save(u);
+                            log.warn("L'administrateur plateforme {} utilise le mot de passe par defaut :"
+                                    + " il devra le changer a sa prochaine connexion", email);
+                        });
                 return;
             }
             if (repository.existsByEmailIgnoreCase(email)) {
@@ -51,6 +61,8 @@ public class AdminInitializer {
             admin.setPrenom("Administrateur");
             admin.setActif(true);
             admin.setRoles(EnumSet.of(Role.SUPER_ADMIN));
+            // Le mot de passe de la variable d'environnement n'est que provisoire.
+            admin.setMotDePasseAChanger(true);
             repository.save(admin);
             log.warn("Administrateur plateforme cree : {} - changez le mot de passe des la premiere connexion",
                     email);

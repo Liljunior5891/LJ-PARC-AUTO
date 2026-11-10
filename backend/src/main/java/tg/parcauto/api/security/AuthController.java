@@ -29,6 +29,7 @@ public class AuthController {
     private final SessionService sessionService;
     private final tg.parcauto.api.common.audit.JournalActiviteService journal;
     private final UtilisateurRepository utilisateurs;
+    private final PinService pinService;
 
     public record LoginRequest(
             @NotBlank @Email String email,
@@ -43,7 +44,9 @@ public class AuthController {
             Long id, String email, String nomComplet, Long chauffeurId, List<String> roles,
             Long entrepriseId, String entrepriseNom, List<String> modules,
             /** Type d'activite des modules qui se declinent, par code de module. */
-            Map<String, String> variantes) {
+            Map<String, String> variantes,
+            /** Mot de passe provisoire : l'interface ouvre « Mon compte » pour le changer. */
+            boolean motDePasseAChanger) {
     }
 
     public record LoginResponse(String token, long expiresIn, UtilisateurCourant utilisateur) {
@@ -64,6 +67,8 @@ public class AuthController {
             throw e;
         }
         UtilisateurPrincipal principal = (UtilisateurPrincipal) authentication.getPrincipal();
+        // Le mot de passe prouve l'identite : le PIN bloque par trop d'essais se debloque.
+        pinService.debloquer(principal.getId());
         LoginResponse reponse = sessionService.ouvrir(principal);
         if (principal.getEntrepriseId() != null) {
             journal.connexion(principal);

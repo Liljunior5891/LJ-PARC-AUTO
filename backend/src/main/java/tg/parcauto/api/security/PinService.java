@@ -61,10 +61,22 @@ public class PinService {
         charger(utilisateurId).setPinHash(encodeur.encode(nouveau));
     }
 
+    /**
+     * Chaque essai est compte avant d'etre verifie, en une operation atomique :
+     * des essais envoyes en parallele ne peuvent pas depasser la limite.
+     */
     @Transactional(readOnly = true)
     public void verifier(Long utilisateurId, String pin) {
-        Echecs courant = echecs.get(utilisateurId);
-        if (courant != null && courant.jusqua() != null && Instant.now().isBefore(courant.jusqua())) {
+        Instant maintenant = Instant.now();
+        Echecs essai = echecs.compute(utilisateurId, (id, e) -> {
+            if (e != null && e.jusqua() != null && maintenant.isBefore(e.jusqua())) {
+                return e;
+            }
+            int nombre = (e == null || e.jusqua() != null ? 0 : e.nombre()) + 1;
+            return nombre > ESSAIS_MAX ? new Echecs(nombre, maintenant.plus(Duration.ofMinutes(MINUTES_BLOCAGE)))
+                    : new Echecs(nombre, null);
+        });
+        if (essai.jusqua() != null) {
             throw new BusinessException("Trop d'essais : reconnectez-vous avec votre mot de passe");
         }
         Utilisateur u = charger(utilisateurId);
@@ -75,13 +87,16 @@ public class PinService {
             echecs.remove(utilisateurId);
             return;
         }
-        int nombre = (courant == null ? 0 : courant.nombre()) + 1;
-        if (nombre >= ESSAIS_MAX) {
-            echecs.put(utilisateurId, new Echecs(0, Instant.now().plus(Duration.ofMinutes(MINUTES_BLOCAGE))));
+        if (essai.nombre() >= ESSAIS_MAX) {
+            echecs.put(utilisateurId, new Echecs(essai.nombre(), Instant.now().plus(Duration.ofMinutes(MINUTES_BLOCAGE))));
             throw new BusinessException("Trop d'essais : reconnectez-vous avec votre mot de passe");
         }
-        echecs.put(utilisateurId, new Echecs(nombre, null));
-        throw new BusinessException("Code PIN incorrect (" + (ESSAIS_MAX - nombre) + " essai(s) restant(s))");
+        throw new BusinessException("Code PIN incorrect (" + (ESSAIS_MAX - essai.nombre()) + " essai(s) restant(s))");
+    }
+
+    /** Reconnexion par mot de passe : les essais de PIN repartent de zero. */
+    public void debloquer(Long utilisateurId) {
+        echecs.remove(utilisateurId);
     }
 
     private Utilisateur charger(Long id) {

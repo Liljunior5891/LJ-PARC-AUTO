@@ -46,6 +46,14 @@ public class Utilisateur extends EntiteAuditee {
     @Column(nullable = false)
     private boolean actif = true;
 
+    /** Version des jetons : seul un jeton de la version courante est accepte. */
+    @Column(name = "version_jetons", nullable = false)
+    private int versionJetons;
+
+    /** Mot de passe provisoire : il faut le changer avant toute autre action. */
+    @Column(name = "mot_de_passe_a_changer", nullable = false)
+    private boolean motDePasseAChanger;
+
     /**
      * Entreprise du compte ; nulle pour l'administrateur de la plateforme.
      * <p>
@@ -68,5 +76,10 @@ public class Utilisateur extends EntiteAuditee {
 
     public String nomComplet() {
         return prenom == null || prenom.isBlank() ? nom : prenom + " " + nom;
+    }
+
+    /** Ferme toutes les sessions ouvertes : les jetons deja emis ne passent plus. */
+    public void invaliderJetons() {
+        this.versionJetons++;
     }
 }

@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Page, Role } from '../models/models';
+import { LoginResponse, Page, Role } from '../models/models';
 import {
   ChangementMotDePasse,
   CreationUtilisateur,
@@ -71,7 +71,8 @@ export class UtilisateurService {
     return this.http.put<Utilisateur>(`${this.base}/moi`, profil);
   }
 
-  changerSonMotDePasse(demande: ChangementMotDePasse): Observable<void> {
-    return this.http.put<void>(`${this.base}/moi/mot-de-passe`, demande);
+  /** Les autres sessions se ferment ; la reponse est la nouvelle session de cet appareil. */
+  changerSonMotDePasse(demande: ChangementMotDePasse): Observable<LoginResponse> {
+    return this.http.put<LoginResponse>(`${this.base}/moi/mot-de-passe`, demande);
   }
 }

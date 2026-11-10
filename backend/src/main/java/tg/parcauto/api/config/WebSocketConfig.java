@@ -25,7 +25,8 @@ import java.util.Arrays;
  * (chapitres 23, 26 et 33).
  * <p>
  * Chaque entreprise publie sous son propre canal ; un abonnement a un canal qui
- * n'est pas celui de l'entreprise de l'utilisateur est refuse.
+ * n'est pas celui de l'entreprise de l'utilisateur est refuse. Seul le serveur
+ * diffuse : un navigateur ne peut rien publier, sur aucun canal.
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -54,6 +55,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             @Override
             public Message<?> preSend(Message<?> message, MessageChannel channel) {
                 StompHeaderAccessor entetes = StompHeaderAccessor.wrap(message);
+                if (StompCommand.SEND.equals(entetes.getCommand())) {
+                    throw new MessageDeliveryException("Envoi refuse : seul le serveur diffuse sur les canaux");
+                }
                 if (StompCommand.SUBSCRIBE.equals(entetes.getCommand())
                         && !DiffusionEntreprise.appartientA(entetes.getDestination(), entreprise(entetes.getUser()))) {
                     throw new MessageDeliveryException("Abonnement refuse : canal d'une autre entreprise");

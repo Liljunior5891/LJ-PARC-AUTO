@@ -27,6 +27,11 @@ import { OperationService } from '../core/operation/operation.service';
       </header>
 
       <form class="corps" (ngSubmit)="enregistrer()">
+        @if (auth.utilisateur()?.motDePasseAChanger) {
+          <p class="alerte-provisoire" role="alert">
+            Votre mot de passe est provisoire : choisissez-en un nouveau ci-dessous avant de continuer.
+          </p>
+        }
         @if (compte(); as c) {
           <section class="identite">
             <span class="avatar">{{ initiales() }}</span>
@@ -172,6 +177,8 @@ import { OperationService } from '../core/operation/operation.service';
     .profils { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.2rem; }
     .profils span { padding: 0.1rem 0.5rem; border-radius: 999px; background: #eef2f7; font-size: 0.72rem; font-weight: 600; }
     .champ { margin-bottom: 0.7rem; min-width: 0; }
+    .alerte-provisoire { margin: 0 0 0.8rem; padding: 0.6rem 0.8rem; border-radius: 8px;
+      background: #fff4e5; color: #8a4b00; border: 1px solid #f0c27a; font-size: 0.88rem; }
     .ligne-deux { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
     .aide-email { display: block; margin: -0.3rem 0 0.4rem; color: var(--couleur-texte-doux); font-size: 0.75rem; }
     @media (max-width: 400px) { .ligne-deux { grid-template-columns: 1fr; } }
@@ -194,7 +201,7 @@ import { OperationService } from '../core/operation/operation.service';
 })
 export class PanneauCompte implements OnInit, OnDestroy {
   private readonly service = inject(UtilisateurService);
-  private readonly auth = inject(AuthService);
+  readonly auth = inject(AuthService);
   private readonly verrou = inject(VerrouService);
   private readonly operation = inject(OperationService);
   readonly ferme = output<void>();
@@ -310,10 +317,12 @@ export class PanneauCompte implements OnInit, OnDestroy {
           return;
         }
         this.service.changerSonMotDePasse({ motDePasseActuel: this.actuel, nouveauMotDePasse: this.nouveau }).subscribe({
-          next: () => {
+          next: (session) => {
             this.enregistrement.set(false);
             this.actuel = this.nouveau = this.confirmation = '';
-            this.succes.set('Informations et mot de passe enregistres. Le nouveau mot de passe sera demande a la prochaine connexion.');
+            // Nouveau jeton pour cet appareil ; les sessions ouvertes ailleurs sont fermees.
+            this.auth.ouvrirSession(session);
+            this.succes.set('Informations et mot de passe enregistres. Vos autres sessions ouvertes ont ete fermees.');
           },
           error: (e) => {
             this.enregistrement.set(false);

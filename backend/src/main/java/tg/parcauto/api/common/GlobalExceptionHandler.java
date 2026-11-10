@@ -31,6 +31,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, ex.getMessage(), req, null);
     }
 
+    @ExceptionHandler(LimiteurRequetes.TropDeRequetesException.class)
+    public ResponseEntity<Map<String, Object>> handleTropDeRequetes(LimiteurRequetes.TropDeRequetesException ex,
+                                                                    HttpServletRequest req) {
+        return build(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), req, null);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex,
                                                                HttpServletRequest req) {
@@ -44,6 +50,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleIntegrity(DataIntegrityViolationException ex,
                                                               HttpServletRequest req) {
+        // Deux comptes crees en meme temps avec la meme adresse (majuscules comprises).
+        if (String.valueOf(ex.getMostSpecificCause().getMessage()).contains("ux_utilisateur_email_minuscules")) {
+            return build(HttpStatus.CONFLICT, "Cette adresse est deja utilisee par un compte", req, null);
+        }
         return build(HttpStatus.CONFLICT, "Violation de contrainte d'integrite (doublon ou reference manquante)",
                 req, null);
     }

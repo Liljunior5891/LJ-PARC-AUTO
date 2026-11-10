@@ -73,7 +73,8 @@ public class InscriptionService {
     private String creer(Demande demande, Integer joursEssai) {
         String email = demande.email().trim();
         if (utilisateurRepository.existsByEmailIgnoreCase(email)) {
-            throw new BusinessException("Un compte existe deja avec l'adresse " + email);
+            throw new BusinessException("Cette adresse ne peut pas servir a une nouvelle inscription."
+                    + " Si vous avez deja un compte, connectez-vous ; sinon utilisez une autre adresse.");
         }
 
         Entreprise entreprise = new Entreprise();

@@ -32,6 +32,6 @@ public class SessionService {
         moduleService.variantes(p.getEntrepriseId()).forEach((module, variante) -> variantes.put(module.name(), variante));
         return new AuthController.UtilisateurCourant(
                 p.getId(), p.getEmail(), p.getNomComplet(), p.getChauffeurId(), roles,
-                p.getEntrepriseId(), p.getEntrepriseNom(), modules, variantes);
+                p.getEntrepriseId(), p.getEntrepriseNom(), modules, variantes, p.isMotDePasseAChanger());
     }
 }

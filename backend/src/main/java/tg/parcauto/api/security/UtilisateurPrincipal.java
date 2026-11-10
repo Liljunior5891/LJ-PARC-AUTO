@@ -19,6 +19,8 @@ public class UtilisateurPrincipal implements UserDetails {
     private final Long entrepriseId;
     private final String entrepriseNom;
     private final boolean actif;
+    private final int versionJetons;
+    private final boolean motDePasseAChanger;
     private final List<GrantedAuthority> authorities;
 
     /**
@@ -34,6 +36,8 @@ public class UtilisateurPrincipal implements UserDetails {
         this.entrepriseId = u.getEntrepriseId();
         this.entrepriseNom = entrepriseNom;
         this.actif = u.isActif() && entrepriseActive;
+        this.versionJetons = u.getVersionJetons();
+        this.motDePasseAChanger = u.isMotDePasseAChanger();
         this.authorities = u.getRoles().stream()
                 .map(r -> (GrantedAuthority) new SimpleGrantedAuthority(r.authority()))
                 .toList();
@@ -66,7 +70,13 @@ public class UtilisateurPrincipal implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return actif;
+        return true;
+    }
+
+    /** Le jeton date-t-il d'avant la derniere fermeture des sessions du compte ? (sans version : 0) */
+    public boolean jetonPerime(Object versionDuJeton) {
+        int version = versionDuJeton instanceof Number n ? n.intValue() : 0;
+        return version != versionJetons;
     }
 
     @Override

@@ -37,6 +37,8 @@ import java.util.List;
 public class UtilisateurController {
 
     private final UtilisateurService service;
+    private final UtilisateurDetailsService detailsService;
+    private final SessionService sessionService;
 
     @GetMapping("/profils")
     @Operation(summary = "Profils disponibles")
@@ -120,10 +122,11 @@ public class UtilisateurController {
     }
 
     @PutMapping("/moi/mot-de-passe")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Change son propre mot de passe")
-    public void changerSonMotDePasse(@Valid @RequestBody UtilisateurDto.ChangementMotDePasse demande,
-                                     @AuthenticationPrincipal UtilisateurPrincipal principal) {
+    @Operation(summary = "Change son propre mot de passe ; renvoie une nouvelle session (les autres sont fermees)")
+    public AuthController.LoginResponse changerSonMotDePasse(@Valid @RequestBody UtilisateurDto.ChangementMotDePasse demande,
+                                                             @AuthenticationPrincipal UtilisateurPrincipal principal) {
         service.changerSonMotDePasse(principal.getId(), demande);
+        UtilisateurPrincipal relu = (UtilisateurPrincipal) detailsService.loadUserByUsername(principal.getEmail());
+        return sessionService.ouvrir(relu);
     }
 }

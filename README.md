@@ -140,7 +140,8 @@ L'application est servie sur `http://localhost:4200`.
 | `CORS_ORIGINS` | `http://localhost:4200` | Origines autorisées |
 | `DOCUMENTS_DIR` | `./data/documents` | Stockage des justificatifs |
 | `PLATEFORME_ADMIN_EMAIL` | `superadmin@plateforme.local` | Compte de l'exploitant de la plateforme |
-| `PLATEFORME_ADMIN_PASSWORD` | `Plateforme@2026` | Mot de passe de ce compte, à la création |
+| `PLATEFORME_ADMIN_PASSWORD` | `Plateforme@2026` | Mot de passe **provisoire** de ce compte : il doit être changé à la première connexion |
+| `PARCAUTO_PRODUCTION` | `false` | `true` (ou profil Spring `prod`) : l'API refuse de démarrer avec la clé `JWT_SECRET` ou le mot de passe administrateur par défaut |
 
 ## Périmètre livré
 

@@ -88,6 +88,10 @@ public class UtilisateurService {
             verifierDernierAdministrateur(id);
         }
 
+        if (!utilisateur.getEmail().equalsIgnoreCase(demande.email().trim())) {
+            // Nouvelle adresse : les jetons de l'ancienne ne doivent pas suivre quiconque la reprendrait.
+            utilisateur.invaliderJetons();
+        }
         utilisateur.setEmail(demande.email().trim());
         utilisateur.setNom(demande.nom().trim());
         utilisateur.setPrenom(vide(demande.prenom()) ? null : demande.prenom().trim());
@@ -121,7 +125,10 @@ public class UtilisateurService {
     }
 
     public void reinitialiserMotDePasse(Long id, String motDePasse) {
-        charger(id).setMotDePasse(encodeur.encode(motDePasse));
+        Utilisateur u = charger(id);
+        u.setMotDePasse(encodeur.encode(motDePasse));
+        // Un mot de passe vole ne garde pas sa session ouverte.
+        u.invaliderJetons();
     }
 
     /** Compte de la personne connectee (y compris l'administrateur de la plateforme). */
@@ -154,6 +161,9 @@ public class UtilisateurService {
             throw new BusinessException("Le nouveau mot de passe doit differer de l'actuel");
         }
         utilisateur.setMotDePasse(encodeur.encode(demande.nouveauMotDePasse()));
+        utilisateur.setMotDePasseAChanger(false);
+        // Les autres sessions se ferment ; celle-ci recoit un nouveau jeton.
+        utilisateur.invaliderJetons();
     }
 
     /**

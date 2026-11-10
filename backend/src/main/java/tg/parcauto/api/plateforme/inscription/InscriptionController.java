@@ -27,6 +27,7 @@ import java.util.List;
 public class InscriptionController {
 
     private final InscriptionService inscriptionService;
+    private final tg.parcauto.api.common.LimiteurRequetes limiteur;
     private final ModuleService moduleService;
     private final UtilisateurDetailsService utilisateurDetailsService;
     private final SessionService sessionService;
@@ -41,7 +42,11 @@ public class InscriptionController {
     @PostMapping("/inscription")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Cree un compte entreprise et son administrateur, puis ouvre sa session")
-    public AuthController.LoginResponse inscrire(@Valid @RequestBody InscriptionService.Demande demande) {
+    public AuthController.LoginResponse inscrire(@Valid @RequestBody InscriptionService.Demande demande,
+                                                 jakarta.servlet.http.HttpServletRequest requete) {
+        // Point public : quelques inscriptions par heure et par adresse IP, contre les essais en serie.
+        limiteur.exiger("inscription:" + requete.getRemoteAddr(), 5, java.time.Duration.ofHours(1),
+                "Trop d'inscriptions depuis cette connexion : reessayez dans une heure");
         String email = inscriptionService.inscrire(demande);
         var principal = (UtilisateurPrincipal) utilisateurDetailsService.loadUserByUsername(email);
         return sessionService.ouvrir(principal);

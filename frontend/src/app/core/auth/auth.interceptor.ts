@@ -18,6 +18,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         // Session invalide ou expiree : on la ferme et on l'annonce clairement.
         auth.logout('expiration');
       }
+      if (erreur.status === 403 && (erreur.error as { code?: string } | null)?.code === 'MOT_DE_PASSE_A_CHANGER') {
+        auth.exigerChangementMotDePasse();
+      }
       return throwError(() => erreur);
     })
   );
