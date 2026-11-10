@@ -43,6 +43,8 @@ export class Inscription implements OnInit {
   /** Type d'activite choisi pour les modules qui se declinent (boutique ou restaurant). */
   readonly variantes = signal<Partial<Record<CodeModule, string>>>({});
   readonly enCours = signal(false);
+  /** 1 : entreprise et administrateur ; 2 : modules a activer. */
+  readonly etape = signal<1 | 2>(1);
   readonly erreur = signal<string | null>(null);
 
   readonly formulaire = this.fb.nonNullable.group(
@@ -95,9 +97,28 @@ export class Inscription implements OnInit {
     return controle.touched && controle.invalid;
   }
 
-  soumettre(): void {
-    if (this.formulaire.invalid || this.enCours()) {
+  /** Passe au choix des modules une fois les informations professionnelles valides. */
+  continuer(): void {
+    if (this.formulaire.invalid) {
       this.formulaire.markAllAsTouched();
+      this.etape.set(1);
+      return;
+    }
+    this.erreur.set(null);
+    this.etape.set(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  soumettre(): void {
+    if (this.etape() === 1) {
+      this.continuer();
+      return;
+    }
+    if (this.formulaire.invalid) {
+      this.continuer();
+      return;
+    }
+    if (!this.choisis().size || this.enCours()) {
       return;
     }
     this.enCours.set(true);

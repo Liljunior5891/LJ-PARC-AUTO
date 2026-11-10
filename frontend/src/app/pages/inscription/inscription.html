@@ -2,17 +2,34 @@
   <div class="voile"></div>
 
   <div class="colonne-formulaire">
-    <form class="carte-connexion carte-inscription" [formGroup]="formulaire" (ngSubmit)="soumettre()">
+    <form class="carte-connexion carte-inscription" [class.etape-modules]="etape() === 2" [formGroup]="formulaire" (ngSubmit)="soumettre()">
       <div class="marque">
         <span class="logo">◆</span>
         <h1>Creer le compte de votre entreprise</h1>
         <p class="sous-titre">{{ nomPlateforme }} — gratuit, pret en une minute</p>
       </div>
 
+      <ol class="etapes" aria-label="Etapes de l'inscription">
+        <li [class.active]="etape() === 1" [class.faite]="etape() === 2">
+          <button type="button" (click)="etape.set(1)" [attr.aria-current]="etape() === 1 ? 'step' : null">
+            <span class="numero">{{ etape() === 2 ? '✓' : '1' }}</span>
+            <span class="libelle">Informations professionnelles</span>
+          </button>
+        </li>
+        <li class="trait" aria-hidden="true"></li>
+        <li [class.active]="etape() === 2">
+          <button type="button" (click)="continuer()" [attr.aria-current]="etape() === 2 ? 'step' : null">
+            <span class="numero">2</span>
+            <span class="libelle">Choix des modules</span>
+          </button>
+        </li>
+      </ol>
+
       @if (erreur()) {
         <div class="message erreur">{{ erreur() }}</div>
       }
 
+      @if (etape() === 1) {
       <fieldset>
         <legend>Votre entreprise</legend>
         <div class="champ">
@@ -78,11 +95,22 @@
         </div>
       </fieldset>
 
+      <button class="bouton large" type="button" (click)="continuer()">Continuer : choisir les modules →</button>
+      } @else {
+      <div class="recapitulatif">
+        <div>
+          <strong>{{ formulaire.controls.nomEntreprise.value }}</strong>
+          <small>{{ formulaire.controls.prenom.value }} {{ formulaire.controls.nom.value }} · {{ formulaire.controls.email.value }}</small>
+        </div>
+        <button type="button" class="lien" (click)="etape.set(1)">Modifier</button>
+      </div>
+
       <fieldset>
         <legend>Modules a activer</legend>
         <p class="aide">Vous pourrez en activer d'autres a tout moment depuis votre espace.</p>
         <div class="choix-modules">
           @for (module of catalogue(); track module.code) {
+            <div class="module">
             <button type="button" class="choix-module"
                     [class.choisi]="choisis().has(module.code)"
                     [class.indisponible]="!module.disponible"
@@ -109,13 +137,21 @@
                 }
               </div>
             }
+            </div>
           }
         </div>
       </fieldset>
 
-      <button class="bouton large" type="submit" [disabled]="enCours()">
-        {{ enCours() ? 'Creation du compte...' : 'Creer mon compte' }}
-      </button>
+      <div class="actions-etape">
+        <button class="bouton secondaire" type="button" (click)="etape.set(1)">← Retour</button>
+        <button class="bouton large" type="submit" [disabled]="enCours() || !choisis().size">
+          {{ enCours() ? 'Creation du compte...' : 'Creer mon compte' }}
+        </button>
+      </div>
+      @if (!choisis().size) {
+        <p class="aide centre">Choisissez au moins un module.</p>
+      }
+      }
 
       <p class="inscription">
         Deja inscrit ? <a routerLink="/connexion">Se connecter</a>
