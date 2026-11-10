@@ -78,16 +78,51 @@
       </p>
     </div>
 
-    <!-- Chiffres de la periode : total puis une carte par categorie. -->
+    <!-- Synthese de la periode : total, vehicules et charges generales. -->
     <div class="cartes-apercu resume-depenses">
       <div class="carte-apercu orange">
         <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M12 9v6M9.5 11.5L12 9l2.5 2.5" /></svg></span>
         <span class="textes">
           <span class="libelle">Total des depenses</span>
           <strong>{{ totalPeriode() | number }}<em> F</em></strong>
-          <small>{{ page()?.totalElements ?? 0 }} depense(s) dans la liste</small>
+          <small>
+            @if (evolution() !== null) {
+              <span [class.hausse]="evolution()! > 0" [class.baisse]="evolution()! < 0">{{ evolution()! > 0 ? '▲ +' : evolution()! < 0 ? '▼ ' : '' }}{{ evolution() }} %</span>
+              vs periode precedente ({{ totalPrecedent() | number }} F)
+            } @else {
+              {{ nombreOperations() }} operation(s) validee(s)
+            }
+          </small>
         </span>
       </div>
+      <div class="carte-apercu bleu">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7" /><circle cx="7" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Depenses des vehicules</span>
+          <strong>{{ totalVehicules() | number }}<em> F</em></strong>
+          <small>
+            @if (!camionId && camions().length) { {{ coutParVehicule() | number }} F par vehicule actif ({{ camions().length }}) }
+            @else { {{ operationsVehicules() }} operation(s) }
+          </small>
+        </span>
+        <span class="jauge"><i [style.width.%]="pourcent(totalVehicules())"></i></span>
+      </div>
+      <div class="carte-apercu violet" [class.calme]="!totalCharges()">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13M9 21v-6h6v6" /></svg></span>
+        <span class="textes">
+          <span class="libelle">Charges generales</span>
+          <strong>{{ totalCharges() | number }}<em> F</em></strong>
+          <small>{{ pourcent(totalCharges()) }} % du total · loyer, salaires du bureau...</small>
+        </span>
+        <span class="jauge"><i [style.width.%]="pourcent(totalCharges())"></i></span>
+      </div>
+    </div>
+
+    <!-- Une carte par categorie de depense. -->
+    @if (repartition().length) {
+      <h3 class="titre-section">Par categorie</h3>
+    }
+    <div class="cartes-apercu resume-depenses compactes-categories">
       @for (ligne of repartition(); track ligne.categorie) {
         <div class="carte-apercu {{ couleurCategorie(ligne.categorie) }}">
           <span class="icone" aria-hidden="true">

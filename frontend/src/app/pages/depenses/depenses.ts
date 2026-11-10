@@ -84,6 +84,22 @@ export class Depenses implements OnInit {
 
   readonly totalPeriode = computed(() => this.repartition().reduce((cumul, ligne) => cumul + ligne.total, 0));
 
+  // ------------------------------------------------- chiffres de synthese de la periode
+  /** Repartition de la periode precedente de meme duree, pour l'evolution. */
+  readonly repartitionPrecedente = signal<LigneCategorieDepense[] | null>(null);
+  readonly totalPrecedent = computed(() => (this.repartitionPrecedente() ?? []).reduce((t, l) => t + l.total, 0));
+  /** Evolution en % par rapport a la periode precedente ; null sans base de comparaison. */
+  readonly evolution = computed(() => {
+    const avant = this.totalPrecedent();
+    return this.repartitionPrecedente() && avant > 0 ? Math.round(((this.totalPeriode() - avant) * 100) / avant) : null;
+  });
+  readonly nombreOperations = computed(() => this.repartition().reduce((t, l) => t + l.nombre, 0));
+  readonly totalCharges = computed(() => this.repartition().filter((l) => l.categorie === 'CHARGE_GENERALE').reduce((t, l) => t + l.total, 0));
+  readonly totalVehicules = computed(() => this.totalPeriode() - this.totalCharges());
+  readonly operationsVehicules = computed(() => this.repartition().filter((l) => l.categorie !== 'CHARGE_GENERALE').reduce((t, l) => t + l.nombre, 0));
+  /** Cout moyen par vehicule actif (tout le parc seulement). */
+  readonly coutParVehicule = computed(() => (this.camions().length ? Math.round(this.totalVehicules() / this.camions().length) : 0));
+
   // Filtres
   recherche = '';
   type: '' | 'VEHICULE' | 'GENERALE' = '';
@@ -181,7 +197,28 @@ export class Depenses implements OnInit {
         }
       });
     this.service.repartition(this.debut, this.fin, this.camionId).subscribe({ next: (lignes) => this.repartition.set(lignes) });
+    this.chargerPeriodePrecedente();
     this.charges.repartitionCharges(this.debut, this.fin).subscribe({ next: (l) => this.repartitionCharges.set(l) });
+  }
+
+  /** Meme nombre de jours, juste avant le debut de la periode choisie. */
+  private chargerPeriodePrecedente(): void {
+    const d = new Date(this.debut + 'T12:00:00');
+    const f = new Date(this.fin + 'T12:00:00');
+    if (!this.debut || !this.fin || Number.isNaN(d.getTime()) || Number.isNaN(f.getTime()) || f < d) {
+      this.repartitionPrecedente.set(null);
+      return;
+    }
+    const jours = Math.round((f.getTime() - d.getTime()) / 86400000) + 1;
+    const finAvant = new Date(d);
+    finAvant.setDate(finAvant.getDate() - 1);
+    const debutAvant = new Date(finAvant);
+    debutAvant.setDate(debutAvant.getDate() - (jours - 1));
+    const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+    this.service.repartition(iso(debutAvant), iso(finAvant), this.camionId).subscribe({
+      next: (l) => this.repartitionPrecedente.set(l),
+      error: () => this.repartitionPrecedente.set(null)
+    });
   }
 
   filtrer(): void {
@@ -437,6 +474,12 @@ export class Depenses implements OnInit {
       CHARGE_GENERALE: 'orange'
     };
     return couleurs[categorie] ?? 'calme';
+  }
+
+  /** Part d'un montant dans le total de la periode, en pourcentage entier. */
+  pourcent(montant: number): number {
+    const total = this.totalPeriode();
+    return total === 0 ? 0 : Math.round((montant / total) * 100);
   }
 
   part(ligne: LigneCategorieDepense): number {

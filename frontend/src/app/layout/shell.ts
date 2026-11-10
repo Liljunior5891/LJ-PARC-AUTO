@@ -189,7 +189,6 @@ export class Shell {
         { libelle: 'Recettes', route: '/recettes', description: 'Locations, transports et livraisons' },
         { libelle: 'Depenses', route: '/depenses', description: 'Vehicules, charges generales, recurrentes' },
         { libelle: 'Fournisseurs', route: '/fournisseurs-parc', description: 'Fiches, dettes et reglements', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
-        { libelle: 'Carburant', route: '/carburant', description: 'Pleins et consommation' },
         { libelle: 'Facturation', route: '/facturation', description: 'Factures clients et reglements' },
         // Gestion de parc avec Marketplace : les vehicules reserves en ligne, a valider.
         { libelle: 'Demandes en ligne', route: '/marketplace/locations', description: 'Vehicules reserves dans la boutique en ligne', module: 'MARKETPLACE', roles: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC'] }

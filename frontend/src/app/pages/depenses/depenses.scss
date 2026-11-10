@@ -122,3 +122,49 @@ dl.fiche {
   margin: 1rem 0 0.5rem;
   font-size: 0.95rem;
 }
+
+/* Synthese de la periode : evolution, titres et libelles longs. */
+.resume-depenses {
+  .hausse {
+    font-weight: 700;
+    color: var(--couleur-danger);
+  }
+
+  .baisse {
+    font-weight: 700;
+    color: var(--couleur-succes);
+  }
+}
+
+.titre-section {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--couleur-texte-doux);
+}
+
+/* Cartes par categorie : plus serrees que la synthese. */
+.cartes-apercu.compactes-categories {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+
+  .carte-apercu {
+    padding: 0.8rem 0.9rem 0.75rem;
+  }
+
+  .icone {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+
+    svg {
+      width: 22px;
+      height: 22px;
+    }
+  }
+
+  .carte-apercu strong {
+    font-size: 1.25rem;
+  }
+}
