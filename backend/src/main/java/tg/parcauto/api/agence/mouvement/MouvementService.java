@@ -68,6 +68,13 @@ public class MouvementService {
     private final StockageFichierService stockage;
     private final AuditAgenceService audit;
     private final tg.parcauto.api.agence.cloture.VerrouJournee verrou;
+    private final org.springframework.beans.factory.ObjectProvider<tg.parcauto.api.agence.caisse.SessionCaisseService> sessions;
+
+    /** Un mouvement ne touche pas la caisse d'un caissier deja comptee ou fermee. */
+    private void exigerCaissesOuvertes(MouvementAgence m, Instant date, String action) {
+        sessions.getObject().exigerCaisseOuverte(m.getCompteSourceId(), date, action);
+        sessions.getObject().exigerCaisseOuverte(m.getCompteDestinationId(), date, action);
+    }
 
     public enum Sens { AUGMENTER, DIMINUER }
 
@@ -128,6 +135,7 @@ public class MouvementService {
             m.setCompteSourceId(source.getId());
             m.setCompteDestinationId(destination.getId());
         }
+        exigerCaissesOuvertes(m, Instant.now(), "ce mouvement");
         m.setReference(numerotation.prochainNumero("MVT"));
         m.setDateMouvement(Instant.now());
         m.setAuteurId(auteur.getId());
@@ -185,6 +193,8 @@ public class MouvementService {
         }
         verrou.exigerOuverte(m.getAgenceId(), registre.journee(m.getValideLe() != null ? m.getValideLe() : m.getDateMouvement()),
                 "l'annulation de " + m.getReference());
+        exigerCaissesOuvertes(m, m.getValideLe() != null ? m.getValideLe() : m.getDateMouvement(),
+                "l'annulation de " + m.getReference());
         Ecriture inverse = registre.contrePasser(m.getEcritureId(), motif.trim());
         m.setStatut(MouvementAgence.Statut.ANNULE);
         m.setAnnulationEcritureId(inverse.getId());
@@ -205,13 +215,18 @@ public class MouvementService {
         if (fichier.getSize() > 15L * 1024 * 1024) {
             throw new BusinessException("La piece justificative depasse 15 Mo");
         }
+        // Une piece deja jointe a un mouvement valide, rejete ou annule ne se remplace plus.
+        if (m.getPieceChemin() != null && m.getStatut() != MouvementAgence.Statut.EN_ATTENTE) {
+            throw new BusinessException("La piece du mouvement " + m.getReference() + " a servi a sa validation :"
+                    + " elle ne se remplace plus");
+        }
         String ancien = m.getPieceChemin();
         m.setPieceChemin(stockage.enregistrer(fichier, "agences-mouvements/" + m.getId()));
         m.setPieceNom(fichier.getOriginalFilename() == null ? "piece" : fichier.getOriginalFilename());
         m.setPieceType(fichier.getContentType());
-        if (ancien != null) {
-            stockage.supprimer(ancien);
-        }
+        // L'ancienne piece reste sur le disque ; le remplacement est trace.
+        audit.tracer(m.getAgenceId(), "PIECE", "MOUVEMENT", m.getId(), "Piece du mouvement " + m.getReference()
+                + (ancien == null ? " jointe" : " remplacee") + " : " + m.getPieceNom(), null, null);
         return versDto(m, contexte());
     }
 

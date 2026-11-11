@@ -14,7 +14,6 @@ import tg.parcauto.api.security.UtilisateurPrincipal;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -44,11 +43,25 @@ public class EcritureJournal {
             """;
 
     private final JdbcTemplate jdbc;
-    private final ExecutorService fil = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "journal-audit");
-        t.setDaemon(true);
-        return t;
-    });
+    /**
+     * File bornee : une rafale (essais de connexion en masse, par exemple) ne fait
+     * pas grossir la memoire du serveur. Au-dela, les lignes les plus anciennes en
+     * attente sont abandonnees, avec un avertissement dans les logs.
+     */
+    private final ExecutorService fil = new java.util.concurrent.ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
+            new java.util.concurrent.ArrayBlockingQueue<>(10_000),
+            r -> {
+                Thread t = new Thread(r, "journal-audit");
+                t.setDaemon(true);
+                return t;
+            },
+            (tache, executeur) -> {
+                if (!executeur.isShutdown()) {
+                    executeur.getQueue().poll();
+                    log.warn("File du journal d'audit pleine : une ligne en attente est abandonnee");
+                    executeur.execute(tache);
+                }
+            });
 
     public EcritureJournal(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
@@ -97,8 +110,9 @@ public class EcritureJournal {
         if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributs) {
             requete = true;
             HttpServletRequest r = attributs.getRequest();
-            String transmise = r.getHeader("X-Forwarded-For");
-            ip = transmise != null && !transmise.isBlank() ? transmise.split(",")[0].trim() : r.getRemoteAddr();
+            // Adresse resolue par le serveur (RemoteIpValve, server.forward-headers-strategy) :
+            // un en-tete X-Forwarded-For envoye par le client n'est jamais lu tel quel.
+            ip = r.getRemoteAddr();
         }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof UtilisateurPrincipal p) {

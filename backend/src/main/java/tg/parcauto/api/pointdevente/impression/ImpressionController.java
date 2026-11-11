@@ -29,6 +29,7 @@ import java.util.List;
 public class ImpressionController {
 
     private final ImpressionService service;
+    private final tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetre;
 
     @GetMapping("/imprimantes")
     @PreAuthorize(Autorisations.PDV_CAISSE)
@@ -63,8 +64,9 @@ public class ImpressionController {
     @GetMapping("/a-imprimer")
     @PreAuthorize(Autorisations.PDV_CAISSE)
     @Operation(summary = "Bons a imprimer par le navigateur de cette caisse")
-    public List<ImpressionService.TravailReponse> aImprimer(@RequestParam(required = false) Long caisseId) {
-        return service.aImprimer(caisseId);
+    public List<ImpressionService.TravailReponse> aImprimer(@RequestParam(required = false) Long caisseId,
+                                                           @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.aImprimer(caisseId, perimetre.caisses(principal));
     }
 
     @PostMapping("/prise")
@@ -72,7 +74,7 @@ public class ImpressionController {
     @Operation(summary = "Prend des bons pour les imprimer : ils passent imprimes")
     public List<ImpressionService.TravailReponse> prendre(@RequestBody List<Long> ids,
                                                           @AuthenticationPrincipal UtilisateurPrincipal principal) {
-        return service.prendre(ids, principal.getNomComplet());
+        return service.prendre(ids, principal.getNomComplet(), perimetre.caisses(principal));
     }
 
     @PostMapping("/bons/{id}/duplicata")

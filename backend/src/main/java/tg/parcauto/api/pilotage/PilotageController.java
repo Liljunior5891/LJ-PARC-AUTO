@@ -35,6 +35,7 @@ public class PilotageController {
     private final RapportPdfService rapportPdfService;
     private final NotificationService notificationService;
     private final EvolutionService evolutionService;
+    private final tg.parcauto.api.common.LimiteurRequetes limiteur;
 
     @GetMapping("/kpi")
     @Operation(summary = "Indicateurs de direction du chapitre 41")
@@ -136,12 +137,27 @@ public class PilotageController {
         LocalDate debutRetenu = debut == null ? finRetenue.withDayOfMonth(1) : debut;
         rapportService.verifierPeriode(debutRetenu, finRetenue);
 
-        byte[] contenu = rapportPdfService.produire(type, debutRetenu, finRetenue,
-                camionIds == null ? List.of() : camionIds);
+        // Selection dedoublonnee et plafonnee : chaque vehicule coute plusieurs dizaines de requetes.
+        List<Long> selection = camionIds == null ? List.of() : camionIds.stream().distinct().toList();
+        if (selection.size() > CAMIONS_PDF_MAX) {
+            throw new tg.parcauto.api.common.BusinessException("Choisissez au plus " + CAMIONS_PDF_MAX
+                    + " vehicules, ou aucun pour tout le parc");
+        }
+        // Quelques exports par minute et par utilisateur : un PDF mobilise la base.
+        limiteur.exiger("rapport-pdf:" + utilisateurCourant(), 10, java.time.Duration.ofMinutes(1),
+                "Trop d'exports a la suite : patientez une minute");
+        byte[] contenu = rapportPdfService.produire(type, debutRetenu, finRetenue, selection);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + type.nomFichier(debutRetenu, finRetenue) + "\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(contenu);
+    }
+
+    private static final int CAMIONS_PDF_MAX = 50;
+
+    private static String utilisateurCourant() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return auth == null ? "anonyme" : auth.getName();
     }
 }

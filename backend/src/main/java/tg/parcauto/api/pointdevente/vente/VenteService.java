@@ -60,6 +60,7 @@ public class VenteService {
     private final tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetre;
     private final tg.parcauto.api.pointdevente.impression.ImpressionService impression;
     private final org.springframework.beans.factory.ObjectProvider<PrixCommandesEnLigne> prixCommandesEnLigne;
+    private final tg.parcauto.api.pointdevente.reglage.ReglagePdvService reglagesPdv;
 
     public VenteDto.Ticket encaisser(VenteDto.Encaissement demande, UtilisateurPrincipal caissier) {
         List<LigneVente> lignes = new ArrayList<>();
@@ -263,6 +264,7 @@ public class VenteService {
             throw new BusinessException("La remise depasse le total de la commande");
         }
         BigDecimal total = totalBrut.subtract(remise);
+        exigerRemiseAutorisee(lignes, remise, caissier);
         vente.setTotalBrut(totalBrut);
         vente.setRemise(remise);
         vente.setTotal(total);
@@ -427,6 +429,12 @@ public class VenteService {
      * paiement exact.
      */
     private void regler(Vente vente, VenteDto.Reglement demande, BigDecimal aPayer) {
+        // Hors especes, l'argent n'entre pas dans le tiroir : la reference permet le rapprochement.
+        if ((demande.modePaiement() == ModePaiementPdv.MOBILE_MONEY || demande.modePaiement() == ModePaiementPdv.CARTE)
+                && aPayer.signum() > 0 && vide(demande.referencePaiement()) == null) {
+            throw new BusinessException("Indiquez la reference du paiement " + demande.modePaiement().getLibelle()
+                    .toLowerCase() + " (numero de transaction)");
+        }
         vente.setModePaiement(demande.modePaiement());
         vente.setReferencePaiement(vide(demande.referencePaiement()));
         if (demande.modePaiement() == ModePaiementPdv.ESPECES) {
@@ -440,6 +448,35 @@ public class VenteService {
         } else {
             vente.setMontantRecu(aPayer);
             vente.setMonnaieRendue(BigDecimal.ZERO);
+        }
+    }
+
+    /**
+     * Remise totale (lignes et ticket) accordee par un caissier : plafonnee par le reglage
+     * du point de vente. Le gerant et l'administrateur ne sont pas plafonnes.
+     */
+    private void exigerRemiseAutorisee(List<LigneVente> lignes, BigDecimal remiseTicket, UtilisateurPrincipal caissier) {
+        if (caissier == null || tg.parcauto.api.pointdevente.personnel.PersonnelService.gestionnaire(caissier)) {
+            return;
+        }
+        BigDecimal brut = BigDecimal.ZERO;
+        BigDecimal remises = remiseTicket;
+        for (LigneVente l : lignes) {
+            brut = brut.add(l.getTotal()).add(l.getRemise());
+            remises = remises.add(l.getRemise());
+        }
+        if (remises.signum() <= 0 || brut.signum() <= 0) {
+            return;
+        }
+        BigDecimal plafond = reglagesPdv.lire().remiseMaxCaissierPourcent();
+        if (plafond == null || plafond.compareTo(BigDecimal.valueOf(100)) >= 0) {
+            return;
+        }
+        BigDecimal pourcent = remises.multiply(BigDecimal.valueOf(100)).divide(brut, 2, java.math.RoundingMode.HALF_UP);
+        if (pourcent.compareTo(plafond) > 0) {
+            throw new BusinessException("Remise de " + pourcent.stripTrailingZeros().toPlainString()
+                    + " % : un caissier accorde au plus " + plafond.stripTrailingZeros().toPlainString()
+                    + " %. Faites encaisser par le gerant.");
         }
     }
 

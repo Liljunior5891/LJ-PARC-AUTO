@@ -26,6 +26,8 @@ import tg.parcauto.api.security.Autorisations;
 @RestController
 @ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/incidents")
+// Lecture des incidents (couts, positions, chauffeurs) reservee a la gestion ; le chauffeur declare.
+@org.springframework.security.access.prepost.PreAuthorize(tg.parcauto.api.security.Autorisations.GESTION)
 @RequiredArgsConstructor
 @Tag(name = "Incidents")
 public class IncidentController {

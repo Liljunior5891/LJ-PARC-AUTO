@@ -86,6 +86,12 @@ public class CommandeEnLigneService {
     private final CommandeService commandeSalleService;
     private final CommandeRepository commandeSalleRepository;
     private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private final tg.parcauto.api.common.audit.JournalActiviteService journal;
+
+    /** Unites au plus par commande anonyme, et commandes ouvertes au plus par telephone et par boutique. */
+    static final int UNITES_MAX_COMMANDE = 100;
+    static final int COMMANDES_OUVERTES_MAX = 3;
 
     // --------------------------------------------------------- Cote client
 
@@ -123,6 +129,22 @@ public class CommandeEnLigneService {
         // Une meme offre demandee deux fois ne fait qu'une ligne.
         Map<Long, Integer> quantites = new LinkedHashMap<>();
         d.lignes().forEach(l -> quantites.merge(l.offreId(), l.quantite(), Integer::sum));
+        // Une commande anonyme ne bloque pas tout le stock : quantite totale plafonnee, et peu de
+        // commandes non traitees a la fois pour un meme telephone.
+        int unites = quantites.values().stream().mapToInt(Integer::intValue).sum();
+        if (unites > UNITES_MAX_COMMANDE) {
+            throw new BusinessException("Une commande en ligne compte au plus " + UNITES_MAX_COMMANDE
+                    + " articles : contactez la boutique pour une commande plus importante");
+        }
+        Integer ouvertes = jdbc.queryForObject("""
+                select count(*) from mkt_commande
+                where entreprise_id = ? and regexp_replace(client_telephone, '[^0-9]', '', 'g') = ?
+                  and statut = 'NOUVELLE'
+                """, Integer.class, entreprise, d.telephone().replaceAll("[^0-9]", ""));
+        if (ouvertes != null && ouvertes >= COMMANDES_OUVERTES_MAX) {
+            throw new BusinessException("Vous avez deja " + ouvertes + " commandes en attente dans cette boutique :"
+                    + " attendez qu'elles soient traitees");
+        }
 
         CommandeEnLigne commande = new CommandeEnLigne();
         commande.setNumero(numerotation.prochainNumero("CMD"));
@@ -189,11 +211,15 @@ public class CommandeEnLigneService {
 
     /** Restaurant : la commande en ligne devient une commande de salle, a valider puis a preparer. */
     private void ouvrirEnSalle(CommandeEnLigne commande) {
-        Commande salle = commandeSalleService.commandeEnLigne("En ligne · " + commande.getClientNom(),
+        // Les lignes gardent le prix paye en ligne (prix propre de l'offre), pas le prix du catalogue.
+        Map<Long, BigDecimal> prix = new java.util.HashMap<>();
+        commande.getLignes().forEach(l -> prix.put(l.getArticleId(), l.getPrixUnitaire()));
+        Commande salle = commandeSalleService.commandeEnLigne(
+                (commande.isPayeeEnLigne() ? "PAYEE en ligne · " : "En ligne · ") + commande.getClientNom(),
                 noteSalle(commande),
                 commande.getLignes().stream().map(l -> new RestaurationDto.AjoutLigne(l.getArticleId(),
                         BigDecimal.valueOf(l.getQuantite()), null)).toList(),
-                commande.getId());
+                commande.getId(), prix);
         commande.setPdvCommandeId(salle.getId());
     }
 
@@ -219,6 +245,10 @@ public class CommandeEnLigneService {
             note.append(" : ").append(c.getAdresseLivraison());
         }
         note.append(". ").append(c.getModePaiement().getLibelle()).append('.');
+        if (c.isPayeeEnLigne()) {
+            // Mis en tete du libelle aussi : la caisse ne doit pas faire payer une seconde fois.
+            note.insert(0, "DEJA PAYEE EN LIGNE (" + c.getTotal().stripTrailingZeros().toPlainString() + " F) — ");
+        }
         if (c.getNote() != null) {
             note.append(" Note du client : ").append(c.getNote());
         }
@@ -255,7 +285,7 @@ public class CommandeEnLigneService {
         if (!attendPaiement(commande)) {
             throw new BusinessException("Cette commande n'attend pas de paiement en ligne");
         }
-        paiementService.confirmer(commande, commande.getReferencePaiement());
+        paiementService.confirmer(commande, commande.getReferencePaiement(), commande.getTotal());
         apresPaiement(commande);
         return suivi(boutiqueService.courante(), repository.save(commande), null);
     }
@@ -408,6 +438,22 @@ public class CommandeEnLigneService {
         return MarketplaceDto.CommandeReponse.de(repository.save(commande));
     }
 
+    /**
+     * Commande jamais confirmee ou jamais payee : annulee automatiquement, et le stock
+     * qu'elle retenait revient. Appelee par {@link ExpirationCommandesEnLigne}.
+     */
+    public void expirer(Long id, String motif) {
+        CommandeEnLigne commande = repository.findById(id).orElse(null);
+        if (commande == null || commande.getStatut() != Statut.NOUVELLE || commande.getPdvCommandeId() != null
+                || commande.getStatutPaiement() == CommandeEnLigne.StatutPaiement.PAYEE) {
+            return;
+        }
+        liberer(commande);
+        commande.setStatut(Statut.ANNULEE);
+        commande.setMotifAnnulation(motif);
+        repository.save(commande);
+    }
+
     /** Paiement constate a la main (mobile money recu hors plateforme, especes a l'avance...). */
     public MarketplaceDto.CommandeReponse marquerPayee(Long id) {
         CommandeEnLigne commande = charger(id);
@@ -415,6 +461,10 @@ public class CommandeEnLigneService {
             throw new BusinessException("Cette commande est annulee");
         }
         commande.setStatutPaiement(CommandeEnLigne.StatutPaiement.PAYEE);
+        // Paiement constate a la main : trace au journal (qui, quand, quelle commande).
+        journal.administration(commande.getEntrepriseId(), "PAIEMENT_MANUEL", "CommandeEnLigne", "Commande en ligne",
+                commande.getId(), "Commande " + commande.getNumero() + " marquee payee a la main ("
+                        + commande.getTotal().stripTrailingZeros().toPlainString() + " F)", null, null);
         return MarketplaceDto.CommandeReponse.de(repository.save(commande));
     }
 
@@ -491,7 +541,7 @@ public class CommandeEnLigneService {
 
     private MarketplaceDto.Suivi suivi(Boutique boutique, CommandeEnLigne commande, String urlPaiement) {
         return new MarketplaceDto.Suivi("COMMANDE", boutique.getNom(), boutique.getSlug(), boutique.getTelephone(),
-                boutique.getWhatsapp(), boutique.getMessageConfirmation(), MarketplaceDto.CommandeReponse.de(commande),
+                boutique.getWhatsapp(), boutique.getMessageConfirmation(), MarketplaceDto.CommandeReponse.de(commande).publique(),
                 null, urlPaiement, paiementService.simule());
     }
 

@@ -50,9 +50,18 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // L'API ne sert que du JSON et des fichiers : rien a executer ni a encadrer.
+                .headers(h -> h
+                        .contentSecurityPolicy(c -> c.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
+                        .referrerPolicy(r -> r.policy(
+                                org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                        .permissionsPolicyHeader(p -> p.policy("camera=(), microphone=(), geolocation=()"))
+                        .httpStrictTransportSecurity(t -> t.includeSubDomains(true).maxAgeInSeconds(31_536_000)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC).permitAll()
+                        // Console de l'exploitant : regle d'URL en plus des @PreAuthorize de chaque methode.
+                        .requestMatchers("/api/plateforme/**").hasRole("SUPER_ADMIN")
                         .anyRequest().authenticated())
                 // Sans session valide (jeton expire, compte ou entreprise suspendu) : 401,
                 // que l'interface traite en renvoyant vers la connexion.
@@ -71,7 +80,8 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Content-Disposition"));
-        config.setAllowCredentials(true);
+        // Jeton Bearer dans un en-tete : aucun cookie a transmettre entre origines.
+        config.setAllowCredentials(false);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;

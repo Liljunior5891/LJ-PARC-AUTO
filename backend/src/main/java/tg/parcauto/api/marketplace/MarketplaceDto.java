@@ -31,9 +31,10 @@ public final class MarketplaceDto {
             String slug,
             @NotBlank @Size(max = 150) String nom,
             @Size(max = 200) String slogan,
-            String description,
+            @Size(max = 5000) String description,
             @Size(max = 60) String categorie,
-            String couverture,
+            @Size(max = 2_000_000) @Pattern(regexp = "^$|^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$",
+                    message = "image au format JPEG, PNG ou WebP, envoyee depuis l'ecran (pas de lien externe)") String couverture,
             @Size(max = 40) String telephone,
             @Size(max = 40) String whatsapp,
             @Email @Size(max = 150) String email,
@@ -67,12 +68,13 @@ public final class MarketplaceDto {
             Long articleId,
             Long camionId,
             @NotBlank @Size(max = 150) String titre,
-            String description,
+            @Size(max = 5000) String description,
             @Size(max = 80) String categorie,
             @PositiveOrZero BigDecimal prix,
             @Size(max = 20) String unitePrix,
             @PositiveOrZero BigDecimal caution,
-            String image,
+            @Size(max = 2_000_000) @Pattern(regexp = "^$|^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$",
+                    message = "image au format JPEG, PNG ou WebP, envoyee depuis l'ecran (pas de lien externe)") String image,
             @PositiveOrZero Integer stock,
             boolean publiee,
             boolean miseEnAvant,
@@ -194,6 +196,16 @@ public final class MarketplaceDto {
                             l.getPrixUnitaire(), l.getQuantite(), l.getTotal())).toList(),
                     c.isEnCaisse(), c.getPdvCommandeId(), c.getClientNomFamille(), c.getClientPrenoms());
         }
+
+        /** Vue du lien de suivi public : sans identifiants internes (commande, client, articles, salle). */
+        public CommandeReponse publique() {
+            return new CommandeReponse(null, numero, jeton, null, clientNom, clientTelephone, clientEmail, modeRemise,
+                    modeRemiseLibelle, adresseLivraison, modePaiement, modePaiementLibelle, statutPaiement, statut,
+                    statutLibelle, sousTotal, fraisLivraison, total, note, motifAnnulation, dateCommande,
+                    lignes.stream().map(l -> new LigneReponse(l.offreId(), null, l.libelle(), l.prixUnitaire(),
+                            l.quantite(), l.total())).toList(),
+                    enCaisse, null, clientNomFamille, clientPrenoms);
+        }
     }
 
     public record ChangementStatut(@NotNull CommandeEnLigne.Statut statut, @Size(max = 255) String motif) {
@@ -226,6 +238,15 @@ public final class MarketplaceDto {
             BigDecimal caution,
             /** Nom de famille et prenoms saisis separement ; vides pour les demandes anterieures. */
             String clientNomFamille, String clientPrenoms) {
+
+        /** Vue du lien de suivi public : sans identifiants internes ni immatriculation du vehicule. */
+        public DemandeLocationReponse publique() {
+            String modele = vehicule == null ? null : vehicule.replaceAll("\\s*\\([^)]*\\)\\s*$", "");
+            return new DemandeLocationReponse(null, numero, jeton, offreId, null, modele, null, clientNom,
+                    clientTelephone, clientEmail, dateDebut, dateFin, jours, tarifJour, montantEstime, lieuDepart,
+                    destination, message, statut, statutLibelle, motifRefus, null, locationNumero, dateDemande,
+                    null, recetteNumero, caution, clientNomFamille, clientPrenoms);
+        }
     }
 
     /** Nom affiche de l'acheteur, « Prenoms NOM » comme les fiches client des particuliers. */

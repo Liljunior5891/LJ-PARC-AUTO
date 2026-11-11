@@ -31,6 +31,9 @@ import tg.parcauto.api.security.Autorisations;
 @RestController
 @ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/camions")
+// Fiches vehicule (prix d'achat, chassis, traceur, odometre) : reservees a la gestion.
+// Seul le releve du compteur reste ouvert au chauffeur (annotation sur la methode).
+@PreAuthorize(Autorisations.GESTION)
 @RequiredArgsConstructor
 @Tag(name = "Vehicules")
 public class CamionController {

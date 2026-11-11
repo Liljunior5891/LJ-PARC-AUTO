@@ -150,6 +150,13 @@ public class DemandeLocationService {
             throw new BusinessException("La demande " + demande.getNumero() + " est "
                     + demande.getStatut().getLibelle().toLowerCase() + " : elle ne peut plus etre conclue");
         }
+        // La recette conclut la demande seulement pour le vehicule reserve et, s'il est connu, son client.
+        if (demande.getCamionId() != null && !demande.getCamionId().equals(evenement.camionId())) {
+            throw new BusinessException("La demande " + demande.getNumero() + " porte sur un autre vehicule");
+        }
+        if (demande.getClientId() != null && !demande.getClientId().equals(evenement.clientId())) {
+            throw new BusinessException("La demande " + demande.getNumero() + " est celle d'un autre client");
+        }
         demande.setStatut(DemandeLocation.Statut.CONCLUE);
         demande.setRecetteId(evenement.recetteId());
         repository.save(demande);
@@ -191,7 +198,7 @@ public class DemandeLocationService {
 
     private MarketplaceDto.Suivi suivi(Boutique boutique, DemandeLocation demande) {
         return new MarketplaceDto.Suivi("LOCATION", boutique.getNom(), boutique.getSlug(), boutique.getTelephone(),
-                boutique.getWhatsapp(), boutique.getMessageConfirmation(), null, versReponse(demande), null, false);
+                boutique.getWhatsapp(), boutique.getMessageConfirmation(), null, versReponse(demande).publique(), null, false);
     }
 
     private MarketplaceDto.DemandeLocationReponse versReponse(DemandeLocation d) {

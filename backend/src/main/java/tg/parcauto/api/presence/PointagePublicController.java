@@ -118,7 +118,11 @@ public class PointagePublicController {
      * l'adresse reelle remonte ici.
      */
     private static String appareil(HttpServletRequest requete) {
-        return "ip:" + requete.getRemoteAddr();
+        // Par couple (lieu ou borne, adresse) : un tiers ne bloque pas le pointage de tous les lieux.
+        Object lieu = requete.getAttribute(ContextePresenceInterceptor.LIEU);
+        Object borne = requete.getAttribute(ContextePresenceInterceptor.BORNE);
+        return "ip:" + (lieu != null ? "lieu" + lieu : borne != null ? "borne" + borne : "") + ":"
+                + requete.getRemoteAddr();
     }
 
     private static YearMonth mois(String mois) {

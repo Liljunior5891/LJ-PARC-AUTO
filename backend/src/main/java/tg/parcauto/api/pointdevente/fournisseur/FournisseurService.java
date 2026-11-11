@@ -56,6 +56,7 @@ public class FournisseurService {
     private final CaisseService caisseService;
     private final NumerotationService numerotation;
     private final tg.parcauto.api.pointdevente.tresorerie.TresorerieService tresorerie;
+    private final tg.parcauto.api.pointdevente.reglage.ReglagePdvService reglagesPdv;
 
     // ------------------------------------------------------------------ dto
 
@@ -146,7 +147,7 @@ public class FournisseurService {
 
     @Transactional(readOnly = true)
     public Page<Reponse> rechercher(String q, Boolean actif, boolean avecDette, int page, int size) {
-        String motif = q == null || q.isBlank() ? null : "%" + q.trim().toLowerCase(Locale.ROOT) + "%";
+        String motif = q == null || q.isBlank() ? null : tg.parcauto.api.common.SpecificationUtils.motif(q);
         Map<Long, BigDecimal[]> dettes = dettesParFiche();
         Map<Long, LocalDate> echeances = prochainesEcheances();
         Map<Long, Long> nombres = nombresDeCommandes();
@@ -314,6 +315,13 @@ public class FournisseurService {
         String numero = numerotation.prochainNumero("RF");
         MouvementCaisse sortie = null;
         if (demande.mode() == ModeSortie.CAISSE) {
+            // Avec la validation des depenses de caisse, aucune sortie d'especes du tiroir sans visa :
+            // le reglement passe par le coffre ou la banque (l'administrateur reste libre).
+            if (reglagesPdv.validationDepensesCaisse()
+                    && auteur.getAuthorities().stream().noneMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) {
+                throw new BusinessException("La validation des depenses de caisse est activee : reglez le fournisseur"
+                        + " depuis le coffre ou la banque, ou par une depense de caisse soumise a validation");
+            }
             if (demande.sessionId() == null) {
                 throw new BusinessException("Choisissez la caisse ouverte d'ou sortent les especes");
             }

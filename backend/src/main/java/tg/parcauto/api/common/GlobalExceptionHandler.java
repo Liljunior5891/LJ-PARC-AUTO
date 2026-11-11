@@ -54,8 +54,43 @@ public class GlobalExceptionHandler {
         if (String.valueOf(ex.getMostSpecificCause().getMessage()).contains("ux_utilisateur_email_minuscules")) {
             return build(HttpStatus.CONFLICT, "Cette adresse est deja utilisee par un compte", req, null);
         }
+        String cause = String.valueOf(ex.getMostSpecificCause().getMessage());
+        if (cause.contains("ux_abo_paiement_attente")) {
+            return build(HttpStatus.CONFLICT, "Un paiement attend deja la validation", req, null);
+        }
+        if (cause.contains("ux_abo_paiement_reference")) {
+            return build(HttpStatus.CONFLICT, "Cette reference de paiement a deja ete declaree", req, null);
+        }
         return build(HttpStatus.CONFLICT, "Violation de contrainte d'integrite (doublon ou reference manquante)",
                 req, null);
+    }
+
+    /** Tri sur une propriete inconnue : erreur de la requete, pas du serveur. */
+    @ExceptionHandler({org.springframework.data.mapping.PropertyReferenceException.class,
+            org.springframework.dao.InvalidDataAccessApiUsageException.class})
+    public ResponseEntity<Map<String, Object>> handleTriInconnu(RuntimeException ex, HttpServletRequest req) {
+        boolean tri = ex instanceof org.springframework.data.mapping.PropertyReferenceException
+                || ex.getCause() instanceof org.springframework.data.mapping.PropertyReferenceException;
+        if (!tri) {
+            return handleTechnique(ex, req);
+        }
+        return build(HttpStatus.BAD_REQUEST, "Critere de tri inconnu", req, null);
+    }
+
+    /** Identifiant ou parametre mal forme (texte a la place d'un nombre, par exemple). */
+    @ExceptionHandler({org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class,
+            org.springframework.http.converter.HttpMessageNotReadableException.class})
+    public ResponseEntity<Map<String, Object>> handleRequeteMalFormee(Exception ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "Requete mal formee", req, null);
+    }
+
+    /** Deux modifications simultanees du meme enregistrement : la seconde est refusee proprement. */
+    @ExceptionHandler({org.springframework.orm.ObjectOptimisticLockingFailureException.class,
+            jakarta.persistence.OptimisticLockException.class})
+    public ResponseEntity<Map<String, Object>> handleConflitVersion(Exception ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT,
+                "Cet enregistrement vient d'etre modifie par ailleurs : rechargez la page puis recommencez", req, null);
     }
 
     @ExceptionHandler(AccessDeniedException.class)

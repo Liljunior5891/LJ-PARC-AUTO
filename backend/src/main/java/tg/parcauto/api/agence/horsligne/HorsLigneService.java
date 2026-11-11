@@ -57,6 +57,10 @@ public class HorsLigneService {
     private final PlatformTransactionManager gestionnaire;
     private final ObjectMapper json;
     private final Validator validateur;
+    private final tg.parcauto.api.common.LimiteurRequetes limiteur;
+
+    private static final int OPERATIONS_MAX = 200;
+    private static final int DONNEES_MAX = 8_192;
 
     /** Operation envoyee par l'appareil : sa cle, son type, l'heure de saisie et la saisie elle-meme. */
     public record OperationEnvoyee(@NotBlank @Size(max = 64) String cle, @NotNull OperationHorsLigne.Type type,
@@ -111,6 +115,23 @@ public class HorsLigneService {
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<Resultat> synchroniser(List<OperationEnvoyee> operations, UtilisateurPrincipal auteur) {
+        if (operations.size() > OPERATIONS_MAX) {
+            throw new BusinessException("Envoyez au plus " + OPERATIONS_MAX + " operations a la fois");
+        }
+        limiteur.exiger("agences-hors-ligne:" + auteur.getId(), 30, java.time.Duration.ofMinutes(1),
+                "Trop de synchronisations a la suite : patientez une minute");
+        // Rejet simple, sans conflit ni trace immuable : saisie trop lourde, ou agence absente
+        // ou hors du perimetre de l'emetteur.
+        for (OperationEnvoyee op : operations) {
+            if (op.donnees().toString().length() > DONNEES_MAX) {
+                throw new BusinessException("Operation " + op.cle() + " trop volumineuse");
+            }
+            JsonNode agence = op.donnees().get("agenceId");
+            if (agence == null || !agence.canConvertToLong()) {
+                throw new BusinessException("Operation " + op.cle() + " sans agence");
+            }
+            perimetre.exiger(agence.asLong());
+        }
         TransactionTemplate tx = new TransactionTemplate(gestionnaire);
         List<Resultat> resultats = new ArrayList<>();
         List<OperationEnvoyee> triees = operations.stream().sorted((a, b) -> a.saisieLe().compareTo(b.saisieLe())).toList();
@@ -206,11 +227,40 @@ public class HorsLigneService {
         o.setSaisieLe(op.saisieLe());
         o.setRecueLe(Instant.now());
         o.setStatut(statut);
-        String resume = op.resume() == null || op.resume().isBlank() ? op.type().name() : op.resume().trim();
+        // Resume construit par le serveur a partir de la saisie : le superviseur voit ce qui sera
+        // vraiment rejoue, jamais un texte ecrit par l'emetteur.
+        String resume = resumeServeur(op.type(), op.donnees());
         o.setResume(resume.length() > 255 ? resume.substring(0, 255) : resume);
         o.setDonnees(op.donnees().toString());
         o.setMotif(motif == null ? null : motif.length() > 1000 ? motif.substring(0, 1000) : motif);
         return o;
+    }
+
+    static String resumeServeur(OperationHorsLigne.Type type, JsonNode d) {
+        StringBuilder r = new StringBuilder(switch (type) {
+            case TRANSACTION -> "Transaction";
+            case VENTE_CARTE -> "Vente de cartes";
+            case DEPENSE -> "Depense";
+        });
+        ajouter(r, "montant", d.path("montant"), " F");
+        ajouter(r, "commission", d.path("commission"), " F");
+        ajouter(r, "compte", d.path("compteId"), null);
+        ajouter(r, "libelle", d.path("libelle"), null);
+        ajouter(r, "beneficiaire", d.path("beneficiaire"), null);
+        ajouter(r, "client", d.path("clientNom"), null);
+        return r.toString();
+    }
+
+    private static void ajouter(StringBuilder r, String nom, JsonNode valeur, String unite) {
+        if (valeur.isMissingNode() || valeur.isNull()) {
+            return;
+        }
+        String texte = valeur.asText().replaceAll("\\p{Cntrl}", " ").trim();
+        if (texte.isEmpty()) {
+            return;
+        }
+        r.append(" · ").append(nom).append(" ").append(texte.length() > 60 ? texte.substring(0, 60) : texte)
+                .append(unite == null ? "" : unite);
     }
 
     private Resultat resultat(OperationHorsLigne o) {
@@ -252,7 +302,18 @@ public class HorsLigneService {
     public ConflitDto reprendre(Long id, UtilisateurPrincipal superviseur) {
         OperationHorsLigne o = conflit(id);
         try {
-            o.setReference(executer(o.getType(), json.readTree(o.getDonnees()), o.getSaisieLe(), superviseur));
+            // Reprise au nom du superviseur : les choix sensibles de l'emetteur ne sont pas repris.
+            // Commission : celle du bareme ; depense : le compte par defaut du superviseur.
+            com.fasterxml.jackson.databind.node.ObjectNode donnees =
+                    (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(o.getDonnees());
+            if (o.getType() == OperationHorsLigne.Type.TRANSACTION) {
+                donnees.remove("commission");
+                donnees.remove("motifCommission");
+            }
+            if (o.getType() == OperationHorsLigne.Type.DEPENSE) {
+                donnees.remove("compteId");
+            }
+            o.setReference(executer(o.getType(), donnees, o.getSaisieLe(), superviseur));
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new BusinessException("Saisie illisible");
         }

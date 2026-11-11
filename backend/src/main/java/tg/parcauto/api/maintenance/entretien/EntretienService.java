@@ -154,9 +154,7 @@ public class EntretienService {
         }
 
         // Le compteur du camion suit le releve de l'atelier.
-        if (realisation.kilometrageRealise() > camion.getKilometrageActuel()) {
-            camion.setKilometrageActuel(realisation.kilometrageRealise());
-        }
+        tg.parcauto.api.parc.camion.CompteurKilometrique.avancer(camion, realisation.kilometrageRealise(), "Entretien realise");
         if (camion.getStatut() == StatutCamion.EN_MAINTENANCE) {
             // Sorti d'atelier : accidente si l'incident reste ouvert, en location si le contrat court, etc.
             repository.saveAndFlush(entretien);

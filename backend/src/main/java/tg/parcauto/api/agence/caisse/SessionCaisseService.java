@@ -323,6 +323,9 @@ public class SessionCaisseService {
     public SessionDto rejeter(Long id, Rejet r, UtilisateurPrincipal superviseur) {
         SessionCaisseAgence s = charger(id);
         Agence agence = perimetre.exiger(s.getAgenceId());
+        if (!tg.parcauto.api.agence.DroitsAgence.estAdministrateur() && superviseur.getId().equals(s.getCaissierId())) {
+            throw new BusinessException("Vous ne pouvez pas traiter le comptage de votre propre caisse");
+        }
         if (s.getStatut() != SessionCaisseAgence.Statut.SOUMISE) {
             throw new BusinessException("La caisse " + s.getNumero() + " n'a pas de comptage en attente");
         }
@@ -351,6 +354,11 @@ public class SessionCaisseService {
     public SessionDto fermer(Long id, Fermeture f, UtilisateurPrincipal superviseur) {
         SessionCaisseAgence s = charger(id);
         Agence agence = perimetre.exiger(s.getAgenceId());
+        // Separation des taches : on ne ferme pas (ni ne regularise) sa propre caisse.
+        if (!tg.parcauto.api.agence.DroitsAgence.estAdministrateur() && superviseur.getId().equals(s.getCaissierId())) {
+            throw new BusinessException("Vous ne pouvez pas fermer votre propre caisse : un autre superviseur"
+                    + " ou l'administrateur la ferme");
+        }
         if (s.getStatut() == SessionCaisseAgence.Statut.FERMEE) {
             throw new BusinessException("La caisse " + s.getNumero() + " est deja fermee");
         }

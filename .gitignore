@@ -18,6 +18,9 @@ data/
 .vscode/*
 !.vscode/extensions.json
 
+# Journaux locaux
+*.log
+
 # Systeme
 Thumbs.db
 .DS_Store

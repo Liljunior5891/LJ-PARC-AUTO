@@ -61,6 +61,16 @@ public class PneuService {
 
     public PneuDto.Reponse modifier(Long id, PneuDto.Requete requete) {
         Pneu pneu = charger(id);
+        if (pneu.getStatut() == StatutPneu.REBUTE) {
+            throw new BusinessException("Le pneu " + pneu.getReference() + " est mis au rebut : sa fiche ne change plus");
+        }
+        // Achat deja passe en depense : le prix et la date suivent la depense (et son circuit de validation).
+        if (pneu.getDepense() != null && (!java.util.Objects.equals(pneu.getDateAchat(), requete.dateAchat())
+                || pneu.getPrixAchat() == null || requete.prixAchat() == null
+                || pneu.getPrixAchat().compareTo(requete.prixAchat()) != 0)) {
+            throw new BusinessException("L'achat du pneu " + pneu.getReference() + " est deja en depense :"
+                    + " corrigez la depense, pas la fiche du pneu");
+        }
         appliquer(pneu, requete);
         return PneuDto.Reponse.de(repository.save(pneu));
     }

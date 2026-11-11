@@ -50,8 +50,8 @@ public class AdaptateurTraccar implements AdaptateurGps {
         JsonNode attributs = noeud.path("attributes");
         BigDecimal vitesseNoeuds = AdaptateurGenerique.decimal(noeud, "speed");
         return new PositionBrute(
-                uniqueIdAppareil != null ? uniqueIdAppareil
-                        : noeud.hasNonNull("uniqueId") ? noeud.get("uniqueId").asText()
+                uniqueIdAppareil != null ? AdaptateurGenerique.nettoyer(uniqueIdAppareil)
+                        : noeud.hasNonNull("uniqueId") ? AdaptateurGenerique.texte(noeud, "uniqueId")
                         : AdaptateurGenerique.texte(noeud, "deviceId"),
                 AdaptateurGenerique.decimal(noeud, "latitude"),
                 AdaptateurGenerique.decimal(noeud, "longitude"),
@@ -59,8 +59,16 @@ public class AdaptateurTraccar implements AdaptateurGps {
                         : vitesseNoeuds.multiply(NOEUD_EN_KMH).setScale(2, RoundingMode.HALF_UP),
                 noeud.hasNonNull("course") ? (int) noeud.get("course").asDouble() : null,
                 AdaptateurGenerique.decimal(noeud, "altitude"),
-                attributs.hasNonNull("odometer") ? attributs.get("odometer").asLong() / 1000 : null,
+                kilometresDepuisMetres(AdaptateurGenerique.decimal(attributs, "odometer")),
                 attributs.hasNonNull("ignition") ? attributs.get("ignition").asBoolean() : null,
                 AdaptateurGenerique.horodatage(noeud, "deviceTime"));
+    }
+
+    private static Long kilometresDepuisMetres(BigDecimal metres) {
+        if (metres == null || metres.signum() < 0) {
+            return null;
+        }
+        long km = metres.longValue() / 1000;
+        return km > PositionBrute.KILOMETRAGE_MAX ? null : km;
     }
 }

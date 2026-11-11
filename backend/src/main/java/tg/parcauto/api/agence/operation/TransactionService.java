@@ -103,9 +103,9 @@ public class TransactionService {
             @NotNull Long serviceId,
             @NotNull Long typeOperationId,
             Long reseauId,
-            @NotNull @Positive Long montant,
+            @NotNull @Positive @jakarta.validation.constraints.Max(1_000_000_000_000L) Long montant,
             /** Nulle : la commission du bareme. */
-            @PositiveOrZero Long commission,
+            @PositiveOrZero @jakarta.validation.constraints.Max(1_000_000_000L) Long commission,
             @Size(max = 255) String motifCommission,
             @Size(max = 80) String referenceOperateur,
             @Size(max = 30) String clientTelephone,
@@ -379,6 +379,10 @@ public class TransactionService {
         p.commissionRetenue = p.commission.commission();
         if (s.commission() != null && s.commission() != p.commission.commission()) {
             droits.exiger(PermissionAgence.COMMISSION_MODIFIER);
+            // Commission modifiee bornee : au plus le montant de l'operation (et au moins zero).
+            if (s.commission() < 0 || s.commission() > montant) {
+                throw new BusinessException("La commission ne peut pas depasser le montant de l'operation");
+            }
             p.commissionRetenue = s.commission();
         }
 

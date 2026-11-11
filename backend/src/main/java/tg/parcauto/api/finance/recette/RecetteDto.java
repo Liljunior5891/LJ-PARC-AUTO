@@ -64,7 +64,7 @@ public final class RecetteDto {
     }
 
     /** Recette enregistree en agence pour conclure une demande de location en ligne. */
-    public record RecetteDepuisDemande(Long recetteId, Long demandeId, Long camionId) {
+    public record RecetteDepuisDemande(Long recetteId, Long demandeId, Long camionId, Long clientId) {
     }
 
     /** Engagement du vehicule qui chevauche la periode d'une recette (location, mission, transport...). */

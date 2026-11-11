@@ -83,6 +83,7 @@ class CaisseServiceTest {
         session.setFondInitial(BigDecimal.valueOf(5000));
 
         when(sessions.findById(10L)).thenReturn(Optional.of(session));
+        when(sessions.verrouiller(10L)).thenReturn(Optional.of(session));
         when(sessions.countByStatut(SessionCaisse.Statut.OUVERTE)).thenReturn(1L);
         // 12 000 F encaisses en especes sur la session.
         List<Object[]> totaux = new ArrayList<>();

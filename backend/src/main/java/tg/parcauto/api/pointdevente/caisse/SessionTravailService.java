@@ -59,7 +59,17 @@ public class SessionTravailService {
     }
 
     /** Session sur laquelle encaisser ; refus explicite s'il n'y en a pas ou s'il faut choisir. */
+    @org.springframework.transaction.annotation.Transactional
     public SessionCaisse exiger(UtilisateurPrincipal utilisateur, Long sessionId) {
+        SessionCaisse choisie = choisir(utilisateur, sessionId);
+        // Verrou partage relu en base : si la fermeture est passee entre-temps, la vente est refusee.
+        return repository.verrouillerPartage(choisie.getId())
+                .filter(SessionCaisse::ouverte)
+                .orElseThrow(() -> new BusinessException(
+                        "Cette session de caisse vient d'etre fermee : choisissez une autre caisse"));
+    }
+
+    private SessionCaisse choisir(UtilisateurPrincipal utilisateur, Long sessionId) {
         List<SessionCaisse> ouvertes = ouvertesPour(utilisateur);
         if (sessionId != null) {
             return ouvertes.stream().filter(s -> s.getId().equals(sessionId)).findFirst()

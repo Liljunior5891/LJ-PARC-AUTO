@@ -30,10 +30,19 @@ public class AuthController {
     private final tg.parcauto.api.common.audit.JournalActiviteService journal;
     private final UtilisateurRepository utilisateurs;
     private final PinService pinService;
+    private final tg.parcauto.api.common.LimiteurRequetes limiteur;
+    private final UtilisateurService comptes;
+
+    /** Echecs de connexion toleres avant blocage temporaire, par adresse IP et par compte. */
+    private static final int ECHECS_MAX_IP = 20;
+    private static final int ECHECS_MAX_COMPTE = 5;
+    private static final java.time.Duration FENETRE_ECHECS = java.time.Duration.ofMinutes(15);
+    private static final String TROP_D_ESSAIS = "Trop de tentatives de connexion. Reessayez dans quelques minutes.";
 
     public record LoginRequest(
-            @NotBlank @Email String email,
-            @NotBlank String motDePasse) {
+            @NotBlank @Email @jakarta.validation.constraints.Size(max = 254) String email,
+            // BCrypt ne lit que 72 octets : au-dela, deux mots de passe differents seraient egaux.
+            @NotBlank @jakarta.validation.constraints.Size(max = 72) String motDePasse) {
     }
 
     /**
@@ -54,12 +63,24 @@ public class AuthController {
 
     @PostMapping("/login")
     @Operation(summary = "Authentifie un utilisateur et retourne un jeton JWT")
-    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+    public LoginResponse login(@Valid @RequestBody LoginRequest request,
+                               jakarta.servlet.http.HttpServletRequest http) {
+        String cleIp = "login-ip:" + http.getRemoteAddr();
+        String cleCompte = "login-compte:" + request.email().trim().toLowerCase(java.util.Locale.ROOT);
+        // Bloque avant toute verification du mot de passe : ni essai, ni ligne de journal.
+        limiteur.verifier(cleIp, ECHECS_MAX_IP, FENETRE_ECHECS, TROP_D_ESSAIS);
+        limiteur.verifier(cleCompte, ECHECS_MAX_COMPTE, FENETRE_ECHECS, TROP_D_ESSAIS);
+        if (request.motDePasse().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+            limiteur.noter(cleIp);
+            throw new org.springframework.security.authentication.BadCredentialsException("Identifiants invalides");
+        }
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.email(), request.motDePasse()));
         } catch (org.springframework.security.core.AuthenticationException e) {
+            limiteur.noter(cleIp);
+            limiteur.noter(cleCompte);
             // Journal d'audit de l'entreprise du compte vise, s'il existe.
             // Compte du super-admin : journal general de la plateforme (entreprise vide).
             utilisateurs.findByEmailIgnoreCase(request.email())
@@ -68,11 +89,24 @@ public class AuthController {
             throw e;
         }
         UtilisateurPrincipal principal = (UtilisateurPrincipal) authentication.getPrincipal();
+        limiteur.oublier(cleCompte);
         // Le mot de passe prouve l'identite : le PIN bloque par trop d'essais se debloque.
         pinService.debloquer(principal.getId());
         LoginResponse reponse = sessionService.ouvrir(principal);
         journal.connexion(principal);
         return reponse;
+    }
+
+    /**
+     * Deconnexion : invalide cote serveur tous les jetons du compte (un jeton
+     * copie avant la deconnexion sur un poste partage ne rouvre plus rien).
+     */
+    @PostMapping("/logout")
+    @Operation(summary = "Ferme la session : les jetons deja emis pour ce compte ne sont plus acceptes")
+    public void logout(@AuthenticationPrincipal UtilisateurPrincipal principal) {
+        if (principal != null) {
+            comptes.deconnecter(principal.getId());
+        }
     }
 
     @GetMapping("/moi")

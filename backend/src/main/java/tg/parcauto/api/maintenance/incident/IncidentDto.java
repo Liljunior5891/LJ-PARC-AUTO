@@ -22,7 +22,7 @@ public final class IncidentDto {
             Long missionId,
             @NotNull TypeIncident type,
             GraviteIncident gravite,
-            @NotBlank String description,
+            @NotBlank @jakarta.validation.constraints.Size(max = 2000) String description,
             @Size(max = 255) String lieu,
             @DecimalMin("-90") @DecimalMax("90") BigDecimal latitude,
             @DecimalMin("-180") @DecimalMax("180") BigDecimal longitude,

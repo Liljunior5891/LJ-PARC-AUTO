@@ -311,7 +311,7 @@ export class BoutiquePublique implements OnInit {
   private memoriser(): void {
     try {
       localStorage.setItem(`panier-${this.slug}`, JSON.stringify([...this.panier().entries()]));
-      localStorage.setItem('coordonnees-acheteur', JSON.stringify(this.coordonnees));
+      sessionStorage.setItem('coordonnees-acheteur', JSON.stringify(this.coordonnees));
     } catch {
       // Stockage indisponible (navigation privee) : sans consequence.
     }
@@ -323,7 +323,7 @@ export class BoutiquePublique implements OnInit {
       if (panier) {
         this.panier.set(new Map(JSON.parse(panier) as [number, number][]));
       }
-      const coordonnees = localStorage.getItem('coordonnees-acheteur');
+      const coordonnees = sessionStorage.getItem('coordonnees-acheteur');
       if (coordonnees) {
         this.coordonnees = { ...this.coordonnees, ...(JSON.parse(coordonnees) as Partial<Coordonnees>) };
       }

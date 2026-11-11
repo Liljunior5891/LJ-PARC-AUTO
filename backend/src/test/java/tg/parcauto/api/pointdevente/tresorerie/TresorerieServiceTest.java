@@ -45,7 +45,7 @@ class TresorerieServiceTest {
         degagements = mock(DegagementCoffreRepository.class);
         caisse = mock(CaisseService.class);
         ReglagePdvService reglages = mock(ReglagePdvService.class);
-        when(reglages.lire()).thenReturn(new ReglagePdvService.Reglages(false, true, new BigDecimal("500"), false, 5));
+        when(reglages.lire()).thenReturn(new ReglagePdvService.Reglages(false, true, new BigDecimal("500"), false, 5, BigDecimal.TEN));
         NumerotationService numerotation = mock(NumerotationService.class);
         when(numerotation.prochainNumero(anyString())).thenAnswer(i -> i.getArgument(0) + "-2026-0001");
         when(remises.save(any())).thenAnswer(i -> i.getArgument(0));

@@ -21,7 +21,7 @@ public final class PneuDto {
             @Size(max = 80) String numeroSerie,
             LocalDate dateAchat,
             @PositiveOrZero BigDecimal prixAchat,
-            @Positive Long dureeViePrevueKm,
+            @Positive @jakarta.validation.constraints.Max(1_000_000) Long dureeViePrevueKm,
             EtatPneu etat,
             String observations) {
     }
@@ -31,13 +31,13 @@ public final class PneuDto {
             @NotNull Long camionId,
             @NotBlank @Size(max = 30) String position,
             @NotNull LocalDate dateMontage,
-            @PositiveOrZero Long kilometrageMontage) {
+            @PositiveOrZero @jakarta.validation.constraints.Max(9_999_999) Long kilometrageMontage) {
     }
 
     /** Depose : le pneu revient en stock, part au rebut ou est repare. */
     public record Depose(
             @NotNull LocalDate dateDepose,
-            @PositiveOrZero Long kilometrageDepose,
+            @PositiveOrZero @jakarta.validation.constraints.Max(9_999_999) Long kilometrageDepose,
             @NotNull EtatPneu etat,
             @Size(max = 255) String motif,
             /** Vrai si le pneu est mis au rebut plutot que retourne en stock. */

@@ -33,7 +33,7 @@ public class PointageService {
 
     public static final ZoneId FUSEAU = ZoneId.of("Africa/Lome");
     /** Marge accordee a l'imprecision du GPS, au-dela du rayon du lieu. */
-    private static final int MARGE_GPS_MAX = 100;
+    private static final int MARGE_GPS_MAX = 30;
 
     private final EmployePresenceRepository employes;
     private final PointagePresenceRepository pointages;
@@ -89,8 +89,9 @@ public class PointageService {
         int distance = (int) Math.round(distanceMetres(lieu.getLatitude(), lieu.getLongitude(), d.latitude(), d.longitude()));
         int precision = d.precision() == null ? 0 : (int) Math.round(d.precision());
         if (distance > lieu.getRayonMetres() + Math.min(precision, MARGE_GPS_MAX)) {
-            throw new BusinessException("Vous etes a " + distance + " m de " + lieu.getNom()
-                    + " : approchez-vous du lieu pour pointer (rayon " + lieu.getRayonMetres() + " m)");
+            // Pas de distance exacte dans la reponse : elle permettrait de situer le lieu par essais.
+            throw new BusinessException("Vous etes hors du perimetre de " + lieu.getNom()
+                    + " : approchez-vous du lieu pour pointer");
         }
         return pointer(lieu, d.pin(), PointagePresence.Mode.TELEPHONE, distance, precision, appareil);
     }
@@ -155,22 +156,25 @@ public class PointageService {
             throw new BusinessException("Tapez votre PIN a 6 chiffres");
         }
         long essai = securite.reserverEssai(appareil);
-        EmployePresence e = employes.findByPinEmpreinte(securite.empreintePin(ContexteEntreprise.exiger(), pin))
+        Long entreprise = ContexteEntreprise.exiger();
+        long essaiEntreprise = securite.reserverEssaiEntreprise(entreprise);
+        EmployePresence e = employes.findByPinEmpreinte(securite.empreintePin(entreprise, pin))
                 .filter(EmployePresence::isActif).orElse(null);
         if (e == null) {
             throw new BusinessException("PIN inconnu : verifiez votre code");
         }
         securite.reussi(appareil, essai);
+        securite.reussi("entreprise:" + entreprise, essaiEntreprise);
         return e;
     }
 
     /** Code QR du moment : un code faux compte comme un essai de l'appareil (pas de devinette a volonte). */
     private void exigerCode(LieuPresence lieu, String code, String appareil) {
-        long essai = securite.reserverEssai(appareil);
+        long essai = securite.reserverEssaiCode(appareil);
         if (!securite.codeValide(lieu.getSecretQr(), code)) {
             throw new BusinessException("Ce code QR a expire : scannez celui affiche en ce moment sur la borne");
         }
-        securite.reussi(appareil, essai);
+        securite.reussi("code:" + appareil, essai);
     }
 
     /** Distance en metres entre deux points GPS (formule de haversine). */

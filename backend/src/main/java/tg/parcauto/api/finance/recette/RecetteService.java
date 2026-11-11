@@ -34,6 +34,7 @@ public class RecetteService {
     private final MissionService missionService;
     private final FactureService factureService;
     private final NumerotationService numerotation;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @Transactional(readOnly = true)
     public Page<RecetteDto.Reponse> rechercher(String q, TypeRecette type, Long camionId, Long clientId,
@@ -86,7 +87,7 @@ public class RecetteService {
             locationService.marquerEnLigne(recette.getLocation().getId());
         }
         evenements.publishEvent(new RecetteDto.RecetteDepuisDemande(recette.getId(), demandeId,
-                recette.getCamion().getId()));
+                recette.getCamion().getId(), recette.getClient() == null ? null : recette.getClient().getId()));
         return recette;
     }
 
@@ -181,12 +182,29 @@ public class RecetteService {
                         + " : son montant, son vehicule et son client ne changent plus. Annulez la facture pour corriger.");
             }
         }
+        if (requete.montant().compareTo(recette.getMontant()) < 0 && validationAdminRequise()) {
+            throw new BusinessException("La validation est activee : seul l'administrateur baisse le montant d'une"
+                    + " recette encaissee");
+        }
         appliquer(recette, requete);
         return RecetteDto.Reponse.de(repository.save(recette));
     }
 
+    /** Reglage de validation des depenses du parc, applique aussi aux recettes encaissees. */
+    private boolean validationAdminRequise() {
+        Integer n = jdbc.queryForObject(
+                "select count(*) from parc_reglage where validation_depenses and entreprise_id = ?",
+                Integer.class, tg.parcauto.api.plateforme.tenant.ContexteEntreprise.exiger());
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean admin = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        return n != null && n > 0 && !admin;
+    }
+
     public void supprimer(Long id) {
         Recette recette = charger(id);
+        if (validationAdminRequise()) {
+            throw new BusinessException("La validation est activee : seul l'administrateur supprime une recette encaissee");
+        }
         if (recette.getFacture() != null) {
             throw new BusinessException("Cette recette est rattachee a la facture "
                     + recette.getFacture().getNumero() + " : detachez-la avant suppression");

@@ -49,7 +49,13 @@ public class PaiementService {
      * Paiement confirme par le fournisseur : la reference doit etre celle de la
      * transaction lancee pour cette commande.
      */
-    public void confirmer(CommandeEnLigne commande, String reference) {
+    public void confirmer(CommandeEnLigne commande, String reference, java.math.BigDecimal montantPaye) {
+        // Montant regle compare au total : une transaction partielle ne paie pas la commande.
+        // (Au branchement d'un agregateur : verifier aussi la signature du rappel, la devise, et
+        // l'unicite de l'identifiant de transaction.)
+        if (montantPaye == null || commande.getTotal() == null || montantPaye.compareTo(commande.getTotal()) < 0) {
+            throw new BusinessException("Montant paye insuffisant pour la commande " + commande.getNumero());
+        }
         boolean courante = reference != null && reference.equals(commande.getReferencePaiement());
         boolean precedente = reference != null && commande.getReferencesPrecedentes() != null
                 && java.util.Arrays.asList(commande.getReferencesPrecedentes().split(",")).contains(reference);

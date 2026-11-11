@@ -57,4 +57,23 @@ public interface PositionGpsRepository extends JpaRepository<PositionGps, Long> 
             where p.camion.id = :camionId and p.horodatage > :debut and p.horodatage <= :fin and p.vitesseKmh > 3
             """)
     long compterEnMouvement(@Param("camionId") Long camionId, @Param("debut") Instant debut, @Param("fin") Instant fin);
+
+    @Query("""
+            select count(p) from PositionGps p
+            where p.camion.id = :camionId and p.horodatage between :debut and :fin
+            """)
+    long compterTrajet(@Param("camionId") Long camionId, @Param("debut") Instant debut, @Param("fin") Instant fin);
+
+    /** Un point sur {@code pas}, dans l'ordre : trajet allege quand la periode compte trop de points. */
+    @Query(value = """
+            select * from (
+                select p.*, row_number() over (order by p.horodatage) as rang
+                from position_gps p
+                where p.camion_id = :camionId and p.horodatage between :debut and :fin
+            ) t
+            where mod(t.rang - 1, :pas) = 0
+            order by t.horodatage
+            """, nativeQuery = true)
+    List<PositionGps> trajetEchantillonne(@Param("camionId") Long camionId, @Param("debut") Instant debut,
+                                          @Param("fin") Instant fin, @Param("pas") long pas);
 }

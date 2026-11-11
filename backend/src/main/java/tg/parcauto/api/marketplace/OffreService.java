@@ -35,6 +35,10 @@ import java.util.stream.Collectors;
 @Transactional
 public class OffreService {
 
+    /** Quantite commandable affichee dans la vitrine publique, au plus. */
+    static final int QUANTITE_MAX_AFFICHEE = 20;
+
+
     /** Un vehicule dans l'un de ces etats ne peut plus etre loue. */
     private static final Set<StatutCamion> HORS_LOCATION =
             EnumSet.of(StatutCamion.VENDU, StatutCamion.HORS_SERVICE, StatutCamion.ACCIDENTE);
@@ -286,7 +290,8 @@ public class OffreService {
                     return new MarketplaceDto.OffrePublique(o.getId(), o.getType(), o.getTitre(), o.getDescription(),
                             o.getCategorie(), prixAffiche(o, sources), o.getUnitePrix(), o.getCaution(),
                             imageAffichee(o, sources), estDisponible(o, sources),
-                            reste == null ? null : reste.intValue(), o.isMiseEnAvant(),
+                            // Le stock exact n'est pas publie : au plus 20 commandables affiches.
+                            reste == null ? null : Math.min(reste.intValue(), QUANTITE_MAX_AFFICHEE), o.isMiseEnAvant(),
                             nombresPhotos.getOrDefault(o.getId(), 0L).intValue());
                 })
                 .toList();

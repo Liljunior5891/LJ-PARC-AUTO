@@ -58,13 +58,36 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 if (StompCommand.SEND.equals(entetes.getCommand())) {
                     throw new MessageDeliveryException("Envoi refuse : seul le serveur diffuse sur les canaux");
                 }
-                if (StompCommand.SUBSCRIBE.equals(entetes.getCommand())
-                        && !DiffusionEntreprise.appartientA(entetes.getDestination(), entreprise(entetes.getUser()))) {
-                    throw new MessageDeliveryException("Abonnement refuse : canal d'une autre entreprise");
+                if (StompCommand.SUBSCRIBE.equals(entetes.getCommand())) {
+                    if (!DiffusionEntreprise.appartientA(entetes.getDestination(), entreprise(entetes.getUser()))) {
+                        throw new MessageDeliveryException("Abonnement refuse : canal d'une autre entreprise");
+                    }
+                    // Les canaux diffusent incidents, positions et alertes de la flotte : gestion seule,
+                    // avec un compte encore actif (relu en base a chaque abonnement).
+                    if (!gestionnaireActif(entetes.getUser())) {
+                        throw new MessageDeliveryException("Abonnement refuse : canal reserve a la gestion du parc");
+                    }
                 }
                 return message;
             }
         });
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<tg.parcauto.api.security.UtilisateurDetailsService> comptes;
+
+    private boolean gestionnaireActif(Principal utilisateur) {
+        if (!(utilisateur instanceof UsernamePasswordAuthenticationToken jeton
+                && jeton.getPrincipal() instanceof UtilisateurPrincipal principal)) {
+            return false;
+        }
+        try {
+            var relu = comptes.getObject().loadUserByUsername(principal.getUsername());
+            return relu.isEnabled() && relu.getAuthorities().stream().anyMatch(a ->
+                    "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_GESTIONNAIRE_PARC".equals(a.getAuthority()));
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     private static Long entreprise(Principal utilisateur) {

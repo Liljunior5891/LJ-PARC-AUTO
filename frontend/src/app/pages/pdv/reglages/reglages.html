@@ -146,6 +146,25 @@
         </div>
       </section>
 
+      <section class="bloc-reglage actif" id="reglage-remise">
+        <div class="entete-bloc">
+          <span class="pictogramme" aria-hidden="true">🏷</span>
+          <span>
+            <span class="titre-bloc">Remise accordee par un caissier</span>
+            <span class="texte-bloc">Au-dela de ce pourcentage du ticket, la vente doit etre encaissee par le gerant. Le gerant et l'administrateur ne sont pas plafonnes.</span>
+          </span>
+        </div>
+        <div class="corps-bloc">
+          <div class="champs-bloc">
+            <div class="champ">
+              <label for="remise-max">Remise maximale du caissier (%)</label>
+              <input id="remise-max" name="remiseMaxCaissierPourcent" type="number" min="0" max="100" step="any" [(ngModel)]="f.remiseMaxCaissierPourcent" />
+              <small>0 : aucune remise par le caissier. 100 : sans plafond. 10 par defaut.</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
       @if (materiaux) {
         <h2 class="titre-groupe">Quincaillerie et materiaux</h2>
         <app-reglages-materiaux />

@@ -22,11 +22,20 @@ spring:
   servlet:
     multipart:
       # 60 Mo pour l'archive ZIP des produits et de leurs photos ; chaque ecran garde son propre plafond.
+      # Un filtre (PlafondEnvois) ramene ce plafond a 10 Mo partout sauf sur l'import ZIP.
       max-file-size: 60MB
       max-request-size: 65MB
+      resolve-lazily: true
 
 server:
   port: ${SERVER_PORT:8081}
+  # Adresse du client resolue par le serveur (RemoteIpValve) a partir de X-Forwarded-For,
+  # uniquement quand la requete vient d'un proxy de confiance (internal-proxies).
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: ${PROXIES_DE_CONFIANCE:127\.0\.0\.1|0:0:0:0:0:0:0:1}
+    max-swallow-size: 2MB
   error:
     include-message: always
 
@@ -42,7 +51,7 @@ parcauto:
       secret: ${JWT_SECRET:Y2hhbmdlLW1lLXBhcmNhdXRvLWRldi1zZWNyZXQta2V5LTMyLWJ5dGVzLW1pbmltdW0=}
       expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
   cors:
-    allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
+    allowed-origins: ${CORS_ORIGINS:http://localhost:4300}
   storage:
     documents-dir: ${DOCUMENTS_DIR:./data/documents}
   plateforme:
@@ -52,10 +61,14 @@ parcauto:
       password: ${PLATEFORME_ADMIN_PASSWORD:Plateforme@2026}
 
 springdoc:
+  # Documentation de l'API fermee par defaut ; SWAGGER_ACTIF=true sur un poste de developpement.
+  api-docs:
+    enabled: ${SWAGGER_ACTIF:false}
   swagger-ui:
+    enabled: ${SWAGGER_ACTIF:false}
     path: /swagger-ui.html
     operations-sorter: alpha
 
 logging:
   level:
-    tg.parcauto: DEBUG
+    tg.parcauto: ${NIVEAU_LOG:INFO}

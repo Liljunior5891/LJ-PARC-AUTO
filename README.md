@@ -137,11 +137,14 @@ L'application est servie sur `http://localhost:4200`.
 | `DB_USER` / `DB_PASSWORD` | `postgres` / `postgres` | Identifiants PostgreSQL |
 | `JWT_SECRET` | clé de développement | Signature des jetons — **obligatoire en production** |
 | `JWT_EXPIRATION_MINUTES` | `480` | Durée de validité d'une session |
-| `CORS_ORIGINS` | `http://localhost:4200` | Origines autorisées |
+| `CORS_ORIGINS` | `http://localhost:4300` | Origines autorisées |
 | `DOCUMENTS_DIR` | `./data/documents` | Stockage des justificatifs |
 | `PLATEFORME_ADMIN_EMAIL` | `superadmin@plateforme.local` | Compte de l'exploitant de la plateforme |
 | `PLATEFORME_ADMIN_PASSWORD` | `Plateforme@2026` | Mot de passe **provisoire** de ce compte : il doit être changé à la première connexion |
-| `PARCAUTO_PRODUCTION` | `false` | `true` (ou profil Spring `prod`) : l'API refuse de démarrer avec la clé `JWT_SECRET` ou le mot de passe administrateur par défaut |
+| `PARCAUTO_DEV` | `false` | Sans `true` (ou profil Spring `dev`), l'API **refuse de démarrer** avec la clé `JWT_SECRET` de développement, une clé de moins de 64 octets ou le mot de passe administrateur par défaut. À ne jamais définir en production |
+| `PROXIES_DE_CONFIANCE` | `127\.0\.0\.1\|0:0:0:0:0:0:0:1` | Expression des adresses des proxys inverses dont l'en-tête `X-Forwarded-For` est cru (adresse IP du journal et des limiteurs) |
+| `SWAGGER_ACTIF` | `false` | `true` ouvre `/v3/api-docs` et Swagger UI (développement uniquement) |
+| `NIVEAU_LOG` | `INFO` | Niveau des journaux de l'application (`DEBUG` en développement) |
 
 ## Périmètre livré
 

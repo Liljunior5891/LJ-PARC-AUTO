@@ -205,6 +205,22 @@ export class AuthService {
    * expiree doit etre annoncee comme telle, et non ressembler a une panne serveur.
    */
   logout(motif?: 'expiration'): void {
+    const jeton = localStorage.getItem(CLE_TOKEN);
+    if (jeton && motif !== 'expiration') {
+      // Invalide le jeton cote serveur : une copie faite avant la deconnexion ne rouvre plus rien.
+      this.http.post<void>(`${environment.apiUrl}/auth/logout`, {}, { headers: { Authorization: `Bearer ${jeton}` } })
+        .subscribe({ error: () => undefined });
+    }
+    // Les empreintes de PIN (deverrouillage hors ligne) ne survivent pas a la session.
+    try {
+      // Copies de reference des agences (clients, pieces d'identite) : effacees ; la file
+      // d'operations non envoyees (agences.horsligne.*) reste, pour ne rien perdre.
+      Object.keys(localStorage).filter((cle) => cle.startsWith('pin.empreinte.') || cle.startsWith('agences.copie.'))
+        .forEach((cle) => localStorage.removeItem(cle));
+      sessionStorage.removeItem('pdv.caisse.deverrouillee');
+    } catch {
+      // Stockage indisponible : rien a effacer.
+    }
     localStorage.removeItem(CLE_TOKEN);
     localStorage.removeItem(CLE_UTILISATEUR);
     this.utilisateurSignal.set(null);

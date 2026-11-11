@@ -116,7 +116,8 @@ export class ReglagesPdvPage implements OnInit {
     const appels: Observable<unknown>[] = [];
     if (JSON.stringify(f) !== this.enregistre) {
       appels.push(this.options.modifierReglages({ ...f, ecartTolere: Math.max(0, Number(f.ecartTolere) || 0),
-        minutesVerrouCaisse: Math.min(120, Math.max(1, Math.round(Number(f.minutesVerrouCaisse) || 5))) }));
+        minutesVerrouCaisse: Math.min(120, Math.max(1, Math.round(Number(f.minutesVerrouCaisse) || 5))),
+        remiseMaxCaissierPourcent: Math.min(100, Math.max(0, Number(f.remiseMaxCaissierPourcent ?? 10) || 0)) }));
     }
     const materiaux = this.partieMateriaux();
     if (materiaux?.modifie()) {

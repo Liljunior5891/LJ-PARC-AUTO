@@ -54,7 +54,7 @@ public final class FactureDto {
 
     public record PaiementRequete(
             @NotNull @Positive BigDecimal montant,
-            @NotNull LocalDate datePaiement,
+            @NotNull @jakarta.validation.constraints.PastOrPresent LocalDate datePaiement,
             @NotNull ModePaiement modePaiement,
             @Size(max = 80) String reference,
             String observations) {

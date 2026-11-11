@@ -43,4 +43,8 @@ public class ReglagePdv extends BaseEntity {
     /** Minutes sans geste apres lesquelles l'ecran de caisse se verrouille (code PIN). */
     @Column(name = "minutes_verrou_caisse", nullable = false)
     private int minutesVerrouCaisse = 5;
+
+    /** Remise maximale (en % du ticket) qu'un caissier accorde seul ; 100 : sans plafond. */
+    @Column(name = "remise_max_caissier_pourcent", nullable = false, precision = 5, scale = 2)
+    private BigDecimal remiseMaxCaissierPourcent = BigDecimal.TEN;
 }

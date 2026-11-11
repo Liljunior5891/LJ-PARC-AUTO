@@ -9,6 +9,8 @@ export interface ReglagesPdv {
   validationDepensesCaisse: boolean;
   /** Minutes sans geste avant que l'ecran de caisse se verrouille (code PIN). */
   minutesVerrouCaisse: number;
+  /** Remise maximale (en % du ticket) qu'un caissier accorde seul ; 100 : sans plafond. */
+  remiseMaxCaissierPourcent?: number;
 }
 
 // ------------------------------------------------------------------ associes

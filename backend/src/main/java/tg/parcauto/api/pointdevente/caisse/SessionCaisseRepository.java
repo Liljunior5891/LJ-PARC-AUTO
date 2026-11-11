@@ -24,4 +24,14 @@ public interface SessionCaisseRepository extends JpaRepository<SessionCaisse, Lo
             java.time.Instant debut, java.time.Instant fin);
 
     java.util.List<SessionCaisse> findByStatut(SessionCaisse.Statut statut);
+
+    /** Verrou exclusif : fermeture et mouvements d'especes passent l'un apres l'autre. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select s from SessionCaisse s where s.id = :id")
+    Optional<SessionCaisse> verrouiller(@org.springframework.data.repository.query.Param("id") Long id);
+
+    /** Verrou partage : des ventes simultanees, mais aucune pendant la fermeture. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_READ)
+    @org.springframework.data.jpa.repository.Query("select s from SessionCaisse s where s.id = :id")
+    Optional<SessionCaisse> verrouillerPartage(@org.springframework.data.repository.query.Param("id") Long id);
 }

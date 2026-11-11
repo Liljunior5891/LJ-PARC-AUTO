@@ -28,6 +28,9 @@ public class ContexteGpsInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
                              @NonNull Object handler) {
+        // Essais de jetons limites par adresse, avant toute recherche en base.
+        limiteur.exiger("gps-ip:" + request.getRemoteAddr(), 600, Duration.ofMinutes(1),
+                "Trop d'envois depuis cette adresse : ralentissez la passerelle");
         String entete = request.getHeader("X-Jeton-Gps");
         String jeton = entete != null && !entete.isBlank() ? entete : request.getParameter("jeton");
         Long entreprise = jetons.entreprise(jeton);

@@ -79,9 +79,17 @@ public final class CatalogueDto {
             return new ArticleReponse(
                     a.getId(), a.getCode(), a.getCodeBarres(), a.getNom(),
                     c == null ? null : c.getId(), c == null ? null : c.getNom(), c == null ? null : c.getCouleur(),
-                    a.getPrixVente(), a.getPrixAchat(), a.getUnite(), a.isSuiviStock(),
+                    // Prix d'achat (donc la marge) : reserve au gerant et a l'administrateur.
+                    a.getPrixVente(), gestionnaire() ? a.getPrixAchat() : null, a.getUnite(), a.isSuiviStock(),
                     a.getStockActuel(), a.getSeuilAlerte(), a.stockBas(), a.isActif(),
                     a.getImage(), c == null ? null : c.getIcone(), a.getStockReserve(), a.stockDisponible());
         }
+    }
+
+    /** Vrai si la personne connectee est gerant ou administrateur. */
+    public static boolean gestionnaire() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream().anyMatch(a ->
+                "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_GERANT".equals(a.getAuthority()));
     }
 }

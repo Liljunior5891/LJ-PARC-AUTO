@@ -25,6 +25,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String PREFIXE = "Bearer ";
 
+    private static final java.util.Set<String> CHEMINS_AVANT_CHANGEMENT = java.util.Set.of(
+            "/api/auth/moi", "/api/auth/logout",
+            "/api/utilisateurs/moi", "/api/utilisateurs/moi/mot-de-passe");
+
     private final JwtService jwtService;
     private final UtilisateurDetailsService utilisateurDetailsService;
 
@@ -70,8 +74,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     /** Avec un mot de passe provisoire, seuls son compte et la deconnexion restent accessibles. */
     private static boolean permisAvantChangement(HttpServletRequest request) {
+        // Liste exacte : un futur chemin commencant par le meme prefixe n'est pas ouvert par megarde.
         String chemin = request.getRequestURI();
-        return chemin.startsWith("/api/auth/") || chemin.startsWith("/api/utilisateurs/moi");
+        return CHEMINS_AVANT_CHANGEMENT.contains(chemin);
     }
 
     private static void motDePasseAChanger(HttpServletResponse response) throws IOException {

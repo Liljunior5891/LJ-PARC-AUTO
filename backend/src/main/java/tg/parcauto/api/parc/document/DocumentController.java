@@ -30,7 +30,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import tg.parcauto.api.security.Autorisations;
-
+
+
 // Donnees de gestion (clients, contrats, personnel, pieces) : pas pour les chauffeurs.
 @org.springframework.security.access.prepost.PreAuthorize(tg.parcauto.api.security.Autorisations.GESTION)
 @RestController
@@ -43,6 +44,25 @@ public class DocumentController {
 
     private final DocumentService service;
 
+    /**
+     * Pieces des clients et fournisseurs du point de vente : gerees depuis le point de
+     * vente, jamais par ce point du parc (identite des clients, contrats fournisseurs).
+     */
+    private static final java.util.Set<ProprietaireDocument> TYPES_PDV =
+            java.util.EnumSet.of(ProprietaireDocument.CLIENT_PDV, ProprietaireDocument.FOURNISSEUR_PDV);
+
+    private static void exigerTypeParc(ProprietaireDocument type) {
+        if (type != null && TYPES_PDV.contains(type)) {
+            throw new tg.parcauto.api.common.ResourceNotFoundException("Document introuvable");
+        }
+    }
+
+    private DocumentDto.Reponse documentDuParc(Long id) {
+        DocumentDto.Reponse d = service.parId(id);
+        exigerTypeParc(d.proprietaireType());
+        return d;
+    }
+
     @GetMapping
     @Operation(summary = "Liste des documents, filtrable par proprietaire et par type")
     public Page<DocumentDto.Reponse> lister(@RequestParam(required = false) ProprietaireDocument proprietaireType,
@@ -50,25 +70,28 @@ public class DocumentController {
                                             @RequestParam(required = false) TypeDocument type,
                                             @PageableDefault(size = 20, sort = "dateExpiration",
                                                     direction = Sort.Direction.ASC) Pageable pageable) {
+        exigerTypeParc(proprietaireType);
         return service.rechercher(proprietaireType, proprietaireId, type, pageable);
     }
 
     @GetMapping("/alertes/expiration")
     @Operation(summary = "Documents expires ou expirant prochainement")
     public List<DocumentDto.Reponse> alertes(@RequestParam(defaultValue = "30") int jours) {
-        return service.aExpirer(jours);
+        return service.aExpirer(Math.max(0, Math.min(jours, 3650))).stream()
+                .filter(d -> !TYPES_PDV.contains(d.proprietaireType()))
+                .toList();
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Detail d'un document")
     public DocumentDto.Reponse detail(@PathVariable Long id) {
-        return service.parId(id);
+        return documentDuParc(id);
     }
 
     @GetMapping("/{id}/fichier")
     @Operation(summary = "Telecharge le justificatif attache")
     public ResponseEntity<Resource> telecharger(@PathVariable Long id) {
-        DocumentDto.Reponse meta = service.parId(id);
+        DocumentDto.Reponse meta = documentDuParc(id);
         Resource resource = service.telecharger(id);
         String nom = meta.fichierNom() == null ? "document-" + id : meta.fichierNom();
         return tg.parcauto.api.common.FichierServi.reponse(resource, nom, false);
@@ -80,6 +103,7 @@ public class DocumentController {
     @Operation(summary = "Enregistre un document avec justificatif optionnel")
     public DocumentDto.Reponse creer(@Valid @RequestPart("document") DocumentDto.Requete requete,
                                      @RequestPart(value = "fichier", required = false) MultipartFile fichier) {
+        exigerTypeParc(requete.proprietaireType());
         return service.creer(requete, fichier);
     }
 
@@ -89,6 +113,8 @@ public class DocumentController {
     public DocumentDto.Reponse modifier(@PathVariable Long id,
                                         @Valid @RequestPart("document") DocumentDto.Requete requete,
                                         @RequestPart(value = "fichier", required = false) MultipartFile fichier) {
+        documentDuParc(id);
+        exigerTypeParc(requete.proprietaireType());
         return service.modifier(id, requete, fichier);
     }
 
@@ -97,6 +123,7 @@ public class DocumentController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Archive un document")
     public void archiver(@PathVariable Long id) {
+        documentDuParc(id);
         service.archiver(id);
     }
 }

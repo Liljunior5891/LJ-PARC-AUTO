@@ -184,4 +184,9 @@ public interface DepenseRepository extends JpaRepository<Depense, Long>,
     List<Depense> duFournisseur(@Param("fournisseur") Long fournisseurId);
 
     long countByCorrectionEnAttenteIsNotNull();
+
+    /** Verrou de la depense jusqu'a la fin de la transaction : un seul reglement a la fois. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select d from Depense d where d.id = :id")
+    java.util.Optional<Depense> verrouiller(@Param("id") Long id);
 }

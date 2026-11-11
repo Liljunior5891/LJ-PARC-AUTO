@@ -72,7 +72,7 @@ public class JournalActiviteService {
                 p.add(cb.lessThan(racine.get("dateAction"), f.au().plusDays(1).atStartOfDay(FUSEAU).toInstant()));
             }
             if (f.recherche() != null && !f.recherche().isBlank()) {
-                String motif = "%" + f.recherche().trim().toLowerCase(Locale.ROOT) + "%";
+                String motif = tg.parcauto.api.common.SpecificationUtils.motif(f.recherche());
                 p.add(cb.or(cb.like(cb.lower(racine.get("description")), motif), cb.like(cb.lower(racine.get("auteurNom")), motif)));
             }
             return cb.and(p.toArray(Predicate[]::new));
@@ -95,6 +95,18 @@ public class JournalActiviteService {
         EcritureJournal.Contexte c = EcritureJournal.contexte();
         ecriture.ecrireApresValidation(new EcritureJournal.Evenement(null, Instant.now(), c.auteurId(), c.auteurNom(),
                 "PLATEFORME", action, objet, objetLibelle, objetId, description, enJson(avant), enJson(apres), c.adresseIp()));
+    }
+
+    /**
+     * Action d'administration d'une entreprise que l'ecouteur automatique ne voit pas
+     * (profils d'un compte, reinitialisation, PIN), ecrite apres validation de la transaction.
+     */
+    public void administration(Long entrepriseId, String action, String objet, String objetLibelle, Long objetId,
+                               String description, Map<String, String> avant, Map<String, String> apres) {
+        EcritureJournal.Contexte c = EcritureJournal.contexte();
+        ecriture.ecrireApresValidation(new EcritureJournal.Evenement(entrepriseId, Instant.now(), c.auteurId(),
+                c.auteurNom(), "ADMINISTRATION", action, objet, objetLibelle, objetId, description, enJson(avant),
+                enJson(apres), c.adresseIp()));
     }
 
     private String enJson(Map<String, String> valeurs) {

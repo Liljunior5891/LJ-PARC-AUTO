@@ -58,6 +58,7 @@ public class CommandeService {
     private final NumerotationService numerotation;
     private final tg.parcauto.api.pointdevente.impression.ImpressionService impression;
     private final tg.parcauto.api.pointdevente.lieu.LieuStockService lieux;
+    private final tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetreCaisse;
 
     public RestaurationDto.CommandeDetail ouvrir(RestaurationDto.Ouverture o, UtilisateurPrincipal serveur) {
         Commande commande = new Commande();
@@ -92,10 +93,15 @@ public class CommandeService {
      */
     @Transactional(readOnly = true)
     public void verifierAcces(Long id, UtilisateurPrincipal utilisateur) {
+        Commande commande = charger(id);
+        // Caissier et serveur : seulement les commandes de leur caisse (une commande QR ou en ligne
+        // sans session reste ouverte a tous).
+        if (commande.getSessionId() != null) {
+            perimetreCaisse.exigerSession(commande.getSessionId(), utilisateur);
+        }
         if (!tg.parcauto.api.pointdevente.personnel.PersonnelService.serveurSeul(utilisateur)) {
             return;
         }
-        Commande commande = charger(id);
         if (commande.getServeurId() != null && !commande.getServeurId().equals(utilisateur.getId())) {
             throw new BusinessException("Cette commande est suivie par " + commande.getServeurNom());
         }
@@ -331,8 +337,14 @@ public class CommandeService {
      */
     public Commande commandeEnLigne(String libelle, String note, List<RestaurationDto.AjoutLigne> demandes,
                                     Long commandeEnLigneId) {
+        return commandeEnLigne(libelle, note, demandes, commandeEnLigneId, java.util.Map.of());
+    }
+
+    /** {@code prixEnLigne} : prix unitaire paye en ligne, par article (sinon le prix du catalogue). */
+    public Commande commandeEnLigne(String libelle, String note, List<RestaurationDto.AjoutLigne> demandes,
+                                    Long commandeEnLigneId, java.util.Map<Long, java.math.BigDecimal> prixEnLigne) {
         Commande commande = new Commande();
-        commande.setLibelle(libelle);
+        commande.setLibelle(libelle != null && libelle.length() > 80 ? libelle.substring(0, 80) : libelle);
         commande.setServeurNom(CLIENT_EN_LIGNE);
         commande.setOuverteLe(Instant.now());
         commande.setNumero(numerotation.prochainNumero("CMD"));
@@ -346,7 +358,7 @@ public class CommandeService {
             LigneCommande ligne = new LigneCommande();
             ligne.setArticle(article);
             ligne.setLibelle(article.getNom());
-            ligne.setPrixUnitaire(article.getPrixVente());
+            ligne.setPrixUnitaire(prixEnLigne.getOrDefault(article.getId(), article.getPrixVente()));
             ligne.setPrixAchat(article.getPrixAchat());
             ligne.setQuantite(demande.quantite());
             ligne.setNote(vide(demande.note()));

@@ -40,7 +40,7 @@ public class PositionGpsService {
     /** Horloge du traceur en avance toleree. */
     private static final Duration AVANCE_TOLEREE = Duration.ofMinutes(5);
     /** Trames rejouees acceptees jusqu'a cet age. */
-    private static final Duration RETARD_MAX = Duration.ofDays(30);
+    private static final Duration RETARD_MAX = Duration.ofHours(24);
     /** Compteur : saut accepte en plus de la distance faisable depuis le point precedent. */
     private static final long SAUT_COMPTEUR_KM = 50;
     private static final long VITESSE_PLAUSIBLE_KMH = 150;
@@ -49,6 +49,7 @@ public class PositionGpsService {
     private final CamionRepository camionRepository;
     private final SurveillanceGpsService surveillance;
     private final SimpMessagingTemplate diffusion;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     /**
      * Enregistre un lot de positions normalisees, declenche la surveillance et
@@ -65,7 +66,7 @@ public class PositionGpsService {
 
         for (PositionBrute brute : brutes) {
             // Une position inutilisable est ecartee seule : elle ne fait pas perdre le reste du lot.
-            if (!brute.coordonneesValides()) {
+            if (!brute.coordonneesValides() || !brute.valeursPlausibles()) {
                 log.warn("Position ignoree : coordonnees invalides pour le traceur {}", brute.deviceId());
                 continue;
             }
@@ -109,8 +110,8 @@ public class PositionGpsService {
             if (brute.kilometrage() != null && brute.kilometrage() > camion.getKilometrageActuel()) {
                 long ecart = brute.kilometrage() - camion.getKilometrageActuel();
                 long heures = precedente == null ? 24 : Math.max(1, Duration.between(precedente.getHorodatage(), horodatage).toHours() + 1);
-                if (ecart <= SAUT_COMPTEUR_KM + heures * VITESSE_PLAUSIBLE_KMH) {
-                    camion.setKilometrageActuel(brute.kilometrage());
+                if (ecart <= SAUT_COMPTEUR_KM + heures * VITESSE_PLAUSIBLE_KMH
+                        && tg.parcauto.api.parc.camion.CompteurKilometrique.avancerSiPlausible(camion, brute.kilometrage())) {
                     camionRepository.save(camion);
                 } else {
                     log.warn("Compteur du traceur {} ignore : saut de {} km", brute.deviceId(), ecart);
@@ -153,7 +154,28 @@ public class PositionGpsService {
 
     @Transactional(readOnly = true)
     public List<PositionGps> trajet(Long camionId, Instant debut, Instant fin) {
-        return repository.trajet(camionId, debut, fin);
+        // Au plus POINTS_TRAJET_MAX points en memoire : au-dela, un point sur n.
+        long total = repository.compterTrajet(camionId, debut, fin);
+        if (total <= POINTS_TRAJET_MAX) {
+            return repository.trajet(camionId, debut, fin);
+        }
+        long pas = (total + POINTS_TRAJET_MAX - 1) / POINTS_TRAJET_MAX;
+        return repository.trajetEchantillonne(camionId, debut, fin, pas);
+    }
+
+    private static final long POINTS_TRAJET_MAX = 10_000;
+
+    /** Conservation des positions : 12 mois. Purge chaque nuit, par paquets, toutes entreprises. */
+    @org.springframework.scheduling.annotation.Scheduled(cron = "0 30 3 * * *")
+    public void purgerAnciennesPositions() {
+        java.sql.Timestamp limite = java.sql.Timestamp.from(Instant.now().minus(Duration.ofDays(365)));
+        int supprimees;
+        do {
+            supprimees = jdbc.update("""
+                    delete from position_gps where id in (
+                        select id from position_gps where horodatage < ? limit 10000)
+                    """, limite);
+        } while (supprimees > 0);
     }
 
     @Transactional(readOnly = true)

@@ -28,6 +28,7 @@ public class JetonGpsService {
     private static final SecureRandom ALEA = new SecureRandom();
 
     private final JdbcTemplate jdbc;
+    private final tg.parcauto.api.common.audit.JournalActiviteService journal;
 
     public record Etat(boolean actif, Instant creeLe, Instant dernierUsage) {
     }
@@ -41,7 +42,17 @@ public class JetonGpsService {
         jdbc.update("delete from gps_jeton where entreprise_id = ?", entreprise);
         jdbc.update("insert into gps_jeton (entreprise_id, empreinte, cree_le) values (?, ?, ?)",
                 entreprise, empreinte(jeton), Timestamp.from(Instant.now()));
+        journal.administration(entreprise, "JETON_GPS", "JetonGps", "Jeton GPS", null,
+                "Jeton GPS genere (l'ancien est coupe)", null, null);
         return jeton;
+    }
+
+    /** Revoque le jeton sans en creer d'autre : plus aucune passerelle n'envoie de positions. */
+    public void revoquer() {
+        Long entreprise = ContexteEntreprise.exiger();
+        jdbc.update("delete from gps_jeton where entreprise_id = ?", entreprise);
+        journal.administration(entreprise, "JETON_GPS", "JetonGps", "Jeton GPS", null,
+                "Jeton GPS revoque", null, null);
     }
 
     public Etat etat() {
@@ -62,7 +73,11 @@ public class JetonGpsService {
         if (trouves.isEmpty()) {
             return null;
         }
-        jdbc.update("update gps_jeton set dernier_usage = ? where empreinte = ?", Timestamp.from(Instant.now()), e);
+        // Date du dernier usage rafraichie au plus une fois par minute (pas une ecriture par envoi).
+        Instant maintenant = Instant.now();
+        jdbc.update("update gps_jeton set dernier_usage = ? where empreinte = ?"
+                        + " and (dernier_usage is null or dernier_usage < ?)",
+                Timestamp.from(maintenant), e, Timestamp.from(maintenant.minusSeconds(60)));
         return trouves.get(0);
     }
 

@@ -166,7 +166,7 @@ public class RegistreService {
         mouvements.forEach(m -> variation.merge(m.compteId(), m.montant(), Long::sum));
         variation.forEach((id, montant) -> {
             CompteAgence compte = verrouilles.get(id);
-            long nouveau = compte.getSolde() + montant;
+            long nouveau = additionner(compte.getSolde(), montant);
             if (montant < 0 && nouveau < -compte.getDecouvertAutorise()) {
                 long manque = -compte.getDecouvertAutorise() - nouveau;
                 throw new BusinessException(compte.getLibelle() + " insuffisant : il manque " + francs(manque)
@@ -198,7 +198,7 @@ public class RegistreService {
         List<LigneRegistre> nouvelles = new ArrayList<>();
         for (Mouvement m : mouvements) {
             CompteAgence compte = verrouilles.get(m.compteId());
-            compte.setSolde(compte.getSolde() + m.montant());
+            compte.setSolde(additionner(compte.getSolde(), m.montant()));
             LigneRegistre ligne = new LigneRegistre();
             ligne.setEcriture(ecriture);
             ligne.setCompteId(compte.getId());
@@ -223,5 +223,14 @@ public class RegistreService {
 
     private static String tronquer(String texte, int max) {
         return texte.length() <= max ? texte : texte.substring(0, max);
+    }
+
+    /** Addition sans debordement : un montant aberrant est refuse au lieu de faire boucler le solde. */
+    static long additionner(long solde, long montant) {
+        try {
+            return Math.addExact(solde, montant);
+        } catch (ArithmeticException e) {
+            throw new tg.parcauto.api.common.BusinessException("Montant hors limites");
+        }
     }
 }

@@ -36,11 +36,21 @@ public class AppairageBorneController {
     public record Demande(String code) {
     }
 
+    /** Codes d'appairage expires : effaces, pour liberer l'index unique et ne rien laisser a deviner. */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 3_600_000, initialDelay = 300_000)
+    public void purgerCodesExpires() {
+        jdbc.update("update pres_borne set code_appairage = null, code_expire_le = null"
+                + " where code_appairage is not null and code_expire_le < now()");
+    }
+
     @PostMapping
     @Operation(summary = "Echange le code d'appairage contre le jeton de la borne")
     public PointageService.Appairage appairer(@RequestBody Demande demande, jakarta.servlet.http.HttpServletRequest requete) {
         String appareil = "appairage:" + requete.getRemoteAddr();
         long essai = securite.reserverEssai(appareil);
+        // Compteur global des essais d'appairage : une enumeration repartie sur plusieurs adresses
+        // s'arrete aussi (les codes en attente sont cherches dans toutes les entreprises).
+        long essaiGlobal = securite.reserverEssaiEntreprise(0L);
         String code = demande.code() == null ? "" : demande.code().trim();
         List<long[]> trouvees = code.matches("\\d{6}")
                 ? jdbc.query("select id, entreprise_id from pres_borne where code_appairage = ? and code_expire_le > ? and actif",
@@ -55,6 +65,7 @@ public class AppairageBorneController {
                 throw new BusinessException("Le module Gestion de presence n'est pas active pour cette entreprise");
             }
             securite.reussi(appareil, essai);
+            securite.reussi("entreprise:0", essaiGlobal);
             return service.appairer(trouvees.get(0)[0]);
         } finally {
             ContexteEntreprise.effacer();

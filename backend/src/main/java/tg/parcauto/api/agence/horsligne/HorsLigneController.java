@@ -19,6 +19,7 @@ import java.util.Map;
 
 /** Operations des caissiers saisies sans connexion, et leurs conflits. */
 @RestController
+@tg.parcauto.api.plateforme.module.ModuleRequis(tg.parcauto.api.plateforme.module.ModuleApplicatif.AGENCES)
 @RequestMapping("/api/agences/hors-ligne")
 @RequiredArgsConstructor
 @Tag(name = "Agences - hors ligne")
@@ -27,8 +28,11 @@ public class HorsLigneController {
     private final HorsLigneService service;
 
     @PostMapping("/synchronisation")
+    @PreAuthorize("@droitsAgence.a('TRANSACTION_SAISIR') or @droitsAgence.a('DEPENSE_SAISIR')")
     @Operation(summary = "Envoie les operations saisies sans connexion ; une operation refusee devient un conflit")
-    public List<HorsLigneService.Resultat> synchroniser(@Valid @RequestBody List<HorsLigneService.@Valid OperationEnvoyee> operations,
+    public List<HorsLigneService.Resultat> synchroniser(@Valid @RequestBody
+                                                       @jakarta.validation.constraints.Size(max = 200)
+                                                       List<HorsLigneService.@Valid OperationEnvoyee> operations,
                                                        @AuthenticationPrincipal UtilisateurPrincipal principal) {
         return service.synchroniser(operations, principal);
     }

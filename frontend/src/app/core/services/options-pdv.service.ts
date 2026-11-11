@@ -39,7 +39,7 @@ export class OptionsPdvService {
   charger(): void {
     this.http.get<ReglagesPdv>(`${this.base}/reglages`).subscribe({
       next: (r) => this.reglages.set(r),
-      error: () => this.reglages.set({ associesActif: false, circuitCaisseActif: false, ecartTolere: 0, validationDepensesCaisse: false, minutesVerrouCaisse: 5 })
+      error: () => this.reglages.set({ associesActif: false, circuitCaisseActif: false, ecartTolere: 0, validationDepensesCaisse: false, minutesVerrouCaisse: 5, remiseMaxCaissierPourcent: 10 })
     });
   }
 

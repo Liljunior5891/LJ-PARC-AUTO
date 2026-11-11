@@ -111,7 +111,9 @@
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
         @if (peutGerer && f.statut === 'BROUILLON') {
           <button class="bouton succes" type="button" (click)="emettre(f)">Emettre</button>
-          <button class="bouton danger" type="button" (click)="annuler(f)">Annuler</button>
+          <input name="motifAnnulation" maxlength="255" [(ngModel)]="motifAnnulation"
+                 placeholder="Motif d'annulation *" aria-label="Motif d'annulation" />
+          <button class="bouton danger" type="button" [disabled]="!motifAnnulation.trim()" (click)="annuler(f)">Annuler</button>
         }
         @if (peutGerer && f.resteAPayer > 0 && f.statut !== 'BROUILLON' && f.statut !== 'ANNULEE') {
           <button class="bouton" type="button" (click)="paiementVisible.set(!paiementVisible())">

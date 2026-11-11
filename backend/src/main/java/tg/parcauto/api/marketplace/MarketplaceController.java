@@ -73,6 +73,7 @@ public class MarketplaceController {
         return CodeQr.svg(origine.replaceAll("/+$", "") + "/boutique/" + boutiqueService.lire().slug());
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT','GESTIONNAIRE_PARC')")
     @PutMapping("/boutique")
     @Operation(summary = "Enregistre les reglages de la boutique")
     public MarketplaceDto.BoutiqueReponse enregistrerBoutique(@Valid @RequestBody MarketplaceDto.BoutiqueRequete r) {
@@ -97,9 +98,11 @@ public class MarketplaceController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Publie une offre")
     public MarketplaceDto.OffreReponse creerOffre(@Valid @RequestBody MarketplaceDto.OffreRequete r) {
+        exigerRolePour(r.type());
         return offreService.creer(r);
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT')")
     @PostMapping("/offres/articles")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Publie plusieurs articles du point de vente")
@@ -107,24 +110,28 @@ public class MarketplaceController {
         return offreService.publierArticles(r.articleIds());
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT','GESTIONNAIRE_PARC')")
     @GetMapping("/articles-en-ligne")
     @Operation(summary = "Articles du point de vente publies dans la boutique en ligne")
     public List<MarketplaceDto.ArticleEnLigne> articlesEnLigne() {
         return offreService.articlesEnLigne();
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT','GESTIONNAIRE_PARC')")
     @GetMapping("/articles/{articleId}/photos")
     @Operation(summary = "Photos supplementaires de l'article vendu en ligne")
     public MarketplaceDto.Galerie photosArticle(@PathVariable Long articleId) {
         return new MarketplaceDto.Galerie(offreService.photosArticle(articleId));
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT','GESTIONNAIRE_PARC')")
     @GetMapping("/vehicules/{camionId}/photos")
     @Operation(summary = "Photos supplementaires du vehicule loue en ligne")
     public MarketplaceDto.Galerie photosVehicule(@PathVariable Long camionId) {
         return new MarketplaceDto.Galerie(offreService.photosVehicule(camionId));
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT')")
     @PutMapping("/articles/{articleId}/en-ligne")
     @Operation(summary = "Met un article du catalogue en vente en ligne, ou l'en retire")
     public MarketplaceDto.ArticleEnLigne publierArticle(@PathVariable Long articleId,
@@ -132,12 +139,14 @@ public class MarketplaceController {
         return offreService.publierArticle(articleId, r.publiee(), r.photos());
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT','GESTIONNAIRE_PARC')")
     @GetMapping("/vehicules-en-ligne")
     @Operation(summary = "Vehicules du parc proposes a la location en ligne")
     public List<MarketplaceDto.VehiculeEnLigne> vehiculesEnLigne() {
         return offreService.vehiculesEnLigne();
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC')")
     @PutMapping("/vehicules/{camionId}/en-ligne")
     @Operation(summary = "Propose un vehicule a la location en ligne (tarif par jour, caution), ou l'en retire")
     public MarketplaceDto.VehiculeEnLigne publierVehicule(@PathVariable Long camionId,
@@ -149,6 +158,8 @@ public class MarketplaceController {
     @Operation(summary = "Modifie une offre")
     public MarketplaceDto.OffreReponse modifierOffre(@PathVariable Long id,
                                                      @Valid @RequestBody MarketplaceDto.OffreRequete r) {
+        exigerRolePour(offreService.charger(id).getType());
+        exigerRolePour(r.type());
         return offreService.modifier(id, r);
     }
 
@@ -156,11 +167,13 @@ public class MarketplaceController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Retire une offre de la boutique")
     public void supprimerOffre(@PathVariable Long id) {
+        exigerRolePour(offreService.charger(id).getType());
         offreService.supprimer(id);
     }
 
     // ----------------------------------------------------------------- Commandes
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT')")
     @GetMapping("/commandes")
     @Operation(summary = "Commandes en ligne (filtre : en-cours, terminees ou toutes)")
     public Page<MarketplaceDto.CommandeReponse> commandes(@RequestParam(required = false) String filtre,
@@ -169,12 +182,14 @@ public class MarketplaceController {
         return commandeService.lister(filtre, PageRequest.of(page, Math.min(size, 100)));
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT')")
     @GetMapping("/commandes/{id}")
     @Operation(summary = "Detail d'une commande en ligne")
     public MarketplaceDto.CommandeReponse commande(@PathVariable Long id) {
         return commandeService.detail(id);
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT')")
     @PostMapping("/commandes/{id}/statut")
     @Operation(summary = "Fait avancer la commande (confirmee, prete, en livraison, livree) ou l'annule")
     public MarketplaceDto.CommandeReponse changerStatut(@PathVariable Long id,
@@ -182,6 +197,7 @@ public class MarketplaceController {
         return commandeService.changerStatut(id, r);
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT')")
     @PostMapping("/commandes/{id}/paiement")
     @Operation(summary = "Marque la commande comme payee")
     public MarketplaceDto.CommandeReponse marquerPayee(@PathVariable Long id) {
@@ -190,6 +206,7 @@ public class MarketplaceController {
 
     // ------------------------------------------------------- Demandes de location
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT','GESTIONNAIRE_PARC')")
     @GetMapping("/demandes-location")
     @Operation(summary = "Demandes de location de vehicules")
     public Page<MarketplaceDto.DemandeLocationReponse> demandes(
@@ -199,6 +216,7 @@ public class MarketplaceController {
         return demandeService.lister(statut, PageRequest.of(page, Math.min(size, 100)));
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GESTIONNAIRE_PARC')")
     @PostMapping("/demandes-location/{id}/accepter")
     @Operation(summary = "Accepte la demande : le contrat de location est cree")
     public MarketplaceDto.DemandeLocationReponse accepter(@PathVariable Long id,
@@ -206,12 +224,14 @@ public class MarketplaceController {
         return demandeService.accepter(id, r);
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT','GESTIONNAIRE_PARC')")
     @GetMapping("/demandes-location/{id}")
     @Operation(summary = "Detail d'une demande de location (pour preremplir la recette en agence)")
     public MarketplaceDto.DemandeLocationReponse demande(@PathVariable Long id) {
         return demandeService.obtenir(id);
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT','GESTIONNAIRE_PARC')")
     @PostMapping("/demandes-location/{id}/annuler")
     @Operation(summary = "Annule une demande acceptee (le client se desiste) : le vehicule est libere")
     public MarketplaceDto.DemandeLocationReponse annulerDemande(@PathVariable Long id,
@@ -219,10 +239,30 @@ public class MarketplaceController {
         return demandeService.annuler(id, r);
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','GERANT','GESTIONNAIRE_PARC')")
     @PostMapping("/demandes-location/{id}/refuser")
     @Operation(summary = "Refuse la demande")
     public MarketplaceDto.DemandeLocationReponse refuser(@PathVariable Long id,
                                                          @Valid @RequestBody MarketplaceDto.Refus r) {
         return demandeService.refuser(id, r);
+    }
+
+    /**
+     * Separation des taches : le prix en ligne d'un article de boutique (repris par le ticket
+     * de caisse) releve du gerant ; une offre de vehicule, de la gestion du parc.
+     */
+    private static void exigerRolePour(Offre.Type type) {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        java.util.Set<String> roles = new java.util.HashSet<>();
+        if (auth != null) {
+            auth.getAuthorities().forEach(a -> roles.add(a.getAuthority()));
+        }
+        if (roles.contains("ROLE_ADMIN") || type == null || type == Offre.Type.LIBRE) {
+            return;
+        }
+        boolean permis = type == Offre.Type.ARTICLE ? roles.contains("ROLE_GERANT") : roles.contains("ROLE_GESTIONNAIRE_PARC");
+        if (!permis) {
+            throw new org.springframework.security.access.AccessDeniedException("Offre reservee a un autre profil");
+        }
     }
 }

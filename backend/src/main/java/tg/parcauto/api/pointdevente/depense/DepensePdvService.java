@@ -637,7 +637,7 @@ public class DepensePdvService {
     }
 
     private static String motif(String q) {
-        return q == null || q.isBlank() ? null : "%" + q.trim().toLowerCase(Locale.ROOT) + "%";
+        return q == null || q.isBlank() ? null : tg.parcauto.api.common.SpecificationUtils.motif(q);
     }
 
     private static String vide(String v) {

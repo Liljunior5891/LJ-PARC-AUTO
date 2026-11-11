@@ -179,6 +179,11 @@ public class DepenseService {
      */
     public DepenseDto.Reponse modifier(Long id, DepenseDto.Requete requete) {
         Depense depense = chargerActive(id);
+        // En attente de decision : figee pour le gestionnaire, l'administrateur valide ce qu'il a vu.
+        if (depense.getStatut() == StatutDepense.ATTENTE_ADMIN && validationRequise()) {
+            throw new BusinessException("La depense " + depense.getNumero() + " attend la decision de l'administrateur :"
+                    + " elle ne se modifie plus. Demandez-lui de la refuser pour la ressaisir.");
+        }
         if (depense.getStatut() == StatutDepense.VALIDEE && validationRequise()) {
             // Depense validee (peut-etre deja reglee) : la correction attend l'administrateur a cote,
             // la depense et ses reglements restent tels quels jusqu'a sa decision.
@@ -209,10 +214,16 @@ public class DepenseService {
     /** Annulation avec motif : la depense reste visible mais ne compte plus. */
     public DepenseDto.Reponse annuler(Long id, String motif) {
         Depense depense = chargerActive(id);
+        // Avec la validation, une depense validee ne s'efface du resultat que par l'administrateur.
+        if (depense.getStatut() == StatutDepense.VALIDEE && validationRequise()) {
+            throw new BusinessException("La validation des depenses est activee : seul l'administrateur annule une"
+                    + " depense validee");
+        }
         if (reglements.regle(id).signum() > 0) {
             throw new BusinessException("Des reglements sont enregistres sur " + depense.getNumero() + " : annulez-les d'abord");
         }
         UtilisateurPrincipal auteur = courant();
+        depense.setCorrectionEnAttente(null);
         depense.setStatut(StatutDepense.ANNULEE);
         depense.setAnnuleePar(auteur == null ? null : auteur.getNomComplet());
         depense.setAnnuleeLe(Instant.now());
@@ -246,7 +257,20 @@ public class DepenseService {
                 throw new BusinessException("Correction illisible : refusez-la et faites-la ressaisir");
             }
             correction.setCorrectionEnAttente(null);
+            if (correction.getStatut() != StatutDepense.VALIDEE) {
+                throw new BusinessException("La depense " + correction.getNumero() + " n'est plus validee :"
+                        + " la correction ne s'applique pas. Refusez-la.");
+            }
             appliquer(correction, requete);
+            // Memes controles qu'une modification directe : des reglements ont pu arriver entre-temps.
+            BigDecimal dejaRegle = reglements.regle(id);
+            if (!correction.isAPayer() && dejaRegle.signum() > 0) {
+                throw new BusinessException("Des reglements sont enregistres : la depense reste a payer");
+            }
+            if (dejaRegle.compareTo(correction.getMontant()) > 0) {
+                throw new BusinessException("Le montant corrige est inferieur au total deja regle ("
+                        + dejaRegle.setScale(0, RoundingMode.HALF_UP).toPlainString() + " F) : refusez la correction");
+            }
             UtilisateurPrincipal admin = courant();
             correction.setApprouveePar(admin == null ? null : admin.getNomComplet());
             correction.setApprouveeLe(Instant.now());
@@ -258,6 +282,7 @@ public class DepenseService {
         depense.setStatut(StatutDepense.VALIDEE);
         depense.setApprouveePar(admin == null ? null : admin.getNomComplet());
         depense.setApprouveeLe(Instant.now());
+        mettreAJourCompteurCamion(depense);
         return reponse(depense);
     }
 
@@ -293,8 +318,20 @@ public class DepenseService {
 
     // ---------------------------------------------------------- justificatif
 
+    /**
+     * Avec la validation, le justificatif d'une depense deja decidee (validee, refusee,
+     * annulee) ne change plus sans l'administrateur : il a decide au vu de cette piece.
+     */
+    private void exigerJustificatifModifiable(Depense d) {
+        if (d.getStatut() != StatutDepense.ATTENTE_ADMIN && validationRequise()) {
+            throw new BusinessException("Le justificatif de " + d.getNumero() + " a servi a la decision de"
+                    + " l'administrateur : seul l'administrateur peut le remplacer");
+        }
+    }
+
     public DepenseDto.Reponse joindre(Long id, MultipartFile fichier) {
         Depense d = charger(id);
+        exigerJustificatifModifiable(d);
         if (fichier == null || fichier.isEmpty()) {
             throw new BusinessException("Fichier vide");
         }
@@ -305,9 +342,7 @@ public class DepenseService {
         d.setJustificatifChemin(stockage.enregistrer(fichier, "parc-depenses/" + d.getId()));
         d.setJustificatifNom(fichier.getOriginalFilename() == null ? "justificatif" : fichier.getOriginalFilename());
         d.setJustificatifType(fichier.getContentType());
-        if (ancien != null) {
-            stockage.supprimer(ancien);
-        }
+        // L'ancienne piece (ancien) reste sur le disque : la preuve vue par l'administrateur n'est jamais detruite.
         return reponse(d);
     }
 
@@ -332,9 +367,8 @@ public class DepenseService {
 
     public DepenseDto.Reponse retirerJustificatif(Long id) {
         Depense d = charger(id);
-        if (d.getJustificatifChemin() != null) {
-            stockage.supprimer(d.getJustificatifChemin());
-        }
+        exigerJustificatifModifiable(d);
+        // La piece reste sur le disque (preuve conservee) ; seule la depense ne la reference plus.
         d.setJustificatifChemin(null);
         d.setJustificatifNom(null);
         d.setJustificatifType(null);
@@ -396,10 +430,14 @@ public class DepenseService {
 
     /** Un releve de compteur saisi lors d'un plein fait avancer le kilometrage du camion. */
     private void mettreAJourCompteurCamion(Depense depense) {
-        Long releve = depense.getKilometrage();
+        // Une depense en attente (peut-etre refusee ensuite) ne touche pas au compteur.
+        if (depense.getStatut() != StatutDepense.VALIDEE) {
+            return;
+        }
         Camion camion = depense.getCamion();
-        if (camion != null && releve != null && releve > camion.getKilometrageActuel()) {
-            camion.setKilometrageActuel(releve);
+        if (camion != null && depense.getKilometrage() != null
+                && depense.getKilometrage() > camion.getKilometrageActuel()) {
+            tg.parcauto.api.parc.camion.CompteurKilometrique.avancer(camion, depense.getKilometrage(), "Depense " + depense.getNumero());
             camionRepository.save(camion);
         }
     }

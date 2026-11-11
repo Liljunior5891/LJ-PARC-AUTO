@@ -34,7 +34,7 @@ public class MarcheService {
     private final JdbcTemplate jdbc;
 
     public MarketplaceDto.Marche parcourir(String recherche, String categorie, String ville) {
-        String q = recherche == null || recherche.isBlank() ? null : "%" + recherche.trim().toLowerCase() + "%";
+        String q = recherche == null || recherche.isBlank() ? null : tg.parcauto.api.common.SpecificationUtils.motif(recherche);
         String cat = categorie == null || categorie.isBlank() ? null : categorie.trim();
         String vil = ville == null || ville.isBlank() ? null : ville.trim();
 

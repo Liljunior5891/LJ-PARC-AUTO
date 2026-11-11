@@ -66,11 +66,20 @@ public class InscriptionService {
 
     /** Creation par le super-administrateur : la duree d'essai peut differer du reglage (nulle = reglage). */
     public String inscrire(Demande demande, Integer joursEssai) {
-        // La transaction s'ouvre dans le mode systeme : la session Hibernate fixe son entreprise a l'ouverture.
-        return ContexteEntreprise.enModeSysteme(() -> transaction.execute(statut -> creer(demande, joursEssai)));
+        return inscrire(demande, joursEssai, false);
     }
 
-    private String creer(Demande demande, Integer joursEssai) {
+    /**
+     * @param creeParPlateforme vrai quand l'exploitant saisit le mot de passe pour le client :
+     *                          il est alors provisoire, a changer a la premiere connexion.
+     */
+    public String inscrire(Demande demande, Integer joursEssai, boolean creeParPlateforme) {
+        // La transaction s'ouvre dans le mode systeme : la session Hibernate fixe son entreprise a l'ouverture.
+        return ContexteEntreprise.enModeSysteme(
+                () -> transaction.execute(statut -> creer(demande, joursEssai, creeParPlateforme)));
+    }
+
+    private String creer(Demande demande, Integer joursEssai, boolean creeParPlateforme) {
         String email = demande.email().trim();
         if (utilisateurRepository.existsByEmailIgnoreCase(email)) {
             throw new BusinessException("Cette adresse ne peut pas servir a une nouvelle inscription."
@@ -99,6 +108,8 @@ public class InscriptionService {
         admin.setPrenom(vide(demande.prenom()));
         admin.setTelephone(vide(demande.telephone()));
         admin.setMotDePasse(encodeur.encode(demande.motDePasse()));
+        // Saisi par l'exploitant : l'administrateur du client le remplace a sa premiere connexion.
+        admin.setMotDePasseAChanger(creeParPlateforme);
         admin.setRoles(EnumSet.of(Role.ADMIN));
         admin.setActif(true);
         utilisateurRepository.save(admin);

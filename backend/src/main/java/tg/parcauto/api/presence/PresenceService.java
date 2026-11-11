@@ -311,6 +311,8 @@ public class PresenceService {
     public LieuReponse renouvelerSecret(Long id) {
         LieuPresence l = chargerLieu(id);
         l.setSecretQr(securite.secretQr());
+        // Le jeton public du lieu change aussi : un ancien lien de pointage copie ne sert plus.
+        l.setJetonPublic(securite.jetonAleatoire());
         return lieuReponse(l, employes.findAll(), bornes.findAllByOrderByNomAsc());
     }
 

@@ -271,10 +271,13 @@ public class FactureService {
         if (facture.montantPaye().signum() > 0) {
             throw new BusinessException("Cette facture a deja recu un reglement : elle ne peut pas etre annulee");
         }
-        facture.setStatut(StatutFacture.ANNULEE);
-        if (motif != null && !motif.isBlank()) {
-            facture.setObservations(motif);
+        if (motif == null || motif.isBlank()) {
+            throw new BusinessException("Le motif d'annulation est obligatoire");
         }
+        facture.setStatut(StatutFacture.ANNULEE);
+        // Le motif s'ajoute aux observations au lieu de les remplacer.
+        facture.setObservations(tg.parcauto.api.exploitation.livraison.LivraisonService.ajouterObservation(
+                facture.getObservations(), "Annulation : " + motif.trim()));
         // Les recettes nees de l'emission disparaissent avec la facture ; une recette saisie a part
         // (puis facturee) est seulement detachee : elle reste comptee et pourra etre refacturee.
         for (Recette recette : recetteRepository.findByFactureId(facture.getId())) {
@@ -372,8 +375,33 @@ public class FactureService {
 
     private void appliquer(Facture f, FactureDto.Requete r) {
         f.setClient(clientService.charger(r.clientId()));
-        f.setLocation(r.locationId() == null ? null : locationService.charger(r.locationId()));
-        f.setMission(r.missionId() == null ? null : missionService.charger(r.missionId()));
+        Location contrat = r.locationId() == null ? null : locationService.charger(r.locationId());
+        Mission mission = r.missionId() == null ? null : missionService.charger(r.missionId());
+        // Meme garde que les generateurs : une mission ou un contrat ne se facture qu'une fois,
+        // et au client concerne (un index unique en base tient aussi sous requetes simultanees).
+        if (contrat != null) {
+            if (!contrat.getClient().getId().equals(r.clientId())) {
+                throw new BusinessException("Le contrat " + contrat.getNumero() + " est celui d'un autre client");
+            }
+            if (repository.existsByLocationIdAndStatutNot(contrat.getId(), StatutFacture.ANNULEE)
+                    && (f.getLocation() == null || !f.getLocation().getId().equals(contrat.getId()))) {
+                throw new BusinessException("Le contrat " + contrat.getNumero() + " est deja facture");
+            }
+        }
+        if (mission != null) {
+            if (mission.getClient() != null && !mission.getClient().getId().equals(r.clientId())) {
+                throw new BusinessException("La mission " + mission.getNumero() + " est celle d'un autre client");
+            }
+            if (repository.existsByMissionIdAndStatutNot(mission.getId(), StatutFacture.ANNULEE)
+                    && (f.getMission() == null || !f.getMission().getId().equals(mission.getId()))) {
+                throw new BusinessException("La mission " + mission.getNumero() + " est deja facturee");
+            }
+        }
+        f.setLocation(contrat);
+        f.setMission(mission);
+        if (r.dateEcheance() != null && r.dateEmission() != null && r.dateEcheance().isBefore(r.dateEmission())) {
+            throw new BusinessException("L'echeance precede la date d'emission");
+        }
         f.setDateEmission(r.dateEmission());
         f.setDateEcheance(r.dateEcheance());
         f.setPeriodeDebut(r.periodeDebut());

@@ -58,7 +58,8 @@ class CommandeFournisseurServiceTest {
                 new tg.parcauto.api.pointdevente.fournisseur.FournisseurService(fiches,
                         mock(tg.parcauto.api.pointdevente.fournisseur.ReglementFournisseurRepository.class), repository,
                         mock(tg.parcauto.api.pointdevente.caisse.CaisseService.class), mock(NumerotationService.class),
-                        mock(tg.parcauto.api.pointdevente.tresorerie.TresorerieService.class));
+                        mock(tg.parcauto.api.pointdevente.tresorerie.TresorerieService.class),
+                        mock(tg.parcauto.api.pointdevente.reglage.ReglagePdvService.class));
         service = new CommandeFournisseurService(repository, articles,
                 new StockService(articles, mouvements, org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class)), org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class), mock(NumerotationService.class),
                 fournisseurs);

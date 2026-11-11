@@ -11,7 +11,6 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Base64;
@@ -50,15 +49,8 @@ public final class PhotoProduit {
             throw new BusinessException("la photo " + nomFichier + " est au format WebP, non pris en charge a l'import : "
                     + "convertissez-la en JPEG ou PNG");
         }
-        BufferedImage source;
-        try {
-            source = ImageIO.read(new ByteArrayInputStream(octets));
-        } catch (IOException e) {
-            source = null;
-        }
-        if (source == null) {
-            throw new BusinessException("la photo " + nomFichier + " est illisible");
-        }
+        // Dimensions controlees avant decodage : pas de bombe de pixels.
+        BufferedImage source = tg.parcauto.api.common.ImageSure.lire(octets, "la photo " + nomFichier);
         int cote = Math.min(source.getWidth(), source.getHeight());
         int sortie = Math.min(COTE_MAX, cote);
         BufferedImage carre = new BufferedImage(sortie, sortie, BufferedImage.TYPE_INT_RGB);

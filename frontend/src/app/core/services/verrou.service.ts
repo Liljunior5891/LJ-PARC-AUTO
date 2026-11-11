@@ -8,6 +8,22 @@ import { SANS_SUIVI } from '../operation/operation.interceptor';
 const CLE = 'pdv.caisse.deverrouillee';
 /** Delai par defaut sans geste avant le verrouillage, tant que les reglages ne sont pas lus. */
 export const MINUTES_INACTIVITE = 5;
+/** Iterations PBKDF2 de l'empreinte hors ligne (recommandation OWASP pour SHA-256). */
+const ITERATIONS_PBKDF2 = 600_000;
+/** Erreurs de code toleres hors ligne avant d'effacer l'empreinte locale. */
+const ESSAIS_LOCAUX_MAX = 5;
+
+function hex(octets: Uint8Array): string {
+  return Array.from(octets).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function deHex(texte: string): Uint8Array {
+  const octets = new Uint8Array(texte.length / 2);
+  for (let i = 0; i < octets.length; i++) {
+    octets[i] = parseInt(texte.substring(i * 2, i * 2 + 2), 16);
+  }
+  return octets;
+}
 
 /**
  * Verrou de l'ecran de caisse : le caissier deja connecte le leve avec son
@@ -52,27 +68,51 @@ export class VerrouService {
         if (!locale) {
           return throwError(() => ({ error: { message: 'Sans connexion : code jamais verifie sur cet appareil' } }));
         }
-        return from(this.empreinte(pin)).pipe(switchMap((calculee) => {
-          if (calculee !== locale) {
+        return from(this.comparer(pin, locale)).pipe(switchMap((egal) => {
+          if (!egal) {
+            // Hors ligne aussi, 5 erreurs effacent l'empreinte : il faudra le reseau pour deverrouiller.
+            if (this.noterEchecLocal() >= ESSAIS_LOCAUX_MAX) {
+              this.oublierEmpreinte();
+              return throwError(() => ({ error: { message: "Trop d'erreurs : reconnectez-vous au reseau pour deverrouiller" } }));
+            }
             return throwError(() => ({ error: { message: 'Code PIN incorrect' } }));
           }
+          this.effacerEchecsLocaux();
           this.deverrouiller();
           return of(undefined);
         }));
       }));
   }
 
-  /** Empreinte salee par le compte (SHA-256), pour le deverrouillage sans reseau. */
-  private async empreinte(pin: string): Promise<string> {
-    const sel = `lj-saas:${this.auth.utilisateur()?.id ?? ''}:${this.auth.utilisateur()?.email ?? ''}:`;
-    const octets = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sel + pin));
-    return Array.from(new Uint8Array(octets)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  /**
+   * Empreinte lente (PBKDF2-SHA256, sel aleatoire) pour le deverrouillage sans
+   * reseau : retrouver un code de 6 chiffres a partir de l'empreinte coute des
+   * heures, et non une fraction de seconde. Format : pbkdf2$iterations$sel$empreinte.
+   */
+  private async empreinte(pin: string, sel: Uint8Array, iterations: number): Promise<string> {
+    const cle = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', hash: 'SHA-256', salt: sel as BufferSource, iterations }, cle, 256);
+    return `pbkdf2$${iterations}$${hex(sel)}$${hex(new Uint8Array(bits))}`;
+  }
+
+  private async comparer(pin: string, stockee: string): Promise<boolean> {
+    const morceaux = stockee.split('$');
+    if (morceaux.length !== 4 || morceaux[0] !== 'pbkdf2') {
+      // Ancien format (SHA-256 rapide) : abandonne, il faudra le reseau une fois.
+      this.oublierEmpreinte();
+      return false;
+    }
+    const calculee = await this.empreinte(pin, deHex(morceaux[2]), Number(morceaux[1]));
+    return calculee === stockee;
   }
 
   private async memoriser(pin: string): Promise<void> {
     try {
       if (crypto?.subtle) {
-        localStorage.setItem(this.cleEmpreinte(), await this.empreinte(pin));
+        const sel = crypto.getRandomValues(new Uint8Array(16));
+        localStorage.setItem(this.cleEmpreinte(), await this.empreinte(pin, sel, ITERATIONS_PBKDF2));
+        this.effacerEchecsLocaux();
       }
     } catch {
       // Stockage indisponible : le deverrouillage hors ligne ne sera pas possible.
@@ -84,6 +124,33 @@ export class VerrouService {
       return localStorage.getItem(this.cleEmpreinte());
     } catch {
       return null;
+    }
+  }
+
+  private oublierEmpreinte(): void {
+    try {
+      localStorage.removeItem(this.cleEmpreinte());
+    } catch {
+      // Stockage indisponible.
+    }
+    this.effacerEchecsLocaux();
+  }
+
+  private noterEchecLocal(): number {
+    try {
+      const n = Number(localStorage.getItem(this.cleEmpreinte() + '.echecs') ?? '0') + 1;
+      localStorage.setItem(this.cleEmpreinte() + '.echecs', String(n));
+      return n;
+    } catch {
+      return ESSAIS_LOCAUX_MAX;
+    }
+  }
+
+  private effacerEchecsLocaux(): void {
+    try {
+      localStorage.removeItem(this.cleEmpreinte() + '.echecs');
+    } catch {
+      // Stockage indisponible.
     }
   }
 

@@ -5,9 +5,11 @@ services:
     environment:
       POSTGRES_DB: parcauto
       POSTGRES_USER: parcauto
-      POSTGRES_PASSWORD: parcauto
+      # Mot de passe tire du fichier .env (non versionne) : obligatoire.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?definir POSTGRES_PASSWORD dans .env}
     ports:
-      - "5433:5432"
+      # Base joignable depuis ce poste uniquement, jamais depuis le reseau.
+      - "127.0.0.1:5433:5432"
     volumes:
       - parcauto-data:/var/lib/postgresql/data
     healthcheck:

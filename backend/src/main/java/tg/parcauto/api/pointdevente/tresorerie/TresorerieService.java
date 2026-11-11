@@ -197,6 +197,11 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
     public RemiseDto validerRemise(Long id, Validation validation, UtilisateurPrincipal valideur) {
         reglages.exigerCircuit();
         RemiseCaisse r = remiseEnAttente(id);
+        // Separation des taches : on ne valide pas sa propre remise (l'administrateur excepte).
+        if (!estAdministrateur(valideur) && valideur.getId().equals(r.getCaissierId())) {
+            throw new BusinessException("Vous ne pouvez pas valider votre propre remise : elle revient a un autre"
+                    + " gerant ou a l'administrateur");
+        }
         List<CoupureTresorerie> verifie = coupures(validation.billettage(), CoupureTresorerie.Moment.VERIFIE);
         BigDecimal valide = total(verifie);
         if (valide.signum() <= 0) {

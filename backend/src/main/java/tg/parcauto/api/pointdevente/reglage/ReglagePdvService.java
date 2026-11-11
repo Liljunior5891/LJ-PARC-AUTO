@@ -25,7 +25,9 @@ public class ReglagePdvService {
     public record Reglages(boolean associesActif, boolean circuitCaisseActif, BigDecimal ecartTolere,
                            boolean validationDepensesCaisse,
                            /** Minutes sans geste avant le verrouillage de l'ecran de caisse. */
-                           int minutesVerrouCaisse) {
+                           int minutesVerrouCaisse,
+                           /** Remise maximale d'un caissier, en % du ticket. */
+                           BigDecimal remiseMaxCaissierPourcent) {
     }
 
     public record Requete(@NotNull Boolean associesActif, @NotNull Boolean circuitCaisseActif,
@@ -33,15 +35,17 @@ public class ReglagePdvService {
                           /** Absent : inchange. */
                           Boolean validationDepensesCaisse,
                           /** Absent : inchange. */
-                          @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(120) Integer minutesVerrouCaisse) {
+                          @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(120) Integer minutesVerrouCaisse,
+                          /** Absent : inchange. */
+                          @PositiveOrZero @jakarta.validation.constraints.DecimalMax("100") BigDecimal remiseMaxCaissierPourcent) {
     }
 
     @Transactional(readOnly = true)
     public Reglages lire() {
         return repository.findFirstByOrderByIdAsc()
                 .map(r -> new Reglages(r.isAssociesActif(), r.isCircuitCaisseActif(), r.getEcartTolere(),
-                        r.isValidationDepensesCaisse(), r.getMinutesVerrouCaisse()))
-                .orElse(new Reglages(false, false, BigDecimal.ZERO, false, 5));
+                        r.isValidationDepensesCaisse(), r.getMinutesVerrouCaisse(), r.getRemiseMaxCaissierPourcent()))
+                .orElse(new Reglages(false, false, BigDecimal.ZERO, false, 5, BigDecimal.TEN));
     }
 
     public Reglages modifier(Requete r) {
@@ -61,6 +65,9 @@ public class ReglagePdvService {
         }
         if (r.minutesVerrouCaisse() != null) {
             reglage.setMinutesVerrouCaisse(r.minutesVerrouCaisse());
+        }
+        if (r.remiseMaxCaissierPourcent() != null) {
+            reglage.setRemiseMaxCaissierPourcent(r.remiseMaxCaissierPourcent());
         }
         repository.save(reglage);
         return lire();

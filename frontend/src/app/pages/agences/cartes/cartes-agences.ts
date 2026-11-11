@@ -108,7 +108,8 @@ export class CartesAgences implements OnInit {
 
   /** Vente et recharge de la periode, affichees a cote du stock. */
   chargerSuivi(): void {
-    if (this.agenceId && this.du && this.au) {
+    // Chiffre d'affaires et marge : reserves aux profils qui consultent les soldes.
+    if (this.agenceId && this.du && this.au && this.service.peut('SOLDES_CONSULTER')) {
       this.service.suiviCartes(this.agenceId, this.du, this.au).subscribe({ next: (s) => this.suivi.set(s) });
     }
   }

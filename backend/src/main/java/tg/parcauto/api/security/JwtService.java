@@ -17,6 +17,10 @@ import java.util.Map;
 @Service
 public class JwtService {
 
+    /** Emetteur et audience exiges : un jeton signe pour un autre usage n'ouvre rien ici. */
+    static final String EMETTEUR = "lj-saas";
+    static final String AUDIENCE = "lj-saas-api";
+
     private final SecretKey key;
     private final Duration expiration;
 
@@ -40,16 +44,31 @@ public class JwtService {
             claims.put("eid", principal.getEntrepriseId());
         }
         return Jwts.builder()
+                .issuer(EMETTEUR)
+                .audience().add(AUDIENCE).and()
                 .subject(principal.getUsername())
                 .claims(claims)
                 .issuedAt(Date.from(maintenant))
                 .expiration(Date.from(maintenant.plus(expiration)))
-                .signWith(key)
+                .signWith(key, Jwts.SIG.HS512)
                 .compact();
     }
 
+    /**
+     * Lit un jeton signe en HS512 uniquement (algorithme epingle), emis par
+     * cette API et destine a elle.
+     */
     public Claims lire(String token) {
-        return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+        var jws = Jwts.parser()
+                .verifyWith(key)
+                .requireIssuer(EMETTEUR)
+                .requireAudience(AUDIENCE)
+                .build()
+                .parseSignedClaims(token);
+        if (!Jwts.SIG.HS512.getId().equals(jws.getHeader().getAlgorithm())) {
+            throw new io.jsonwebtoken.security.SignatureException("Algorithme de signature refuse");
+        }
+        return jws.getPayload();
     }
 
     public String extraireEmail(String token) {

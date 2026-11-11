@@ -95,11 +95,13 @@ export const routes: Routes = [
           {
             path: 'camions/nouveau',
             loadComponent: () => import('./pages/camions/camion-fiche').then((m) => m.CamionFiche),
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             title: 'Nouveau vehicule — LJ SaaS'
           },
           {
             path: 'camions/:id',
             loadComponent: () => import('./pages/camions/camion-fiche').then((m) => m.CamionFiche),
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             title: 'Fiche vehicule — LJ SaaS'
           },
           {
@@ -211,6 +213,7 @@ export const routes: Routes = [
           {
             path: 'gps',
             loadComponent: () => import('./pages/carte-parc/carte-parc').then((m) => m.CarteParc),
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             title: 'Carte du parc — LJ SaaS'
           },
           {

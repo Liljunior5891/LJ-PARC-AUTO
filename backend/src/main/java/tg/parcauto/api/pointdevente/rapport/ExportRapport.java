@@ -205,7 +205,9 @@ public final class ExportRapport {
             return "";
         }
         // Une cellule commencant par = + - @ serait executee comme formule par le tableur.
-        String sure = valeur.matches("^[=+\\-@].*") && !valeur.matches("^-?\\d.*") ? "'" + valeur : valeur;
+        // Tabulation et retour chariot en tete aussi ; seuls les nombres purs passent tels quels.
+        boolean nombre = valeur.matches("^-?\\d+([.,]\\d+)?$");
+        String sure = !nombre && valeur.matches("(?s)^[=+\\-@\\t\\r].*") ? "'" + valeur : valeur;
         return sure.contains(";") || sure.contains("\"") || sure.contains("\n")
                 ? "\"" + sure.replace("\"", "\"\"") + "\"" : sure;
     }

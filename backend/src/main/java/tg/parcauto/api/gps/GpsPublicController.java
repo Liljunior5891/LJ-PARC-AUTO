@@ -32,6 +32,8 @@ public class GpsPublicController {
     private final RegistreAdaptateurs registre;
     private final PositionGpsService positions;
 
+    private static final int LOT_MAX = 1000;
+
     public record Reception(int enregistrees) {
     }
 
@@ -39,6 +41,12 @@ public class GpsPublicController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     @Operation(summary = "Recoit les positions d'un traceur ou d'une passerelle, avec le jeton GPS de l'entreprise")
     public Reception recevoir(@PathVariable String fournisseur, @RequestBody JsonNode charge) {
+        // Taille du lot controlee avant toute conversion des positions.
+        int taille = charge == null ? 0 : charge.isArray() ? charge.size() : charge.path("positions").size();
+        if (taille > LOT_MAX) {
+            throw new tg.parcauto.api.common.BusinessException("Lot de " + taille + " positions : envoyez-en au plus "
+                    + LOT_MAX + " a la fois");
+        }
         return new Reception(positions.enregistrer(registre.pour(fournisseur).convertir(charge), fournisseur).size());
     }
 }

@@ -21,7 +21,7 @@ public class PaiementSimule implements FournisseurPaiement {
 
     @Override
     public Initiation initier(CommandeEnLigne commande) {
-        return new Initiation("SIM-" + commande.getNumero(), "/suivi/" + commande.getJeton() + "?paiement=simulation");
+        return new Initiation("SIM-" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 16), "/suivi/" + commande.getJeton() + "?paiement=simulation");
     }
 
     @Override

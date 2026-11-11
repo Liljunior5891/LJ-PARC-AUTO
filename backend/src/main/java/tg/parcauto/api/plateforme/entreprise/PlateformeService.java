@@ -52,7 +52,7 @@ public class PlateformeService {
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public EntrepriseResume creer(tg.parcauto.api.plateforme.inscription.InscriptionService.Demande demande,
                                   Integer joursEssai) {
-        String email = inscription.inscrire(demande, joursEssai);
+        String email = inscription.inscrire(demande, joursEssai, true);
         Long id = utilisateurRepository.findByEmailIgnoreCase(email).orElseThrow().getEntrepriseId();
         return resume(repository.findById(id).orElseThrow());
     }

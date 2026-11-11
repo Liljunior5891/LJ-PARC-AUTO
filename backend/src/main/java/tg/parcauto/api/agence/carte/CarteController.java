@@ -107,6 +107,8 @@ public class CarteController {
     }
 
     @GetMapping("/suivi")
+    // Chiffre d'affaires, marge et solde de recharge : comme les soldes, pas pour le caissier.
+    @org.springframework.security.access.prepost.PreAuthorize("@droitsAgence.a('SOLDES_CONSULTER')")
     @Operation(summary = "Ventes de la periode (chiffre d'affaires, cout, marge) et suivi du compte de recharge")
     public CarteService.Suivi suivi(@RequestParam(required = false) Long agenceId,
                                     @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate du,

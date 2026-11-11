@@ -197,7 +197,7 @@ public class CaisseService {
     }
 
     /** Verifie qu'une sortie demandee est possible (caisse ouverte et affectee, especes suffisantes), sans rien sortir. */
-    @Transactional(readOnly = true)
+    @Transactional
     public SessionCaisse controlerSortie(Long sessionId, BigDecimal montant, UtilisateurPrincipal auteur) {
         return controlerMouvement(sessionId, MouvementCaisse.Type.SORTIE, montant, auteur, true);
     }
@@ -282,7 +282,8 @@ public class CaisseService {
      */
     private SessionCaisse controlerMouvement(Long id, MouvementCaisse.Type type, BigDecimal montant,
                                              UtilisateurPrincipal auteur, boolean deduireAttente) {
-        SessionCaisse session = chargerOuverte(id);
+        // Session verrouillee : deux sorties simultanees ne depassent pas les especes du tiroir.
+        SessionCaisse session = chargerOuverteVerrouillee(id);
         if (!PersonnelService.gestionnaire(auteur) && !session.getCaisse().getUtilisateurIds().contains(auteur.getId())) {
             throw new BusinessException("La caisse " + session.getCaisse().getNom() + " ne vous est pas affectee");
         }
@@ -317,7 +318,9 @@ public class CaisseService {
 
     /** Fermeture par un gerant : plus de commande a regler, et un ecart non nul justifie. */
     public Reponse fermer(Long id, Cloture cloture, UtilisateurPrincipal gerant) {
-        SessionCaisse session = chargerOuverte(id);
+        // Verrou exclusif : les ventes et mouvements en cours se terminent avant le calcul de l'attendu,
+        // et aucun ne s'ajoute ensuite a une session fermee.
+        SessionCaisse session = chargerOuverteVerrouillee(id);
         List<Commande> enCours = enCours(session);
         if (!enCours.isEmpty()) {
             throw new BusinessException(enCours.size() + " commande(s) en cours non reglee(s) : "
@@ -485,6 +488,15 @@ public class CaisseService {
 
     private SessionCaisse chargerOuverte(Long id) {
         SessionCaisse session = charger(id);
+        if (!session.ouverte()) {
+            throw new BusinessException("La session " + session.getNumero() + " est deja fermee");
+        }
+        return session;
+    }
+
+    private SessionCaisse chargerOuverteVerrouillee(Long id) {
+        SessionCaisse session = repository.verrouiller(id)
+                .orElseThrow(() -> ResourceNotFoundException.of("Session de caisse", id));
         if (!session.ouverte()) {
             throw new BusinessException("La session " + session.getNumero() + " est deja fermee");
         }

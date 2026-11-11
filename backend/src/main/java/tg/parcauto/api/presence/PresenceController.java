@@ -38,6 +38,11 @@ import java.util.List;
 public class PresenceController {
 
     private static final String GESTION = "hasAnyRole('ADMIN','GERANT','GESTIONNAIRE_PARC','SUPERVISEUR_AGENCE')";
+    /**
+     * Creer un employe, le modifier (date d'embauche, activation), regenerer son PIN et relier un
+     * compte : administrateur et gerant seulement. Un responsable de lieu (parc, agence) suit les
+     * pointages mais ne cree ni n'efface de presences.
+     */
     private static final String ADMINISTRATION = "hasAnyRole('ADMIN','GERANT')";
 
     private final PresenceService presence;
@@ -77,7 +82,7 @@ public class PresenceController {
     }
 
     @PostMapping("/employes")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(ADMINISTRATION)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Cree un employe ; son PIN est rendu une seule fois")
     public PresenceService.EmployeAvecPin creerEmploye(@Valid @RequestBody PresenceService.EmployeRequete r,
@@ -86,21 +91,21 @@ public class PresenceController {
     }
 
     @PutMapping("/employes/{id}")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(ADMINISTRATION)
     public PresenceService.EmployeReponse modifierEmploye(@PathVariable Long id, @Valid @RequestBody PresenceService.EmployeRequete r,
                                                           @AuthenticationPrincipal UtilisateurPrincipal p) {
         return presence.modifierEmploye(id, r, p);
     }
 
     @PostMapping("/employes/{id}/pin")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(ADMINISTRATION)
     @Operation(summary = "Donne un nouveau PIN a l'employe ; l'ancien ne marche plus")
     public PresenceService.EmployeAvecPin reinitialiserPin(@PathVariable Long id, @AuthenticationPrincipal UtilisateurPrincipal p) {
         return presence.reinitialiserPin(id, p);
     }
 
     @GetMapping("/comptes-convertibles")
-    @PreAuthorize(GESTION)
+    @PreAuthorize(ADMINISTRATION)
     @Operation(summary = "Comptes utilisateurs pas encore relies a un employe")
     public List<PresenceService.CompteConvertible> comptesConvertibles() {
         return presence.comptesConvertibles();

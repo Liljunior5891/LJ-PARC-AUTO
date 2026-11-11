@@ -27,6 +27,8 @@ import tg.parcauto.api.security.Autorisations;
 @RestController
 @ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/gps")
+// Carte, trajets et positions de la flotte : reserves a la gestion.
+@org.springframework.security.access.prepost.PreAuthorize(tg.parcauto.api.security.Autorisations.GESTION)
 @RequiredArgsConstructor
 @Tag(name = "Geolocalisation")
 public class GpsController {
@@ -59,12 +61,20 @@ public class GpsController {
     public record NouveauJeton(String jeton, String adresse) {
     }
 
+    @org.springframework.web.bind.annotation.DeleteMapping("/jeton")
+    @PreAuthorize(Autorisations.ADMINISTRATION)
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    @Operation(summary = "Revoque le jeton GPS de l'entreprise sans en creer d'autre")
+    public void revoquerJeton() {
+        jetons.revoquer();
+    }
+
     @PostMapping("/jeton")
     @PreAuthorize(Autorisations.ADMINISTRATION)
     @Operation(summary = "Genere (ou remplace) le jeton GPS de l'entreprise ; il n'est montre qu'une fois")
     public NouveauJeton genererJeton() {
         String jeton = jetons.generer();
-        return new NouveauJeton(jeton, "/api/public/gps/positions/traccar?jeton=" + jeton);
+        return new NouveauJeton(jeton, "/api/public/gps/positions/traccar");
     }
 
     @GetMapping("/fournisseurs")

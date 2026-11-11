@@ -33,4 +33,8 @@ public interface UtilisateurRepository
               and u.entrepriseId = :entrepriseId
             """)
     long compterAdministrateursActifsHors(@Param("id") Long id, @Param("entrepriseId") Long entrepriseId);
+
+    /** Verrou transactionnel par entreprise sur la gestion des administrateurs. */
+    @Query(value = "select 1 from (select pg_advisory_xact_lock(:entrepriseId, 7701)) verrou", nativeQuery = true)
+    Integer verrouillerAdministrateurs(@Param("entrepriseId") Long entrepriseId);
 }

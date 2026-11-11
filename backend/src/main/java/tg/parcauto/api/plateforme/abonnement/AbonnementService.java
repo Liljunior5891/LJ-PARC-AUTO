@@ -399,6 +399,12 @@ public class AbonnementService {
         if (modules.isEmpty()) {
             throw new BusinessException("Choisissez au moins un module");
         }
+        // Un module que la formule ne tarifie pas n'y est pas propose : jamais facture 0 par defaut.
+        modules.stream().filter(m -> f.getPrix() == null || !f.getPrix().containsKey(m)).findFirst()
+                .ifPresent(m -> {
+                    throw new BusinessException("Le module " + m.getLibelle() + " n'est pas propose dans la formule "
+                            + f.getNom());
+                });
         // Chaque module se paie a son prix dans la formule choisie.
         List<Ligne> lignes = modules.stream()
                 .map(m -> new Ligne(m.name(), m.getLibelle(), f.prixDe(m)))
@@ -422,6 +428,10 @@ public class AbonnementService {
         }
         Formule f = formuleOuverte(d.formuleId());
         Devis devis = devis(f, d.periodicite(), d.modules());
+        if (devis.montant().signum() <= 0) {
+            throw new BusinessException("Le montant a payer est nul : choisissez des modules tarifes");
+        }
+        exigerReferenceInedite(d.moyen() == null ? null : d.moyen().toString(), d.reference());
         PaiementAbonnement p = nouveauPaiement(entrepriseId, f, d.periodicite(), devis, d.moyen(),
                 d.reference(), d.note(), devis.montant());
         return vue(paiements.save(p), nomEntreprise(entrepriseId));
@@ -559,6 +569,20 @@ public class AbonnementService {
 
     // ===================================================== garde-fous metier
 
+    /** Une reference de virement ou de mobile money deja declaree (et non rejetee) ne sert pas deux fois. */
+    private void exigerReferenceInedite(String moyen, String reference) {
+        if (moyen == null || reference == null || reference.isBlank()) {
+            return;
+        }
+        Integer deja = jdbc.queryForObject("""
+                select count(*) from abo_paiement
+                where moyen = ? and lower(reference) = lower(?) and statut <> 'REJETE'
+                """, Integer.class, moyen, reference.trim());
+        if (deja != null && deja > 0) {
+            throw new BusinessException("Cette reference de paiement a deja ete declaree");
+        }
+    }
+
     /**
      * Refuse la creation au-dela de la limite de la formule de l'entreprise
      * courante. Pendant l'essai, ou sans formule, rien n'est limite.
@@ -573,6 +597,12 @@ public class AbonnementService {
                 .filter(a -> !a.isEssai() && a.getFormule() != null)
                 .ifPresent(a -> {
                     Integer limite = a.getFormule().limite(ressource);
+                    if (limite != null) {
+                        // Verrou par entreprise et par ressource jusqu'a la fin de la transaction de
+                        // l'appelant : deux creations simultanees ne depassent pas la limite payee.
+                        jdbc.query("select pg_advisory_xact_lock(?, ?)", rs -> null,
+                                entrepriseId.intValue(), ressource.ordinal() + 1000);
+                    }
                     if (limite != null && compter(ressource, entrepriseId) >= limite) {
                         throw new BusinessException("Votre formule " + a.getFormule().getNom() + " est limitee a "
                                 + limite + " " + ressource.getLibelle().toLowerCase()

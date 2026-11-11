@@ -39,6 +39,14 @@ public class UtilisateurService {
     private final PasswordEncoder encodeur;
     private final ModuleService moduleService;
     private final tg.parcauto.api.pointdevente.reglage.ReglagePdvRepository reglagesPdv;
+    private final tg.parcauto.api.common.LimiteurRequetes limiteur;
+    private final tg.parcauto.api.common.audit.JournalActiviteService journal;
+
+    /**
+     * Message neutre : l'unicite des adresses est verifiee sur toute la plateforme,
+     * le message ne doit pas reveler qu'un compte existe dans une autre entreprise.
+     */
+    private static final String ADRESSE_INDISPONIBLE = "Cette adresse ne peut pas etre utilisee pour un nouveau compte";
 
     @Transactional(readOnly = true)
     public Page<UtilisateurDto.Reponse> rechercher(String q, Role role, Boolean actif, Pageable pageable) {
@@ -55,7 +63,7 @@ public class UtilisateurService {
     public UtilisateurDto.Reponse creer(UtilisateurDto.Creation demande) {
         abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.UTILISATEURS);
         if (repository.existsByEmailIgnoreCase(demande.email())) {
-            throw new BusinessException("Un compte existe deja avec l'adresse " + demande.email());
+            throw new BusinessException(ADRESSE_INDISPONIBLE);
         }
         Utilisateur utilisateur = new Utilisateur();
         utilisateur.setEntrepriseId(ContexteEntreprise.exiger());
@@ -65,8 +73,25 @@ public class UtilisateurService {
         utilisateur.setTelephone(vide(demande.telephone()) ? null : demande.telephone().trim());
         utilisateur.setRoles(attribuables(copie(demande.roles()), Set.of()));
         utilisateur.setMotDePasse(encodeur.encode(demande.motDePasse()));
+        // Mot de passe choisi par l'administrateur : provisoire. Le titulaire le remplace a sa
+        // premiere connexion, l'administrateur ne peut plus agir en son nom.
+        utilisateur.setMotDePasseAChanger(true);
         utilisateur.setActif(true);
-        return versDto(repository.save(utilisateur));
+        Utilisateur cree = repository.save(utilisateur);
+        tracer(cree, "PROFILS", "profils accordes a la creation", null, cree.getRoles());
+        return versDto(cree);
+    }
+
+    /** Trace une action sur un compte ; les profils avant/apres sont listes en clair. */
+    private void tracer(Utilisateur u, String action, String quoi, Set<Role> avant, Set<Role> apres) {
+        journal.administration(u.getEntrepriseId(), action, "Utilisateur", "Utilisateur", u.getId(),
+                "Compte « " + u.nomComplet() + " » : " + quoi,
+                avant == null ? null : java.util.Map.of("profils", profils(avant)),
+                apres == null ? null : java.util.Map.of("profils", profils(apres)));
+    }
+
+    private static String profils(Set<Role> roles) {
+        return roles.stream().map(Enum::name).sorted().collect(java.util.stream.Collectors.joining(", "));
     }
 
     public UtilisateurDto.Reponse modifier(Long id, UtilisateurDto.Modification demande, Long idCourant) {
@@ -75,7 +100,7 @@ public class UtilisateurService {
         repository.findByEmailIgnoreCase(demande.email())
                 .filter(autre -> !autre.getId().equals(id))
                 .ifPresent(autre -> {
-                    throw new BusinessException("Un compte existe deja avec l'adresse " + demande.email());
+                    throw new BusinessException(ADRESSE_INDISPONIBLE);
                 });
 
         Set<Role> roles = attribuables(copie(demande.roles()), utilisateur.getRoles());
@@ -86,6 +111,10 @@ public class UtilisateurService {
         }
         if (utilisateur.getRoles().contains(Role.ADMIN) && !roles.contains(Role.ADMIN)) {
             verifierDernierAdministrateur(id);
+        }
+        if (!roles.equals(utilisateur.getRoles())) {
+            tracer(utilisateur, "PROFILS", "profils modifies", EnumSet.copyOf(utilisateur.getRoles().isEmpty()
+                    ? EnumSet.noneOf(Role.class) : utilisateur.getRoles()), roles);
         }
 
         if (!utilisateur.getEmail().equalsIgnoreCase(demande.email().trim())) {
@@ -114,6 +143,10 @@ public class UtilisateurService {
         if (actif && !utilisateur.isActif()) {
             abonnement.verifierLimite(tg.parcauto.api.plateforme.abonnement.Ressource.UTILISATEURS);
         }
+        if (utilisateur.isActif() != actif) {
+            tracer(utilisateur, actif ? "ACTIVATION" : "DESACTIVATION", actif ? "compte active" : "compte desactive",
+                    null, null);
+        }
         utilisateur.setActif(actif);
         return versDto(utilisateur);
     }
@@ -121,14 +154,24 @@ public class UtilisateurService {
     /** Reinitialisation par un administrateur : l'ancien mot de passe n'est pas demande. */
     /** Le gerant definit le code PIN d'un compte, ou l'efface pour que le caissier en cree un. */
     public void definirPin(Long id, String pin) {
-        charger(id).setPinHash(pin == null || pin.isBlank() ? null : encodeur.encode(pin));
+        Utilisateur u = charger(id);
+        u.setPinHash(pin == null || pin.isBlank() ? null : encodeur.encode(pin));
+        tracer(u, "PIN", pin == null || pin.isBlank() ? "code PIN efface" : "code PIN defini par le gerant", null, null);
     }
 
     public void reinitialiserMotDePasse(Long id, String motDePasse) {
         Utilisateur u = charger(id);
         u.setMotDePasse(encodeur.encode(motDePasse));
+        // Provisoire, comme a la creation : l'administrateur ne garde pas la connaissance du mot de passe.
+        u.setMotDePasseAChanger(true);
         // Un mot de passe vole ne garde pas sa session ouverte.
         u.invaliderJetons();
+        tracer(u, "MOT_DE_PASSE", "mot de passe reinitialise par un administrateur", null, null);
+    }
+
+    /** Deconnexion : les jetons deja emis pour ce compte ne sont plus acceptes. */
+    public void deconnecter(Long id) {
+        repository.findById(id).ifPresent(Utilisateur::invaliderJetons);
     }
 
     /** Compte de la personne connectee (y compris l'administrateur de la plateforme). */
@@ -154,9 +197,15 @@ public class UtilisateurService {
     public void changerSonMotDePasse(Long id, UtilisateurDto.ChangementMotDePasse demande) {
         Utilisateur utilisateur = repository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Utilisateur", id));
+        // Un jeton vole ne permet pas d'essayer l'ancien mot de passe sans limite.
+        String cle = "mdp-actuel:" + id;
+        limiteur.verifier(cle, 5, java.time.Duration.ofMinutes(15),
+                "Trop d'essais du mot de passe actuel. Reessayez dans quelques minutes.");
         if (!encodeur.matches(demande.motDePasseActuel(), utilisateur.getMotDePasse())) {
+            limiteur.noter(cle);
             throw new BusinessException("Le mot de passe actuel est incorrect");
         }
+        limiteur.oublier(cle);
         if (encodeur.matches(demande.nouveauMotDePasse(), utilisateur.getMotDePasse())) {
             throw new BusinessException("Le nouveau mot de passe doit differer de l'actuel");
         }
@@ -195,6 +244,9 @@ public class UtilisateurService {
     }
 
     private void verifierDernierAdministrateur(Long id) {
+        // Verrou par entreprise : deux administrateurs qui se retirent mutuellement le profil en
+        // meme temps ne laissent pas l'entreprise sans administrateur.
+        repository.verrouillerAdministrateurs(ContexteEntreprise.exiger());
         if (repository.compterAdministrateursActifsHors(id, ContexteEntreprise.exiger()) == 0) {
             throw new BusinessException(
                     "Ce compte est le dernier administrateur actif : l'entreprise ne peut pas rester sans administrateur");

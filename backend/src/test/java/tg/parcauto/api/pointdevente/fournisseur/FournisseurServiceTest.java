@@ -70,7 +70,8 @@ class FournisseurServiceTest {
             return i.getArgument(0);
         });
         service = new FournisseurService(fiches, reglements, commandes, caisse, numerotation,
-                mock(tg.parcauto.api.pointdevente.tresorerie.TresorerieService.class));
+                mock(tg.parcauto.api.pointdevente.tresorerie.TresorerieService.class),
+                mock(tg.parcauto.api.pointdevente.reglage.ReglagePdvService.class));
     }
 
     @Test

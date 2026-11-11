@@ -13,7 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
-
+
+
 // Donnees financieres : gestionnaires et administrateur seulement (pas les chauffeurs).
 @org.springframework.security.access.prepost.PreAuthorize(tg.parcauto.api.security.Autorisations.GESTION)
 @RestController
@@ -31,7 +32,10 @@ public class RentabiliteController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
         LocalDate finRetenue = fin == null ? LocalDate.now() : fin;
-        return service.global(debut == null ? finRetenue.withDayOfMonth(1) : debut, finRetenue);
+        LocalDate debutRetenu = debut == null ? finRetenue.withDayOfMonth(1) : debut;
+        // Periode bornee (5 ans au plus), comme le pilotage : pas de calcul jour par jour sans fin.
+        tg.parcauto.api.pilotage.RapportService.exigerPeriode(debutRetenu, finRetenue);
+        return service.global(debutRetenu, finRetenue);
     }
 
     @GetMapping("/camions/{camionId}")
@@ -41,6 +45,8 @@ public class RentabiliteController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
         LocalDate finRetenue = fin == null ? LocalDate.now() : fin;
-        return service.ficheCamion(camionId, debut == null ? finRetenue.withDayOfMonth(1) : debut, finRetenue);
+        LocalDate debutRetenu = debut == null ? finRetenue.withDayOfMonth(1) : debut;
+        tg.parcauto.api.pilotage.RapportService.exigerPeriode(debutRetenu, finRetenue);
+        return service.ficheCamion(camionId, debutRetenu, finRetenue);
     }
 }

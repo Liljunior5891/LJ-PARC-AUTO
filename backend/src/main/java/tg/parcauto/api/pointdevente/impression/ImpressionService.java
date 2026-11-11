@@ -305,7 +305,25 @@ public class ImpressionService {
     /** Bons qu'une caisse doit imprimer par le navigateur (nul : toutes les imprimantes). */
     @Transactional(readOnly = true)
     public List<TravailReponse> aImprimer(Long caisseId) {
-        return travaux.aImprimer(A_IMPRIMER, caisseId).stream().map(this::reponse).toList();
+        return aImprimer(caisseId, null);
+    }
+
+    /**
+     * Bons a imprimer ; {@code visibles} non nul : seulement ceux des imprimantes communes
+     * ou rattachees a ces caisses (caissier et serveur ne voient que leur caisse).
+     */
+    public List<TravailReponse> aImprimer(Long caisseId, java.util.Set<Long> visibles) {
+        if (visibles != null && caisseId != null && !visibles.contains(caisseId)) {
+            throw new BusinessException("Cette caisse ne vous est pas affectee");
+        }
+        return travaux.aImprimer(A_IMPRIMER, caisseId).stream()
+                .filter(t -> visible(t, visibles))
+                .map(this::reponse).toList();
+    }
+
+    private static boolean visible(TravailImpression t, java.util.Set<Long> visibles) {
+        return visibles == null || t.getImprimante().getCaisse() == null
+                || visibles.contains(t.getImprimante().getCaisse().getId());
     }
 
     /**
@@ -313,12 +331,17 @@ public class ImpressionService {
      * nom. Un bon deja pris par une autre caisse n'est pas rendu.
      */
     public List<TravailReponse> prendre(List<Long> ids, String auteur) {
+        return prendre(ids, auteur, null);
+    }
+
+    public List<TravailReponse> prendre(List<Long> ids, String auteur, java.util.Set<Long> visibles) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
         List<TravailReponse> pris = new ArrayList<>();
         for (TravailImpression t : travaux.verrouiller(ids)) {
-            if (!A_IMPRIMER.contains(t.getStatut())) {
+            // Un bon d'une autre caisse n'est ni pris ni marque imprime.
+            if (!A_IMPRIMER.contains(t.getStatut()) || !visible(t, visibles)) {
                 continue;
             }
             t.setStatut(TravailImpression.Statut.IMPRIME);

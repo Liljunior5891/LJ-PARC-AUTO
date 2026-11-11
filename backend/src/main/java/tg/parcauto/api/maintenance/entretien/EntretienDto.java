@@ -19,9 +19,9 @@ public final class EntretienDto {
             @NotNull TypeEntretien type,
             @NotBlank @Size(max = 255) String libelle,
             LocalDate datePrevue,
-            @PositiveOrZero Long kilometragePrevu,
-            @Positive Long periodiciteKm,
-            @Positive Integer periodiciteJours,
+            @PositiveOrZero @jakarta.validation.constraints.Max(5_000_000) Long kilometragePrevu,
+            @Positive @jakarta.validation.constraints.Max(1_000_000) Long periodiciteKm,
+            @Positive @jakarta.validation.constraints.Max(3650) Integer periodiciteJours,
             @Size(max = 180) String fournisseur,
             @Size(max = 180) String intervenant,
             String observations) {
@@ -30,7 +30,7 @@ public final class EntretienDto {
     /** Realisation de l'intervention : releves, cout et pieces remplacees. */
     public record Realisation(
             @NotNull LocalDate dateRealisation,
-            @NotNull @PositiveOrZero Long kilometrageRealise,
+            @NotNull @PositiveOrZero @jakarta.validation.constraints.Max(9_999_999) Long kilometrageRealise,
             @PositiveOrZero BigDecimal cout,
             @Size(max = 180) String fournisseur,
             String piecesRemplacees,

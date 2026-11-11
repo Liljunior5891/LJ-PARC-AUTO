@@ -24,6 +24,15 @@ public record PositionBrute(
         Boolean moteurAllume,
         Instant horodatage) {
 
+    public static final long KILOMETRAGE_MAX = 10_000_000L;
+
+    /** Valeurs dans des bornes physiques : sinon la position seule est ecartee, pas tout le lot. */
+    public boolean valeursPlausibles() {
+        return (altitude == null || (altitude.doubleValue() >= -500 && altitude.doubleValue() <= 9000))
+                && (vitesseKmh == null || (vitesseKmh.doubleValue() >= -1 && vitesseKmh.doubleValue() <= 1000))
+                && (kilometrage == null || (kilometrage >= 0 && kilometrage <= KILOMETRAGE_MAX));
+    }
+
     public boolean coordonneesValides() {
         return latitude != null && longitude != null
                 && latitude.doubleValue() >= -90 && latitude.doubleValue() <= 90

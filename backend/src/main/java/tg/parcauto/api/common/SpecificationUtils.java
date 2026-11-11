@@ -20,9 +20,26 @@ public final class SpecificationUtils {
         return valeur != null && !valeur.isBlank();
     }
 
-    /** Motif {@code like} insensible a la casse, borne par des jokers. */
+    /** Longueur maximale d'un terme de recherche : au-dela, il est coupe. */
+    public static final int LONGUEUR_MAX_TERME = 100;
+
+    /**
+     * Motif {@code like} insensible a la casse, borne par des jokers. Les jokers
+     * saisis ({@code %}, {@code _}) sont echappes par la barre oblique inverse,
+     * caractere d'echappement par defaut de PostgreSQL : ils cherchent le caractere
+     * lui-meme, et un terme fait de jokers ne declenche pas une recherche couteuse.
+     */
     public static String motif(String terme) {
-        return "%" + terme.trim().toLowerCase() + "%";
+        return "%" + echapper(terme) + "%";
+    }
+
+    /** Terme coupe a {@link #LONGUEUR_MAX_TERME}, en minuscules, jokers echappes. */
+    public static String echapper(String terme) {
+        String t = terme.trim().toLowerCase();
+        if (t.length() > LONGUEUR_MAX_TERME) {
+            t = t.substring(0, LONGUEUR_MAX_TERME);
+        }
+        return t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     /** {@code lower(colonne)}, pour comparer sans tenir compte de la casse. */

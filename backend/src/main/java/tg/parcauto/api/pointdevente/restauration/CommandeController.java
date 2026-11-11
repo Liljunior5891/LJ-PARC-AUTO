@@ -196,6 +196,7 @@ public class CommandeController {
     public RestaurationDto.ResultatEncaissement encaisser(@PathVariable Long id,
                                                           @Valid @RequestBody RestaurationDto.Encaissement demande,
                                                           @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        acces(id);
         return service.encaisser(id, demande, principal);
     }
 

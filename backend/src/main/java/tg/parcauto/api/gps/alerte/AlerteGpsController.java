@@ -22,6 +22,7 @@ import tg.parcauto.api.security.Autorisations;
 @RestController
 @ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/gps/alertes")
+@org.springframework.security.access.prepost.PreAuthorize(tg.parcauto.api.security.Autorisations.GESTION)
 @RequiredArgsConstructor
 @Tag(name = "Alertes GPS")
 public class AlerteGpsController {

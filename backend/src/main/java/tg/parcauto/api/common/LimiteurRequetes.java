@@ -50,6 +50,44 @@ public class LimiteurRequetes {
         }
     }
 
+    /**
+     * Refuse si la cle a deja atteint le maximum sur la fenetre, sans compter cet
+     * appel : pour les echecs seuls (mot de passe faux), notes ensuite par {@link #noter}.
+     */
+    public void verifier(String cle, int maximum, Duration fenetre, String message) {
+        long limite = System.currentTimeMillis() - fenetre.toMillis();
+        boolean[] refuse = {false};
+        traces.computeIfPresent(cle, (k, file) -> {
+            while (!file.isEmpty() && file.peekFirst() < limite) {
+                file.pollFirst();
+            }
+            refuse[0] = file.size() >= maximum;
+            return file;
+        });
+        if (refuse[0]) {
+            throw new TropDeRequetesException(message);
+        }
+    }
+
+    /** Compte un evenement (un echec) pour la cle. */
+    public void noter(String cle) {
+        long maintenant = System.currentTimeMillis();
+        traces.compute(cle, (k, d) -> {
+            Deque<Long> file = d == null ? new ArrayDeque<>() : d;
+            file.addLast(maintenant);
+            // Une file ne garde que les 1000 derniers evenements.
+            while (file.size() > 1000) {
+                file.pollFirst();
+            }
+            return file;
+        });
+    }
+
+    /** Efface les evenements de la cle (connexion reussie, par exemple). */
+    public void oublier(String cle) {
+        traces.remove(cle);
+    }
+
     /** Oublie les cles dont aucun appel n'est plus dans une fenetre. */
     @Scheduled(fixedDelay = 3_600_000)
     public void purger() {

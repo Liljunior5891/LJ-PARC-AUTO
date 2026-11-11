@@ -200,6 +200,8 @@
       <p class="avertissement">Copiez-le maintenant : il ne sera plus affiche.</p>
       <label>Jeton<input type="text" readonly [value]="j.jeton" (focus)="$any($event.target).select()" /></label>
       <label>Adresse a donner a Traccar (forward.url)<input type="text" readonly [value]="j.adresse" (focus)="$any($event.target).select()" /></label>
+      <label>En-tete a donner a Traccar (forward.header)<input type="text" readonly [value]="'X-Jeton-Gps: ' + j.jeton" (focus)="$any($event.target).select()" /></label>
+      <p>Passez le jeton par l'en-tete plutot que dans l'adresse : une adresse se retrouve dans les journaux des serveurs.</p>
     }
     <footer>
       <button type="button" class="bouton" (click)="genererJeton()">{{ etatJeton()?.actif ? 'Generer un nouveau jeton' : 'Generer le jeton' }}</button>

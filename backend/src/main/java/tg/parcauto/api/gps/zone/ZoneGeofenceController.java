@@ -25,6 +25,7 @@ import tg.parcauto.api.security.Autorisations;
 @RestController
 @ModuleRequis(ModuleApplicatif.GESTION_PARC)
 @RequestMapping("/api/gps/zones")
+@org.springframework.security.access.prepost.PreAuthorize(tg.parcauto.api.security.Autorisations.GESTION)
 @RequiredArgsConstructor
 @Tag(name = "Geofencing")
 public class ZoneGeofenceController {

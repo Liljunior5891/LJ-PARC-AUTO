@@ -247,7 +247,9 @@ public class DepenseAgenceService {
      */
     private DepenseAgence.Statut etapeInitiale(CompteAgence compte) {
         boolean reglage = reglages.findFirstByOrderByIdAsc().map(ReglageAgence::isValidationDepensesCaisse).orElse(false);
-        if (!reglage || compte.getType().getFamille() != TypeCompte.Famille.CASH || DroitsAgence.estAdministrateur()) {
+        // Toute depense d'un non-administrateur passe par le circuit, quel que soit le compte : sinon un
+        // virement caisse -> banque sous le seuil puis une depense sur la banque echappe au visa.
+        if (!reglage || DroitsAgence.estAdministrateur()) {
             return null;
         }
         return caissierSeul() ? DepenseAgence.Statut.ATTENTE_SUPERVISEUR : DepenseAgence.Statut.ATTENTE_ADMIN;
@@ -443,13 +445,19 @@ public class DepenseAgenceService {
         if (fichier.getSize() > 15L * 1024 * 1024) {
             throw new BusinessException("Le justificatif depasse 15 Mo");
         }
+        // Justificatif d'une depense validee, refusee ou annulee : fige (preuve de la decision).
+        if (d.getJustificatifChemin() != null && d.getStatut() != DepenseAgence.Statut.ATTENTE_SUPERVISEUR
+                && d.getStatut() != DepenseAgence.Statut.ATTENTE_ADMIN) {
+            throw new BusinessException("Le justificatif de " + d.getNumero() + " a servi a la decision :"
+                    + " il ne se remplace plus");
+        }
         String ancien = d.getJustificatifChemin();
         d.setJustificatifChemin(stockage.enregistrer(fichier, "agences-depenses/" + d.getId()));
         d.setJustificatifNom(fichier.getOriginalFilename() == null ? "justificatif" : fichier.getOriginalFilename());
         d.setJustificatifType(fichier.getContentType());
-        if (ancien != null) {
-            stockage.supprimer(ancien);
-        }
+        // L'ancienne piece reste sur le disque ; le remplacement est trace.
+        audit.tracer(d.getAgenceId(), "PIECE", "DEPENSE", d.getId(), "Justificatif de " + d.getNumero()
+                + (ancien == null ? " joint" : " remplace") + " : " + d.getJustificatifNom(), null, null);
         return versDto(d, contexte());
     }
 

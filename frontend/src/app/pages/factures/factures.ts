@@ -193,7 +193,14 @@ export class Factures implements OnInit {
       });
   }
 
+  /** Motif obligatoire : il est garde dans les observations de la facture. */
+  motifAnnulation = '';
+
   async annuler(facture: Facture): Promise<void> {
+    const motif = this.motifAnnulation.trim();
+    if (!motif) {
+      return;
+    }
     const accepte = await this.operation.confirmer({
       titre: `Annuler la facture ${facture.numero} ?`,
       message: 'Cette action ne peut pas etre defaite.',
@@ -203,8 +210,9 @@ export class Factures implements OnInit {
     if (!accepte) {
       return;
     }
-    this.service.annuler(facture.id).subscribe({
+    this.service.annuler(facture.id, motif).subscribe({
       next: (maj) => {
+        this.motifAnnulation = '';
         this.detail.set(maj);
         this.charger();
       },

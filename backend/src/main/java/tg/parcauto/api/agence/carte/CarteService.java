@@ -77,8 +77,9 @@ public class CarteService {
     public record ProduitDto(Long id, String nom, long prixVente, int seuilAlerte, boolean actif) {
     }
 
-    public record Entree(@NotNull Long agenceId, @NotNull Long produitId, @NotNull @Min(1) Integer quantite,
-                         @NotNull @PositiveOrZero Long coutUnitaire, Long compteId, @Size(max = 150) String fournisseur,
+    public record Entree(@NotNull Long agenceId, @NotNull Long produitId,
+                         @NotNull @Min(1) @jakarta.validation.constraints.Max(1_000_000) Integer quantite,
+                         @NotNull @PositiveOrZero @jakarta.validation.constraints.Max(100_000_000L) Long coutUnitaire, Long compteId, @Size(max = 150) String fournisseur,
                          @Size(max = 80) String reference) {
     }
 
@@ -198,7 +199,12 @@ public class CarteService {
         l.setCompteId(compte == null ? null : compte.getId());
         l.setAuteurNom(auteur.getNomComplet());
         l = lots.save(l);
-        long total = (long) e.quantite() * e.coutUnitaire();
+        long total;
+        try {
+            total = Math.multiplyExact((long) e.quantite(), e.coutUnitaire());
+        } catch (ArithmeticException ex) {
+            throw new BusinessException("Montant du lot hors limites");
+        }
         if (compte != null && total > 0) {
             Ecriture ecriture = registre.enregistrer(new RegistreService.Entete(agence.getId(), NatureEcriture.CARTE,
                     "Achat " + l.getNumero() + " : " + e.quantite() + " " + p.getNom() + " a " + RegistreService.francs(e.coutUnitaire()),

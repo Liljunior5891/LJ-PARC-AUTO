@@ -139,7 +139,10 @@ public class FournisseurParcService {
 
     /** Reglement d'une dette validee, dans la limite du reste du. */
     public ReglementReponse regler(ReglementRequete r) {
-        Depense d = depenseService.charger(r.depenseId());
+        depenseService.charger(r.depenseId());
+        // Deux reglements simultanes de la meme dette passent l'un apres l'autre : le second voit le premier.
+        Depense d = depenses.verrouiller(r.depenseId())
+                .orElseThrow(() -> ResourceNotFoundException.of("Depense", r.depenseId()));
         if (!d.isAPayer()) {
             throw new BusinessException("La depense " + d.getNumero() + " n'est pas a payer");
         }
@@ -169,6 +172,11 @@ public class FournisseurParcService {
     }
 
     public ReglementReponse annulerReglement(Long id, String motif) {
+        // Avec la validation des depenses, rouvrir une dette reglee revient a l'administrateur.
+        if (depenseService.validationRequise()) {
+            throw new BusinessException("La validation des depenses est activee : seul l'administrateur annule un"
+                    + " reglement");
+        }
         ReglementFournisseurParc r = reglements.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Reglement", id));
         if (r.getStatut() == ReglementFournisseurParc.Statut.ANNULE) {
             throw new BusinessException("Le reglement " + r.getNumero() + " est deja annule");

@@ -83,16 +83,20 @@ public class SocieteService {
         }
         String type = fichier.getContentType();
         if (type == null || !TYPES_LOGO.contains(type.toLowerCase())) {
-            throw new BusinessException("Format de logo non accepte : utilisez PNG, JPEG, GIF ou WEBP");
+            throw new BusinessException("Format de logo non accepte : utilisez PNG, JPEG ou GIF");
         }
-
-        Societe societe = chargerPourEcriture();
+        // Contenu verifie et re-encode en PNG : un fichier malforme ne casse pas les PDF de
+        // l'entreprise, et les metadonnees (EXIF) ne sont pas publiees dans la boutique.
+        byte[] png;
         try {
-            societe.setLogoBase64(Base64.getEncoder().encodeToString(fichier.getBytes()));
+            png = tg.parcauto.api.common.ImageSure.enPng(
+                    tg.parcauto.api.common.ImageSure.lire(fichier.getBytes(), "Logo"));
         } catch (IOException e) {
-            throw new BusinessException("Lecture du logo impossible : " + e.getMessage());
+            throw new BusinessException("Lecture du logo impossible");
         }
-        societe.setLogoType(type.toLowerCase());
+        Societe societe = chargerPourEcriture();
+        societe.setLogoBase64(Base64.getEncoder().encodeToString(png));
+        societe.setLogoType("image/png");
         return versDto(repository.save(societe));
     }
 

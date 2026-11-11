@@ -87,8 +87,17 @@ public class IncidentService {
         incident.setNumero(numerotation.prochainNumero("INC"));
         incident.setCamion(camion);
         incident.setChauffeur(chauffeurDeclare == null ? null : chauffeurService.charger(chauffeurDeclare));
-        incident.setMission(requete.missionId() == null
-                ? null : missionService.charger(requete.missionId()));
+        var mission = requete.missionId() == null ? null : missionService.charger(requete.missionId());
+        // La mission rattachee porte sur ce vehicule ; pour le chauffeur, c'est la sienne.
+        if (mission != null && !mission.getCamion().getId().equals(camion.getId())) {
+            throw new BusinessException("La mission " + mission.getNumero() + " ne porte pas sur ce vehicule");
+        }
+        if (mission != null && tg.parcauto.api.security.Terrain.chauffeurSeul()
+                && (mission.getChauffeur() == null || !mission.getChauffeur().getId().equals(chauffeurDeclare))) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "La mission " + mission.getNumero() + " n'est pas la votre");
+        }
+        incident.setMission(mission);
         incident.setType(requete.type());
         incident.setGravite(requete.gravite() == null ? GraviteIncident.MOYENNE : requete.gravite());
         incident.setDescription(requete.description().trim());
@@ -96,6 +105,9 @@ public class IncidentService {
         incident.setLatitude(requete.latitude());
         incident.setLongitude(requete.longitude());
         incident.setPhotoUrl(requete.photoUrl());
+        if (requete.survenuLe() != null && requete.survenuLe().isAfter(Instant.now().plusSeconds(300))) {
+            throw new BusinessException("La date de l'incident ne peut pas etre dans le futur");
+        }
         incident.setSurvenuLe(requete.survenuLe() == null ? Instant.now() : requete.survenuLe());
         incident.setCoutEstime(requete.coutEstime());
         incident.setImmobilisant(requete.immobilisant() == null

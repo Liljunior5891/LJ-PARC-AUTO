@@ -27,8 +27,11 @@ public class SecuritePresence {
 
     /** Duree de vie d'un code QR affiche. */
     static final int PAS_SECONDES = 30;
-    /** Un code scanne reste valable ce nombre de pas : le temps d'autoriser la position et de taper le PIN. */
-    private static final int PAS_ACCEPTES = 6;
+    /**
+     * Un code scanne reste valable ce nombre de pas (60 a 90 s) : le temps d'autoriser la
+     * position et de taper le PIN, mais trop court pour relayer une photo du code.
+     */
+    private static final int PAS_ACCEPTES = 2;
     /** Telephone (adresse) : PIN faux tolere dans la fenetre, avant blocage. */
     private static final int ESSAIS_MAX_TELEPHONE = 10;
     /** Borne partagee par tout le personnel : un peu plus large, et un blocage plus court. */
@@ -36,13 +39,23 @@ public class SecuritePresence {
     private static final Duration FENETRE = Duration.ofMinutes(10);
     private static final Duration BLOCAGE_TELEPHONE = Duration.ofMinutes(10);
     private static final Duration BLOCAGE_BORNE = Duration.ofMinutes(3);
+    /** Blocage le plus long : chaque nouveau blocage triple la duree precedente, jusqu'a 24 h. */
+    private static final Duration BLOCAGE_MAX = Duration.ofHours(24);
+    /** Toute l'entreprise : PIN faux toleres par heure, tous appareils confondus. */
+    private static final int ESSAIS_MAX_ENTREPRISE = 50;
+    private static final Duration FENETRE_ENTREPRISE = Duration.ofHours(1);
+    private static final Duration BLOCAGE_ENTREPRISE = Duration.ofMinutes(15);
 
     private final SecureRandom aleatoire = new SecureRandom();
     private final byte[] cle;
     private final Map<String, Essais> essais = new ConcurrentHashMap<>();
     private final java.util.concurrent.atomic.AtomicLong numeros = new java.util.concurrent.atomic.AtomicLong();
 
-    public SecuritePresence(@Value("${parcauto.security.jwt.secret}") String secret) {
+    /**
+     * Cle des empreintes de PIN : PRESENCE_CLE_PIN si definie, sinon (compatibilite des PIN
+     * deja emis) la cle de signature des jetons.
+     */
+    public SecuritePresence(@Value("${PRESENCE_CLE_PIN:${parcauto.security.jwt.secret}}") String secret) {
         this.cle = ("presence:" + secret).getBytes(StandardCharsets.UTF_8);
     }
 
@@ -134,8 +147,24 @@ public class SecuritePresence {
      */
     public long reserverEssai(String appareil) {
         boolean borne = appareil.startsWith("borne:");
-        int maximum = borne ? ESSAIS_MAX_BORNE : ESSAIS_MAX_TELEPHONE;
-        Duration blocage = borne ? BLOCAGE_BORNE : BLOCAGE_TELEPHONE;
+        return reserver(appareil, borne ? ESSAIS_MAX_BORNE : ESSAIS_MAX_TELEPHONE, FENETRE,
+                borne ? BLOCAGE_BORNE : BLOCAGE_TELEPHONE,
+                "Trop de PIN faux sur cet appareil : reessayez dans %d min");
+    }
+
+    /** Compteur commun a toute l'entreprise : une force brute repartie sur plusieurs appareils s'arrete aussi. */
+    public long reserverEssaiEntreprise(Long entrepriseId) {
+        return reserver("entreprise:" + entrepriseId, ESSAIS_MAX_ENTREPRISE, FENETRE_ENTREPRISE, BLOCAGE_ENTREPRISE,
+                "Trop de PIN faux dans l'entreprise : le pointage par PIN reprend dans %d min. Prevenez le gerant.");
+    }
+
+    /** Codes QR faux : compteur a part et plus large (un code expire n'est pas un PIN faux). */
+    public long reserverEssaiCode(String appareil) {
+        return reserver("code:" + appareil, 30, FENETRE, BLOCAGE_TELEPHONE,
+                "Trop de codes QR faux sur cet appareil : reessayez dans %d min");
+    }
+
+    private long reserver(String appareil, int maximum, Duration fenetre, Duration blocageBase, String message) {
         long numero = numeros.incrementAndGet();
         Instant maintenant = Instant.now();
         Instant[] bloque = {null};
@@ -146,8 +175,14 @@ public class SecuritePresence {
                 return e;
             }
             e.bloqueJusqua = null;
-            e.essais.removeIf(t -> t.instant().isBefore(maintenant.minus(FENETRE)));
+            e.essais.removeIf(t -> t.instant().isBefore(maintenant.minus(fenetre)));
             if (e.essais.size() >= maximum) {
+                // Blocage progressif : 1x, 3x, 9x... la duree de base, jusqu'a 24 h.
+                Duration blocage = blocageBase.multipliedBy((long) Math.pow(3, Math.min(e.niveau, 10)));
+                if (blocage.compareTo(BLOCAGE_MAX) > 0) {
+                    blocage = BLOCAGE_MAX;
+                }
+                e.niveau++;
                 e.bloqueJusqua = maintenant.plus(blocage);
                 e.essais.clear();
                 bloque[0] = e.bloqueJusqua;
@@ -158,7 +193,7 @@ public class SecuritePresence {
         });
         if (bloque[0] != null) {
             long minutes = Math.max(1, Duration.between(maintenant, bloque[0]).toMinutes() + 1);
-            throw new BusinessException("Trop de PIN faux sur cet appareil : reessayez dans " + minutes + " min");
+            throw new BusinessException(String.format(message, minutes));
         }
         return numero;
     }
@@ -174,7 +209,7 @@ public class SecuritePresence {
     /** Oublie les appareils sans essai recent (la table ne grossit pas sans fin). */
     @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 600_000)
     public void purger() {
-        Instant limite = Instant.now().minus(FENETRE);
+        Instant limite = Instant.now().minus(BLOCAGE_MAX);
         essais.entrySet().removeIf(en -> {
             Essais e = en.getValue();
             synchronized (e) {
@@ -190,6 +225,8 @@ public class SecuritePresence {
     private static final class Essais {
         private final java.util.List<Essai> essais = new java.util.ArrayList<>();
         private Instant bloqueJusqua;
+        /** Nombre de blocages deja subis : la duree du suivant en depend. Oublie apres 24 h de calme. */
+        private int niveau;
     }
 
     // ------------------------------------------------------------- outils

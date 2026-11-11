@@ -56,7 +56,9 @@ public final class RestaurationDto {
 
         public static TableReponse de(TableRestaurant t) {
             return new TableReponse(t.getId(), t.getSalle().getId(), t.getNom(), t.getPlaces(), t.getForme(),
-                    t.getPosX(), t.getPosY(), t.getLargeur(), t.getHauteur(), t.isActif(), t.getJetonQr());
+                    t.getPosX(), t.getPosY(), t.getLargeur(), t.getHauteur(), t.isActif(),
+                    // Le jeton du QR (commande sans compte) n'est montre qu'au gerant et a l'administrateur.
+                    tg.parcauto.api.pointdevente.catalogue.CatalogueDto.gestionnaire() ? t.getJetonQr() : null);
         }
     }
 

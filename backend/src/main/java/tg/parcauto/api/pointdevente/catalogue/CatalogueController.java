@@ -30,6 +30,8 @@ import java.util.List;
 @RestController
 @ModuleRequis(ModuleApplicatif.POINT_DE_VENTE)
 @RequestMapping("/api/pdv")
+// Personnel du point de vente (et associes) ; ni le chauffeur ni le gestionnaire de parc.
+@PreAuthorize("hasAnyRole('ADMIN','GERANT','CAISSIER','SERVEUR','PREPARATEUR','MAGASINIER','ASSOCIE')")
 @RequiredArgsConstructor
 @Tag(name = "Point de vente - catalogue")
 public class CatalogueController {
