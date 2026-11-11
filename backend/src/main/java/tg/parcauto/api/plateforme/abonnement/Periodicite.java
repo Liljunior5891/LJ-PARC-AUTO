@@ -22,4 +22,9 @@ public enum Periodicite {
     public int getMois() {
         return mois;
     }
+
+    /** Periodicite dont la remise s'applique a une duree libre : la plus longue atteinte. */
+    public static Periodicite pour(int mois) {
+        return mois >= 12 ? ANNUEL : mois >= 6 ? SEMESTRIEL : mois >= 3 ? TRIMESTRIEL : MENSUEL;
+    }
 }

@@ -64,10 +64,19 @@ export interface Recapitulatif {
       <h4>Duree payee d'avance</h4>
       <div class="periodes">
         @for (p of periodes; track p.code) {
-          <button type="button" class="periode" [class.choisie]="periodicite() === p.code" (click)="periodicite.set(p.code)">
+          <button type="button" class="periode" [class.choisie]="mois() === null && periodicite() === p.code"
+                  (click)="mois.set(null); periodicite.set(p.code)">
             {{ p.libelle }}
             @if (remise(p.code) > 0) { <small>-{{ remise(p.code) }} %</small> }
           </button>
+        }
+        @if (moisLibres()) {
+          <label class="periode autre" [class.choisie]="mois() !== null">
+            Autre durée
+            <input type="number" min="1" max="36" step="1" [value]="mois() ?? ''" placeholder="—"
+                   (input)="choisirMois($any($event.target).value)" aria-label="Nombre de mois" />
+            mois
+          </label>
         }
       </div>
 
@@ -114,6 +123,9 @@ export interface Recapitulatif {
     .periode small { color: var(--couleur-succes); font-weight: 700; margin-left: 4px; }
     .periode.choisie { border-color: var(--couleur-primaire); background: var(--couleur-primaire); color: #fff; }
     .periode.choisie small { color: #d6f5e3; }
+    .periode.autre { display: inline-flex; align-items: center; gap: 6px; }
+    .periode.autre input { width: 4.2rem; padding: .15rem .35rem; border: 1px solid var(--couleur-bordure); border-radius: 6px;
+      font: inherit; color: var(--couleur-texte, #111); background: #fff; }
     .recap { margin-top: 1rem; border: 1px solid var(--couleur-bordure); border-radius: 10px; padding: .7rem .9rem; font-size: .88rem; }
     .recap > div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
     .recap .separe { border-top: 1px dashed var(--couleur-bordure); margin-top: 4px; padding-top: 6px; }
@@ -130,13 +142,25 @@ export class ChoixFormule {
   readonly formuleId = model<number | null>(null);
   readonly periodicite = model<Periodicite>('MENSUEL');
   readonly modules = model<CodeModule[]>([]);
+  /** Console du super-administrateur : une duree libre en mois (1 a 36) est possible. */
+  readonly moisLibres = input(false);
+  /** Duree libre choisie ; nulle : la duree de la periodicite. */
+  readonly mois = model<number | null>(null);
 
   readonly periodes = PERIODICITES;
   readonly catalogue = MODULES_FACTURABLES;
   readonly presentation = PRESENTATION_MODULES;
 
   readonly formule = computed(() => this.formules().find((f) => f.id === this.formuleId()) ?? null);
-  readonly moisChoisis = computed(() => PERIODICITES.find((p) => p.code === this.periodicite())?.mois ?? 1);
+  readonly moisChoisis = computed(() => this.mois() ?? PERIODICITES.find((p) => p.code === this.periodicite())?.mois ?? 1);
+  /** Remise : celle de la periodicite, ou de la tranche atteinte par une duree libre (comme le serveur). */
+  readonly periodiciteRemise = computed<Periodicite>(() => {
+    const m = this.mois();
+    if (m === null) {
+      return this.periodicite();
+    }
+    return m >= 12 ? 'ANNUEL' : m >= 6 ? 'SEMESTRIEL' : m >= 3 ? 'TRIMESTRIEL' : 'MENSUEL';
+  });
 
   readonly recap = computed<Recapitulatif>(() => {
     const f = this.formule();
@@ -146,7 +170,7 @@ export class ChoixFormule {
       .map((m) => ({ code: m.code, libelle: m.libelle, prix: f ? this.prixDe(f, m.code) : 0 }));
     const mensualite = lignes.reduce((s, l) => s + l.prix, 0);
     const sousTotal = mensualite * this.moisChoisis();
-    const remisePourcent = this.remise(this.periodicite());
+    const remisePourcent = this.remise(this.periodiciteRemise());
     const remise = Math.round((sousTotal * remisePourcent) / 100);
     return { lignes, mensualite, sousTotal, remisePourcent, remise, montant: sousTotal - remise };
   });
@@ -174,6 +198,11 @@ export class ChoixFormule {
 
   limite(n: number | null | undefined, libelle: string): string {
     return `${libelle} : ${n == null ? 'illimite' : n}`;
+  }
+
+  choisirMois(valeur: string): void {
+    const n = Math.round(Number(valeur));
+    this.mois.set(valeur === '' || !Number.isFinite(n) ? null : Math.min(36, Math.max(1, n)));
   }
 
   basculer(m: CodeModule): void {

@@ -163,6 +163,10 @@ export interface DeclarationPaiement extends DemandeDevis {
 export interface SaisiePaiement extends DeclarationPaiement {
   /** Absent : le montant du devis. */
   montant?: number | null;
+  /** Duree libre en mois (1 a 36) ; absente : celle de la periodicite. */
+  mois?: number | null;
+  /** Entreprise en essai : la periode payee commence aujourd'hui. */
+  debutImmediat?: boolean;
 }
 
 export interface PaiementAbonnement {

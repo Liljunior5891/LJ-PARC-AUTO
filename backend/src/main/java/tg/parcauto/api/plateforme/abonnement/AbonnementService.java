@@ -152,7 +152,11 @@ public class AbonnementService {
                          @NotNull MoyenPaiementAbonnement moyen,
                          @Size(max = 100) String reference,
                          @Size(max = 500) String note,
-                         @PositiveOrZero BigDecimal montant) {
+                         @PositiveOrZero BigDecimal montant,
+                         /** Duree libre en mois (1 a 36) ; nulle : celle de la periodicite. */
+                         @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(36) Integer mois,
+                         /** Entreprise en essai : la periode payee commence aujourd'hui, l'essai s'arrete. */
+                         Boolean debutImmediat) {
     }
 
     public record PaiementVue(Long id, Long entrepriseId, String entrepriseNom, Long formuleId, String formuleNom,
@@ -403,6 +407,11 @@ public class AbonnementService {
     }
 
     private Devis devis(Formule f, Periodicite periodicite, List<ModuleApplicatif> demandes) {
+        return devis(f, periodicite, demandes, periodicite.getMois());
+    }
+
+    /** Devis sur {@code mois} mois, avec la remise de la periodicite atteinte. */
+    private Devis devis(Formule f, Periodicite periodicite, List<ModuleApplicatif> demandes, int mois) {
         Set<ModuleApplicatif> modules = demandes == null ? EnumSet.noneOf(ModuleApplicatif.class)
                 : demandes.stream().filter(ModuleApplicatif::isDisponible)
                         .collect(Collectors.toCollection(() -> EnumSet.noneOf(ModuleApplicatif.class)));
@@ -420,11 +429,11 @@ public class AbonnementService {
                 .map(m -> new Ligne(m.name(), m.getLibelle(), f.prixDe(m)))
                 .toList();
         BigDecimal mensualite = lignes.stream().map(Ligne::prixMensuel).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal sousTotal = mensualite.multiply(BigDecimal.valueOf(periodicite.getMois()));
+        BigDecimal sousTotal = mensualite.multiply(BigDecimal.valueOf(mois));
         ParametresAbonnement p = parametres();
         BigDecimal pourcent = p.remise(periodicite);
         BigDecimal remise = sousTotal.multiply(pourcent).divide(CENT, 0, RoundingMode.HALF_UP);
-        return new Devis(f.getId(), f.getNom(), periodicite.name(), periodicite.getMois(),
+        return new Devis(f.getId(), f.getNom(), periodicite.name(), mois,
                 modules.stream().map(Enum::name).toList(), lignes, mensualite, sousTotal, pourcent, remise,
                 sousTotal.subtract(remise), p.getDevise());
     }
@@ -576,13 +585,21 @@ public class AbonnementService {
                     + " validez-le ou rejetez-le dans Abonnements > Paiements avant d'en saisir un autre");
         }
         Formule f = formule(s.formuleId());
-        Devis devis = devis(f, s.periodicite(), s.modules());
+        // Duree libre : la periodicite retenue est la tranche de remise atteinte (5 mois : trimestrielle).
+        Periodicite periodicite = s.mois() == null ? s.periodicite() : Periodicite.pour(s.mois());
+        int mois = s.mois() == null ? periodicite.getMois() : s.mois();
+        Devis devis = devis(f, periodicite, s.modules(), mois);
         boolean sansMontant = s.montant() == null || s.montant().signum() == 0;
-        PaiementAbonnement p = nouveauPaiement(entrepriseId, f, s.periodicite(), devis, s.moyen(),
+        PaiementAbonnement p = nouveauPaiement(entrepriseId, f, periodicite, devis, s.moyen(),
                 s.reference(), s.note(), sansMontant ? devis.montant() : s.montant());
+        p.setMois(s.mois() == null ? null : mois);
         p.setSaisiPlateforme(true);
         paiements.save(p);
-        appliquer(p, auteur);
+        appliquer(p, auteur, Boolean.TRUE.equals(s.debutImmediat()));
+        journal.plateforme("PAIEMENT_SAISI", "PaiementAbonnement", p.getNumeroFacture(), p.getId(),
+                "Paiement de " + p.getMontant().toPlainString() + " " + p.getDevise() + " (" + p.getMoyen().getLibelle()
+                        + ", " + p.libelleDuree() + ") saisi pour " + nomEntreprise(entrepriseId) + " : abonnement jusqu'au "
+                        + p.getPeriodeFin(), null, null);
         return vue(p, nomEntreprise(entrepriseId));
     }
 
@@ -784,12 +801,20 @@ public class AbonnementService {
      * anticipe laisse l'entreprise profiter jusqu'au bout de ce qu'elle a deja paye.
      */
     private void appliquer(PaiementAbonnement p, String auteur) {
+        appliquer(p, auteur, false);
+    }
+
+    /**
+     * @param debutImmediat entreprise en essai : la periode payee commence aujourd'hui (l'essai
+     *                      s'arrete) au lieu de suivre la fin de l'essai.
+     */
+    private void appliquer(PaiementAbonnement p, String auteur, boolean debutImmediat) {
         Abonnement a = abonnement(p.getEntrepriseId());
         LocalDate jour = LocalDate.now();
         // Paye pendant l'essai ou avant l'echeance : la periode payee commence apres, rien n'est perdu.
-        boolean continuite = !a.getFin().isBefore(jour);
+        boolean continuite = !a.getFin().isBefore(jour) && !(debutImmediat && a.isEssai());
         LocalDate debut = continuite ? a.getFin().plusDays(1) : jour;
-        LocalDate fin = debut.plusMonths(p.getPeriodicite().getMois()).minusDays(1);
+        LocalDate fin = debut.plusMonths(p.dureeMois()).minusDays(1);
 
         p.setStatut(StatutPaiementAbonnement.VALIDE);
         p.setTraitePar(auteur);
@@ -954,7 +979,7 @@ public class AbonnementService {
             return BigDecimal.ZERO;
         }
         if (paye != null && paye.getMontant() != null && paye.getPeriodicite() != null) {
-            return paye.getMontant().divide(BigDecimal.valueOf(paye.getPeriodicite().getMois()), 0, RoundingMode.HALF_UP);
+            return paye.getMontant().divide(BigDecimal.valueOf(paye.dureeMois()), 0, RoundingMode.HALF_UP);
         }
         Formule f = a.getFormule();
         return a.modulesPayes().stream().map(f::prixDe).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -985,7 +1010,7 @@ public class AbonnementService {
 
     private PaiementVue vue(PaiementAbonnement p, String nom) {
         return new PaiementVue(p.getId(), p.getEntrepriseId(), nom, p.getFormule().getId(), p.getFormuleNom(),
-                p.getPeriodicite().name(), p.getPeriodicite().getLibelle(),
+                p.getPeriodicite().name(), p.libelleDuree(),
                 p.modulesListe().stream().map(Enum::name).toList(),
                 p.detailPrix().entrySet().stream()
                         .map(e -> new Ligne(e.getKey().name(), e.getKey().getLibelle(), e.getValue())).toList(),

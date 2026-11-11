@@ -101,6 +101,10 @@ export class Plateforme implements OnInit {
     this.fichePaiements().filter((p) => p.statut === 'VALIDE').reduce((s, p) => s + p.montant, 0));
   readonly erreurFiche = signal<string | null>(null);
   readonly modeFiche = signal<'apercu' | 'paiement'>('apercu');
+  /** Duree libre du paiement saisi (mois) ; nulle : celle de la periodicite. */
+  readonly moisPaiement = signal<number | null>(null);
+  /** Entreprise en essai : la periode payee commence aujourd'hui. */
+  debutImmediat = false;
   joursProlongation = 15;
 
   readonly formules = signal<Formule[]>([]);
@@ -332,7 +336,10 @@ export class Plateforme implements OnInit {
       return;
     }
     const a = this.ficheAbonnement();
-    this.moyen = 'MOBILE_MONEY';
+    // Le plus souvent, l'entreprise paie en especes, en main propre.
+    this.moyen = 'ESPECES';
+    this.moisPaiement.set(null);
+    this.debutImmediat = !!a?.essai;
     this.reference = '';
     this.note = '';
     this.montantLibre = null;
@@ -361,6 +368,7 @@ export class Plateforme implements OnInit {
     this.abonnementService.enregistrer(e.id, {
       formuleId, periodicite: this.periodicite(), modules: this.modulesPaiement(), moyen: this.moyen,
       reference: this.reference || null, note: this.note || null,
+      mois: this.moisPaiement(), debutImmediat: this.debutImmediat,
       montant: this.montantLibre === null || (this.montantLibre as unknown) === '' ? null : this.montantLibre
     }).subscribe({
       next: (p) => {

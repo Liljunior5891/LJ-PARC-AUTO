@@ -185,3 +185,11 @@
     grid-template-columns: 1fr;
   }
 }
+
+.case-debut {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  font-size: 0.88rem;
+}

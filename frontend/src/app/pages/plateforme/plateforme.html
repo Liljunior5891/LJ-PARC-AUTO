@@ -343,8 +343,15 @@
       </div>
     } @else {
       @if (parametres(); as prm) {
-        <app-choix-formule [formules]="formules()" [parametres]="prm"
-                           [(formuleId)]="formuleId" [(periodicite)]="periodicite" [(modules)]="modulesPaiement" />
+        <app-choix-formule [formules]="formules()" [parametres]="prm" [moisLibres]="true"
+                           [(formuleId)]="formuleId" [(periodicite)]="periodicite" [(modules)]="modulesPaiement"
+                           [(mois)]="moisPaiement" />
+        @if (ficheAbonnement()?.essai) {
+          <label class="case-debut">
+            <input type="checkbox" [(ngModel)]="debutImmediat" />
+            Commencer l'abonnement aujourd'hui (l'essai gratuit s'arrete). Sinon, la periode payee commence apres l'essai.
+          </label>
+        }
         <div class="grille-formulaire paiement-recu">
           <div class="champ"><label for="pa-moyen">Moyen de paiement</label>
             <select id="pa-moyen" [(ngModel)]="moyen">
@@ -357,7 +364,8 @@
           <div class="champ"><label for="pa-note">Note</label>
             <input id="pa-note" [(ngModel)]="note" maxlength="500" /></div>
         </div>
-        <p class="aide">Le paiement est valide aussitot : la periode s'ouvre, les modules actifs deviennent ceux choisis et la facture est numerotee.</p>
+        <p class="aide">Le paiement est valide aussitot : la periode s'ouvre, les modules actifs deviennent ceux choisis et la facture est numerotee.
+          A l'approche de l'echeance, l'entreprise recoit les rappels habituels, puis le delai de grace et la lecture seule.</p>
         <div class="actions-formulaire">
           <button class="bouton secondaire annuler" type="button" (click)="modeFiche.set('apercu')">Retour</button>
           <button class="bouton" type="button" [disabled]="enCours() !== null" (click)="enregistrerPaiement()">Enregistrer le paiement</button>

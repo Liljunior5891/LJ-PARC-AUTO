@@ -46,6 +46,10 @@ public class PaiementAbonnement extends EntiteAuditee {
     @Column(nullable = false, length = 20)
     private Periodicite periodicite;
 
+    /** Duree libre saisie par le super-administrateur ; nulle : celle de la periodicite. */
+    @Column
+    private Integer mois;
+
     @Column(nullable = false, length = 300)
     private String modules;
 
@@ -140,5 +144,15 @@ public class PaiementAbonnement extends EntiteAuditee {
             }
         }
         return prix;
+    }
+
+    /** Nombre de mois payes. */
+    public int dureeMois() {
+        return mois != null ? mois : periodicite.getMois();
+    }
+
+    /** « Trimestriel », ou « 5 mois » pour une duree libre. */
+    public String libelleDuree() {
+        return mois != null && mois != periodicite.getMois() ? mois + " mois" : periodicite.getLibelle();
     }
 }
