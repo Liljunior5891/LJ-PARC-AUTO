@@ -1,7 +1,6 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 import {
   AbonnementVue,
   EtatAbonnement,
@@ -20,9 +19,15 @@ import { environment } from '../../../environments/environment';
 import { imprimerFactureAbonnement } from '../../shared/facture-abonnement';
 import { Modale } from '../../shared/modale';
 import { ouvrirFichier } from '../../shared/ouvrir-fichier';
-import { OngletsInclines } from '../../shared/onglets-inclines';
 
 type Vue = 'paiements' | 'echeances' | 'formules' | 'reglages';
+
+const SECTIONS: Record<Vue, { titre: string; description: string }> = {
+  paiements: { titre: 'Paiements', description: 'Paiements declares par les entreprises : une validation ouvre la periode et numerote la facture.' },
+  echeances: { titre: 'Echeances', description: "Etat et echeance de l'abonnement de chaque entreprise." },
+  formules: { titre: 'Formules', description: 'Prix par module, modules compris et limites de chaque formule.' },
+  reglages: { titre: 'Reglages des abonnements', description: 'Essai gratuit, delai de grace, remises et mentions de la facture.' }
+};
 
 const LIBELLES_MODULES: Record<string, string> = {
   GESTION_PARC: 'Gestion de parc',
@@ -43,13 +48,12 @@ function message(reponse: unknown, defaut: string): string {
  */
 @Component({
   selector: 'app-abonnements-plateforme',
-  imports: [DatePipe, DecimalPipe, FormsModule, Modale, OngletsInclines],
+  imports: [DatePipe, DecimalPipe, FormsModule, Modale],
   templateUrl: './abonnements-plateforme.html',
   styleUrl: './abonnements-plateforme.scss'
 })
 export class AbonnementsPlateforme implements OnInit {
   private readonly service = inject(AbonnementService);
-  private readonly router = inject(Router);
 
   /** Onglet ouvert, tire de l'adresse. */
   readonly vue = input<Vue>('paiements');
@@ -68,13 +72,8 @@ export class AbonnementsPlateforme implements OnInit {
   readonly formules = signal<Formule[]>([]);
   readonly parametres = signal<ParametresAbonnement | null>(null);
 
-  readonly onglets = computed(() => [
-    { id: 'paiements', libelle: 'Paiements', icone: '💳', compteur: this.enAttente().length || null },
-    { id: 'echeances', libelle: 'Echeances', icone: '📅',
-      compteur: this.abonnements().filter((a) => a.etat === 'GRACE' || a.etat === 'EXPIRE').length || null },
-    { id: 'formules', libelle: 'Formules', icone: '📦' },
-    { id: 'reglages', libelle: 'Reglages', icone: '⚙️' }
-  ]);
+  /** Le menu Abonnements porte deja les sections : la page n'affiche que le titre de celle ouverte. */
+  readonly section = computed(() => SECTIONS[this.vue()] ?? SECTIONS['paiements']);
 
   // ------------------------------------------------------------ paiements
   readonly statutPaiement = signal<StatutPaiementAbonnement | ''>('EN_ATTENTE');
@@ -107,10 +106,6 @@ export class AbonnementsPlateforme implements OnInit {
 
   ngOnInit(): void {
     this.charger();
-  }
-
-  choisirOnglet(id: string): void {
-    this.router.navigate(['/plateforme/abonnements', id]);
   }
 
   charger(): void {

@@ -18,11 +18,13 @@ import { imprimerRecuReglement } from './ticket-pdv';
  * sur la session de caisse du poste. Ouvert depuis la caisse comme depuis la
  * liste des clients.
  */
+type OngletCompte = 'dues' | 'livrer' | 'versements';
+
 @Component({
   selector: 'app-compte-client-pdv',
   imports: [FormsModule, DecimalPipe, DatePipe, Modale, RouterLink],
   templateUrl: './compte-client-pdv.html',
-  styleUrl: './compte-client-pdv.scss'
+  styleUrls: ['./compte-tiers.scss', './compte-client-pdv.scss']
 })
 export class CompteClientPdv implements OnInit {
   private readonly service = inject(MateriauxService);
@@ -55,6 +57,29 @@ export class CompteClientPdv implements OnInit {
   reference = '';
   readonly monnaie = computed(() => Math.max(0, (this.recu() ?? 0) - (this.montant() ?? 0)));
 
+  // Onglets des listes
+  readonly onglets: { id: OngletCompte; libelle: string; icone: string }[] = [
+    { id: 'dues', libelle: 'A regler', icone: '⏳' },
+    { id: 'livrer', libelle: 'Reste a livrer', icone: '📦' },
+    { id: 'versements', libelle: 'Versements', icone: '💵' }
+  ];
+  readonly onglet = signal<OngletCompte>('dues');
+
+  readonly initiales = computed(() => {
+    const mots = (this.compte()?.client.nom ?? '').trim().split(/\s+/).filter(Boolean);
+    return ((mots[0]?.[0] ?? '') + (mots[1]?.[0] ?? '')).toUpperCase() || '?';
+  });
+
+  /** Part du plafond de credit deja utilisee ; nulle quand le client est sans limite. */
+  readonly partPlafond = computed(() => {
+    const client = this.compte()?.client;
+    const plafond = client?.plafondRetenu;
+    if (!client || plafond === null || plafond === undefined || plafond <= 0) {
+      return null;
+    }
+    return Math.min(100, Math.round((client.encours / plafond) * 100));
+  });
+
   // Annulation d'un versement
   readonly aAnnuler = signal<string | null>(null);
   motif = '';
@@ -72,6 +97,19 @@ export class CompteClientPdv implements OnInit {
     }
     return [...groupes.values()];
   });
+
+  nombre(id: OngletCompte): number {
+    const c = this.compte();
+    if (!c) {
+      return 0;
+    }
+    return id === 'dues' ? c.dues.length : id === 'livrer' ? c.aLivrer.length : this.versements().length;
+  }
+
+  /** Vente sur laquelle porte le versement en cours, s'il en vise une. */
+  venteChoisie() {
+    return this.compte()?.dues.find((v) => v.id === this.venteId);
+  }
 
   ngOnInit(): void {
     this.charger();

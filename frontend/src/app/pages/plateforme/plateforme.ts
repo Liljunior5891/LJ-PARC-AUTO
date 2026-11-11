@@ -97,6 +97,8 @@ export class Plateforme implements OnInit {
   readonly fiche = signal<EntrepriseResume | null>(null);
   readonly ficheAbonnement = signal<AbonnementVue | null>(null);
   readonly fichePaiements = signal<PaiementAbonnement[]>([]);
+  readonly totalValideFiche = computed(() =>
+    this.fichePaiements().filter((p) => p.statut === 'VALIDE').reduce((s, p) => s + p.montant, 0));
   readonly erreurFiche = signal<string | null>(null);
   readonly modeFiche = signal<'apercu' | 'paiement'>('apercu');
   joursProlongation = 15;
@@ -204,6 +206,16 @@ export class Plateforme implements OnInit {
   }
 
   /** Part d'une limite consommee, en pourcentage (0 si illimitee). */
+  /** Part de la periode deja ecoulee, pour la barre de l'echeance. */
+  partPeriode(debut: string, fin: string): number {
+    const d = new Date(debut).getTime();
+    const f = new Date(fin).getTime();
+    if (!(f > d)) {
+      return 100;
+    }
+    return Math.min(100, Math.max(0, ((Date.now() - d) / (f - d)) * 100));
+  }
+
   partUsage(utilise: number, limite?: number | null): number {
     if (limite == null) {
       return 0;

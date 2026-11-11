@@ -1,0 +1,218 @@
+/* Reste a livrer : la liste des commandes en tableau, le detail des produits en fenetre. */
+
+.bandeau-succes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+
+  span {
+    flex: 1;
+  }
+}
+
+/* ------------------------------------------------------------------ cartes d'apercu */
+
+/* Les cartes globales du projet (cartes-apercu) : seul l'espacement est propre a la page. */
+.apercu-livraisons,
+.apercu-details {
+  margin-bottom: 1rem;
+}
+
+/* Un nom de client plutot qu'un chiffre : plus petit, coupe s'il deborde. */
+.apercu-details .nom-client {
+  display: block;
+  overflow: hidden;
+  font-size: 1.05rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ barre d'outils */
+
+.barre-livraison {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  .recherche {
+    display: flex;
+    flex: 1 1 280px;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.8rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 999px;
+    background: var(--couleur-fond);
+
+    span {
+      color: var(--couleur-texte-doux);
+    }
+
+    input {
+      flex: 1;
+      min-width: 0;
+      padding: 0.55rem 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      outline: none;
+    }
+  }
+}
+
+.bascule {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 999px;
+  background: var(--couleur-fond);
+
+  button {
+    padding: 0.4rem 0.95rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--couleur-texte-doux);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &.actif {
+      background: var(--couleur-surface);
+      color: var(--couleur-primaire);
+      box-shadow: 0 1px 4px rgba(16, 40, 30, 0.12);
+    }
+  }
+}
+
+.filtre-client {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--couleur-primaire) 35%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--couleur-primaire) 8%, var(--couleur-surface));
+  color: var(--couleur-primaire);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ tableau */
+
+.liste-livraisons {
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--couleur-surface);
+  }
+
+  td {
+    vertical-align: middle;
+  }
+
+  /* Un trait de couleur a gauche : ambre s'il reste a payer, rouge si annulee. */
+  tr.ligne-a-payer td:first-child {
+    box-shadow: inset 3px 0 0 #d69e2e;
+  }
+
+  tr.ligne-annulee {
+    opacity: 0.65;
+
+    td:first-child {
+      box-shadow: inset 3px 0 0 var(--couleur-danger);
+    }
+  }
+}
+
+.sous-ligne {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--couleur-texte-doux);
+  font-size: 0.76rem;
+}
+
+.client {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--couleur-primaire) 12%, var(--couleur-surface));
+    color: var(--couleur-primaire);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  div {
+    min-width: 0;
+  }
+}
+
+.resume-articles {
+  font-weight: 600;
+}
+
+.pastille {
+  display: inline-block;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &.payee {
+    background: color-mix(in srgb, var(--couleur-succes) 12%, transparent);
+    color: var(--couleur-succes);
+  }
+
+  &.a-payer {
+    background: #fdf3dc;
+    color: #96660a;
+  }
+
+  &.annulee {
+    background: color-mix(in srgb, var(--couleur-danger) 12%, transparent);
+    color: var(--couleur-danger);
+  }
+}
+
+.actions-ligne {
+  white-space: nowrap;
+  text-align: right;
+
+  .bouton + .bouton {
+    margin-left: 0.3rem;
+  }
+}
+
+/* ------------------------------------------------------------------ detail d'une commande */
+
+.tableau .jauge {
+  width: 110px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--couleur-texte-doux) 18%, transparent);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--couleur-succes);
+  }
+}
+

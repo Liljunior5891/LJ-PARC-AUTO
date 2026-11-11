@@ -57,66 +57,197 @@
   }
 }
 
-.resume-abonnement {
+/* Fiche d'abonnement d'une entreprise : situation a gauche, paiements a droite sur toute la hauteur. */
+.fiche-abo {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-  margin-bottom: 1rem;
+  flex: 1;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 1.25rem;
+  min-height: 0;
+}
 
-  > div {
+.situation-abo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.carte-etat {
+  --teinte: var(--couleur-primaire);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--teinte) 28%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--teinte) 6%, var(--couleur-surface));
+
+  &.vert { --teinte: var(--couleur-succes); }
+  &.orange { --teinte: #b7791f; }
+  &.rouge { --teinte: var(--couleur-danger); }
+  &.bleu { --teinte: var(--couleur-info); }
+  &.gris { --teinte: var(--couleur-texte-doux); }
+
+  .haut {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .mensualite {
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+
+    small {
+      color: var(--couleur-texte-doux);
+      font-weight: 500;
+    }
+  }
+
+  h3 {
+    margin: 0.35rem 0 0;
+    font-size: 1.25rem;
+  }
+
+  .echeance {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
-    padding: 0.6rem 0.75rem;
-    border: 1px solid var(--couleur-bordure);
-    border-radius: 10px;
-  }
+    gap: 0.35rem;
+    margin-top: 0.6rem;
+    padding-top: 0.7rem;
+    border-top: 1px dashed color-mix(in srgb, var(--teinte) 30%, transparent);
 
-  .libelle {
-    font-size: 0.72rem;
-    text-transform: uppercase;
+    .ligne {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--couleur-texte-doux);
+
+      strong {
+        color: var(--teinte);
+        font-size: 0.9rem;
+      }
+    }
+
+    .piste {
+      height: 8px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--teinte) 14%, transparent);
+      overflow: hidden;
+
+      i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--teinte);
+      }
+    }
+  }
+}
+
+.bloc-abo {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 14px;
+
+  h4 {
+    margin: 0 0 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 700;
     letter-spacing: 0.04em;
-    color: var(--couleur-texte-doux);
-  }
-
-  small {
+    text-transform: uppercase;
     color: var(--couleur-texte-doux);
   }
 }
 
-.grille-usages {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px 18px;
-  margin-bottom: 1rem;
-}
-
-.actions-fiche {
+.liste-usages {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 1rem;
-  padding: 0.7rem 0;
-  border-top: 1px solid var(--couleur-bordure);
-  border-bottom: 1px solid var(--couleur-bordure);
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.actions-abo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  > .bouton {
+    justify-content: center;
+    width: 100%;
+  }
 
   .prolonger {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
+    font-size: 0.88rem;
 
     input {
-      width: 80px;
+      width: 72px;
+    }
+  }
+}
+
+.paiements-abo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+
+    h3 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .doux {
+      display: inline;
+      font-size: 0.85rem;
     }
   }
 }
 
 .paiements-fiche {
-  max-height: 260px;
+  flex: 1;
+  min-height: 0;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--couleur-surface);
+  }
+}
+
+@media (max-width: 860px) {
+  .fiche-abo {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .situation-abo {
+    overflow: visible;
+  }
+
+  .paiements-fiche {
+    flex: none;
+    max-height: 60vh;
+  }
 }
 
 .nombre {

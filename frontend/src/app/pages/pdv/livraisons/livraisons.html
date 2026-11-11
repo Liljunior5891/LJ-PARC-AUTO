@@ -3,86 +3,147 @@
     <h1>Reste a livrer</h1>
     <p class="sous-titre">
       @if (vue() === 'reste') {
-        {{ page()?.totalElements ?? 0 }} commande(s) dont le client n'a pas encore tout emporte. La marchandise reste reservee jusqu'a sa remise.
+        Commandes dont le client n'a pas encore tout emporte. La marchandise reste reservee jusqu'a sa remise.
       } @else {
-        {{ page()?.totalElements ?? 0 }} commande(s) avec des bons de livraison ou des avoirs.
+        Commandes qui ont des bons de livraison ou des avoirs.
       }
     </p>
   </div>
 </div>
 
 @if (succes()) {
-  <div class="message succes">
-    {{ succes() }}
+  <div class="message succes bandeau-succes">
+    <span>{{ succes() }}</span>
     @if (dernierBon(); as bon) {
-      <button class="bouton secondaire petit info" type="button" style="margin-left: 0.5rem" (click)="imprimer(bon)">Imprimer le bon</button>
+      <button class="bouton secondaire petit info" type="button" (click)="imprimer(bon)">Imprimer le bon</button>
     }
     @if (dernierSolde(); as s) {
-      <button class="bouton secondaire petit info" type="button" style="margin-left: 0.5rem" (click)="imprimerSolde(s)">Imprimer l'avoir</button>
+      <button class="bouton secondaire petit info" type="button" (click)="imprimerSolde(s)">Imprimer l'avoir</button>
     }
   </div>
 }
 
+<!-- Ce qu'il y a a faire, d'un coup d'oeil -->
+<!-- Cartes au style des rapports : icone et couleur par information. -->
+<section class="cartes-apercu apercu-livraisons">
+  <div class="carte-apercu bleu">
+    <span class="icone" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z" /><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9" /></svg>
+    </span>
+    <span class="textes">
+      <span class="libelle">{{ vue() === 'reste' ? 'Commandes a remettre' : 'Commandes' }}</span>
+      <strong>{{ page()?.totalElements ?? 0 }}</strong>
+      <small>{{ vue() === 'reste' ? 'marchandise reservee pour les clients' : 'avec bons de livraison ou avoirs' }}</small>
+    </span>
+  </div>
+  <div class="carte-apercu violet">
+    <span class="icone" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12" /><circle cx="4" cy="6" r="1.2" /><circle cx="4" cy="12" r="1.2" /><circle cx="4" cy="18" r="1.2" /></svg>
+    </span>
+    <span class="textes">
+      <span class="libelle">Articles en attente</span>
+      <strong>{{ articlesEnAttente() }}</strong>
+      <small>lignes de produits a sortir du stock</small>
+    </span>
+  </div>
+  <div class="carte-apercu {{ aEncaisser() > 0 ? 'orange' : 'vert' }}">
+    <span class="icone" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.6" /></svg>
+    </span>
+    <span class="textes">
+      <span class="libelle">Reste a encaisser</span>
+      <strong>{{ aEncaisser() | number: '1.0-0' }}<em> F</em></strong>
+      <small>{{ commandesAPayer() ? commandesAPayer() + ' commande(s) pas encore soldee(s)' : 'tout est paye' }}</small>
+    </span>
+  </div>
+  <div class="carte-apercu rouge" [class.calme]="plusAncienne() <= 7">
+    <span class="icone" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
+    </span>
+    <span class="textes">
+      <span class="libelle">Plus longue attente</span>
+      <strong>{{ plusAncienne() }}<em> jour(s)</em></strong>
+      <small>{{ plusAncienne() > 7 ? 'a relancer : le client tarde a venir' : 'les clients passent vite' }}</small>
+    </span>
+  </div>
+</section>
+
 <div class="carte">
-  <div class="grille-formulaire">
-    <div class="champ">
-      <label for="recherche">Recherche</label>
-      <input id="recherche" type="search" placeholder="Client ou numero de commande..."
+  <div class="barre-livraison">
+    <div class="recherche">
+      <span aria-hidden="true">⌕</span>
+      <input type="search" placeholder="Client, telephone ou numero de commande..." aria-label="Rechercher une commande"
              [(ngModel)]="recherche" (keyup.enter)="filtrer()" (search)="filtrer()" />
     </div>
-    <div class="champ">
-      <label for="vue">Afficher</label>
-      <select id="vue" [ngModel]="vue()" (ngModelChange)="changerVue($event)">
-        <option value="reste">Reste a livrer</option>
-        <option value="historique">Toutes les commandes avec documents</option>
-      </select>
+    <div class="bascule" role="tablist" aria-label="Commandes affichees">
+      <button type="button" role="tab" [class.actif]="vue() === 'reste'" [attr.aria-selected]="vue() === 'reste'"
+              (click)="changerVue('reste')">A remettre</button>
+      <button type="button" role="tab" [class.actif]="vue() === 'historique'" [attr.aria-selected]="vue() === 'historique'"
+              (click)="changerVue('historique')">Avec documents</button>
     </div>
     @if (clientId()) {
-      <div class="champ" style="justify-content: flex-end">
-        <button class="bouton secondaire" type="button" (click)="tousLesClients()">Voir tous les clients</button>
-      </div>
+      <button class="filtre-client" type="button" (click)="tousLesClients()" title="Voir tous les clients">
+        Un seul client <span aria-hidden="true">×</span>
+      </button>
     }
   </div>
 
   @if (erreur()) {
-    <div class="message erreur" style="margin-top: 1rem">{{ erreur() }}</div>
+    <div class="message erreur">{{ erreur() }}</div>
   }
 
-  <div class="tableau-conteneur" style="margin-top: 1rem">
+  <div class="tableau-conteneur liste-livraisons">
     <table class="tableau">
       <thead>
         <tr>
           <th>Commande</th>
           <th>Client</th>
-          <th>Reste a livrer</th>
+          <th>A remettre</th>
           <th class="numerique">Reste a payer</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         @for (v of page()?.content ?? []; track v.venteId) {
-          <tr>
-            <td><strong>{{ v.numero }}</strong><br /><small>{{ v.dateVente | date: 'dd/MM/yyyy' }}</small></td>
+          <tr [class.ligne-annulee]="v.statut === 'ANNULEE'" [class.ligne-a-payer]="v.resteDu > 0 && v.statut !== 'ANNULEE'">
             <td>
-              {{ v.clientNom || '—' }}
-              @if (v.clientTelephone) { <br /><small>{{ v.clientTelephone }}</small> }
+              <strong>{{ v.numero }}</strong>
+              <small class="sous-ligne">{{ v.dateVente | date: 'dd/MM/yyyy' }} · {{ anciennete(v.dateVente) }}</small>
             </td>
             <td>
-              @for (l of v.lignes; track l.ligneId) {
-                <div><strong>{{ l.reste | number: '1.0-3' }}</strong> {{ l.unite || '' }} · {{ l.libelle }}@if (l.lieuNom) { <small> · a {{ l.lieuNom }}</small> }
-                  <small>(sur {{ l.quantite | number: '1.0-3' }})</small></div>
-              } @empty {
-                @if (v.statut === 'ANNULEE') { <span class="resultat-negatif">Commande annulee</span> } @else { Tout est regle }
+              <div class="client">
+                <span class="avatar" aria-hidden="true">{{ initiales(v.clientNom) }}</span>
+                <div>
+                  <strong>{{ v.clientNom || 'Client de passage' }}</strong>
+                  @if (v.clientTelephone) { <small class="sous-ligne">{{ v.clientTelephone }}</small> }
+                </div>
+              </div>
+            </td>
+            <td>
+              @if (v.statut === 'ANNULEE') {
+                <span class="pastille annulee">Annulee</span>
+              } @else if (v.lignes.length) {
+                <span class="resume-articles">{{ v.lignes.length }} article(s)</span>
+                <small class="sous-ligne">{{ apercu(v) }}</small>
+              } @else {
+                <span class="pastille payee">Tout remis</span>
               }
             </td>
             <td class="numerique">
-              @if (v.resteDu > 0) { <strong class="resultat-negatif">{{ v.resteDu | number: '1.0-0' }} F</strong> } @else { Paye }
+              @if (v.resteDu > 0) {
+                <span class="pastille a-payer">{{ v.resteDu | number: '1.0-0' }} F</span>
+              } @else {
+                <span class="pastille payee">Paye</span>
+              }
             </td>
-            <td style="white-space: nowrap; text-align: right">
+            <td class="actions-ligne">
+              @if (v.lignes.length) {
+                <button class="bouton secondaire petit" type="button" (click)="details.set(v)">Details</button>
+              }
               <button class="bouton secondaire petit info" type="button" (click)="ouvrirBons(v)">Documents</button>
               @if (v.lignes.length) {
                 @if (estGestionnaire) {
-                  <button class="bouton petit attention" type="button" (click)="ouvrirSolde(v)">Solder</button>
+                  <button class="bouton secondaire petit attention" type="button" (click)="ouvrirSolde(v)">Solder</button>
                 }
                 <button class="bouton petit succes" type="button" (click)="ouvrirRemise(v)">Remettre</button>
               }
@@ -91,7 +152,9 @@
         } @empty {
           <tr>
             <td colspan="5">
-              <div class="message vide">{{ chargement() ? 'Chargement...' : 'Rien a livrer : tous les clients ont tout emporte.' }}</div>
+              <div class="message vide">
+                {{ chargement() ? 'Chargement...' : vue() === 'reste' ? '✓ Rien a livrer : tous les clients ont tout emporte.' : 'Aucune commande avec des documents.' }}
+              </div>
             </td>
           </tr>
         }
@@ -105,6 +168,104 @@
     }
   }
 </div>
+
+<!-- Detail des produits d'une commande -->
+@if (details(); as v) {
+  <app-modale titre="Detail de la commande" [sousTitre]="v.numero + ' · ' + (v.clientNom || 'Client de passage') + ' · ' + (v.dateVente | date: 'dd/MM/yyyy')"
+              largeur="980px" (ferme)="details.set(null)">
+    <section class="cartes-apercu apercu-details">
+      <div class="carte-apercu violet">
+        <span class="icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z" /><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9" /></svg>
+        </span>
+        <span class="textes">
+          <span class="libelle">A remettre</span>
+          <strong>{{ v.lignes.length }}<em> produit(s)</em></strong>
+          <small>{{ avancement(v) }} % deja remis</small>
+        </span>
+        <span class="jauge"><i [style.width.%]="avancement(v)"></i></span>
+      </div>
+      <div class="carte-apercu bleu">
+        <span class="icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
+        </span>
+        <span class="textes">
+          <span class="libelle">Commandee le</span>
+          <strong>{{ v.dateVente | date: 'dd/MM/yyyy' }}</strong>
+          <small>{{ anciennete(v.dateVente) }}</small>
+        </span>
+      </div>
+      <div class="carte-apercu {{ v.resteDu > 0 ? 'orange' : 'vert' }}">
+        <span class="icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><circle cx="12" cy="12" r="2.6" /></svg>
+        </span>
+        <span class="textes">
+          <span class="libelle">Reste a payer</span>
+          @if (v.resteDu > 0) {
+            <strong>{{ v.resteDu | number: '1.0-0' }}<em> F</em></strong>
+            <small>a encaisser avant ou a la remise</small>
+          } @else {
+            <strong>Payee</strong>
+            <small>rien a encaisser</small>
+          }
+        </span>
+      </div>
+      <div class="carte-apercu bleu calme">
+        <span class="icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.8" /><path d="M4.5 20.5c1.2-4 4.2-6 7.5-6s6.3 2 7.5 6" /></svg>
+        </span>
+        <span class="textes">
+          <span class="libelle">Client</span>
+          <strong class="nom-client">{{ v.clientNom || 'Client de passage' }}</strong>
+          <small>{{ v.clientTelephone || 'pas de telephone' }}</small>
+        </span>
+      </div>
+    </section>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th>Produit</th>
+            <th class="numerique">Commande</th>
+            <th class="numerique">Deja remis</th>
+            <th>Avancement</th>
+            <th class="numerique">Reste</th>
+            <th class="numerique">En magasin</th>
+            @if (avecLieux(v)) { <th>Lieu de retrait</th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of v.lignes; track l.ligneId) {
+            <tr>
+              <td><strong>{{ l.libelle }}</strong>@if (l.unite) { <small class="sous-ligne">en {{ l.unite }}</small> }</td>
+              <td class="numerique">{{ l.quantite | number: '1.0-3' }}</td>
+              <td class="numerique">{{ l.quantiteLivree | number: '1.0-3' }}</td>
+              <td>
+                <div class="jauge" role="img" [attr.aria-label]="'Remis a ' + pourcentRemis(l) + ' %'">
+                  <span [style.width.%]="pourcentRemis(l)"></span>
+                </div>
+                <small class="sous-ligne">{{ pourcentRemis(l) }} %</small>
+              </td>
+              <td class="numerique"><strong>{{ l.reste | number: '1.0-3' }}</strong></td>
+              <td class="numerique">
+                <span [class.resultat-negatif]="l.enMagasin < l.reste" [title]="l.enMagasin < l.reste ? 'Stock insuffisant pour tout remettre' : ''">
+                  {{ l.enMagasin | number: '1.0-3' }}</span>
+              </td>
+              @if (avecLieux(v)) { <td>{{ l.lieuNom || '—' }}</td> }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire" type="button" (click)="details.set(null)">Fermer</button>
+      @if (estGestionnaire) {
+        <button class="bouton secondaire attention" type="button" (click)="details.set(null); ouvrirSolde(v)">Solder</button>
+      }
+      <button class="bouton succes" type="button" (click)="details.set(null); ouvrirRemise(v)">Remettre au client</button>
+    </div>
+  </app-modale>
+}
 
 <!-- Remise au client -->
 @if (remise(); as v) {

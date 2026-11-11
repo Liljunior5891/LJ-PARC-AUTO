@@ -19,54 +19,167 @@
   color: var(--couleur-danger);
 }
 
-.etat-abonnement {
+/* Bandeau de tete : la formule et l'echeance, teinte selon l'etat de l'abonnement. */
+.vedette {
+  --teinte: var(--couleur-primaire);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  padding: 1.4rem 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--teinte) 25%, transparent);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--teinte) 14%, transparent), transparent 55%),
+    color-mix(in srgb, var(--teinte) 5%, var(--couleur-surface));
+
+  &.vert { --teinte: var(--couleur-succes); }
+  &.orange { --teinte: #b7791f; }
+  &.rouge { --teinte: var(--couleur-danger); }
+  &.bleu { --teinte: var(--couleur-info); }
+  &.gris { --teinte: var(--couleur-texte-doux); }
+
+  h2 {
+    margin: 0.5rem 0 0.2rem;
+    font-size: 1.6rem;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.vedette-gauche {
+  display: flex;
+  flex: 1 1 340px;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.periode {
+  align-self: stretch;
+  max-width: 520px;
+  margin-top: 1rem;
+
+  .ligne {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.3rem;
+    color: var(--couleur-texte-doux);
+    font-size: 0.8rem;
+  }
+
+  .piste {
+    display: block;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--teinte) 15%, transparent);
+
+    i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--teinte);
+    }
+  }
+}
+
+.vedette-droite {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+}
+
+.compte-a-rebours {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border: 6px solid color-mix(in srgb, var(--teinte) 30%, transparent);
+  border-radius: 50%;
+  background: var(--couleur-surface);
+  text-align: center;
+
+  strong {
+    color: var(--teinte);
+    font-size: 2.1rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  span {
+    margin-top: 0.2rem;
+    padding: 0 0.6rem;
+    color: var(--couleur-texte-doux);
+    font-size: 0.72rem;
+  }
+}
+
+.grille-abo {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  > .carte {
+    margin: 0;
+  }
 
   @media (max-width: 760px) {
     grid-template-columns: 1fr;
   }
+}
 
-  .principal {
+.modules {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.6rem;
+
+  .module {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9rem;
 
-    h2 {
-      margin: 0;
-      font-size: 1.4rem;
-    }
-
-    p {
-      margin: 0;
-    }
-  }
-
-  .modules {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 6px;
-  }
-
-  .pastille-module {
-    padding: 0.2rem 0.6rem;
-    border-radius: 999px;
-    background: #eef3f9;
-    font-size: 0.8rem;
-  }
-
-  .usages {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-
-    .titre-section {
-      margin: 0;
+    .icone {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--couleur-primaire) 10%, var(--couleur-surface));
     }
   }
+}
+
+.usages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.etape {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: var(--couleur-primaire);
+  color: #fff;
+  font-size: 0.85rem;
 }
 
 .instructions {

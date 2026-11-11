@@ -20,7 +20,8 @@ import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-lis
 @Component({
   selector: 'app-livraisons-pdv',
   imports: [SuiteListe, FormsModule, DecimalPipe, DatePipe, Modale],
-  templateUrl: './livraisons.html'
+  templateUrl: './livraisons.html',
+  styleUrl: './livraisons.scss'
 })
 export class LivraisonsPdv implements OnInit {
   private readonly service = inject(MateriauxService);
@@ -44,6 +45,13 @@ export class LivraisonsPdv implements OnInit {
   /** Arrive du compte d'un client : seules ses commandes sont listees. */
   readonly clientId = signal<number | null>(null);
   private readonly suite = new SuiteDePages();
+
+  /** Articles encore a remettre sur les commandes chargees. */
+  readonly articlesEnAttente = computed(() =>
+    (this.page()?.content ?? []).reduce((n, v) => n + v.lignes.length, 0));
+  /** Ce que les clients doivent encore sur les commandes chargees. */
+  readonly aEncaisser = computed(() =>
+    (this.page()?.content ?? []).filter((v) => v.statut !== 'ANNULEE').reduce((s, v) => s + Math.max(0, v.resteDu), 0));
 
   // Remise
   readonly remise = signal<VenteALivrer | null>(null);
@@ -91,6 +99,50 @@ export class LivraisonsPdv implements OnInit {
   readonly soldeAAnnuler = signal<number | null>(null);
   readonly erreurDocuments = signal<string | null>(null);
   motifAnnulation = '';
+
+  /** Commandes chargees dont le client doit encore quelque chose. */
+  readonly commandesAPayer = computed(() =>
+    (this.page()?.content ?? []).filter((v) => v.statut !== 'ANNULEE' && v.resteDu > 0).length);
+  /** Jours d'attente de la plus ancienne commande encore a remettre. */
+  readonly plusAncienne = computed(() => (this.page()?.content ?? [])
+    .filter((v) => v.statut !== 'ANNULEE' && v.lignes.length)
+    .reduce((max, v) => Math.max(max, Math.floor((Date.now() - new Date(v.dateVente).getTime()) / 86_400_000)), 0));
+
+  /** Avancement moyen de la remise des produits d'une commande. */
+  avancement(v: VenteALivrer): number {
+    if (!v.lignes.length) {
+      return 100;
+    }
+    return Math.round(v.lignes.reduce((s, l) => s + this.pourcentRemis(l), 0) / v.lignes.length);
+  }
+
+  /** Commande dont on regarde le detail des produits. */
+  readonly details = signal<VenteALivrer | null>(null);
+
+  /** Les premiers produits restant a remettre, en une ligne. */
+  apercu(v: VenteALivrer): string {
+    const noms = v.lignes.slice(0, 2).map((l) => l.libelle);
+    return noms.join(', ') + (v.lignes.length > 2 ? ` et ${v.lignes.length - 2} autre(s)` : '');
+  }
+
+  pourcentRemis(l: { quantite: number; quantiteLivree: number }): number {
+    return l.quantite > 0 ? Math.min(100, Math.round((l.quantiteLivree / l.quantite) * 100)) : 0;
+  }
+
+  avecLieux(v: VenteALivrer): boolean {
+    return v.lignes.some((l) => !!l.lieuNom);
+  }
+
+  /** Depuis combien de temps la marchandise attend son client. */
+  anciennete(date: string): string {
+    const jours = Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000);
+    return jours <= 0 ? "aujourd'hui" : jours === 1 ? 'hier' : `il y a ${jours} j`;
+  }
+
+  initiales(nom?: string | null): string {
+    const mots = (nom ?? '').trim().split(/\s+/).filter(Boolean);
+    return ((mots[0]?.[0] ?? '') + (mots[1]?.[0] ?? '')).toUpperCase() || '?';
+  }
 
   ngOnInit(): void {
     const client = this.route.snapshot.queryParamMap.get('client');

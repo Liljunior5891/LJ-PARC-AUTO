@@ -32,7 +32,7 @@ type OngletCompte = 'dettes' | 'paiements' | 'commandes';
   selector: 'app-compte-fournisseur-pdv',
   imports: [FormsModule, DecimalPipe, DatePipe, Modale, RouterLink, ChoixSortie],
   templateUrl: './compte-fournisseur-pdv.html',
-  styleUrl: './compte-fournisseur-pdv.scss'
+  styleUrl: './compte-tiers.scss'
 })
 export class CompteFournisseurPdv implements OnInit {
   private readonly service = inject(AchatsService);

@@ -18,6 +18,7 @@ import { environment } from '../../../environments/environment';
 import { imprimerFactureAbonnement } from '../../shared/facture-abonnement';
 import { ouvrirFichier } from '../../shared/ouvrir-fichier';
 import { ChoixFormule } from '../plateforme/choix-formule';
+import { Modale } from '../../shared/modale';
 
 const LIBELLES_MODULES: Record<string, string> = {
   GESTION_PARC: 'Gestion de parc',
@@ -38,7 +39,7 @@ function message(reponse: unknown, defaut: string): string {
  */
 @Component({
   selector: 'app-mon-abonnement',
-  imports: [DatePipe, DecimalPipe, FormsModule, ChoixFormule],
+  imports: [DatePipe, DecimalPipe, FormsModule, ChoixFormule, Modale],
   templateUrl: './mon-abonnement.html',
   styleUrl: './mon-abonnement.scss'
 })
@@ -79,6 +80,16 @@ export class MonAbonnement implements OnInit {
     this.service.offre().subscribe({ next: (o) => this.offre.set(o) });
     this.service.paiements().subscribe({ next: (p) => this.paiements.set(p) });
     this.service.etat().subscribe();
+  }
+
+  /** Part de la periode deja ecoulee, pour la barre de l'echeance. */
+  partPeriode(debut: string, fin: string): number {
+    const d = new Date(debut).getTime();
+    const f = new Date(fin).getTime();
+    if (!(f > d)) {
+      return 100;
+    }
+    return Math.min(100, Math.max(0, ((Date.now() - d) / (f - d)) * 100));
   }
 
   partUsage(utilise: number, limite?: number | null): number {

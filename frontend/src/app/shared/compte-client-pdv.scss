@@ -1,62 +1,19 @@
-/* Compte d'un client de la quincaillerie : situation, versement, ventes dues, historique. */
+/* Compte d'un client de la quincaillerie : la mise en page commune est dans compte-tiers.scss. */
 
-.situation {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.6rem;
-  margin-bottom: 1rem;
-
-  .indic {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    padding: 0.7rem 0.8rem;
-    border: 1px solid var(--couleur-bordure);
-    border-radius: 10px;
-    background: var(--couleur-surface);
-
-    small {
-      color: var(--couleur-texte-doux);
-      font-size: 0.75rem;
-    }
-
-    strong {
-      font-size: 1.05rem;
-    }
-
-    &.alerte strong {
-      color: #96660a;
-    }
-
-    &.danger strong {
-      color: var(--couleur-danger);
-    }
-  }
+/* Le plafond de credit se remplit en ambre, puis en rouge quand il est presque atteint. */
+.jauge.credit span {
+  background: var(--teinte);
 }
 
-h3 {
-  margin: 1rem 0 0.5rem;
-  font-size: 0.95rem;
-}
-
-.versement {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  margin-bottom: 0.5rem;
-
-  h3 {
-    margin: 0;
-  }
-
+.paiement {
   .moyens {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
   }
 
-  .moyen {
-    padding: 0.45rem 0.8rem;
+  .choix-moyen {
+    padding: 0.45rem 0.85rem;
     border: 1px solid var(--couleur-bordure);
     border-radius: 999px;
     background: var(--couleur-surface);
@@ -64,33 +21,37 @@ h3 {
     cursor: pointer;
 
     &.actif {
-      border-color: #1e9e4a;
-      background: #e3f5ea;
-      color: #157a37;
+      border-color: var(--couleur-succes);
+      background: color-mix(in srgb, var(--couleur-succes) 12%, var(--couleur-surface));
+      color: var(--couleur-succes);
       font-weight: 600;
     }
   }
+
+  .champ small {
+    color: var(--couleur-texte-doux);
+  }
 }
 
-.actions-ligne {
+/* Articles restant a remettre, un par ligne. */
+.articles {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  justify-content: flex-end;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.88rem;
 
-  input {
-    max-width: 140px;
+  strong {
+    font-variant-numeric: tabular-nums;
+  }
+
+  span {
+    color: var(--couleur-texte-doux);
   }
 }
 
-.vide-ligne {
-  text-align: center;
-  color: var(--couleur-texte-doux);
-}
-
-@media (max-width: 640px) {
-  .situation {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.pied-liste {
+  margin-top: 0.75rem;
 }

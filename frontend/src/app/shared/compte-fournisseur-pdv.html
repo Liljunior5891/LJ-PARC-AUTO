@@ -1,7 +1,7 @@
 @let c = compte();
 <app-modale [titre]="c ? c.fournisseur.nom : 'Compte fournisseur'"
             [sousTitre]="c ? 'Compte fournisseur · ' + c.fournisseur.code : ''"
-            largeur="1180px" [erreur]="erreur()" (ferme)="ferme.emit()">
+            largeur="1240px" [grande]="true" [erreur]="erreur()" (ferme)="ferme.emit()">
   @if (succes()) {
     <div class="message succes">{{ succes() }}</div>
   }

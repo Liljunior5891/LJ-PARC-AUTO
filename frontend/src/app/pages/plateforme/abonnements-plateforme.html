@@ -1,14 +1,12 @@
 <div class="entete-page">
   <div>
-    <h1>Abonnements</h1>
-    <p class="sous-titre">Formules, modules en option, paiements declares par les entreprises et echeances. Une validation ouvre la periode et numerote la facture.</p>
+    <h1>{{ section().titre }}</h1>
+    <p class="sous-titre">{{ section().description }}</p>
   </div>
   <div class="actions-entete">
     <button class="bouton secondaire" type="button" (click)="charger()">↻ Actualiser</button>
   </div>
 </div>
-
-<app-onglets-inclines [onglets]="onglets()" [actif]="vue()" (choisir)="choisirOnglet($event)" />
 
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }

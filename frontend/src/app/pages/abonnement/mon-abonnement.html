@@ -3,16 +3,9 @@
     <h1>Mon abonnement</h1>
     <p class="sous-titre">Formule, modules, echeance et factures de votre entreprise.</p>
   </div>
-  <div class="actions-entete">
-    @if (!choix()) {
-      <button class="bouton" type="button" [disabled]="!offre() || abonnement()?.paiementEnAttente" (click)="ouvrirChoix()">
-        {{ abonnement()?.essai ? 'Choisir ma formule' : 'Renouveler ou changer' }}
-      </button>
-    }
-  </div>
 </div>
 
-@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (erreur() && !choix()) { <div class="message erreur">{{ erreur() }}</div> }
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }
 
 @if (abonnement(); as a) {
@@ -27,46 +20,83 @@
     <div class="message avertissement">Un paiement attend la validation de la plateforme. Vous pouvez y joindre une preuve ou l'annuler ci-dessous.</div>
   }
 
-  <section class="carte etat-abonnement">
-    <div class="principal">
+  <!-- L'essentiel : la formule, l'echeance et le bouton pour renouveler. -->
+  <section class="vedette {{ teintes[a.etat] }}">
+    <div class="vedette-gauche">
       <span class="etiquette-abo {{ teintes[a.etat] }}">{{ a.etatLibelle }}</span>
       <h2>{{ a.essai ? 'Essai gratuit' : 'Formule ' + a.formuleNom }}</h2>
-      <p>
-        @if (a.joursRestants >= 0) {
-          {{ a.essai ? 'Essai' : 'Abonnement' }} valable jusqu'au <strong>{{ a.fin | date: 'dd/MM/yyyy' }}</strong>
-          ({{ a.joursRestants === 0 ? 'dernier jour' : a.joursRestants + ' jour(s) restant(s)' }})
+      <p class="doux">
+        @if (a.essai) {
+          Tous les modules et volumes sont ouverts pendant l'essai.
         } @else {
-          Echeance depassee depuis le <strong>{{ a.fin | date: 'dd/MM/yyyy' }}</strong>
+          {{ a.periodiciteLibelle }} · <strong>{{ a.mensualite | number: '1.0-0' }} {{ offre()?.parametres?.devise }}</strong> / mois
         }
       </p>
-      @if (!a.essai) {
-        <p class="doux">{{ a.periodiciteLibelle }} · {{ a.mensualite | number: '1.0-0' }} {{ offre()?.parametres?.devise }} / mois</p>
-        <div class="modules">
-          @for (m of a.modules; track m) { <span class="pastille-module">{{ presentation[m].icone }} {{ libellesModules[m] }}</span> }
+      <div class="periode">
+        <div class="ligne">
+          <span>{{ a.debut | date: 'dd/MM/yyyy' }}</span>
+          <span>{{ a.fin | date: 'dd/MM/yyyy' }}</span>
         </div>
-      } @else {
-        <p class="doux">Pendant l'essai, tous les modules et volumes sont ouverts. Choisissez une formule avant la fin de l'essai.</p>
-      }
+        <span class="piste"><i [style.width.%]="partPeriode(a.debut, a.fin)"></i></span>
+      </div>
     </div>
-    <div class="usages">
-      <h3 class="titre-section">Utilisation</h3>
-      @for (u of a.usages; track u.ressource) {
-        <div class="usage" [class.plein]="u.limite != null && u.utilise >= u.limite">
-          <div class="ligne"><span>{{ u.libelle }}</span><strong>{{ u.utilise }} / {{ u.limite ?? '∞' }}</strong></div>
-          <span class="piste"><i [style.width.%]="partUsage(u.utilise, u.limite)"></i></span>
-        </div>
-      }
+
+    <div class="vedette-droite">
+      <div class="compte-a-rebours">
+        @if (a.joursRestants >= 0) {
+          <strong>{{ a.joursRestants }}</strong>
+          <span>{{ a.joursRestants === 0 ? 'dernier jour' : 'jour(s) restant(s)' }}</span>
+        } @else {
+          <strong>!</strong>
+          <span>echeance depassee</span>
+        }
+      </div>
+      <button class="bouton" type="button" [disabled]="!offre() || a.paiementEnAttente" (click)="ouvrirChoix()">
+        {{ a.essai ? 'Choisir ma formule' : 'Renouveler ou changer' }}
+      </button>
     </div>
   </section>
+
+  <div class="grille-abo">
+    <section class="carte">
+      <h3 class="titre-bloc">Modules actifs</h3>
+      <div class="modules">
+        @for (m of a.modules; track m) {
+          <div class="module">
+            <span class="icone" aria-hidden="true">{{ presentation[m].icone }}</span>
+            <span>{{ libellesModules[m] }}</span>
+          </div>
+        } @empty {
+          <p class="doux">{{ a.essai ? 'Tous les modules sont ouverts pendant l\'essai.' : 'Aucun module.' }}</p>
+        }
+      </div>
+    </section>
+
+    <section class="carte">
+      <h3 class="titre-bloc">Utilisation</h3>
+      <div class="usages">
+        @for (u of a.usages; track u.ressource) {
+          <div class="usage" [class.plein]="u.limite != null && u.utilise >= u.limite">
+            <div class="ligne"><span>{{ u.libelle }}</span><strong>{{ u.utilise }} / {{ u.limite ?? '∞' }}</strong></div>
+            <span class="piste"><i [style.width.%]="partUsage(u.utilise, u.limite)"></i></span>
+          </div>
+        } @empty {
+          <p class="doux">Aucune limite.</p>
+        }
+      </div>
+    </section>
+  </div>
 }
 
 @if (choix() && offre(); as o) {
-  <section class="carte">
-    <h2 class="titre-bloc">Choisir ma formule</h2>
+  <app-modale [titre]="abonnement()?.essai ? 'Choisir ma formule' : 'Renouveler ou changer de formule'"
+              sousTitre="Formule, duree et modules, puis declaration du paiement" largeur="1100px"
+              [erreur]="erreur()" (ferme)="choix.set(false)">
+    <h2 class="titre-bloc"><span class="etape">1</span> Choisir ma formule</h2>
     <app-choix-formule [formules]="o.formules" [parametres]="o.parametres"
                        [(formuleId)]="formuleId" [(periodicite)]="periodicite" [(modules)]="modules" />
 
-    <h3 class="titre-section espace-haut">Payer puis declarer le paiement</h3>
+    <h2 class="titre-bloc espace-haut"><span class="etape">2</span> Payer puis declarer le paiement</h2>
     @if (o.parametres.instructionsPaiement) {
       <div class="instructions">{{ o.parametres.instructionsPaiement }}</div>
     }
@@ -87,7 +117,7 @@
       <button class="bouton secondaire annuler" type="button" (click)="choix.set(false)">Annuler</button>
       <button class="bouton" type="button" [disabled]="enCours()" (click)="declarer()">{{ enCours() ? 'Envoi...' : 'Declarer mon paiement' }}</button>
     </div>
-  </section>
+  </app-modale>
 }
 
 <section class="carte">
