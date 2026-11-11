@@ -74,11 +74,13 @@ export const routes: Routes = [
         children: [
           {
             path: 'tableau-bord',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/tableau-bord/tableau-bord').then((m) => m.TableauBord),
             title: 'Tableau de bord — LJ SaaS'
           },
           {
             path: 'vue-parc',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/vue-parc/vue-parc').then((m) => m.VueParc),
             title: 'Vue globale du parc — LJ SaaS'
           },
@@ -150,24 +152,11 @@ export const routes: Routes = [
             loadComponent: () => import('./pages/clients/client-fiche').then((m) => m.ClientFiche),
             title: 'Fiche client — LJ SaaS'
           },
-          {
-            path: 'locations',
-            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
-            redirectTo: '/recettes',
-            title: 'Contrats de location — LJ SaaS'
-          },
-          {
-            path: 'locations/nouveau',
-            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
-            redirectTo: '/recettes',
-            title: 'Nouveau contrat — LJ SaaS'
-          },
-          {
-            path: 'locations/:id',
-            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
-            redirectTo: '/recettes',
-            title: 'Contrat de location — LJ SaaS'
-          },
+          // Anciennes adresses des contrats : une redirection ne porte pas de garde
+          // (Angular la refuse), c'est /recettes qui reserve l'ecran a la gestion.
+          { path: 'locations', pathMatch: 'full', redirectTo: '/recettes' },
+          { path: 'locations/nouveau', redirectTo: '/recettes' },
+          { path: 'locations/:id', redirectTo: '/recettes' },
           {
             path: 'missions',
             loadComponent: () => import('./pages/missions/missions-liste').then((m) => m.MissionsListe),
@@ -232,11 +221,13 @@ export const routes: Routes = [
           },
           {
             path: 'direction',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/direction/direction').then((m) => m.Direction),
             title: 'Pilotage — LJ SaaS'
           },
           {
             path: 'rapports',
+            canActivate: [roleGuard('ADMIN', 'GESTIONNAIRE_PARC')],
             loadComponent: () => import('./pages/rapports/rapports').then((m) => m.Rapports),
             title: 'Rapports — LJ SaaS'
           },

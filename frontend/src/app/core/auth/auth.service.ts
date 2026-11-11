@@ -105,7 +105,11 @@ export class AuthService {
     if (module === 'PRESENCE') {
       return '/presence/tableau-bord';
     }
-    return module === 'GESTION_PARC' ? '/tableau-bord' : '/modules';
+    if (module === 'GESTION_PARC') {
+      // Le chauffeur n'a ni les chiffres ni le parc entier : il arrive a ses missions.
+      return this.aRole('ADMIN', 'GESTIONNAIRE_PARC') ? '/tableau-bord' : '/missions';
+    }
+    return '/modules';
   }
 
   /**

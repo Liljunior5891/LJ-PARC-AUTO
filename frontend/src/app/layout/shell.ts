@@ -126,7 +126,7 @@ export class Shell {
 
   readonly clocheVisible = computed(() => {
     this.utilisateur();
-    return this.auth.peutUtiliser('GESTION_PARC');
+    return this.auth.aModule('GESTION_PARC') && this.auth.aRole('ADMIN', 'GESTIONNAIRE_PARC');
   });
 
   /** Nom et logo parametres, affiches en tete de page. */
@@ -160,8 +160,8 @@ export class Shell {
     {
       id: 'accueil', module: 'GESTION_PARC', libelle: 'Accueil',
       entrees: [
-        { libelle: 'Tableau de bord', route: '/tableau-bord', description: 'Chiffre d\'affaires, depenses et resultat' },
-        { libelle: 'Direction', route: '/direction', description: 'Indicateurs de pilotage et decisions' },
+        { libelle: 'Tableau de bord', route: '/tableau-bord', description: 'Chiffre d\'affaires, depenses et resultat', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
+        { libelle: 'Direction', route: '/direction', description: 'Indicateurs de pilotage et decisions', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Rentabilite', route: '/rentabilite', description: 'Marge par vehicule sur la periode', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] }
       ]
     },
@@ -169,7 +169,7 @@ export class Shell {
       id: 'parc', module: 'GESTION_PARC', libelle: 'Parc',
       autresRoutes: ['/camions'],
       entrees: [
-        { libelle: 'Vue du parc', route: '/vue-parc', description: 'Chaque vehicule, son etat et sa marge' },
+        { libelle: 'Vue du parc', route: '/vue-parc', description: 'Chaque vehicule, son etat et sa marge', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Affectations', route: '/affectations', description: 'Qui conduit quel vehicule', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Documents', route: '/documents', description: 'Assurances, visites et echeances', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Maintenance', route: '/maintenance', description: 'Entretiens, pannes et atelier', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
@@ -180,6 +180,7 @@ export class Shell {
       id: 'exploitation', module: 'GESTION_PARC', libelle: 'Exploitation',
       autresRoutes: ['/missions', '/livraisons'],
       entrees: [
+        { libelle: 'Mes missions', route: '/missions', description: 'Missions confiees, demarrage et cloture', roles: ['CHAUFFEUR'] },
         { libelle: 'Chauffeurs', route: '/chauffeurs', description: 'Equipe, permis et disponibilite', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Clients', route: '/clients', description: 'Portefeuille et contrats en cours', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
       ]
@@ -326,7 +327,7 @@ export class Shell {
     {
       id: 'administration', libelle: 'Administration',
       entrees: [
-        { libelle: 'Rapports PDF', route: '/rapports', description: 'Etats a imprimer ou a envoyer', module: 'GESTION_PARC' },
+        { libelle: 'Rapports PDF', route: '/rapports', description: 'Etats a imprimer ou a envoyer', module: 'GESTION_PARC', roles: ['ADMIN', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Modules', route: '/modules', description: 'Applications activees pour l\'entreprise', roles: ['ADMIN'] },
         // Point de vente + Marketplace : la boutique se regle ici ; ventes et produits en ligne sont dans le point de vente.
         { libelle: 'Ma boutique', route: '/marketplace/boutique', description: 'Boutique en ligne : vitrine, livraison, paiement et lien', module: 'MARKETPLACE', avecUnDesModules: ['POINT_DE_VENTE', 'GESTION_PARC'], roles: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC'] },

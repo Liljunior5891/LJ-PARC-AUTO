@@ -29,6 +29,9 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class EvolutionService {
 
+    /** Cinq ans d'historique au plus : au-dela la serie n'est plus lisible. */
+    private static final int MOIS_MAX = 60;
+
     private static final DateTimeFormatter CLE = DateTimeFormatter.ofPattern("yyyy-MM");
 
     @PersistenceContext
@@ -36,7 +39,7 @@ public class EvolutionService {
 
     /** Serie mensuelle sur les {@code nombreMois} derniers mois, mois courant inclus. */
     public List<EvolutionMensuelleDto> evolution(int nombreMois) {
-        YearMonth debut = YearMonth.now().minusMonths(Math.max(1, nombreMois) - 1L);
+        YearMonth debut = YearMonth.now().minusMonths(Math.min(Math.max(1, nombreMois), MOIS_MAX) - 1L);
         LocalDate premierJour = debut.atDay(1);
         LocalDate dernierJour = YearMonth.now().atEndOfMonth();
 
@@ -49,6 +52,8 @@ public class EvolutionService {
         Map<String, BigDecimal> depenses = totauxParMois(
                 "select to_char(date_depense, 'YYYY-MM') as mois, coalesce(sum(montant), 0) as total "
                         + "from depense where entreprise_id = :entreprise and a_charge_client = false "
+                        // Ni les depenses en attente d'approbation, ni les refusees.
+                        + "and statut = 'VALIDEE' "
                         + "and date_depense between :debut and :fin group by 1",
                 premierJour, dernierJour);
 

@@ -14,6 +14,8 @@ import java.util.List;
 
 @RestController
 @ModuleRequis(ModuleApplicatif.GESTION_PARC)
+// Chiffres, marges, clients et creances : la direction et la gestion, jamais le chauffeur.
+@org.springframework.security.access.prepost.PreAuthorize(tg.parcauto.api.security.Autorisations.GESTION)
 @RequestMapping("/api/tableau-bord")
 @RequiredArgsConstructor
 @Tag(name = "Tableau de bord")
@@ -24,7 +26,7 @@ public class TableauBordController {
     @GetMapping("/parc")
     @Operation(summary = "Indicateurs du parc : effectifs, statuts, affectations et alertes")
     public TableauBordDto.Parc parc(@RequestParam(defaultValue = "30") int joursAlerte) {
-        return service.parc(joursAlerte);
+        return service.parc(RapportService.joursAlerte(joursAlerte));
     }
 
     @GetMapping("/finances")
@@ -39,7 +41,9 @@ public class TableauBordController {
                     iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
             java.time.LocalDate fin) {
         java.time.LocalDate finRetenue = fin == null ? java.time.LocalDate.now() : fin;
-        return service.finances(debut == null ? finRetenue.withDayOfMonth(1) : debut, finRetenue);
+        java.time.LocalDate debutRetenu = debut == null ? finRetenue.withDayOfMonth(1) : debut;
+        RapportService.exigerPeriode(debutRetenu, finRetenue);
+        return service.finances(debutRetenu, finRetenue);
     }
 
     @GetMapping("/vue-parc")

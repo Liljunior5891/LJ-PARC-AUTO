@@ -23,6 +23,8 @@ import java.util.Map;
 
 @RestController
 @ModuleRequis(ModuleApplicatif.GESTION_PARC)
+// Chiffres, marges, clients et creances : la direction et la gestion, jamais le chauffeur.
+@org.springframework.security.access.prepost.PreAuthorize(tg.parcauto.api.security.Autorisations.GESTION)
 @RequestMapping("/api/pilotage")
 @RequiredArgsConstructor
 @Tag(name = "Pilotage")
@@ -40,7 +42,9 @@ public class PilotageController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
         LocalDate finRetenue = fin == null ? LocalDate.now() : fin;
-        return service.kpi(debut == null ? finRetenue.withDayOfMonth(1) : debut, finRetenue);
+        LocalDate debutRetenu = debut == null ? finRetenue.withDayOfMonth(1) : debut;
+        rapportService.verifierPeriode(debutRetenu, finRetenue);
+        return service.kpi(debutRetenu, finRetenue);
     }
 
     @GetMapping("/camions/{camionId}/synthese")
@@ -50,8 +54,9 @@ public class PilotageController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
         LocalDate finRetenue = fin == null ? LocalDate.now() : fin;
-        return service.ficheSynthese(camionId,
-                debut == null ? finRetenue.withDayOfMonth(1) : debut, finRetenue);
+        LocalDate debutRetenu = debut == null ? finRetenue.withDayOfMonth(1) : debut;
+        rapportService.verifierPeriode(debutRetenu, finRetenue);
+        return service.ficheSynthese(camionId, debutRetenu, finRetenue);
     }
 
     /** Serie mensuelle recettes / depenses / resultat, pour le tableau de bord. */
@@ -64,14 +69,14 @@ public class PilotageController {
     @GetMapping("/notifications")
     @Operation(summary = "Notifications consolidees de tous les modules")
     public List<NotificationDto> notifications(@RequestParam(defaultValue = "30") int joursAlerte) {
-        return notificationService.notifications(joursAlerte);
+        return notificationService.notifications(RapportService.joursAlerte(joursAlerte));
     }
 
     @GetMapping("/notifications/synthese")
     @Operation(summary = "Compteurs de notifications par niveau")
     public NotificationDto.Synthese syntheseNotifications(
             @RequestParam(defaultValue = "30") int joursAlerte) {
-        return notificationService.synthese(joursAlerte);
+        return notificationService.synthese(RapportService.joursAlerte(joursAlerte));
     }
 
     @GetMapping("/rapports")
@@ -129,6 +134,7 @@ public class PilotageController {
             @RequestParam(required = false) List<Long> camionIds) {
         LocalDate finRetenue = fin == null ? LocalDate.now() : fin;
         LocalDate debutRetenu = debut == null ? finRetenue.withDayOfMonth(1) : debut;
+        rapportService.verifierPeriode(debutRetenu, finRetenue);
 
         byte[] contenu = rapportPdfService.produire(type, debutRetenu, finRetenue,
                 camionIds == null ? List.of() : camionIds);

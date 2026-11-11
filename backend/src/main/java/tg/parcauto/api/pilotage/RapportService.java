@@ -33,6 +33,8 @@ import java.util.Locale;
 public class RapportService {
 
     private static final char SEPARATEUR = ';';
+    /** Montant negatif ecrit par {@link #nombre} : il reste un nombre pour le tableur. */
+    private static final java.util.regex.Pattern NOMBRE = java.util.regex.Pattern.compile("-?\\d+(,\\d+)?");
     /** Marque d'ordre des octets, sans laquelle Excel lit mal les accents. */
     private static final String BOM = "﻿";
 
@@ -187,7 +189,12 @@ public class RapportService {
         if (valeur == null) {
             return "";
         }
-        if (valeur.indexOf(SEPARATEUR) >= 0 || valeur.indexOf('"') >= 0 || valeur.indexOf('\n') >= 0) {
+        // Un texte saisi qui commence par = + - @ serait execute comme formule par le tableur.
+        if (!valeur.isEmpty() && "=+-@\t\r".indexOf(valeur.charAt(0)) >= 0 && !NOMBRE.matcher(valeur).matches()) {
+            valeur = "'" + valeur;
+        }
+        if (valeur.indexOf(SEPARATEUR) >= 0 || valeur.indexOf('"') >= 0 || valeur.indexOf('\n') >= 0
+                || valeur.indexOf('\r') >= 0) {
             return '"' + valeur.replace("\"", "\"\"") + '"';
         }
         return valeur;
@@ -203,8 +210,21 @@ public class RapportService {
     }
 
     public void verifierPeriode(LocalDate debut, LocalDate fin) {
+        exigerPeriode(debut, fin);
+    }
+
+    /** Periode dans l'ordre et de cinq ans au plus : chaque vehicule y est recalcule. */
+    public static void exigerPeriode(LocalDate debut, LocalDate fin) {
         if (debut.isAfter(fin)) {
             throw new BusinessException("La date de debut est posterieure a la date de fin");
         }
+        if (debut.plusYears(5).isBefore(fin)) {
+            throw new BusinessException("La periode ne peut pas depasser cinq ans");
+        }
+    }
+
+    /** Horizon des alertes d'echeance, borne a un an. */
+    public static int joursAlerte(int jours) {
+        return Math.min(Math.max(jours, 0), 365);
     }
 }
