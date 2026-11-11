@@ -1,6 +1,5 @@
 package tg.parcauto.api.common.audit;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -36,12 +35,8 @@ public class JournalActiviteService {
                           String recherche, Long objetId) {
     }
 
-    /** Un champ change : son nom lisible, sa valeur avant et apres. */
-    public record Changement(String champ, String libelle, String avant, String apres) {
-    }
-
     public record LigneDto(Long id, Instant date, Long auteurId, String auteurNom, String module, String action, String objet,
-                           String objetLibelle, Long objetId, String description, String adresseIp, List<Changement> changements) {
+                           String objetLibelle, Long objetId, String description, String adresseIp, List<ChangementsJournal.Changement> changements) {
     }
 
     public record Choix(String valeur, String libelle) {
@@ -94,6 +89,25 @@ public class JournalActiviteService {
                 repository.auteurs().stream().map(r -> new Choix(String.valueOf(r[0]), (String) r[1])).toList());
     }
 
+    /** Action de la plateforme (sans entreprise), ecrite apres validation de la transaction. */
+    public void plateforme(String action, String objet, String objetLibelle, Long objetId, String description,
+                           Map<String, String> avant, Map<String, String> apres) {
+        EcritureJournal.Contexte c = EcritureJournal.contexte();
+        ecriture.ecrireApresValidation(new EcritureJournal.Evenement(null, Instant.now(), c.auteurId(), c.auteurNom(),
+                "PLATEFORME", action, objet, objetLibelle, objetId, description, enJson(avant), enJson(apres), c.adresseIp()));
+    }
+
+    private String enJson(Map<String, String> valeurs) {
+        if (valeurs == null || valeurs.isEmpty()) {
+            return null;
+        }
+        try {
+            return json.writeValueAsString(valeurs);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     /** Connexion reussie a l'application. */
     public void connexion(UtilisateurPrincipal u) {
         EcritureJournal.Contexte c = EcritureJournal.contexte();
@@ -110,28 +124,8 @@ public class JournalActiviteService {
     }
 
     private LigneDto versDto(JournalActivite j) {
-        Map<String, String> avant = lire(j.getAvant());
-        Map<String, String> apres = lire(j.getApres());
-        List<Changement> changements = new ArrayList<>();
-        Map<String, Boolean> champs = new LinkedHashMap<>();
-        avant.keySet().forEach(k -> champs.put(k, true));
-        apres.keySet().forEach(k -> champs.put(k, true));
-        for (String champ : champs.keySet()) {
-            changements.add(new Changement(champ, EcouteurAudit.champLisible(champ), avant.get(champ), apres.get(champ)));
-        }
         return new LigneDto(j.getId(), j.getDateAction(), j.getAuteurId(), j.getAuteurNom(), j.getModule(), j.getAction(),
-                j.getObjet(), j.getObjetLibelle(), j.getObjetId(), j.getDescription(), j.getAdresseIp(), changements);
-    }
-
-    private Map<String, String> lire(String texte) {
-        if (texte == null || texte.isBlank()) {
-            return Map.of();
-        }
-        try {
-            return json.readValue(texte, new TypeReference<LinkedHashMap<String, String>>() {
-            });
-        } catch (Exception e) {
-            return Map.of();
-        }
+                j.getObjet(), j.getObjetLibelle(), j.getObjetId(), j.getDescription(), j.getAdresseIp(),
+                ChangementsJournal.lire(json, j.getAvant(), j.getApres()));
     }
 }

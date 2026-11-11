@@ -361,6 +361,12 @@ export class Shell {
         { libelle: 'Formules', route: '/plateforme/abonnements/formules', description: 'Prix, modules compris et limites' },
         { libelle: 'Reglages', route: '/plateforme/abonnements/reglages', description: 'Essai, grace, remises et facture' }
       ]
+    },
+    {
+      id: 'plateforme-journal', libelle: "Journal d'audit",
+      entrees: [
+        { libelle: 'Journal general', route: '/plateforme/journal', description: 'Actions de toutes les entreprises et de la plateforme' }
+      ]
     }
   ];
 

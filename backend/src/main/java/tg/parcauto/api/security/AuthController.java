@@ -61,7 +61,8 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.email(), request.motDePasse()));
         } catch (org.springframework.security.core.AuthenticationException e) {
             // Journal d'audit de l'entreprise du compte vise, s'il existe.
-            utilisateurs.findByEmailIgnoreCase(request.email()).filter(u -> u.getEntrepriseId() != null)
+            // Compte du super-admin : journal general de la plateforme (entreprise vide).
+            utilisateurs.findByEmailIgnoreCase(request.email())
                     .ifPresent(u -> journal.echecConnexion(u.getEntrepriseId(), u.getId(), u.nomComplet(),
                             e instanceof org.springframework.security.authentication.DisabledException ? "compte desactive" : "mot de passe incorrect"));
             throw e;
@@ -70,9 +71,7 @@ public class AuthController {
         // Le mot de passe prouve l'identite : le PIN bloque par trop d'essais se debloque.
         pinService.debloquer(principal.getId());
         LoginResponse reponse = sessionService.ouvrir(principal);
-        if (principal.getEntrepriseId() != null) {
-            journal.connexion(principal);
-        }
+        journal.connexion(principal);
         return reponse;
     }
 

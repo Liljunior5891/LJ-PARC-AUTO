@@ -1,0 +1,67 @@
+/* Journal general du super-admin : tableau repris du journal des entreprises, rapport repris du tableau de bord. */
+
+.barre-journal {
+  margin-bottom: 1rem;
+}
+
+.raccourcis-periode {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 999px;
+  background: var(--couleur-fond);
+
+  button {
+    padding: 0.3rem 0.8rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--couleur-texte-doux);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--couleur-surface);
+      color: var(--couleur-primaire);
+    }
+  }
+}
+
+.rapport-journal {
+  margin-bottom: 1rem;
+}
+
+/* Barres cliquables : elles filtrent la liste sur le module ou l'entreprise. */
+.barres li.cliquable {
+  margin: 0 -6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--couleur-fond);
+  }
+
+  &.choisi {
+    background: color-mix(in srgb, var(--couleur-primaire) 10%, transparent);
+    font-weight: 600;
+  }
+}
+
+.vide-rapport {
+  margin: 1.5rem 0;
+  color: var(--couleur-texte-doux);
+  text-align: center;
+}
+
+.plateforme {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #fdf0d5;
+  color: #8a5a00;
+  font-size: 0.78rem;
+  font-weight: 600;
+}

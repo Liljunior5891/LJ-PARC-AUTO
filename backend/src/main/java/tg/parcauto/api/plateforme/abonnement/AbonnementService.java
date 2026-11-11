@@ -63,6 +63,7 @@ public class AbonnementService {
 
     private final AbonnementRepository abonnements;
     private final FormuleRepository formules;
+    private final tg.parcauto.api.common.audit.JournalActiviteService journal;
     private final PaiementAbonnementRepository paiements;
     private final ParametresAbonnementRepository parametresRepository;
     private final EntrepriseRepository entreprises;
@@ -213,7 +214,9 @@ public class AbonnementService {
         }
         Formule f = new Formule();
         appliquer(f, r);
-        return vue(formules.save(f), 0);
+        Formule enregistree = formules.save(f);
+        tracerPrix(enregistree, Map.of());
+        return vue(enregistree, 0);
     }
 
     public FormuleVue modifierFormule(Long id, FormuleRequete r) {
@@ -221,8 +224,42 @@ public class AbonnementService {
         if (formules.existsByNomIgnoreCaseAndIdNot(r.nom().trim(), id)) {
             throw new BusinessException("Une formule porte deja le nom " + r.nom().trim());
         }
+        Map<ModuleApplicatif, BigDecimal> prixAvant = new EnumMap<>(ModuleApplicatif.class);
+        prixAvant.putAll(f.getPrix());
         appliquer(f, r);
+        tracerPrix(f, prixAvant);
         return vue(f, abonnements.countByFormuleId(id));
+    }
+
+    /**
+     * Les prix par module sont une collection, que le journal automatique ne compare pas :
+     * leur changement est trace ici, au journal general de la plateforme, apres validation.
+     */
+    private void tracerPrix(Formule f, Map<ModuleApplicatif, BigDecimal> avant) {
+        Map<String, String> anciens = new java.util.LinkedHashMap<>();
+        Map<String, String> nouveaux = new java.util.LinkedHashMap<>();
+        Set<ModuleApplicatif> modules = EnumSet.noneOf(ModuleApplicatif.class);
+        modules.addAll(avant.keySet());
+        modules.addAll(f.getPrix().keySet());
+        for (ModuleApplicatif m : modules) {
+            BigDecimal a = avant.get(m);
+            BigDecimal b = f.getPrix().get(m);
+            if (a == null ? b != null : b == null || a.compareTo(b) != 0) {
+                anciens.put("prix " + m.name(), a == null ? null : a.stripTrailingZeros().toPlainString());
+                nouveaux.put("prix " + m.name(), b == null ? null : b.stripTrailingZeros().toPlainString());
+            }
+        }
+        if (nouveaux.isEmpty()) {
+            return;
+        }
+        boolean creation = avant.isEmpty();
+        String detail = nouveaux.keySet().stream()
+                .map(k -> k.substring(5) + " : " + (anciens.get(k) == null ? "—" : anciens.get(k)) + " → "
+                        + (nouveaux.get(k) == null ? "retire" : nouveaux.get(k)))
+                .collect(Collectors.joining(", "));
+        journal.plateforme(creation ? "CREATION" : "MODIFICATION", "Formule", "Formule d'abonnement", f.getId(),
+                "Prix de la formule « " + f.getNom() + " » " + (creation ? "fixes" : "modifies") + " (" + detail + ")",
+                creation ? null : anciens, nouveaux);
     }
 
     /** Une formule deja utilisee ne se supprime pas : on la desactive pour ne plus la proposer. */

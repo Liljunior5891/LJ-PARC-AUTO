@@ -55,19 +55,39 @@ public class EcritureJournal {
     }
 
     public void ecrire(Evenement e) {
-        if (e.entrepriseId() == null) {
-            return;
+        // Une seule regle pour les lignes sans entreprise : ce sont des actions de la plateforme
+        // (journal general du super-admin), sauf les connexions qui gardent leur module.
+        Evenement ligne = e.entrepriseId() == null && !"CONNEXION".equals(e.module())
+                ? new Evenement(null, e.date(), e.auteurId(), e.auteurNom(), "PLATEFORME", e.action(), e.objet(),
+                        e.objetLibelle(), e.objetId(), e.description(), e.avant(), e.apres(), e.adresseIp())
+                : e;
+        fil.submit(() -> ecrireMaintenant(ligne));
+    }
+
+    /** Ecrit apres la validation de la transaction en cours, s'il y en a une : rien n'est trace pour une operation annulee. */
+    public void ecrireApresValidation(Evenement e) {
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            ecrire(e);
+                        }
+                    });
+        } else {
+            ecrire(e);
         }
-        fil.submit(() -> {
-            try {
+    }
+
+    private void ecrireMaintenant(Evenement e) {
+        try {
                 jdbc.update(INSERTION, e.entrepriseId(), Timestamp.from(e.date()), e.auteurId(), tronquer(e.auteurNom(), 150),
                         e.module(), e.action(), tronquer(e.objet(), 60), tronquer(e.objetLibelle(), 80), e.objetId(),
                         tronquer(e.description(), 500), e.avant(), e.apres(), tronquer(e.adresseIp(), 60),
                         Timestamp.from(e.date()), tronquer(e.auteurNom(), 100));
-            } catch (RuntimeException ex) {
-                log.warn("Journal d'audit non ecrit ({} {} #{}) : {}", e.action(), e.objet(), e.objetId(), ex.getMessage());
-            }
-        });
+        } catch (RuntimeException ex) {
+            log.warn("Journal d'audit non ecrit ({} {} #{}) : {}", e.action(), e.objet(), e.objetId(), ex.getMessage());
+        }
     }
 
     /** Auteur connecte et adresse IP de la requete ; « Systeme » hors requete, « Visiteur » sans connexion. */

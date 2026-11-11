@@ -60,7 +60,9 @@ public class EcouteurAudit implements PostCommitInsertEventListener, PostCommitU
 
     /** Champs ignores dans les comparaisons. */
     private static final Set<String> CHAMPS_IGNORES = Set.of(
-            "version", "creeLe", "creePar", "modifieLe", "modifiePar", "entrepriseId", "stockActuel", "stockReserve");
+            "version", "creeLe", "creePar", "modifieLe", "modifiePar", "entrepriseId", "stockActuel", "stockReserve",
+            // Signal de vie des bornes de presence, toutes les 30 secondes : du bruit, pas une action.
+            "dernierContact");
 
     /** Champs secrets : on note qu'ils ont change, jamais leur valeur. */
     private static final Set<String> CHAMPS_SECRETS = Set.of("motDePasse", "pinHash", "pin", "token", "secret", "cleApi",
@@ -93,7 +95,9 @@ public class EcouteurAudit implements PostCommitInsertEventListener, PostCommitU
             Map.entry("Commande", "Commande (restaurant)"), Map.entry("EcranPreparation", "Ecran de preparation"),
             Map.entry("ReglageRestauration", "Reglages restauration"), Map.entry("Salle", "Salle"),
             Map.entry("TableRestaurant", "Table"), Map.entry("DegagementCoffre", "Degagement au coffre"),
-            Map.entry("RemiseCaisse", "Remise de caisse"), Map.entry("Vente", "Vente"));
+            Map.entry("RemiseCaisse", "Remise de caisse"), Map.entry("Vente", "Vente"),
+            Map.entry("Abonnement", "Abonnement"), Map.entry("PaiementAbonnement", "Paiement d'abonnement"),
+            Map.entry("Formule", "Formule d'abonnement"), Map.entry("ParametresAbonnement", "Reglages des abonnements"));
 
     /** Proprietes qui nomment une donnee, par ordre de preference. */
     private static final List<String> PROPRIETES_NOM = List.of(
@@ -198,7 +202,9 @@ public class EcouteurAudit implements PostCommitInsertEventListener, PostCommitU
 
     private void tracer(Object entite, Long id, String action, String verbe, Map<String, String> avant, Map<String, String> apres) {
         Long entreprise = entrepriseDe(entite);
-        if (entreprise == null) {
+        String module = moduleDe(Hibernate.getClass(entite));
+        // Sans entreprise, seules les donnees de la plateforme sont tracees ; l'ecriture les range en PLATEFORME.
+        if (entreprise == null && !deLaPlateforme(entite)) {
             return;
         }
         String objet = Hibernate.getClass(entite).getSimpleName();
@@ -207,7 +213,7 @@ public class EcouteurAudit implements PostCommitInsertEventListener, PostCommitU
         EcritureJournal.Contexte c = EcritureJournal.contexte();
         String description = libelle + (nom != null ? " « " + nom + " »" : id != null ? " n° " + id : "") + " " + verbe;
         ecriture.ecrire(new EcritureJournal.Evenement(entreprise, Instant.now(), c.auteurId(), c.auteurNom(),
-                moduleDe(Hibernate.getClass(entite)), action, objet, libelle, id, description, enJson(avant), enJson(apres), c.adresseIp()));
+                module, action, objet, libelle, id, description, enJson(avant), enJson(apres), c.adresseIp()));
     }
 
     private static boolean tracee(Class<?> classe) {
@@ -228,6 +234,8 @@ public class EcouteurAudit implements PostCommitInsertEventListener, PostCommitU
             case "gps" -> "GPS";
             case "pointdevente" -> "POINT_DE_VENTE";
             case "marketplace" -> "MARKETPLACE";
+            case "presence" -> "PRESENCE";
+            case "plateforme" -> reste.startsWith("plateforme.abonnement.") ? "ABONNEMENT" : "ADMINISTRATION";
             default -> "ADMINISTRATION";
         };
     }
@@ -239,10 +247,23 @@ public class EcouteurAudit implements PostCommitInsertEventListener, PostCommitU
         if (entite instanceof Entreprise en) {
             return en.getId();
         }
-        if (entite instanceof Utilisateur u && u.getEntrepriseId() != null) {
+        if (entite instanceof Utilisateur u) {
+            // Compte du super-admin : jamais range sous l'entreprise du contexte.
             return u.getEntrepriseId();
         }
+        // Abonnement, paiement d'abonnement, module active : rattaches a leur entreprise. Formule et
+        // reglages d'abonnement n'en ont pas : ils restent a la plateforme, quel que soit le contexte.
+        if (Hibernate.getClass(entite).getName().startsWith(RACINE + "plateforme.")) {
+            String id = lire(entite, "entrepriseId");
+            return id == null ? null : Long.valueOf(id);
+        }
         return ContexteEntreprise.courante().orElse(null);
+    }
+
+    /** Donnee de la plateforme, sans entreprise : formule, reglages d'abonnement, compte du super-admin. */
+    private static boolean deLaPlateforme(Object entite) {
+        return Hibernate.getClass(entite).getName().startsWith(RACINE + "plateforme.")
+                || (entite instanceof Utilisateur u && u.getEntrepriseId() == null);
     }
 
     private static Long idDe(Object id) {

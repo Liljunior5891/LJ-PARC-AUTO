@@ -17,6 +17,8 @@ const MODULES: { valeur: string; libelle: string }[] = [
   { valeur: 'POINT_DE_VENTE', libelle: 'Point de vente' },
   { valeur: 'MARKETPLACE', libelle: 'Marketplace' },
   { valeur: 'ADMINISTRATION', libelle: 'Administration' },
+  { valeur: 'ABONNEMENT', libelle: 'Abonnement' },
+  { valeur: 'PRESENCE', libelle: 'Presence' },
   { valeur: 'CONNEXION', libelle: 'Connexions' }
 ];
 

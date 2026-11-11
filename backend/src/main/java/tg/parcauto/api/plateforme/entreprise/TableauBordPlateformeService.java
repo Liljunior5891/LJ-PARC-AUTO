@@ -196,7 +196,7 @@ public class TableauBordPlateformeService {
                 valeur("SELECT count(*) FROM utilisateur WHERE entreprise_id IS NOT NULL"),
                 valeur("SELECT count(*) FROM utilisateur WHERE entreprise_id IS NOT NULL AND actif"),
                 valeur("SELECT count(DISTINCT auteur_id) FROM journal_activite WHERE action = 'CONNEXION' "
-                        + "AND date_action >= now() - interval '7 days'"),
+                        + "AND entreprise_id IS NOT NULL AND date_action >= now() - interval '7 days'"),
                 valeur("SELECT count(DISTINCT entreprise_id) FROM journal_activite WHERE date_action >= now() - interval '30 days'"),
                 mrr, mrr.multiply(BigDecimal.valueOf(12)),
                 revenus.getOrDefault(moisCourant, BigDecimal.ZERO), revenus.getOrDefault(moisPrecedent, BigDecimal.ZERO),
