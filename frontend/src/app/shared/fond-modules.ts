@@ -15,10 +15,10 @@ interface Diapositive {
 }
 
 /**
- * Pour remplacer une illustration par une photo du module, deposer l'image dans
- * frontend/public/modules/ et la renseigner dans « photo » (elle prend le pas sur
- * l'illustration). Le formulaire occupe la gauche de l'ecran : un sujet place a
- * droite de la photo reste visible.
+ * Photos libres de droits (sources et licences : frontend/public/modules/CREDITS.md).
+ * Pour changer une photo, la deposer dans frontend/public/modules/ et la renseigner
+ * dans « photo » ; sans photo, l'illustration s'affiche sur le degrade. Le formulaire
+ * occupe la gauche de l'ecran : un sujet place a droite de la photo reste visible.
  */
 const DIAPOSITIVES: Diapositive[] = [
   {
@@ -35,6 +35,7 @@ const DIAPOSITIVES: Diapositive[] = [
     nom: 'Point de vente',
     accroche: 'Une caisse rapide pour la boutique, le restaurant ou la quincaillerie.',
     points: ['Caisse, stock et codes-barres', 'Commandes par table et cuisine', 'Credit client et devis'],
+    photo: '/modules/point-de-vente.jpg',
     illustration: '/modules/point-de-vente.svg',
     degrade: 'linear-gradient(135deg, #022c22 0%, #065f46 55%, #0f766e 100%)',
     accent: '#6ee7b7'
@@ -44,6 +45,7 @@ const DIAPOSITIVES: Diapositive[] = [
     nom: 'Marketplace',
     accroche: 'Votre boutique en ligne, ouverte a tous, en quelques minutes.',
     points: ['Vitrine et lien a partager', 'Paiement au retrait ou mobile money', 'Location de vehicules en ligne'],
+    photo: '/modules/marketplace.jpg',
     illustration: '/modules/marketplace.svg',
     degrade: 'linear-gradient(135deg, #431407 0%, #9a3412 55%, #c2410c 100%)',
     accent: '#fdba74'
@@ -53,6 +55,7 @@ const DIAPOSITIVES: Diapositive[] = [
     nom: 'Agences multiservices',
     accroche: 'Mobile money, transferts et cartes, agence par agence.',
     points: ['Cash et virtuel toujours justes', 'Commissions et baremes', 'Journal que personne ne modifie'],
+    photo: '/modules/agences.jpg',
     illustration: '/modules/agences.svg',
     degrade: 'linear-gradient(135deg, #0f0c2e 0%, #312e81 55%, #4338ca 100%)',
     accent: '#a5b4fc'
@@ -62,6 +65,7 @@ const DIAPOSITIVES: Diapositive[] = [
     nom: 'Gestion de presence',
     accroche: 'Le pointage des equipes par code QR, sans badge ni appareil a acheter.',
     points: ['Code QR qui change toutes les 30 s', 'Position GPS controlee', 'Retards et absents en direct'],
+    photo: '/modules/presence.jpg',
     illustration: '/modules/presence.svg',
     degrade: 'linear-gradient(135deg, #2e0854 0%, #581c87 55%, #7e22ce 100%)',
     accent: '#d8b4fe'
@@ -122,7 +126,8 @@ const DUREE_MS = 7000;
     .diapositives, .diapositive, .photo, .illustration { position: absolute; inset: 0; }
     .diapositive { opacity: 0; transition: opacity 1.2s ease; }
     .diapositive.active { opacity: 1; }
-    .photo { background-size: cover; background-position: center bottom; }
+    .photo { background-size: cover; background-position: center; }
+    .diapositive:first-child .photo { background-position: center bottom; }
     .illustration {
       left: 46%; right: 2%; top: 6%; bottom: 30%;
       background-repeat: no-repeat; background-size: contain; background-position: center;
