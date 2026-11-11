@@ -45,6 +45,11 @@ parcauto:
   # « simulation » : paiement de demonstration (developpement uniquement).
   paiement:
     fournisseur: ${PAIEMENT_FOURNISSEUR:}
+  # Paiement des abonnements par PayGate Global (Flooz, T-Money). Sans cle : pas de paiement
+  # en ligne, l'entreprise declare son paiement et la plateforme le valide.
+  paygate:
+    auth-token: ${PAYGATE_AUTH_TOKEN:}
+    url: ${PAYGATE_URL:https://paygateglobal.com}
   security:
     jwt:
       # A remplacer imperativement en production (variable d'environnement JWT_SECRET)

@@ -11,7 +11,13 @@ export const MODULES_FACTURABLES: { code: CodeModule; libelle: string }[] = [
 ];
 
 export type Periodicite = 'MENSUEL' | 'TRIMESTRIEL' | 'SEMESTRIEL' | 'ANNUEL';
-export type MoyenPaiementAbonnement = 'MOBILE_MONEY' | 'VIREMENT' | 'ESPECES' | 'CHEQUE' | 'AUTRE';
+export type MoyenPaiementAbonnement = 'MOBILE_MONEY' | 'PAYGATE' | 'VIREMENT' | 'ESPECES' | 'CHEQUE' | 'AUTRE';
+/** Reseaux mobile money payables en ligne par PayGate Global. */
+export type ReseauPayGate = 'FLOOZ' | 'TMONEY';
+export const RESEAUX_PAYGATE: { code: ReseauPayGate; libelle: string }[] = [
+  { code: 'TMONEY', libelle: 'T-Money (Togocom)' },
+  { code: 'FLOOZ', libelle: 'Flooz (Moov Africa)' }
+];
 export type StatutPaiementAbonnement = 'EN_ATTENTE' | 'VALIDE' | 'REJETE';
 export type EtatAbonnement = 'ESSAI' | 'ACTIF' | 'A_RENOUVELER' | 'GRACE' | 'EXPIRE';
 export type RessourceLimitee = 'UTILISATEURS' | 'VEHICULES' | 'AGENCES' | 'CAISSES' | 'EMPLOYES';
@@ -193,6 +199,8 @@ export interface PaiementAbonnement {
 export interface OffreAbonnement {
   formules: Formule[];
   parametres: ParametresAbonnement;
+  /** Vrai si le paiement en ligne (PayGate : Flooz, T-Money) est configure sur la plateforme. */
+  paiementEnLigne?: boolean;
 }
 
 // ------------------------------------------------------ tableau de bord
@@ -270,4 +278,10 @@ export interface TableauBordPlateforme {
   echeances: EcheanceAbonnement[];
   dernieresInscrites: EntrepriseCourte[];
   plusGrandes: EntrepriseCourte[];
+}
+
+/** Paiement en ligne : formule choisie et numero mobile money qui paie. */
+export interface DemandePaiementEnLigne extends DemandeDevis {
+  reseau: ReseauPayGate;
+  telephone: string;
 }

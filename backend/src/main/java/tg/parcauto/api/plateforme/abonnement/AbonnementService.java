@@ -70,6 +70,7 @@ public class AbonnementService {
     private final ModuleService moduleService;
     private final StockageFichierService stockage;
     private final JdbcTemplate jdbc;
+    private final tg.parcauto.api.plateforme.abonnement.paygate.PayGateClient payGate;
 
     // ================================================================ vues
 
@@ -165,7 +166,16 @@ public class AbonnementService {
     }
 
     /** Ce que voit l'entreprise pour choisir : formules ouvertes avec leurs prix par module, remises. */
-    public record Offre(List<FormuleVue> formules, ParametresVue parametres) {
+    public record Offre(List<FormuleVue> formules, ParametresVue parametres,
+                        /** Vrai si le paiement en ligne (PayGate) est configure sur la plateforme. */
+                        boolean paiementEnLigne) {
+    }
+
+    /** Paiement en ligne : la formule choisie, et le telephone mobile money qui paie. */
+    public record DemandeEnLigne(@NotNull Long formuleId, @NotNull Periodicite periodicite,
+                                 List<ModuleApplicatif> modules,
+                                 @NotNull @jakarta.validation.constraints.Pattern(regexp = "^(FLOOZ|TMONEY)$") String reseau,
+                                 @NotNull @Size(max = 20) String telephone) {
     }
 
     // ============================================================ reglages
@@ -274,7 +284,7 @@ public class AbonnementService {
 
     @Transactional(readOnly = true)
     public Offre offre() {
-        return new Offre(formules(true), parametresVue());
+        return new Offre(formules(true), parametresVue(), payGate.actif());
     }
 
     // ======================================================== abonnements
@@ -426,6 +436,9 @@ public class AbonnementService {
         if (paiements.existsByEntrepriseIdAndStatut(entrepriseId, StatutPaiementAbonnement.EN_ATTENTE)) {
             throw new BusinessException("Un paiement attend deja la validation : annulez-le pour en declarer un autre");
         }
+        if (d.moyen() == MoyenPaiementAbonnement.PAYGATE) {
+            throw new BusinessException("Le paiement en ligne se fait par le bouton Payer en ligne");
+        }
         Formule f = formuleOuverte(d.formuleId());
         Devis devis = devis(f, d.periodicite(), d.modules());
         if (devis.montant().signum() <= 0) {
@@ -435,6 +448,121 @@ public class AbonnementService {
         PaiementAbonnement p = nouveauPaiement(entrepriseId, f, d.periodicite(), devis, d.moyen(),
                 d.reference(), d.note(), devis.montant());
         return vue(paiements.save(p), nomEntreprise(entrepriseId));
+    }
+
+    // ------------------------------------------------- paiement en ligne (PayGate)
+
+    /** Plus haut montant envoye en une fois a PayGate (plafond des portefeuilles mobile money). */
+    static final long MONTANT_MAX_EN_LIGNE = 1_000_000;
+
+    /**
+     * Prepare un paiement en ligne : meme devis qu'une declaration, enregistre en attente avec
+     * un identifiant aleatoire. La demande part ensuite chez PayGate, hors de cette transaction.
+     */
+    public PaiementAbonnement preparerPaiementEnLigne(Long entrepriseId, DemandeEnLigne d, String telephone) {
+        if (paiements.existsByEntrepriseIdAndStatut(entrepriseId, StatutPaiementAbonnement.EN_ATTENTE)) {
+            throw new BusinessException("Un paiement attend deja sa confirmation : patientez ou annulez-le");
+        }
+        Formule f = formuleOuverte(d.formuleId());
+        Devis devis = devis(f, d.periodicite(), d.modules());
+        BigDecimal montant = devis.montant();
+        if (montant.signum() <= 0) {
+            throw new BusinessException("Le montant a payer est nul : choisissez des modules tarifes");
+        }
+        if (montant.stripTrailingZeros().scale() > 0 || montant.compareTo(BigDecimal.valueOf(MONTANT_MAX_EN_LIGNE)) > 0) {
+            throw new BusinessException("Ce montant ne peut pas etre paye en ligne en une fois : choisissez une"
+                    + " periode plus courte ou declarez un virement");
+        }
+        PaiementAbonnement p = nouveauPaiement(entrepriseId, f, d.periodicite(), devis, MoyenPaiementAbonnement.PAYGATE,
+                null, null, montant);
+        String identifiant = "ABO" + java.util.HexFormat.of().formatHex(aleatoire(12)).toUpperCase();
+        p.setPaygateIdentifiant(identifiant);
+        p.setReference(identifiant);
+        p.setPaygateReseau(d.reseau());
+        p.setPaygateTelephone(telephone);
+        return paiements.saveAndFlush(p);
+    }
+
+    /** PayGate a enregistre la demande : le client la valide maintenant sur son telephone. */
+    public PaiementVue demandeEnvoyee(Long id, String txReference) {
+        PaiementAbonnement p = paiement(id);
+        p.setPaygateTxReference(txReference);
+        return vue(p, nomEntreprise(p.getEntrepriseId()));
+    }
+
+    /** PayGate a refuse la demande : le paiement est rejete, l'entreprise peut recommencer. */
+    public void demandeRefusee(Long id, String motif) {
+        PaiementAbonnement p = paiement(id);
+        p.setStatut(StatutPaiementAbonnement.REJETE);
+        p.setMotifRejet(motif);
+        p.setTraitePar("PayGate");
+        p.setTraiteLe(Instant.now());
+    }
+
+    /**
+     * Applique l'etat verifie aupres de PayGate (jamais celui d'un rappel non signe).
+     * Paye : l'abonnement s'ouvre comme apres une validation du super-administrateur.
+     * Un paiement rejete puis confirme paye (debit tardif) est quand meme valide : l'argent est recu.
+     */
+    public PaiementVue appliquerEtatPayGate(String identifiant,
+                                            tg.parcauto.api.plateforme.abonnement.paygate.PayGateClient.Etat etat) {
+        PaiementAbonnement p = paiements.verrouillerPayGate(identifiant)
+                .orElseThrow(() -> new ResourceNotFoundException("Paiement en ligne introuvable"));
+        p.setPaygateVerifieLe(Instant.now());
+        if (etat.txReference() != null && p.getPaygateTxReference() == null) {
+            p.setPaygateTxReference(etat.txReference());
+        }
+        boolean traitable = p.getStatut() == StatutPaiementAbonnement.EN_ATTENTE
+                || (p.getStatut() == StatutPaiementAbonnement.REJETE && "PayGate".equals(p.getTraitePar()));
+        if (!traitable) {
+            return vue(p, nomEntreprise(p.getEntrepriseId()));
+        }
+        switch (etat.statut()) {
+            case tg.parcauto.api.plateforme.abonnement.paygate.PayGateClient.PAYE -> {
+                p.setPaygateReferencePaiement(etat.referencePaiement());
+                p.setMotifRejet(null);
+                appliquer(p, "PayGate (paiement en ligne)");
+                journal.plateforme("PAIEMENT_EN_LIGNE", "PaiementAbonnement", p.getNumeroFacture(), p.getId(),
+                        "Paiement en ligne " + identifiant + " confirme par PayGate ("
+                                + p.getMontant().toPlainString() + " " + p.getDevise() + ")", null, null);
+            }
+            case tg.parcauto.api.plateforme.abonnement.paygate.PayGateClient.EXPIRE,
+                 tg.parcauto.api.plateforme.abonnement.paygate.PayGateClient.ANNULE -> {
+                if (p.getStatut() == StatutPaiementAbonnement.EN_ATTENTE) {
+                    p.setStatut(StatutPaiementAbonnement.REJETE);
+                    p.setMotifRejet(etat.statut() == tg.parcauto.api.plateforme.abonnement.paygate.PayGateClient.EXPIRE
+                            ? "Paiement non valide a temps sur le telephone (expire)" : "Paiement annule");
+                    p.setTraitePar("PayGate");
+                    p.setTraiteLe(Instant.now());
+                }
+            }
+            default -> {
+                // En cours : rien a faire, la verification reprendra.
+            }
+        }
+        return vue(p, nomEntreprise(p.getEntrepriseId()));
+    }
+
+    /** Paiement en ligne de l'entreprise, pour verifier son etat depuis l'ecran. */
+    @Transactional(readOnly = true)
+    public PaiementAbonnement paiementEnLigneDe(Long entrepriseId, Long id) {
+        PaiementAbonnement p = paiementDe(entrepriseId, id);
+        if (p.getMoyen() != MoyenPaiementAbonnement.PAYGATE || p.getPaygateIdentifiant() == null) {
+            throw new BusinessException("Ce paiement n'a pas ete fait en ligne");
+        }
+        return p;
+    }
+
+    @Transactional(readOnly = true)
+    public PaiementVue vuePaiement(Long id) {
+        PaiementAbonnement p = paiement(id);
+        return vue(p, nomEntreprise(p.getEntrepriseId()));
+    }
+
+    private static byte[] aleatoire(int octets) {
+        byte[] b = new byte[octets];
+        new java.security.SecureRandom().nextBytes(b);
+        return b;
     }
 
     /** Le super-administrateur saisit un paiement recu : il est valide aussitot. */
@@ -487,6 +615,10 @@ public class AbonnementService {
         PaiementAbonnement p = paiementDe(entrepriseId, id);
         if (p.getStatut() != StatutPaiementAbonnement.EN_ATTENTE) {
             throw new BusinessException("Seul un paiement en attente peut etre annule");
+        }
+        if (p.getMoyen() == MoyenPaiementAbonnement.PAYGATE) {
+            throw new BusinessException("Un paiement en ligne ne s'annule pas ici : s'il n'est pas valide sur le"
+                    + " telephone, il expire de lui-meme et vous pourrez recommencer");
         }
         if (p.getPreuveChemin() != null) {
             stockage.supprimer(p.getPreuveChemin());

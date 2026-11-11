@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   AbonnementVue,
@@ -8,6 +8,8 @@ import {
   OffreAbonnement,
   PaiementAbonnement,
   Periodicite,
+  RESEAUX_PAYGATE,
+  ReseauPayGate,
   TEINTES_ETATS
 } from '../../core/models/abonnement';
 import { CodeModule } from '../../core/models/models';
@@ -43,12 +45,14 @@ function message(reponse: unknown, defaut: string): string {
   templateUrl: './mon-abonnement.html',
   styleUrl: './mon-abonnement.scss'
 })
-export class MonAbonnement implements OnInit {
+export class MonAbonnement implements OnInit, OnDestroy {
   private readonly service = inject(AbonnementService);
   private readonly auth = inject(AuthService);
 
   readonly teintes = TEINTES_ETATS;
-  readonly moyens = MOYENS_PAIEMENT;
+  /** La declaration manuelle ne propose pas le paiement en ligne : il a son propre bouton. */
+  readonly moyens = MOYENS_PAIEMENT.filter((m) => m.code !== 'PAYGATE');
+  readonly reseaux = RESEAUX_PAYGATE;
   readonly presentation = PRESENTATION_MODULES;
   readonly libellesModules = LIBELLES_MODULES;
 
@@ -68,8 +72,21 @@ export class MonAbonnement implements OnInit {
   note = '';
   preuve: File | null = null;
 
+  /** Paiement en ligne (PayGate) ou declaration d'un paiement fait autrement. */
+  readonly mode = signal<'en-ligne' | 'declaration'>('declaration');
+  reseau: ReseauPayGate = 'TMONEY';
+  telephone = '';
+  /** Paiement en ligne envoye, en attente de validation sur le telephone. */
+  readonly attente = signal<PaiementAbonnement | null>(null);
+  private minuteur?: ReturnType<typeof setInterval>;
+  private finAttente = 0;
+
   ngOnInit(): void {
     this.charger();
+  }
+
+  ngOnDestroy(): void {
+    this.arreterSuivi();
   }
 
   charger(): void {
@@ -114,6 +131,7 @@ export class MonAbonnement implements OnInit {
     this.reference = '';
     this.note = '';
     this.preuve = null;
+    this.mode.set(this.offre()?.paiementEnLigne ? 'en-ligne' : 'declaration');
     this.succes.set(null);
     this.erreur.set(null);
     this.choix.set(true);
@@ -190,6 +208,79 @@ export class MonAbonnement implements OnInit {
         this.erreur.set(message(r, 'Declaration impossible.'));
       }
     });
+  }
+
+  /** Envoie la demande de paiement sur le telephone, puis suit sa validation. */
+  payerEnLigne(): void {
+    const formuleId = this.formuleId();
+    if (!formuleId || !this.modules().length) {
+      this.erreur.set('Choisissez une formule et au moins un module.');
+      return;
+    }
+    if (!/^(\+?228)?[279]\d{7}$/.test(this.telephone.replace(/[\s.-]/g, ''))) {
+      this.erreur.set('Numero mobile money invalide : 8 chiffres, par exemple 90 12 34 56.');
+      return;
+    }
+    this.enCours.set(true);
+    this.erreur.set(null);
+    this.service.payerEnLigne({
+      formuleId, periodicite: this.periodicite(), modules: this.modules(), reseau: this.reseau, telephone: this.telephone
+    }).subscribe({
+      next: (p) => {
+        this.enCours.set(false);
+        this.choix.set(false);
+        this.suivre(p);
+        this.charger();
+      },
+      error: (r) => {
+        this.enCours.set(false);
+        this.erreur.set(message(r, 'Paiement impossible pour le moment.'));
+      }
+    });
+  }
+
+  /** Verifie le paiement toutes les 5 secondes pendant 5 minutes, puis laisse le serveur prendre le relais. */
+  suivre(p: PaiementAbonnement): void {
+    this.arreterSuivi();
+    this.attente.set(p);
+    this.succes.set(null);
+    this.finAttente = Date.now() + 5 * 60 * 1000;
+    this.minuteur = setInterval(() => this.verifier(p, true), 5000);
+  }
+
+  verifier(p: PaiementAbonnement, automatique = false): void {
+    this.service.verifierEnLigne(p.id).subscribe({
+      next: (maj) => {
+        this.paiements.update((l) => l.map((x) => (x.id === maj.id ? maj : x)));
+        if (maj.statut === 'VALIDE') {
+          this.arreterSuivi();
+          this.succes.set('Paiement recu : votre abonnement est ouvert jusqu\'au '
+            + new Date(maj.periodeFin ?? '').toLocaleDateString('fr-FR') + '.');
+          this.charger();
+        } else if (maj.statut === 'REJETE') {
+          this.arreterSuivi();
+          this.erreur.set(maj.motifRejet ?? 'Le paiement n\'a pas abouti.');
+          this.charger();
+        } else if (automatique && Date.now() > this.finAttente) {
+          this.arreterSuivi();
+          this.succes.set('Paiement toujours en attente : il sera pris en compte des sa validation sur le telephone.'
+            + ' Vous pouvez le verifier depuis l\'historique.');
+        }
+      },
+      error: (r) => {
+        if (!automatique) {
+          this.erreur.set(message(r, 'Verification impossible pour le moment.'));
+        }
+      }
+    });
+  }
+
+  private arreterSuivi(): void {
+    if (this.minuteur) {
+      clearInterval(this.minuteur);
+      this.minuteur = undefined;
+    }
+    this.attente.set(null);
   }
 
   annuler(p: PaiementAbonnement): void {

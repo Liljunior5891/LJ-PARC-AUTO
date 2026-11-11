@@ -16,8 +16,15 @@
     <div class="message avertissement">Echeance depassee depuis le {{ a.fin | date: 'dd/MM/yyyy' }} : tout fonctionne encore jusqu'au
       {{ a.finGrace | date: 'dd/MM/yyyy' }}, puis l'application passera en lecture seule.</div>
   }
-  @if (a.paiementEnAttente) {
-    <div class="message avertissement">Un paiement attend la validation de la plateforme. Vous pouvez y joindre une preuve ou l'annuler ci-dessous.</div>
+  @if (attente(); as p) {
+    <div class="message avertissement attente-paiement">
+      <strong>Validez le paiement de {{ p.montant | number: '1.0-0' }} {{ p.devise }} sur votre telephone.</strong>
+      Une demande vient d'arriver sur votre compte mobile money : confirmez-la avec votre code secret.
+      Cette page se met a jour toute seule.
+      <button class="bouton secondaire petit" type="button" (click)="verifier(p)">Verifier maintenant</button>
+    </div>
+  } @else if (a.paiementEnAttente) {
+    <div class="message avertissement">Un paiement attend sa confirmation. Le detail est dans l'historique ci-dessous.</div>
   }
 
   <!-- L'essentiel : la formule, l'echeance et le bouton pour renouveler. -->
@@ -96,7 +103,31 @@
     <app-choix-formule [formules]="o.formules" [parametres]="o.parametres"
                        [(formuleId)]="formuleId" [(periodicite)]="periodicite" [(modules)]="modules" />
 
-    <h2 class="titre-bloc espace-haut"><span class="etape">2</span> Payer puis declarer le paiement</h2>
+    <h2 class="titre-bloc espace-haut"><span class="etape">2</span> Payer</h2>
+    @if (o.paiementEnLigne) {
+      <div class="choix-mode" role="tablist">
+        <button type="button" role="tab" [class.actif]="mode() === 'en-ligne'" [attr.aria-selected]="mode() === 'en-ligne'"
+                (click)="mode.set('en-ligne')">📱 Payer maintenant (T-Money, Flooz)</button>
+        <button type="button" role="tab" [class.actif]="mode() === 'declaration'" [attr.aria-selected]="mode() === 'declaration'"
+                (click)="mode.set('declaration')">🧾 J'ai deja paye autrement</button>
+      </div>
+    }
+    @if (mode() === 'en-ligne' && o.paiementEnLigne) {
+      <div class="grille-formulaire">
+        <div class="champ"><label for="ma-reseau">Reseau</label>
+          <select id="ma-reseau" [(ngModel)]="reseau">
+            @for (r of reseaux; track r.code) { <option [value]="r.code">{{ r.libelle }}</option> }
+          </select></div>
+        <div class="champ"><label for="ma-tel">Numero mobile money</label>
+          <input id="ma-tel" [(ngModel)]="telephone" inputmode="tel" maxlength="20" placeholder="90 12 34 56" /></div>
+      </div>
+      <p class="doux">Une demande de paiement arrive sur ce numero : validez-la avec votre code secret. L'abonnement
+        s'ouvre des que le paiement est confirme, sans attendre la plateforme.</p>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="choix.set(false)">Annuler</button>
+        <button class="bouton" type="button" [disabled]="enCours()" (click)="payerEnLigne()">{{ enCours() ? 'Envoi...' : 'Payer maintenant' }}</button>
+      </div>
+    } @else {
     @if (o.parametres.instructionsPaiement) {
       <div class="instructions">{{ o.parametres.instructionsPaiement }}</div>
     }
@@ -117,6 +148,7 @@
       <button class="bouton secondaire annuler" type="button" (click)="choix.set(false)">Annuler</button>
       <button class="bouton" type="button" [disabled]="enCours()" (click)="declarer()">{{ enCours() ? 'Envoi...' : 'Declarer mon paiement' }}</button>
     </div>
+    }
   </app-modale>
 }
 
@@ -135,13 +167,15 @@
             <td class="nombre">{{ p.montant | number: '1.0-0' }} {{ p.devise }}</td>
             <td>
               <span class="etiquette-abo {{ p.statut === 'VALIDE' ? 'vert' : p.statut === 'REJETE' ? 'rouge' : 'orange' }}">
-                {{ p.statut === 'VALIDE' ? 'Valide' : p.statut === 'REJETE' ? 'Rejete' : 'En verification' }}</span>
+                {{ p.statut === 'VALIDE' ? 'Valide' : p.statut === 'REJETE' ? (p.moyen === 'PAYGATE' ? 'Non abouti' : 'Rejete') : (p.moyen === 'PAYGATE' ? 'En attente du telephone' : 'En verification') }}</span>
               @if (p.statut === 'VALIDE') { <small class="doux">{{ p.periodeDebut | date: 'dd/MM/yy' }} → {{ p.periodeFin | date: 'dd/MM/yy' }}</small> }
               @if (p.motifRejet) { <small class="doux rejet">{{ p.motifRejet }}</small> }
             </td>
             <td class="actions">
               @if (p.preuve) { <button class="bouton secondaire petit" type="button" (click)="voirPreuve(p)">Preuve</button> }
-              @if (p.statut === 'EN_ATTENTE') {
+              @if (p.statut === 'EN_ATTENTE' && p.moyen === 'PAYGATE') {
+                <button class="bouton secondaire petit" type="button" (click)="verifier(p)">Verifier le paiement</button>
+              } @else if (p.statut === 'EN_ATTENTE') {
                 <label class="bouton secondaire petit">{{ p.preuve ? 'Remplacer' : 'Joindre' }} la preuve
                   <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="joindre(p, $event)" /></label>
                 <button class="bouton secondaire petit danger" type="button" (click)="annuler(p)">Annuler</button>

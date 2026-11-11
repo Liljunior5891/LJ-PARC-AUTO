@@ -212,3 +212,34 @@ td.vide {
   text-align: center;
   color: var(--couleur-texte-doux);
 }
+
+.choix-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  button {
+    flex: 1 1 14rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--bordure, #d0d5dd);
+    border-radius: 10px;
+    background: var(--surface, #fff);
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+
+    &.actif {
+      border-color: var(--primaire, #2563eb);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--primaire, #2563eb) 25%, transparent);
+    }
+  }
+}
+
+.attente-paiement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}

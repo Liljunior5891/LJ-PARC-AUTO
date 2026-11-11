@@ -6,6 +6,7 @@ import {
   AbonnementVue,
   DeclarationPaiement,
   DemandeDevis,
+  DemandePaiementEnLigne,
   Devis,
   EtatCourtAbonnement,
   Formule,
@@ -50,6 +51,16 @@ export class AbonnementService {
 
   declarer(declaration: DeclarationPaiement): Observable<PaiementAbonnement> {
     return this.http.post<PaiementAbonnement>(`${this.api}/paiements`, declaration);
+  }
+
+  /** Paiement en ligne : la demande arrive sur le telephone, a valider avec le code secret. */
+  payerEnLigne(demande: DemandePaiementEnLigne): Observable<PaiementAbonnement> {
+    return this.http.post<PaiementAbonnement>(`${this.api}/paiements/en-ligne`, demande);
+  }
+
+  /** Etat d'un paiement en ligne, verifie par le serveur aupres de PayGate. */
+  verifierEnLigne(id: number): Observable<PaiementAbonnement> {
+    return this.http.post<PaiementAbonnement>(`${this.api}/paiements/${id}/verification`, null);
   }
 
   annuler(id: number): Observable<void> {

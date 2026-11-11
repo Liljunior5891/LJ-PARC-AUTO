@@ -69,6 +69,27 @@ public class PaiementAbonnement extends EntiteAuditee {
     @Column(length = 500)
     private String note;
 
+    /** PayGate : notre identifiant du paiement, envoye a PayGate et utilise pour verifier son etat. */
+    @Column(name = "paygate_identifiant", length = 40)
+    private String paygateIdentifiant;
+
+    /** PayGate : FLOOZ ou TMONEY. */
+    @Column(name = "paygate_reseau", length = 10)
+    private String paygateReseau;
+
+    @Column(name = "paygate_telephone", length = 20)
+    private String paygateTelephone;
+
+    @Column(name = "paygate_tx_reference", length = 64)
+    private String paygateTxReference;
+
+    /** Reference de l'operateur (Flooz, T-Money), donnee par PayGate une fois le paiement fait. */
+    @Column(name = "paygate_reference_paiement", length = 64)
+    private String paygateReferencePaiement;
+
+    @Column(name = "paygate_verifie_le")
+    private java.time.Instant paygateVerifieLe;
+
     @Column(name = "preuve_chemin", length = 300)
     private String preuveChemin;
 

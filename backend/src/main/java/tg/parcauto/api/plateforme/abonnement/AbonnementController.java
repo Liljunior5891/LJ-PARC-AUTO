@@ -34,6 +34,7 @@ import java.util.List;
 public class AbonnementController {
 
     private final AbonnementService service;
+    private final tg.parcauto.api.plateforme.abonnement.paygate.PaiementEnLigneService enLigne;
 
     @GetMapping("/etat")
     @PreAuthorize("isAuthenticated() and !hasRole('SUPER_ADMIN')")
@@ -75,6 +76,20 @@ public class AbonnementController {
     @Operation(summary = "Declare un paiement, a valider par l'exploitant de la plateforme")
     public AbonnementService.PaiementVue declarer(@Valid @RequestBody AbonnementService.Declaration declaration) {
         return service.declarer(ContexteEntreprise.exiger(), declaration);
+    }
+
+    @PostMapping("/paiements/en-ligne")
+    @PreAuthorize(Autorisations.ADMINISTRATION)
+    @Operation(summary = "Paie l'abonnement en ligne (Flooz, T-Money) : la demande arrive sur le telephone")
+    public AbonnementService.PaiementVue payerEnLigne(@Valid @RequestBody AbonnementService.DemandeEnLigne demande) {
+        return enLigne.payer(tg.parcauto.api.plateforme.tenant.ContexteEntreprise.exiger(), demande);
+    }
+
+    @PostMapping("/paiements/{id}/verification")
+    @PreAuthorize(Autorisations.ADMINISTRATION)
+    @Operation(summary = "Verifie aupres de PayGate l'etat d'un paiement en ligne")
+    public AbonnementService.PaiementVue verifierEnLigne(@PathVariable Long id) {
+        return enLigne.verifier(tg.parcauto.api.plateforme.tenant.ContexteEntreprise.exiger(), id);
     }
 
     @DeleteMapping("/paiements/{id}")
