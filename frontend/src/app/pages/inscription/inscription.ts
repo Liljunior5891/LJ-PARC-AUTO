@@ -1,3 +1,4 @@
+import { FondModules } from '../../shared/fond-modules';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -22,7 +23,7 @@ function confirmationIdentique(groupe: AbstractControl): ValidationErrors | null
  */
 @Component({
   selector: 'app-inscription',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, FondModules],
   templateUrl: './inscription.html',
   styleUrls: ['../login/login.scss', './inscription.scss']
 })

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Agence -->
+  <g>
+    <path d="M110 220l150-70 150 70z" fill="#fff" fill-opacity=".12"/>
+    <path d="M130 220h260v24H130z" fill="#fff" fill-opacity=".08"/>
+    <path d="M150 244v150M200 244v150M250 244v150M320 244v150M370 244v150" stroke-opacity=".8"/>
+    <path d="M110 394h300v26H110z" fill="#fff" fill-opacity=".1"/>
+    <circle cx="260" cy="190" r="12" fill="#a5b4fc" fill-opacity=".8"/>
+  </g>
+  <!-- Telephone mobile money -->
+  <g>
+    <rect x="520" y="140" width="160" height="300" rx="26" fill="#fff" fill-opacity=".1"/>
+    <path d="M578 160h44" stroke-opacity=".6"/>
+    <rect x="540" y="190" width="120" height="74" rx="12" fill="#a5b4fc" fill-opacity=".45" stroke="none"/>
+    <path d="M560 216h50M560 240h76" stroke-width="5"/>
+    <g fill="#fff" fill-opacity=".16" stroke-width="3">
+      <rect x="540" y="280" width="34" height="30" rx="7"/><rect x="583" y="280" width="34" height="30" rx="7"/><rect x="626" y="280" width="34" height="30" rx="7"/>
+      <rect x="540" y="318" width="34" height="30" rx="7"/><rect x="583" y="318" width="34" height="30" rx="7"/><rect x="626" y="318" width="34" height="30" rx="7"/>
+      <rect x="540" y="356" width="34" height="30" rx="7"/><rect x="583" y="356" width="34" height="30" rx="7"/><rect x="626" y="356" width="34" height="30" rx="7"/>
+    </g>
+  </g>
+  <!-- Transfert entre l'agence et le telephone -->
+  <g stroke-width="5">
+    <path d="M430 250h66m-18-18l18 18-18 18"/>
+    <path d="M496 320h-66m18 18l-18-18 18-18" stroke="#a5b4fc"/>
+  </g>
+  <!-- Billets et pieces : le cash et le virtuel -->
+  <g>
+    <rect x="140" y="460" width="150" height="76" rx="10" fill="#fff" fill-opacity=".1" transform="rotate(-6 215 498)"/>
+    <circle cx="215" cy="494" r="18" transform="rotate(-6 215 498)"/>
+    <ellipse cx="380" cy="512" rx="34" ry="12" fill="#a5b4fc" fill-opacity=".5"/>
+    <path d="M346 512v-16M414 512v-16"/>
+    <ellipse cx="380" cy="496" rx="34" ry="12" fill="#a5b4fc" fill-opacity=".7"/>
+    <path d="M346 496v-16M414 496v-16"/>
+    <ellipse cx="380" cy="480" rx="34" ry="12" fill="#fff" fill-opacity=".25"/>
+  </g>
+</svg>

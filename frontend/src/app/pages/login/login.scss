@@ -1,7 +1,7 @@
 /* ===================================================================
-   Page de connexion : photo du parc en fond, carte de saisie en verre.
-   Les camions occupent le centre et la droite de l'image ; le
-   formulaire reste donc a gauche pour ne pas les masquer.
+   Page de connexion : les modules de la plateforme defilent en fond
+   (app-fond-modules), carte de saisie en verre a gauche. Le sujet de
+   chaque visuel et sa presentation occupent la droite de l'ecran.
    =================================================================== */
 
 .page-connexion {
@@ -9,10 +9,7 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: minmax(340px, 42%) 1fr;
-  background-image: url('/backlogin.jpg');
-  background-size: cover;
-  background-position: center bottom;
-  background-repeat: no-repeat;
+  background: #06182a;
   overflow: hidden;
 }
 
@@ -21,6 +18,7 @@
 .voile {
   position: absolute;
   inset: 0;
+  z-index: 1;
   background:
     linear-gradient(
       105deg,
@@ -35,6 +33,7 @@
 
 .colonne-formulaire {
   position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -1,3 +1,4 @@
+import { FondModules } from '../../shared/fond-modules';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -7,7 +8,7 @@ import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, VALIDATION_FORMULAIRE],
+  imports: [ReactiveFormsModule, RouterLink, VALIDATION_FORMULAIRE, FondModules],
   templateUrl: './login.html',
   styleUrl: './login.scss'
 })
