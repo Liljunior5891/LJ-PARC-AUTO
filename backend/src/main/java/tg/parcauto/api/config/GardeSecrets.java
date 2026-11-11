@@ -34,6 +34,7 @@ public class GardeSecrets {
     private final String motDePasseAdmin;
     private final String adresseAdmin;
     private final String fournisseurPaiement;
+    private final String urlPayGate;
     private final boolean developpementDeclare;
 
     public GardeSecrets(Environment environnement,
@@ -41,12 +42,14 @@ public class GardeSecrets {
                         @Value("${parcauto.plateforme.admin.password}") String motDePasseAdmin,
                         @Value("${parcauto.plateforme.admin.email}") String adresseAdmin,
                         @Value("${parcauto.paiement.fournisseur:}") String fournisseurPaiement,
+                        @Value("${parcauto.paygate.url:https://paygateglobal.com}") String urlPayGate,
                         @Value("${PARCAUTO_DEV:false}") boolean developpementDeclare) {
         this.environnement = environnement;
         this.cleJwt = cleJwt;
         this.motDePasseAdmin = motDePasseAdmin;
         this.adresseAdmin = adresseAdmin;
         this.fournisseurPaiement = fournisseurPaiement;
+        this.urlPayGate = urlPayGate;
         this.developpementDeclare = developpementDeclare;
     }
 
@@ -64,6 +67,10 @@ public class GardeSecrets {
         // Paiement de demonstration : n'importe quel acheteur declarerait lui-meme sa commande payee.
         if ("simulation".equalsIgnoreCase(fournisseurPaiement == null ? "" : fournisseurPaiement.trim())) {
             problemes.append(" PAIEMENT_FOURNISSEUR=simulation (paiement de demonstration) ;");
+        }
+        // Paiement des abonnements : seul le vrai PayGate, en HTTPS (le simulateur local reste en developpement).
+        if (urlPayGate != null && !urlPayGate.trim().startsWith("https://")) {
+            problemes.append(" PAYGATE_URL n'est pas une adresse HTTPS (simulateur de developpement ?) ;");
         }
         if (ADRESSE_ADMIN_PAR_DEFAUT.equalsIgnoreCase(adresseAdmin)) {
             problemes.append(" PLATEFORME_ADMIN_EMAIL est l'adresse par defaut, facile a deviner ;");
