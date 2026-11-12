@@ -49,7 +49,7 @@ Compilation backend et frontend OK, 186 tests backend au vert, migration V78 ess
 - [x] Justificatifs figés après décision (parc, agences), ancien fichier conservé, remplacements tracés ; logo et photos décodés après contrôle des dimensions et ré-encodés.
 - [x] Validation des dépenses : dépense en attente figée pour le gestionnaire, annulations réservées à l'admin, correction re-contrôlée ; agences : tout compte passe par le circuit ; PDV : règlement fournisseur en espèces.
 - [x] Tri sur champ interne refusé (`TriAutorise`), tri inconnu, identifiant mal formé et conflit de version en 400/409.
-- [~] Verrou PIN : empreinte PBKDF2 à sel aléatoire, 5 erreurs hors ligne effacent l'empreinte, purge à la déconnexion. **Reste** : verrou exigé côté serveur.
+- [x] Verrou PIN : empreinte PBKDF2 à sel aléatoire, 5 erreurs hors ligne effacent l'empreinte, purge à la déconnexion ; verrou exigé par le serveur (réponse 423 `ECRAN_VERROUILLE` jusqu'au code PIN, par session, à la connexion, au verrouillage de l'écran et après le délai d'inactivité + 2 min). État en mémoire : un seul serveur d'API, ou état partagé à prévoir si plusieurs.
 - [x] Mots de passe fixés par l'admin ou le super-admin : provisoires.
 - [~] Paiement : simulation refusée hors `PARCAUTO_DEV`, montant comparé au total, référence aléatoire. **Reste** au branchement d'un agrégateur : signature du webhook, devise, idempotence.
 - [~] Production : Swagger fermé par défaut, en-têtes CSP/HSTS/Referrer sur l'API, Postgres lié à 127.0.0.1, logs en INFO, `*.log` ignorés, `X-Forwarded-For` lu seulement via les proxys de confiance. **Reste** : Spring Boot 3.4.1 à monter, rôle base non superutilisateur, CSP du frontend, mise à jour Angular.

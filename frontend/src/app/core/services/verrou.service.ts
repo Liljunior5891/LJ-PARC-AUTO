@@ -38,6 +38,9 @@ export class VerrouService {
 
   private readonly auth = inject(AuthService);
   readonly verrouille = signal(!this.lire());
+  /** Le serveur a refuse une requete (ecran verrouille de son cote) : l'ecran du code PIN s'impose. */
+  readonly exigeParServeur = signal(false);
+  private derniereActivite = 0;
   /** Minutes sans geste avant le verrouillage, reglees par l'administrateur (point de vente ou agences). */
   readonly minutes = signal(MINUTES_INACTIVITE);
 
@@ -164,6 +167,30 @@ export class VerrouService {
   }
 
   verrouiller(): void {
+    if (this.auth.token && !this.verrouille()) {
+      // Le serveur refusera tout jusqu'au code PIN, meme avec une copie du jeton.
+      this.http.post<void>(`${this.base}/verrouillage`, null, this.direct).subscribe({ error: () => undefined });
+    }
+    this.marquerVerrouille();
+  }
+
+  /** Refus 423 du serveur : session verrouillee de son cote (delai depasse, redemarrage, autre onglet). */
+  exigerParServeur(): void {
+    this.exigeParServeur.set(true);
+    this.marquerVerrouille();
+  }
+
+  /** Geste sur l'ecran : le delai d'inactivite du serveur repart (au plus un appel par minute). */
+  signalerActivite(): void {
+    const maintenant = Date.now();
+    if (this.verrouille() || !this.auth.token || maintenant - this.derniereActivite < 60_000) {
+      return;
+    }
+    this.derniereActivite = maintenant;
+    this.http.post<void>(`${this.base}/activite`, null, this.direct).subscribe({ error: () => undefined });
+  }
+
+  private marquerVerrouille(): void {
     this.verrouille.set(true);
     try {
       sessionStorage.removeItem(CLE);
@@ -174,6 +201,8 @@ export class VerrouService {
 
   private deverrouiller(): void {
     this.verrouille.set(false);
+    this.exigeParServeur.set(false);
+    this.derniereActivite = Date.now();
     try {
       sessionStorage.setItem(CLE, '1');
     } catch {

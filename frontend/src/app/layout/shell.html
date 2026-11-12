@@ -51,7 +51,7 @@
     @if (sansCaisse()) {
       <app-sans-caisse [nom]="utilisateur()?.nomComplet ?? ''" [verification]="verificationCaisse()"
                        (reverifier)="verifierCaisse()" (deconnexion)="deconnexion()" />
-    } @else if (avecVerrou && verrou.verrouille()) {
+    } @else if ((avecVerrou || verrou.exigeParServeur()) && verrou.verrouille()) {
       <app-verrou-caisse (deconnexion)="deconnexion()" />
     }
   } @else {
@@ -115,7 +115,7 @@
     </div>
   </header>
 
-  @if (verrouAgence && verrou.verrouille()) {
+  @if ((verrouAgence || verrou.exigeParServeur()) && verrou.verrouille()) {
     <app-verrou-caisse (deconnexion)="deconnexion()" />
   }
 

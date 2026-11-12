@@ -605,6 +605,7 @@ export class Shell {
   private surveillerInactivite(destroyRef: DestroyRef): void {
     let minuterie = 0;
     const relancer = () => {
+      this.verrou.signalerActivite();
       clearTimeout(minuterie);
       minuterie = window.setTimeout(() => this.verrou.verrouiller(), this.verrou.minutes() * 60_000);
     };

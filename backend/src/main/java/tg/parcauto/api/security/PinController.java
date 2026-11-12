@@ -6,7 +6,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +25,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PinController {
 
     private final PinService service;
+    private final VerrouEcranService verrouEcran;
+
+    private static String session(HttpServletRequest requete) {
+        return (String) requete.getAttribute(JwtAuthenticationFilter.ATTRIBUT_SESSION);
+    }
 
     public record Pin(@NotBlank @Pattern(regexp = "^\\d{4,6}$", message = "4 a 6 chiffres") String pin) {
     }
@@ -39,8 +46,10 @@ public class PinController {
     @PostMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Cree son code PIN, s'il n'en a pas encore")
-    public void creer(@Valid @RequestBody Pin pin, @AuthenticationPrincipal UtilisateurPrincipal principal) {
+    public void creer(@Valid @RequestBody Pin pin, @AuthenticationPrincipal UtilisateurPrincipal principal,
+                      HttpServletRequest requete) {
         service.creer(principal.getId(), pin.pin());
+        verrouEcran.deverrouiller(session(requete));
     }
 
     public record Changement(
@@ -58,7 +67,26 @@ public class PinController {
     @PostMapping("/verification")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Verifie le code PIN pour deverrouiller l'ecran de caisse")
-    public void verifier(@Valid @RequestBody Pin pin, @AuthenticationPrincipal UtilisateurPrincipal principal) {
+    public void verifier(@Valid @RequestBody Pin pin, @AuthenticationPrincipal UtilisateurPrincipal principal,
+                         HttpServletRequest requete) {
         service.verifier(principal.getId(), pin.pin());
+        verrouEcran.deverrouiller(session(requete));
+    }
+
+    @PostMapping("/verrouillage")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "L'ecran de caisse se verrouille : le serveur refuse tout jusqu'au code PIN")
+    public void verrouiller(HttpServletRequest requete) {
+        verrouEcran.verrouiller(session(requete));
+    }
+
+    @PostMapping("/activite")
+    @Operation(summary = "L'ecran de caisse est utilise : le delai d'inactivite du serveur repart")
+    public ResponseEntity<Void> activite(@AuthenticationPrincipal UtilisateurPrincipal principal, HttpServletRequest requete) {
+        String cle = session(requete);
+        if (cle != null && verrouEcran.verrouille(principal, cle)) {
+            return ResponseEntity.status(423).build();
+        }
+        return ResponseEntity.noContent().build();
     }
 }

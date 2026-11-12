@@ -39,7 +39,9 @@ public class JwtService {
                 "uid", principal.getId(),
                 "nom", principal.getNomComplet(),
                 "roles", roles,
-                "ver", principal.getVersionJetons()));
+                "ver", principal.getVersionJetons(),
+                // Identifiant de la session : le verrou de l'ecran de caisse vaut pour elle seule.
+                "sid", java.util.UUID.randomUUID().toString()));
         if (principal.getEntrepriseId() != null) {
             claims.put("eid", principal.getEntrepriseId());
         }

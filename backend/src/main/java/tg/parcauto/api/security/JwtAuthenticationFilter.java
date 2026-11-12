@@ -32,6 +32,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UtilisateurDetailsService utilisateurDetailsService;
     private final SessionService sessions;
+    private final VerrouEcranService verrouEcran;
+
+    /** Attribut de requete : cle de la session de caisse, pour le deverrouillage par code PIN. */
+    public static final String ATTRIBUT_SESSION = "parcauto.session";
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -59,6 +63,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         refuser(response, "DEUX_FACTEURS_A_ACTIVER",
                                 "Activez d'abord la double authentification depuis Mon compte");
                         return;
+                    }
+                    if (verrouEcran.concerne(compte)) {
+                        String cle = VerrouEcranService.cle(claims.get("sid"), compte.getId(), claims.getIssuedAt());
+                        request.setAttribute(ATTRIBUT_SESSION, cle);
+                        // Ecran de caisse verrouille : seuls le code PIN, le compte et la deconnexion repondent.
+                        if (!request.getRequestURI().startsWith("/api/auth/") && verrouEcran.verrouille(compte, cle)) {
+                            ecranVerrouille(response);
+                            return;
+                        }
                     }
                     var auth = new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -90,6 +103,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write("{\"code\":\"" + code + "\",\"message\":\"" + message + "\"}");
+    }
+
+    private static void ecranVerrouille(HttpServletResponse response) throws IOException {
+        response.setStatus(423);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"code\":\"ECRAN_VERROUILLE\",\"message\":"
+                + "\"Ecran verrouille : saisissez votre code PIN\"}");
     }
 
     private static void motDePasseAChanger(HttpServletResponse response) throws IOException {
