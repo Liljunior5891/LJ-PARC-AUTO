@@ -13,6 +13,16 @@ import {
 } from '../models/gps';
 import { Page } from '../models/models';
 
+/** Vehicule equipe d'un traceur, avec l'etat de son jeton propre. */
+export interface TraceurGps {
+  camionId: number;
+  immatriculation: string;
+  deviceId: string;
+  actif: boolean;
+  creeLe?: string | null;
+  dernierUsage?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class GpsService {
   private readonly http = inject(HttpClient);
@@ -26,6 +36,19 @@ export class GpsService {
 
   genererJeton(): Observable<{ jeton: string; adresse: string }> {
     return this.http.post<{ jeton: string; adresse: string }>(`${this.base}/jeton`, {});
+  }
+
+  /** Vehicules equipes d'un traceur et etat de leur jeton propre. */
+  traceurs(): Observable<TraceurGps[]> {
+    return this.http.get<TraceurGps[]>(`${this.base}/traceurs`);
+  }
+
+  genererJetonTraceur(camionId: number): Observable<{ jeton: string; adresse: string }> {
+    return this.http.post<{ jeton: string; adresse: string }>(`${this.base}/traceurs/${camionId}/jeton`, {});
+  }
+
+  revoquerJetonTraceur(camionId: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/traceurs/${camionId}/jeton`);
   }
 
   carte(): Observable<MarqueurCarte[]> {

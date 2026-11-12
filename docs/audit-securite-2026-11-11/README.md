@@ -31,7 +31,7 @@ Compilation backend et frontend OK, 186 tests backend au vert, migration V78 ess
 - [x] Socle E-2 : 20 échecs / 15 min par IP et 5 par compte, avant toute vérification ; file du journal bornée à 10 000 lignes ; mot de passe limité à 72 octets.
 - [x] Exploitation E1 : livraisons limitées au chauffeur concerné (liste et détail), contrôleur en `TERRAIN`.
 - [x] GPS E1 : nombres des adaptateurs validés (pas de notation exponentielle en texte), taille du lot contrôlée avant conversion, valeurs bornées, position fautive écartée seule.
-- [~] GPS E2 : trames de plus de 24 h refusées, compteur plafonné, jeton conseillé en en-tête, génération et révocation journalisées. **Reste** : un jeton par traceur (refonte).
+- [x] GPS E2 : trames de plus de 24 h refusées, compteur plafonné, jeton conseillé en en-tête, génération et révocation journalisées ; jeton propre à chaque traceur (V84, `gps_jeton_traceur`) qui n'écrit que pour son véhicule, limité à 30 envois/min ; le jeton de l'entreprise reste réservé à une passerelle Traccar contrôlée par l'entreprise.
 - [x] PDV E-1 : remise du caissier plafonnée (réglage, 10 % par défaut), référence obligatoire pour mobile money et carte, règlement fournisseur en espèces refusé sous validation (hors admin).
 - [x] Agences E-1 : résumé du conflit construit par le serveur ; à la reprise, commission du barème et compte par défaut du superviseur.
 - [x] Agences E-2 : module et droits exigés, 200 opérations / 8 Ko max, agence contrôlée avant toute trace, limiteur par utilisateur.
@@ -62,7 +62,7 @@ Plateforme : un paiement en attente par entreprise et références uniques (inde
 
 - Inscription publique : vérification de l'adresse par lien et captcha (il faut un service d'e-mail).
 - Jeton court + jeton de rafraîchissement en cookie ; second facteur pour le super-admin ; ressaisie du mot de passe pour les opérations sensibles.
-- GPS : jeton par traceur. Présence : téléphone lié à l'employé, identifiant + PIN, jeton de borne rotatif ou en cookie, traçabilité de l'appareil.
+- Présence : téléphone lié à l'employé, identifiant + PIN, jeton de borne rotatif ou en cookie, traçabilité de l'appareil.
 - PDV : mode « Autre » réservé au gérant, validation des dépenses de caisse activée par défaut (décision métier), rotation des QR de table.
 - Agences : rapprochement des commissions plafonné, détail des dépenses limité au caissier auteur, plafond cumulé, verrous résiduels (F5), rôle base dédié (F6).
 - Finance : origine des recettes (F3), approbation des annulations de facture. Parc : liaison compte chauffeur ↔ fiche, contrôle des signatures de fichiers.

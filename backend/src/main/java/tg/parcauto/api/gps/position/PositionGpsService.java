@@ -57,6 +57,15 @@ public class PositionGpsService {
      */
     @Transactional
     public List<PositionGps> enregistrer(List<PositionBrute> brutes, String fournisseur) {
+        return enregistrer(brutes, fournisseur, null);
+    }
+
+    /**
+     * Meme enregistrement, pour un traceur venu avec son propre jeton : seules les
+     * positions de son vehicule ({@code camionImpose}) sont retenues.
+     */
+    @Transactional
+    public List<PositionGps> enregistrer(List<PositionBrute> brutes, String fournisseur, Long camionImpose) {
         if (brutes.size() > LOT_MAX) {
             throw new BusinessException("Lot de " + brutes.size() + " positions : envoyez-en au plus " + LOT_MAX + " a la fois");
         }
@@ -77,6 +86,10 @@ public class PositionGpsService {
             Camion camion = camionRepository.findByGpsDeviceId(brute.deviceId()).orElse(null);
             if (camion == null) {
                 log.warn("Position ignoree : aucun vehicule n'est associe au traceur {}", brute.deviceId());
+                continue;
+            }
+            if (camionImpose != null && !camionImpose.equals(camion.getId())) {
+                log.warn("Position ignoree : le jeton du vehicule {} ne vaut pas pour le traceur {}", camionImpose, brute.deviceId());
                 continue;
             }
             // Horloge du traceur dans le futur : on retient l'heure de reception ; trop ancienne : ignoree.

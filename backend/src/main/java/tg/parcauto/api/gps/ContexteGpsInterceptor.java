@@ -21,6 +21,8 @@ import java.time.Duration;
 public class ContexteGpsInterceptor implements HandlerInterceptor {
 
     static final String ENTREPRISE = ContexteGpsInterceptor.class.getName() + ".entreprise";
+    /** Vehicule du jeton de traceur ; absent pour le jeton de passerelle de l'entreprise. */
+    static final String CAMION = ContexteGpsInterceptor.class.getName() + ".camion";
 
     private final JetonGpsService jetons;
     private final LimiteurRequetes limiteur;
@@ -33,8 +35,8 @@ public class ContexteGpsInterceptor implements HandlerInterceptor {
                 "Trop d'envois depuis cette adresse : ralentissez la passerelle");
         String entete = request.getHeader("X-Jeton-Gps");
         String jeton = entete != null && !entete.isBlank() ? entete : request.getParameter("jeton");
-        Long entreprise = jetons.entreprise(jeton);
-        if (entreprise == null) {
+        JetonGpsService.Source source = jetons.source(jeton);
+        if (source == null) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             response.setContentType("application/json;charset=UTF-8");
             try {
@@ -43,6 +45,13 @@ public class ContexteGpsInterceptor implements HandlerInterceptor {
                 // reponse deja engagee : le statut suffit
             }
             return false;
+        }
+        Long entreprise = source.entreprise();
+        if (source.camionId() != null) {
+            // Un traceur seul envoie au plus une trame toutes les deux secondes ; il n'epuise pas le quota des autres.
+            limiteur.exiger("gps-traceur:" + source.camionId(), 30, Duration.ofMinutes(1),
+                    "Trop d'envois pour ce traceur : espacez les positions");
+            request.setAttribute(CAMION, source.camionId());
         }
         // Une passerelle envoie souvent, mais pas sans limite.
         limiteur.exiger("gps:" + entreprise, 1200, Duration.ofMinutes(1), "Trop d'envois de positions : ralentissez la passerelle");

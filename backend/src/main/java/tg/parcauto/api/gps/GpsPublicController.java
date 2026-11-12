@@ -40,13 +40,16 @@ public class GpsPublicController {
     @PostMapping("/positions/{fournisseur}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     @Operation(summary = "Recoit les positions d'un traceur ou d'une passerelle, avec le jeton GPS de l'entreprise")
-    public Reception recevoir(@PathVariable String fournisseur, @RequestBody JsonNode charge) {
+    public Reception recevoir(@PathVariable String fournisseur, @RequestBody JsonNode charge,
+                              jakarta.servlet.http.HttpServletRequest requete) {
         // Taille du lot controlee avant toute conversion des positions.
         int taille = charge == null ? 0 : charge.isArray() ? charge.size() : charge.path("positions").size();
         if (taille > LOT_MAX) {
             throw new tg.parcauto.api.common.BusinessException("Lot de " + taille + " positions : envoyez-en au plus "
                     + LOT_MAX + " a la fois");
         }
-        return new Reception(positions.enregistrer(registre.pour(fournisseur).convertir(charge), fournisseur).size());
+        // Jeton d'un traceur : seules les positions de son vehicule sont retenues.
+        Long camion = (Long) requete.getAttribute(ContexteGpsInterceptor.CAMION);
+        return new Reception(positions.enregistrer(registre.pour(fournisseur).convertir(charge), fournisseur, camion).size());
     }
 }

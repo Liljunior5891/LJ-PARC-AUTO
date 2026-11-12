@@ -14,7 +14,7 @@ import { FormsModule } from '@angular/forms';
 import * as L from 'leaflet';
 import { AlerteGps, COULEURS_STATUT, MarqueurCarte, Trajet, ZoneGeofence } from '../../core/models/gps';
 import { StatutCamion } from '../../core/models/models';
-import { GpsService } from '../../core/services/gps.service';
+import { GpsService, TraceurGps } from '../../core/services/gps.service';
 import { pictoVehicule } from '../../shared/picto-vehicule';
 
 /** Vue par defaut : Lome, siege de l'exploitation. */
@@ -52,16 +52,56 @@ export class CarteParc implements AfterViewInit, OnDestroy {
   readonly etatJeton = signal<{ actif: boolean; creeLe?: string | null; dernierUsage?: string | null } | null>(null);
   readonly nouveauJeton = signal<{ jeton: string; adresse: string } | null>(null);
 
+  readonly traceurs = signal<TraceurGps[]>([]);
+  readonly nouveauJetonTraceur = signal<{ immatriculation: string; jeton: string; adresse: string } | null>(null);
+  readonly erreurJeton = signal<string | null>(null);
+
   ouvrirJeton(): void {
     this.nouveauJeton.set(null);
+    this.nouveauJetonTraceur.set(null);
+    this.erreurJeton.set(null);
     this.panneauJeton.set(true);
     this.service.etatJeton().subscribe({ next: (e) => this.etatJeton.set(e) });
+    this.chargerTraceurs();
+  }
+
+  private chargerTraceurs(): void {
+    this.service.traceurs().subscribe({ next: (t) => this.traceurs.set(t) });
+  }
+
+  /** Jeton propre a un traceur : il n'envoie des positions que pour son vehicule. */
+  genererJetonTraceur(t: TraceurGps): void {
+    this.erreurJeton.set(null);
+    this.service.genererJetonTraceur(t.camionId).subscribe({
+      next: (j) => {
+        this.nouveauJeton.set(null);
+        this.nouveauJetonTraceur.set({
+          immatriculation: t.immatriculation,
+          jeton: j.jeton,
+          adresse: environment.apiUrl.replace(/\/api$/, '') + j.adresse
+        });
+        this.chargerTraceurs();
+      },
+      error: (e) => this.erreurJeton.set(e?.error?.message ?? 'Jeton impossible a generer')
+    });
+  }
+
+  revoquerJetonTraceur(t: TraceurGps): void {
+    this.erreurJeton.set(null);
+    this.service.revoquerJetonTraceur(t.camionId).subscribe({
+      next: () => {
+        this.nouveauJetonTraceur.set(null);
+        this.chargerTraceurs();
+      },
+      error: (e) => this.erreurJeton.set(e?.error?.message ?? 'Revocation impossible')
+    });
   }
 
   genererJeton(): void {
     this.service.genererJeton().subscribe({
       next: (j) => {
         // Adresse complete de l'API (la ou Traccar doit envoyer), pas celle de l'interface.
+        this.nouveauJetonTraceur.set(null);
         this.nouveauJeton.set({ ...j, adresse: environment.apiUrl.replace(/\/api$/, '') + j.adresse });
         this.service.etatJeton().subscribe({ next: (e) => this.etatJeton.set(e) });
       }

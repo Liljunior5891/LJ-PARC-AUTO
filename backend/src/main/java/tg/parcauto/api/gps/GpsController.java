@@ -77,6 +77,28 @@ public class GpsController {
         return new NouveauJeton(jeton, "/api/public/gps/positions/traccar");
     }
 
+    @GetMapping("/traceurs")
+    @PreAuthorize(Autorisations.ADMINISTRATION)
+    @Operation(summary = "Vehicules equipes d'un traceur et etat de leur jeton propre")
+    public List<JetonGpsService.Traceur> traceurs() {
+        return jetons.traceurs();
+    }
+
+    @PostMapping("/traceurs/{camionId}/jeton")
+    @PreAuthorize(Autorisations.ADMINISTRATION)
+    @Operation(summary = "Genere (ou remplace) le jeton du traceur d'un vehicule ; il n'est montre qu'une fois")
+    public NouveauJeton genererJetonTraceur(@PathVariable Long camionId) {
+        return new NouveauJeton(jetons.genererTraceur(camionId), "/api/public/gps/positions/traccar");
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/traceurs/{camionId}/jeton")
+    @PreAuthorize(Autorisations.ADMINISTRATION)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Revoque le jeton du traceur d'un vehicule")
+    public void revoquerJetonTraceur(@PathVariable Long camionId) {
+        jetons.revoquerTraceur(camionId);
+    }
+
     @GetMapping("/fournisseurs")
     @Operation(summary = "Fournisseurs de traceurs pris en charge")
     public List<String> fournisseurs() {

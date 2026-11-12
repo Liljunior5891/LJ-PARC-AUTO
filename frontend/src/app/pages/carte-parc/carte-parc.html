@@ -190,21 +190,50 @@
       <strong>Relier les traceurs GPS</strong>
       <button type="button" class="fermer" (click)="panneauJeton.set(false)" aria-label="Fermer">×</button>
     </header>
-    <p>Les boitiers (ou la passerelle Traccar) envoient leurs positions avec ce jeton, propre a votre entreprise.
-      Il n'expire pas ; en generer un nouveau coupe l'ancien.</p>
+    <h3>Un jeton par traceur (conseille)</h3>
+    <p>Chaque boitier ou telephone recoit son propre jeton : il n'envoie des positions que pour son vehicule.
+      Un jeton perdu se revoque sans couper les autres. Le vehicule doit avoir l'identifiant de son traceur sur sa fiche.</p>
+    @if (erreurJeton()) { <p class="avertissement">{{ erreurJeton() }}</p> }
+    @if (traceurs().length === 0) {
+      <p class="etat">Aucun vehicule n'a encore d'identifiant de traceur sur sa fiche.</p>
+    } @else {
+      <ul class="traceurs">
+        @for (t of traceurs(); track t.camionId) {
+          <li>
+            <span><strong>{{ t.immatriculation }}</strong> · {{ t.deviceId }}<br />
+              <small>@if (t.actif) { Jeton actif · dernier envoi : {{ t.dernierUsage ? (t.dernierUsage | date: 'dd/MM/yyyy HH:mm') : 'aucun' }} }
+                @else { Pas de jeton propre }</small></span>
+            <span class="actions-traceur">
+              <button type="button" class="bouton secondaire" (click)="genererJetonTraceur(t)">{{ t.actif ? 'Nouveau' : 'Generer' }}</button>
+              @if (t.actif) { <button type="button" class="bouton secondaire" (click)="revoquerJetonTraceur(t)">Revoquer</button> }
+            </span>
+          </li>
+        }
+      </ul>
+    }
+    @if (nouveauJetonTraceur(); as j) {
+      <p class="avertissement">Jeton du traceur de {{ j.immatriculation }} : copiez-le maintenant, il ne sera plus affiche.</p>
+      <label>Jeton<input type="text" readonly [value]="j.jeton" (focus)="$any($event.target).select()" /></label>
+      <label>En-tete (boitier ou passerelle)<input type="text" readonly [value]="'X-Jeton-Gps: ' + j.jeton" (focus)="$any($event.target).select()" /></label>
+      <label>Adresse, pour un appareil qui ne sait pas poser d'en-tete<input type="text" readonly [value]="j.adresse + '?jeton=' + j.jeton" (focus)="$any($event.target).select()" /></label>
+    }
+
+    <h3>Jeton de passerelle de l'entreprise</h3>
+    <p>Reserve a une passerelle Traccar que vous controlez : elle envoie les positions de tous vos vehicules avec ce jeton.
+      Ne le mettez jamais dans un boitier ou un telephone. Il n'expire pas ; en generer un nouveau coupe l'ancien.</p>
     @if (etatJeton(); as e) {
       <p class="etat">@if (e.actif) { Jeton actif · dernier envoi : {{ e.dernierUsage ? (e.dernierUsage | date: 'dd/MM/yyyy HH:mm') : 'aucun' }} }
         @else { Aucun jeton : les traceurs ne peuvent pas encore envoyer de positions. }</p>
     }
     @if (nouveauJeton(); as j) {
-      <p class="avertissement">Copiez-le maintenant : il ne sera plus affiche.</p>
+      <p class="avertissement">Jeton de passerelle : copiez-le maintenant, il ne sera plus affiche.</p>
       <label>Jeton<input type="text" readonly [value]="j.jeton" (focus)="$any($event.target).select()" /></label>
       <label>Adresse a donner a Traccar (forward.url)<input type="text" readonly [value]="j.adresse" (focus)="$any($event.target).select()" /></label>
       <label>En-tete a donner a Traccar (forward.header)<input type="text" readonly [value]="'X-Jeton-Gps: ' + j.jeton" (focus)="$any($event.target).select()" /></label>
       <p>Passez le jeton par l'en-tete plutot que dans l'adresse : une adresse se retrouve dans les journaux des serveurs.</p>
     }
     <footer>
-      <button type="button" class="bouton" (click)="genererJeton()">{{ etatJeton()?.actif ? 'Generer un nouveau jeton' : 'Generer le jeton' }}</button>
+      <button type="button" class="bouton" (click)="genererJeton()">{{ etatJeton()?.actif ? 'Nouveau jeton de passerelle' : 'Generer le jeton de passerelle' }}</button>
     </footer>
   </section>
 }
