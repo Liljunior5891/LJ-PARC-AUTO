@@ -17,12 +17,15 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(requete).pipe(
     catchError((erreur: HttpErrorResponse) => {
-      if (erreur.status === 401 && !req.url.includes('/auth/login') && !req.url.includes('/auth/logout')) {
+      if (erreur.status === 401 && !req.url.includes('/auth/login') && !req.url.includes('/auth/logout') && !req.url.includes('/auth/deux-facteurs')) {
         // Session invalide ou expiree : on la ferme et on l'annonce clairement.
         auth.logout('expiration');
       }
       if (erreur.status === 403 && (erreur.error as { code?: string } | null)?.code === 'MOT_DE_PASSE_A_CHANGER') {
         auth.exigerChangementMotDePasse();
+      }
+      if (erreur.status === 403 && (erreur.error as { code?: string } | null)?.code === 'DEUX_FACTEURS_A_ACTIVER') {
+        auth.exigerDeuxFacteurs();
       }
       return throwError(() => erreur);
     })

@@ -71,6 +71,33 @@ public class JwtService {
         return jws.getPayload();
     }
 
+    /** Audience du jeton d'attente entre le mot de passe et le code : il n'ouvre aucune session. */
+    static final String AUDIENCE_DEUX_FACTEURS = "lj-saas-deux-facteurs";
+
+    /** Jeton de 5 minutes prouvant que le mot de passe est bon, a echanger contre une session avec le code. */
+    public String genererJetonDeuxFacteurs(UtilisateurPrincipal principal) {
+        Instant maintenant = Instant.now();
+        return Jwts.builder()
+                .issuer(EMETTEUR)
+                .audience().add(AUDIENCE_DEUX_FACTEURS).and()
+                .subject(principal.getUsername())
+                .claim("uid", principal.getId())
+                .claim("ver", principal.getVersionJetons())
+                .issuedAt(Date.from(maintenant))
+                .expiration(Date.from(maintenant.plus(Duration.ofMinutes(5))))
+                .signWith(key, Jwts.SIG.HS512)
+                .compact();
+    }
+
+    public Claims lireJetonDeuxFacteurs(String token) {
+        var jws = Jwts.parser().verifyWith(key).requireIssuer(EMETTEUR).requireAudience(AUDIENCE_DEUX_FACTEURS)
+                .build().parseSignedClaims(token);
+        if (!Jwts.SIG.HS512.getId().equals(jws.getHeader().getAlgorithm())) {
+            throw new io.jsonwebtoken.security.SignatureException("Algorithme de signature refuse");
+        }
+        return jws.getPayload();
+    }
+
     public String extraireEmail(String token) {
         return lire(token).getSubject();
     }

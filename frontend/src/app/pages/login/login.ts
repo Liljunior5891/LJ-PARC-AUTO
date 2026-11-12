@@ -1,6 +1,6 @@
 import { FondModules } from '../../shared/fond-modules';
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { environment } from '../../../environments/environment';
@@ -8,7 +8,7 @@ import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, VALIDATION_FORMULAIRE, FondModules],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, VALIDATION_FORMULAIRE, FondModules],
   templateUrl: './login.html',
   styleUrl: './login.scss'
 })
@@ -29,6 +29,10 @@ export class Login {
       : null
   );
 
+  /** Mot de passe bon, double authentification active : on attend le code. */
+  readonly jetonDeuxFacteurs = signal<string | null>(null);
+  code = '';
+
   readonly formulaire = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     motDePasse: ['', [Validators.required]]
@@ -44,9 +48,14 @@ export class Login {
 
     const { email, motDePasse } = this.formulaire.getRawValue();
     this.auth.login(email, motDePasse).subscribe({
-      next: () => {
-        const retour = this.route.snapshot.queryParamMap.get('retour') ?? this.auth.pageAccueil();
-        void this.router.navigateByUrl(retour);
+      next: (reponse) => {
+        if (reponse.jetonDeuxFacteurs) {
+          this.enCours.set(false);
+          this.code = '';
+          this.jetonDeuxFacteurs.set(reponse.jetonDeuxFacteurs);
+          return;
+        }
+        this.entrer();
       },
       error: (erreur) => {
         this.enCours.set(false);
@@ -57,5 +66,36 @@ export class Login {
         );
       }
     });
+  }
+
+  /** Seconde etape : le code de l'application d'authentification, ou un code de secours. */
+  validerCode(): void {
+    const jeton = this.jetonDeuxFacteurs();
+    if (!jeton || !this.code.trim() || this.enCours()) {
+      return;
+    }
+    this.enCours.set(true);
+    this.erreur.set(null);
+    this.auth.deuxFacteurs(jeton, this.code.trim()).subscribe({
+      next: () => this.entrer(),
+      error: (e) => {
+        this.enCours.set(false);
+        const message = (e as { error?: { message?: string } })?.error?.message;
+        if (e.status === 401) {
+          this.jetonDeuxFacteurs.set(null);
+        }
+        this.erreur.set(message ?? 'Code refuse. Reessayez.');
+      }
+    });
+  }
+
+  annulerCode(): void {
+    this.jetonDeuxFacteurs.set(null);
+    this.erreur.set(null);
+  }
+
+  private entrer(): void {
+    const retour = this.route.snapshot.queryParamMap.get('retour') ?? this.auth.pageAccueil();
+    void this.router.navigateByUrl(retour);
   }
 }

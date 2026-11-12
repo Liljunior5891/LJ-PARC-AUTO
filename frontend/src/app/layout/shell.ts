@@ -488,7 +488,7 @@ export class Shell {
     });
     // Mot de passe provisoire : « Mon compte » s'ouvre tant qu'il n'est pas change.
     effect(() => {
-      if (this.auth.utilisateur()?.motDePasseAChanger) {
+      if (this.auth.utilisateur()?.motDePasseAChanger || this.auth.utilisateur()?.deuxFacteursAActiver) {
         this.compteOuvert.set(true);
       }
     });

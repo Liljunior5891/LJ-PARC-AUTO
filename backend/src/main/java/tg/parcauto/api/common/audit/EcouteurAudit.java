@@ -67,7 +67,7 @@ public class EcouteurAudit implements PostCommitInsertEventListener, PostCommitU
     /** Champs secrets : on note qu'ils ont change, jamais leur valeur. */
     private static final Set<String> CHAMPS_SECRETS = Set.of("motDePasse", "pinHash", "pin", "token", "secret", "cleApi",
             // Secret des QR de presence, jetons des liens de suivi en ligne, appairage des bornes.
-            "secretQr", "jeton", "jetonEmpreinte", "codeAppairage", "pinEmpreinte");
+            "secretQr", "jeton", "jetonEmpreinte", "codeAppairage", "pinEmpreinte", "totpSecret", "totpDernierPas");
 
     /** Noms lisibles des principales donnees ; les autres sont deduits du nom de la classe. */
     private static final Map<String, String> LIBELLES = Map.ofEntries(

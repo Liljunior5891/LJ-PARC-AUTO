@@ -147,6 +147,8 @@ L'application est servie sur `http://localhost:4200`.
 | `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | vides | Serveur SMTP des e-mails (ajouter `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true`). Sans serveur, les e-mails sont simules et se lisent dans la console (Notifications) |
 | `MAIL_EXPEDITEUR`, `MAIL_NOM_EXPEDITEUR` | `no-reply@lj-saas.local`, `LJ SaaS` | Expediteur des e-mails |
 | `URL_APPLICATION` | `http://localhost:4300` | Adresse publique du site, pour les liens envoyes par e-mail |
+| `DEUX_FACTEURS_SUPER_ADMIN` | `true` | Double authentification (application d'authentification) imposee au super-administrateur. `false` seulement sur un poste de developpement |
+| `DEUX_FACTEURS_CLE` | cle des jetons | Cle de chiffrement des secrets de double authentification ; la definir des le depart (la changer ensuite oblige a reactiver la double authentification) |
 | `PAYGATE_AUTH_TOKEN` | vide | Cle API de PayGate Global (espace marchand). Renseignee : les entreprises paient leur abonnement en ligne par T-Money ou Flooz. Adresse de rappel a declarer chez PayGate : `https://<domaine>/api/public/paygate/abonnements` |
 | `NIVEAU_LOG` | `INFO` | Niveau des journaux de l'application (`DEBUG` en développement) |
 

@@ -54,6 +54,17 @@ public class Utilisateur extends EntiteAuditee {
     @Column(name = "mot_de_passe_a_changer", nullable = false)
     private boolean motDePasseAChanger;
 
+    /** Double authentification : secret chiffre de l'application d'authentification. */
+    @Column(name = "totp_secret", length = 200)
+    private String totpSecret;
+
+    @Column(name = "totp_actif", nullable = false)
+    private boolean totpActif;
+
+    /** Dernier pas de temps accepte : un meme code ne sert pas deux fois. */
+    @Column(name = "totp_dernier_pas")
+    private Long totpDernierPas;
+
     /**
      * Entreprise du compte ; nulle pour l'administrateur de la plateforme.
      * <p>

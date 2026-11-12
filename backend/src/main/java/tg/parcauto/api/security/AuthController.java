@@ -32,6 +32,9 @@ public class AuthController {
     private final PinService pinService;
     private final tg.parcauto.api.common.LimiteurRequetes limiteur;
     private final UtilisateurService comptes;
+    private final JwtService jwtService;
+    private final UtilisateurDetailsService utilisateurDetails;
+    private final DeuxFacteursService deuxFacteurs;
 
     /** Echecs de connexion toleres avant blocage temporaire, par adresse IP et par compte. */
     private static final int ECHECS_MAX_IP = 20;
@@ -55,10 +58,25 @@ public class AuthController {
             /** Type d'activite des modules qui se declinent, par code de module. */
             Map<String, String> variantes,
             /** Mot de passe provisoire : l'interface ouvre « Mon compte » pour le changer. */
-            boolean motDePasseAChanger) {
+            boolean motDePasseAChanger,
+            /** Double authentification active sur ce compte. */
+            boolean deuxFacteursActif,
+            /** Super-administrateur sans double authentification : il doit l'activer avant tout. */
+            boolean deuxFacteursAActiver) {
     }
 
-    public record LoginResponse(String token, long expiresIn, UtilisateurCourant utilisateur) {
+    /**
+     * Reponse de connexion. Avec la double authentification, la premiere etape ne renvoie
+     * que {@code jetonDeuxFacteurs} : la session s'ouvre avec le code (POST /deux-facteurs).
+     */
+    public record LoginResponse(String token, long expiresIn, UtilisateurCourant utilisateur, String jetonDeuxFacteurs) {
+        public LoginResponse(String token, long expiresIn, UtilisateurCourant utilisateur) {
+            this(token, expiresIn, utilisateur, null);
+        }
+    }
+
+    public record CodeDeuxFacteurs(@NotBlank @jakarta.validation.constraints.Size(max = 2000) String jeton,
+                                   @NotBlank @jakarta.validation.constraints.Size(max = 20) String code) {
     }
 
     @PostMapping("/login")
@@ -90,7 +108,35 @@ public class AuthController {
         }
         UtilisateurPrincipal principal = (UtilisateurPrincipal) authentication.getPrincipal();
         limiteur.oublier(cleCompte);
+        if (principal.isDeuxFacteursActif()) {
+            // Mot de passe bon : la session ne s'ouvre qu'avec le code de l'application.
+            return new LoginResponse(null, 0, null, jwtService.genererJetonDeuxFacteurs(principal));
+        }
         // Le mot de passe prouve l'identite : le PIN bloque par trop d'essais se debloque.
+        pinService.debloquer(principal.getId());
+        LoginResponse reponse = sessionService.ouvrir(principal);
+        journal.connexion(principal);
+        return reponse;
+    }
+
+    /** Seconde etape de la connexion : le code de l'application d'authentification (ou un code de secours). */
+    @PostMapping("/deux-facteurs")
+    @Operation(summary = "Ouvre la session avec le code de double authentification")
+    public LoginResponse deuxFacteurs(@Valid @RequestBody CodeDeuxFacteurs demande) {
+        io.jsonwebtoken.Claims claims;
+        try {
+            claims = jwtService.lireJetonDeuxFacteurs(demande.jeton());
+        } catch (RuntimeException e) {
+            throw new org.springframework.security.authentication.BadCredentialsException(
+                    "Delai depasse : reconnectez-vous avec votre mot de passe");
+        }
+        UtilisateurPrincipal principal = (UtilisateurPrincipal) utilisateurDetails.loadUserByUsername(claims.getSubject());
+        Object uid = claims.get("uid");
+        if (!principal.isEnabled() || !(uid instanceof Number n && n.longValue() == principal.getId())
+                || principal.jetonPerime(claims.get("ver"))) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Session refusee");
+        }
+        deuxFacteurs.verifierConnexion(principal.getId(), demande.code());
         pinService.debloquer(principal.getId());
         LoginResponse reponse = sessionService.ouvrir(principal);
         journal.connexion(principal);

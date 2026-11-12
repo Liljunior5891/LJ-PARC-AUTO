@@ -17,6 +17,8 @@ Ne **jamais** définir `PARCAUTO_DEV`, `SWAGGER_ACTIF` ni `PAIEMENT_FOURNISSEUR=
 | `CORS_ORIGINS` | L'adresse publique du site, par exemple `https://app.mondomaine.tg` |
 | `PROXIES_DE_CONFIANCE` | Adresse du proxy inverse (nginx, Traefik) en expression régulière, par exemple `172\.18\.0\.\d+`. Sans elle, toutes les requêtes semblent venir du proxy et les limites d'essais deviennent communes à tous |
 | `DOCUMENTS_DIR` | Dossier persistant et sauvegardé des justificatifs |
+| `DEUX_FACTEURS_CLE` | 32 octets aleatoires au moins (`openssl rand -base64 48`), propre a ce serveur |
+| `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | Serveur SMTP (avec `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true`) ; `MAIL_EXPEDITEUR` et `URL_APPLICATION` (adresse publique du site, pour les liens des e-mails) |
 | `PAYGATE_AUTH_TOKEN` | Clé API de l'espace marchand PayGate (§ 2) |
 | `PAYGATE_URL` | Ne pas définir (vaut `https://paygateglobal.com`). Une adresse non HTTPS est refusée |
 | `SERVER_PORT` | Port interne derrière le proxy |

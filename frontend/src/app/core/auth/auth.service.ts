@@ -25,10 +25,38 @@ export class AuthService {
   readonly sessionExpiree = this.sessionExpireeSignal.asReadonly();
   readonly connecte = computed(() => this.utilisateurSignal() !== null);
 
+  /** Premiere etape ; si la reponse porte jetonDeuxFacteurs, la session s'ouvre avec le code (deuxFacteurs). */
   login(email: string, motDePasse: string): Observable<LoginResponse> {
     return this.http
       .post<LoginResponse>(`${environment.apiUrl}/auth/login`, { email, motDePasse })
+      .pipe(tap((reponse) => {
+        if (reponse.token) {
+          this.ouvrirSession(reponse);
+        }
+      }));
+  }
+
+  /** Seconde etape de la connexion : le code de l'application d'authentification (ou un code de secours). */
+  deuxFacteurs(jeton: string, code: string): Observable<LoginResponse> {
+    return this.http
+      .post<LoginResponse>(`${environment.apiUrl}/auth/deux-facteurs`, { jeton, code })
       .pipe(tap((reponse) => this.ouvrirSession(reponse)));
+  }
+
+  /** Refus du serveur : le super-administrateur doit activer la double authentification. */
+  exigerDeuxFacteurs(): void {
+    const utilisateur = this.utilisateurSignal();
+    if (utilisateur) {
+      this.memoriser({ ...utilisateur, deuxFacteursAActiver: true });
+    }
+  }
+
+  /** Double authentification activee depuis « Mon compte ». */
+  deuxFacteursActives(): void {
+    const utilisateur = this.utilisateurSignal();
+    if (utilisateur) {
+      this.memoriser({ ...utilisateur, deuxFacteursActif: true, deuxFacteursAActiver: false });
+    }
   }
 
   /** Enregistre une session ouverte par la connexion ou par l'inscription d'une entreprise. */

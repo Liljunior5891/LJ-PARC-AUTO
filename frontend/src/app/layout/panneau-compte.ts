@@ -5,6 +5,7 @@ import { LONGUEUR_MOT_DE_PASSE, Utilisateur } from '../core/models/utilisateur';
 import { UtilisateurService } from '../core/services/utilisateur.service';
 import { VerrouService } from '../core/services/verrou.service';
 import { OperationService } from '../core/operation/operation.service';
+import { BlocDeuxFacteurs } from './bloc-deux-facteurs';
 
 /**
  * « Mon compte », dans une fenetre verticale ancree a droite : chacun met a jour
@@ -14,7 +15,7 @@ import { OperationService } from '../core/operation/operation.service';
  */
 @Component({
   selector: 'app-panneau-compte',
-  imports: [FormsModule],
+  imports: [FormsModule, BlocDeuxFacteurs],
   template: `
     <div class="voile-compte"></div>
     <aside class="panneau-compte" role="dialog" aria-modal="true" aria-label="Mon compte">
@@ -129,6 +130,10 @@ import { OperationService } from '../core/operation/operation.service';
             </button>
             <small class="aide">Code oublie ? Demandez a votre gerant de l'effacer : vous en creerez un nouveau au deverrouillage.</small>
           </section>
+        }
+
+        @if (!auth.utilisateur()?.motDePasseAChanger) {
+          <app-bloc-deux-facteurs />
         }
 
         <footer class="actions-formulaire">

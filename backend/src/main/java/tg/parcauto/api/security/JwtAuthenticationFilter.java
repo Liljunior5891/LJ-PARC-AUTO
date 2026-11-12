@@ -31,6 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UtilisateurDetailsService utilisateurDetailsService;
+    private final SessionService sessions;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -51,6 +52,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (details.isEnabled() && memeCompte && !compte.jetonPerime(claims.get("ver"))) {
                     if (compte.isMotDePasseAChanger() && !permisAvantChangement(request)) {
                         motDePasseAChanger(response);
+                        return;
+                    }
+                    if (sessions.deuxFacteursAActiver(compte) && !permisAvantChangement(request)
+                            && !request.getRequestURI().startsWith("/api/auth/deux-facteurs")) {
+                        refuser(response, "DEUX_FACTEURS_A_ACTIVER",
+                                "Activez d'abord la double authentification depuis Mon compte");
                         return;
                     }
                     var auth = new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
@@ -77,6 +84,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Liste exacte : un futur chemin commencant par le meme prefixe n'est pas ouvert par megarde.
         String chemin = request.getRequestURI();
         return CHEMINS_AVANT_CHANGEMENT.contains(chemin);
+    }
+
+    private static void refuser(HttpServletResponse response, String code, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"code\":\"" + code + "\",\"message\":\"" + message + "\"}");
     }
 
     private static void motDePasseAChanger(HttpServletResponse response) throws IOException {

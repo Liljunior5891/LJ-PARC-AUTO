@@ -66,6 +66,10 @@ parcauto:
       expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:4300}
+  securite:
+    # Double authentification imposee au super-administrateur (DEUX_FACTEURS_SUPER_ADMIN=false
+    # seulement sur un poste de developpement).
+    deux-facteurs-super-admin: ${DEUX_FACTEURS_SUPER_ADMIN:true}
   storage:
     documents-dir: ${DOCUMENTS_DIR:./data/documents}
   plateforme:

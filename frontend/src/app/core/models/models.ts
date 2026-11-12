@@ -44,12 +44,19 @@ export interface UtilisateurCourant {
   variantes?: Partial<Record<CodeModule, string>>;
   /** Mot de passe provisoire : « Mon compte » s'ouvre pour le changer, rien d'autre n'est permis. */
   motDePasseAChanger?: boolean;
+  /** Double authentification active sur ce compte. */
+  deuxFacteursActif?: boolean;
+  /** Super-administrateur sans double authentification : « Mon compte » s'ouvre pour l'activer. */
+  deuxFacteursAActiver?: boolean;
 }
 
 export interface LoginResponse {
+  /** Absent quand la double authentification demande d'abord le code. */
   token: string;
   expiresIn: number;
   utilisateur: UtilisateurCourant;
+  /** Mot de passe bon, double authentification active : a echanger contre une session avec le code. */
+  jetonDeuxFacteurs?: string;
 }
 
 export type StatutCamion =

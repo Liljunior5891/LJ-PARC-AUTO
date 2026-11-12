@@ -16,6 +16,15 @@ public class SessionService {
     private final JwtService jwtService;
     private final ModuleService moduleService;
 
+    @org.springframework.beans.factory.annotation.Value("${parcauto.securite.deux-facteurs-super-admin:true}")
+    private boolean deuxFacteursSuperAdmin;
+
+    /** Super-administrateur sans double authentification, alors qu'elle lui est imposee. */
+    public boolean deuxFacteursAActiver(UtilisateurPrincipal p) {
+        return deuxFacteursSuperAdmin && !p.isDeuxFacteursActif()
+                && p.getAuthorities().stream().anyMatch(a -> "ROLE_SUPER_ADMIN".equals(a.getAuthority()));
+    }
+
     public AuthController.LoginResponse ouvrir(UtilisateurPrincipal principal) {
         return new AuthController.LoginResponse(
                 jwtService.genererToken(principal), jwtService.expirationSecondes(), profil(principal));
@@ -32,6 +41,7 @@ public class SessionService {
         moduleService.variantes(p.getEntrepriseId()).forEach((module, variante) -> variantes.put(module.name(), variante));
         return new AuthController.UtilisateurCourant(
                 p.getId(), p.getEmail(), p.getNomComplet(), p.getChauffeurId(), roles,
-                p.getEntrepriseId(), p.getEntrepriseNom(), modules, variantes, p.isMotDePasseAChanger());
+                p.getEntrepriseId(), p.getEntrepriseNom(), modules, variantes, p.isMotDePasseAChanger(),
+                p.isDeuxFacteursActif(), deuxFacteursAActiver(p));
     }
 }
