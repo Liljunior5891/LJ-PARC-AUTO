@@ -1,24 +1,22 @@
 import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { SceneModule } from './scene-module';
 
-/** Une diapositive du fond : une photo, ou une illustration posee sur un degrade propre au module. */
+/** Une diapositive du fond : la scene animee du module sur son degrade, ou une photo. */
 interface Diapositive {
   code: string;
   nom: string;
   accroche: string;
   points: string[];
-  /** Photo plein cadre (jpg, webp) : remplace l'illustration et le degrade. */
+  /** Photo plein cadre (jpg, webp) facultative : remplace la scene animee et le degrade. */
   photo?: string;
-  /** Illustration vectorielle, a droite de l'ecran, sur le degrade. */
-  illustration?: string;
   degrade: string;
   accent: string;
 }
 
 /**
- * Photos libres de droits (sources et licences : frontend/public/modules/CREDITS.md).
- * Pour changer une photo, la deposer dans frontend/public/modules/ et la renseigner
- * dans « photo » ; sans photo, l'illustration s'affiche sur le degrade. Le formulaire
- * occupe la gauche de l'ecran : un sujet place a droite de la photo reste visible.
+ * Chaque module est presente par une scene animee (app-scene-module) qui montre ce
+ * qu'il fait. Une photo renseignee dans « photo » la remplace ; le formulaire occupe
+ * la gauche de l'ecran, un sujet place a droite de la photo reste visible.
  */
 const DIAPOSITIVES: Diapositive[] = [
   {
@@ -26,7 +24,6 @@ const DIAPOSITIVES: Diapositive[] = [
     nom: 'Gestion de parc',
     accroche: 'Vehicules, missions, maintenance et GPS au meme endroit.',
     points: ['Rentabilite par vehicule', 'Entretiens et documents a echeance', 'Carte GPS en direct'],
-    photo: '/backlogin.jpg',
     degrade: 'linear-gradient(135deg, #06182a 0%, #0b3a63 100%)',
     accent: '#7dd3fc'
   },
@@ -35,8 +32,6 @@ const DIAPOSITIVES: Diapositive[] = [
     nom: 'Point de vente',
     accroche: 'Une caisse rapide pour la boutique, le restaurant ou la quincaillerie.',
     points: ['Caisse, stock et codes-barres', 'Commandes par table et cuisine', 'Credit client et devis'],
-    photo: '/modules/point-de-vente.jpg',
-    illustration: '/modules/point-de-vente.svg',
     degrade: 'linear-gradient(135deg, #022c22 0%, #065f46 55%, #0f766e 100%)',
     accent: '#6ee7b7'
   },
@@ -45,8 +40,6 @@ const DIAPOSITIVES: Diapositive[] = [
     nom: 'Marketplace',
     accroche: 'Votre boutique en ligne, ouverte a tous, en quelques minutes.',
     points: ['Vitrine et lien a partager', 'Paiement au retrait ou mobile money', 'Location de vehicules en ligne'],
-    photo: '/modules/marketplace.jpg',
-    illustration: '/modules/marketplace.svg',
     degrade: 'linear-gradient(135deg, #431407 0%, #9a3412 55%, #c2410c 100%)',
     accent: '#fdba74'
   },
@@ -55,8 +48,6 @@ const DIAPOSITIVES: Diapositive[] = [
     nom: 'Agences multiservices',
     accroche: 'Mobile money, transferts et cartes, agence par agence.',
     points: ['Cash et virtuel toujours justes', 'Commissions et baremes', 'Journal que personne ne modifie'],
-    photo: '/modules/agences.jpg',
-    illustration: '/modules/agences.svg',
     degrade: 'linear-gradient(135deg, #0f0c2e 0%, #312e81 55%, #4338ca 100%)',
     accent: '#a5b4fc'
   },
@@ -65,8 +56,6 @@ const DIAPOSITIVES: Diapositive[] = [
     nom: 'Gestion de presence',
     accroche: 'Le pointage des equipes par code QR, sans badge ni appareil a acheter.',
     points: ['Code QR qui change toutes les 30 s', 'Position GPS controlee', 'Retards et absents en direct'],
-    photo: '/modules/presence.jpg',
-    illustration: '/modules/presence.svg',
     degrade: 'linear-gradient(135deg, #2e0854 0%, #581c87 55%, #7e22ce 100%)',
     accent: '#d8b4fe'
   }
@@ -83,14 +72,16 @@ const DUREE_MS = 7000;
  */
 @Component({
   selector: 'app-fond-modules',
+  imports: [SceneModule],
   template: `
     <div class="diapositives" aria-hidden="true">
       @for (d of diapositives; track d.code; let i = $index) {
         <div class="diapositive" [class.active]="i === index()" [style.background]="d.degrade">
           @if (d.photo) {
             <div class="photo" [style.background-image]="'url(' + d.photo + ')'"></div>
-          } @else if (d.illustration) {
-            <div class="illustration" [style.background-image]="'url(' + d.illustration + ')'"></div>
+          } @else if (i === index()) {
+            <!-- Seule la scene affichee est animee ; elle repart du debut a chaque passage. -->
+            <div class="scene"><app-scene-module [code]="d.code" /></div>
           }
         </div>
       }
@@ -123,17 +114,15 @@ const DUREE_MS = 7000;
   `,
   styles: `
     :host { position: fixed; inset: 0; z-index: 0; display: block; overflow: hidden; }
-    .diapositives, .diapositive, .photo, .illustration { position: absolute; inset: 0; }
+    .diapositives, .diapositive, .photo, .scene { position: absolute; inset: 0; }
+    .diapositive::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(circle at 75% 35%, rgba(255, 255, 255, .12), transparent 55%); }
     .diapositive { opacity: 0; transition: opacity 1.2s ease; }
     .diapositive.active { opacity: 1; }
     .photo { background-size: cover; background-position: center; }
     .diapositive:first-child .photo { background-position: center bottom; }
-    .illustration {
-      left: 46%; right: 2%; top: 6%; bottom: 30%;
-      background-repeat: no-repeat; background-size: contain; background-position: center;
-      opacity: .9;
-    }
-    .diapositive.active .photo, .diapositive.active .illustration { animation: zoom 8200ms ease-out both; }
+    .scene { left: 42%; right: 1%; top: 3%; bottom: 29%; z-index: 1; }
+    .diapositive.active .photo { animation: zoom 8200ms ease-out both; }
     @keyframes zoom { from { transform: scale(1); } to { transform: scale(1.06); } }
 
     .legende {
@@ -162,11 +151,11 @@ const DUREE_MS = 7000;
 
     @media (max-width: 900px) {
       .legende { display: none; }
-      .illustration { left: 10%; right: 10%; top: auto; bottom: 4%; height: 40%; opacity: .35; }
+      .scene { left: 8%; right: 8%; top: auto; bottom: 3%; height: 42%; opacity: .45; }
     }
     @media (prefers-reduced-motion: reduce) {
       .diapositive { transition: none; }
-      .diapositive.active .photo, .diapositive.active .illustration, .texte { animation: none; }
+      .diapositive.active .photo, .texte { animation: none; }
     }
   `
 })
@@ -182,7 +171,9 @@ export class FondModules implements OnInit, OnDestroy {
     // Images chargees a l'avance : le fondu ne montre pas d'ecran vide.
     for (const d of this.diapositives) {
       const image = new Image();
-      image.src = d.photo ?? d.illustration ?? '';
+      if (d.photo) {
+        image.src = d.photo;
+      }
     }
     const animationsReduites = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (animationsReduites) {
