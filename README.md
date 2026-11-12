@@ -144,6 +144,9 @@ L'application est servie sur `http://localhost:4200`.
 | `PARCAUTO_DEV` | `false` | Sans `true` (ou profil Spring `dev`), l'API **refuse de démarrer** avec la clé `JWT_SECRET` de développement, une clé de moins de 64 octets ou le mot de passe administrateur par défaut. À ne jamais définir en production |
 | `PROXIES_DE_CONFIANCE` | `127\.0\.0\.1\|0:0:0:0:0:0:0:1` | Expression des adresses des proxys inverses dont l'en-tête `X-Forwarded-For` est cru (adresse IP du journal et des limiteurs) |
 | `SWAGGER_ACTIF` | `false` | `true` ouvre `/v3/api-docs` et Swagger UI (développement uniquement) |
+| `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | vides | Serveur SMTP des e-mails (ajouter `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true`). Sans serveur, les e-mails sont simules et se lisent dans la console (Notifications) |
+| `MAIL_EXPEDITEUR`, `MAIL_NOM_EXPEDITEUR` | `no-reply@lj-saas.local`, `LJ SaaS` | Expediteur des e-mails |
+| `URL_APPLICATION` | `http://localhost:4300` | Adresse publique du site, pour les liens envoyes par e-mail |
 | `PAYGATE_AUTH_TOKEN` | vide | Cle API de PayGate Global (espace marchand). Renseignee : les entreprises paient leur abonnement en ligne par T-Money ou Flooz. Adresse de rappel a declarer chez PayGate : `https://<domaine>/api/public/paygate/abonnements` |
 | `NIVEAU_LOG` | `INFO` | Niveau des journaux de l'application (`DEBUG` en développement) |
 

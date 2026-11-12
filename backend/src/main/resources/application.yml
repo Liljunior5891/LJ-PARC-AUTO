@@ -45,6 +45,15 @@ parcauto:
   # « simulation » : paiement de demonstration (developpement uniquement).
   paiement:
     fournisseur: ${PAIEMENT_FOURNISSEUR:}
+  # Notifications. E-mail : serveur SMTP par les variables SPRING_MAIL_HOST, SPRING_MAIL_PORT,
+  # SPRING_MAIL_USERNAME, SPRING_MAIL_PASSWORD (+ SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true).
+  # Sans serveur, et pour le SMS et WhatsApp tant qu'aucun fournisseur n'est branche, les
+  # messages sont simules : visibles dans la console du super-administrateur (Notifications).
+  notifications:
+    expediteur: ${MAIL_EXPEDITEUR:no-reply@lj-saas.local}
+    nom-expediteur: ${MAIL_NOM_EXPEDITEUR:LJ SaaS}
+    # Adresse publique de l'application, pour les liens envoyes (verification d'adresse...).
+    url-application: ${URL_APPLICATION:http://localhost:4300}
   # Paiement des abonnements par PayGate Global (Flooz, T-Money). Sans cle : pas de paiement
   # en ligne, l'entreprise declare son paiement et la plateforme le valide.
   paygate:

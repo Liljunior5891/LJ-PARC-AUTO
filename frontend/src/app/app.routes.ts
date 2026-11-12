@@ -712,6 +712,12 @@ export const routes: Routes = [
         canActivate: [roleGuard('SUPER_ADMIN')],
         title: "Journal d'audit — LJ SaaS"
       },
+      {
+        path: 'plateforme/notifications',
+        loadComponent: () => import('./pages/plateforme/notifications-plateforme').then((m) => m.NotificationsPlateforme),
+        canActivate: [roleGuard('SUPER_ADMIN')],
+        title: 'Notifications — LJ SaaS'
+      },
       { path: 'plateforme/abonnements', pathMatch: 'full', redirectTo: 'plateforme/abonnements/paiements' },
       {
         path: 'plateforme/abonnements/:vue',

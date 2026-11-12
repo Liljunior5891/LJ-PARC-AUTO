@@ -71,6 +71,7 @@ public class AbonnementService {
     private final StockageFichierService stockage;
     private final JdbcTemplate jdbc;
     private final tg.parcauto.api.plateforme.abonnement.paygate.PayGateClient payGate;
+    private final NotificationsAbonnement notificationsAbonnement;
 
     // ================================================================ vues
 
@@ -835,6 +836,8 @@ public class AbonnementService {
         if (!debut.isAfter(jour) || etaitEssai) {
             mettreEnVigueur(a, p);
         }
+        // Recu par e-mail aux administrateurs, envoye apres validation de la transaction.
+        notificationsAbonnement.recu(p, nomEntreprise(p.getEntrepriseId()));
     }
 
     /**

@@ -365,7 +365,8 @@ export class Shell {
     {
       id: 'plateforme-journal', libelle: "Journal d'audit",
       entrees: [
-        { libelle: 'Journal general', route: '/plateforme/journal', description: 'Actions de toutes les entreprises et de la plateforme' }
+        { libelle: 'Journal general', route: '/plateforme/journal', description: 'Actions de toutes les entreprises et de la plateforme' },
+        { libelle: 'Notifications', route: '/plateforme/notifications', description: 'E-mails, SMS et WhatsApp envoyes (ou simules)' }
       ]
     }
   ];
