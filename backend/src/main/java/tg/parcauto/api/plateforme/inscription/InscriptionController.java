@@ -38,16 +38,39 @@ public class InscriptionController {
         return moduleService.catalogue(null);
     }
 
-    /** L'administrateur cree est connecte dans la foulee : la reponse est celle d'une connexion. */
+    public record Reponse(String message) {
+    }
+
+    public record Confirmation(String jeton) {
+    }
+
+    /**
+     * Premiere etape : un lien de confirmation part a l'adresse donnee. Reponse identique
+     * que l'adresse ait deja un compte ou non.
+     */
     @PostMapping("/inscription")
-    @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Cree un compte entreprise et son administrateur, puis ouvre sa session")
-    public AuthController.LoginResponse inscrire(@Valid @RequestBody InscriptionService.Demande demande,
-                                                 jakarta.servlet.http.HttpServletRequest requete) {
-        // Point public : quelques inscriptions par heure et par adresse IP, contre les essais en serie.
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Demande la creation d'un compte entreprise : un lien de confirmation part par e-mail")
+    public Reponse inscrire(@Valid @RequestBody InscriptionService.Demande demande,
+                            jakarta.servlet.http.HttpServletRequest requete) {
+        // Point public : quelques demandes par heure et par adresse IP, et par adresse e-mail.
         limiteur.exiger("inscription:" + requete.getRemoteAddr(), 5, java.time.Duration.ofHours(1),
                 "Trop d'inscriptions depuis cette connexion : reessayez dans une heure");
-        String email = inscriptionService.inscrire(demande);
+        limiteur.exiger("inscription-email:" + demande.email().trim().toLowerCase(java.util.Locale.ROOT), 3,
+                java.time.Duration.ofHours(1), "Trop de demandes pour cette adresse : reessayez dans une heure");
+        inscriptionService.demander(demande);
+        return new Reponse("Un e-mail de confirmation vient d'etre envoye a " + demande.email().trim()
+                + ". Ouvrez le lien qu'il contient pour creer votre compte.");
+    }
+
+    /** Seconde etape : le lien est ouvert, le compte est cree et sa session ouverte. */
+    @PostMapping("/inscription/confirmation")
+    @Operation(summary = "Confirme l'adresse : cree le compte entreprise et ouvre la session de son administrateur")
+    public AuthController.LoginResponse confirmer(@RequestBody Confirmation confirmation,
+                                                  jakarta.servlet.http.HttpServletRequest requete) {
+        limiteur.exiger("inscription-confirmation:" + requete.getRemoteAddr(), 20, java.time.Duration.ofHours(1),
+                "Trop d'essais : reessayez dans une heure");
+        String email = inscriptionService.confirmer(confirmation == null ? null : confirmation.jeton());
         var principal = (UtilisateurPrincipal) utilisateurDetailsService.loadUserByUsername(email);
         return sessionService.ouvrir(principal);
     }

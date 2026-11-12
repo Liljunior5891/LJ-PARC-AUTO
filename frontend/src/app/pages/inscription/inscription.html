@@ -3,6 +3,18 @@
   <div class="voile"></div>
 
   <div class="colonne-formulaire">
+    @if (envoye(); as message) {
+      <section class="carte-connexion carte-inscription envoye" aria-live="polite">
+        <div class="marque">
+          <span class="logo" aria-hidden="true">✉</span>
+          <h1>Verifiez votre boite mail</h1>
+          <p class="sous-titre">{{ message }}</p>
+        </div>
+        <p>Le lien est valable 24 heures. Pensez a regarder dans les courriers indesirables.</p>
+        <p class="inscription">Adresse mal saisie ? <a href="/inscription">Recommencer l'inscription</a></p>
+        <p class="inscription">Deja confirme ? <a routerLink="/connexion">Se connecter</a></p>
+      </section>
+    } @else {
     <form class="carte-connexion carte-inscription" [class.etape-modules]="etape() === 2" [formGroup]="formulaire" (ngSubmit)="soumettre()">
       <div class="marque">
         <span class="logo">◆</span>
@@ -158,5 +170,6 @@
         Deja inscrit ? <a routerLink="/connexion">Se connecter</a>
       </p>
     </form>
+    }
   </div>
 </div>

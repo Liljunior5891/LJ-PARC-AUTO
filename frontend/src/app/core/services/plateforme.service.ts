@@ -23,8 +23,14 @@ export class PlateformeService {
     return this.http.get<ModuleCatalogue[]>(`${this.api}/public/modules`);
   }
 
-  inscrire(demande: DemandeInscription): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.api}/public/inscription`, demande);
+  /** Premiere etape : un lien de confirmation part a l'adresse donnee. */
+  inscrire(demande: DemandeInscription): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.api}/public/inscription`, demande);
+  }
+
+  /** Seconde etape : le lien est ouvert, le compte est cree et la session ouverte. */
+  confirmerInscription(jeton: string): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${this.api}/public/inscription/confirmation`, { jeton });
   }
 
   /** Catalogue avec l'etat d'activation pour l'entreprise connectee. */

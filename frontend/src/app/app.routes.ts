@@ -24,6 +24,12 @@ export const routes: Routes = [
     title: 'Creer un compte entreprise — LJ SaaS'
   },
   {
+    // Lien envoye par e-mail a l'inscription : cree le compte et ouvre la session.
+    path: 'inscription/confirmation',
+    loadComponent: () => import('./pages/inscription/confirmation-inscription').then((m) => m.ConfirmationInscription),
+    title: 'Confirmation de l\'inscription — LJ SaaS'
+  },
+  {
     // Carte en ligne ouverte par le code QR d'une table : sans compte, sans menu.
     path: 't/:jeton',
     loadComponent: () => import('./pages/carte-en-ligne/carte-en-ligne').then((m) => m.CarteEnLignePage),

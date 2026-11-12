@@ -44,6 +44,15 @@ public class InscriptionService {
     private final tg.parcauto.api.plateforme.abonnement.AbonnementService abonnementService;
     private final PasswordEncoder encodeur;
     private final TransactionTemplate transaction;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private final tg.parcauto.api.common.notification.NotificationService notifications;
+    private final com.fasterxml.jackson.databind.ObjectMapper json;
+
+    @org.springframework.beans.factory.annotation.Value("${parcauto.notifications.url-application:http://localhost:4300}")
+    private String urlApplication;
+
+    /** Duree de validite du lien de confirmation. */
+    private static final java.time.Duration VALIDITE_LIEN = java.time.Duration.ofHours(24);
 
     public record Demande(
             @NotBlank @Size(max = 150) String nomEntreprise,
@@ -74,12 +83,104 @@ public class InscriptionService {
      *                          il est alors provisoire, a changer a la premiere connexion.
      */
     public String inscrire(Demande demande, Integer joursEssai, boolean creeParPlateforme) {
-        // La transaction s'ouvre dans le mode systeme : la session Hibernate fixe son entreprise a l'ouverture.
-        return ContexteEntreprise.enModeSysteme(
-                () -> transaction.execute(statut -> creer(demande, joursEssai, creeParPlateforme)));
+        return inscrire(demande, joursEssai, creeParPlateforme, false);
     }
 
-    private String creer(Demande demande, Integer joursEssai, boolean creeParPlateforme) {
+    private String inscrire(Demande demande, Integer joursEssai, boolean creeParPlateforme, boolean motDePasseChiffre) {
+        // La transaction s'ouvre dans le mode systeme : la session Hibernate fixe son entreprise a l'ouverture.
+        return ContexteEntreprise.enModeSysteme(
+                () -> transaction.execute(statut -> creer(demande, joursEssai, creeParPlateforme, motDePasseChiffre)));
+    }
+
+    // ------------------------------------------------- inscription en libre-service
+
+    /**
+     * Premiere etape : la demande est gardee en attente et un lien de confirmation part
+     * a l'adresse donnee. Meme effet visible que l'adresse ait deja un compte ou non : la
+     * personne concernee recoit alors un e-mail « vous avez deja un compte ». Rien
+     * n'indique a un tiers si une adresse est inscrite.
+     */
+    public void demander(Demande demande) {
+        String email = demande.email().trim();
+        if (utilisateurRepository.existsByEmailIgnoreCase(email)) {
+            notifications.email(null, email, "Vous avez deja un compte",
+                    "Bonjour,\n\nUne inscription vient d'etre demandee avec cette adresse, qui a deja un compte.\n"
+                            + "Connectez-vous ici :\n" + urlApplication + "/connexion\n\n"
+                            + "Si ce n'etait pas vous, ignorez ce message : rien n'a ete modifie.\n" + signature(),
+                    "INSCRIPTION_EXISTANTE");
+            return;
+        }
+        byte[] alea = new byte[32];
+        new java.security.SecureRandom().nextBytes(alea);
+        String jeton = java.util.HexFormat.of().formatHex(alea);
+        Demande gardee = new Demande(demande.nomEntreprise(), demande.pays(), demande.telephone(), demande.nom(),
+                demande.prenom(), email, encodeur.encode(demande.motDePasse()), demande.modules(), demande.variantes());
+        String donnees;
+        try {
+            donnees = json.writeValueAsString(gardee);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
+        jdbc.update("insert into inscription_attente (email, jeton_empreinte, donnees, expire_le) values (?, ?, ?, ?)",
+                email, empreinte(jeton), donnees, java.sql.Timestamp.from(java.time.Instant.now().plus(VALIDITE_LIEN)));
+        notifications.email(null, email, "Confirmez la creation du compte " + demande.nomEntreprise().trim(),
+                "Bonjour " + demande.nom().trim() + ",\n\n"
+                        + "Pour creer le compte de " + demande.nomEntreprise().trim() + ", confirmez votre adresse en"
+                        + " ouvrant ce lien (valable 24 heures) :\n"
+                        + urlApplication + "/inscription/confirmation?jeton=" + jeton + "\n\n"
+                        + "Si vous n'avez rien demande, ignorez ce message : aucun compte ne sera cree.\n" + signature(),
+                "VERIFICATION_EMAIL");
+    }
+
+    /**
+     * Seconde etape : le lien est ouvert, le compte est cree avec la demande gardee.
+     *
+     * @return l'adresse du compte administrateur cree, pour ouvrir sa session
+     */
+    public String confirmer(String jeton) {
+        if (jeton == null || !jeton.matches("^[0-9a-f]{64}$")) {
+            throw new BusinessException("Lien de confirmation invalide");
+        }
+        java.util.List<java.util.Map<String, Object>> lignes = jdbc.queryForList("""
+                select id, donnees from inscription_attente
+                where jeton_empreinte = ? and utilisee_le is null and expire_le > now()
+                """, empreinte(jeton));
+        if (lignes.isEmpty()) {
+            throw new BusinessException("Ce lien a expire ou a deja servi : recommencez l'inscription,"
+                    + " ou connectez-vous si le compte est deja cree");
+        }
+        Demande demande;
+        try {
+            demande = json.readValue((String) lignes.get(0).get("donnees"), Demande.class);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new BusinessException("Demande d'inscription illisible : recommencez l'inscription");
+        }
+        // Si deux liens sont ouverts en meme temps, le second echoue sur l'adresse deja prise.
+        String email = inscrire(demande, null, false, true);
+        jdbc.update("update inscription_attente set utilisee_le = now() where id = ?", lignes.get(0).get("id"));
+        return email;
+    }
+
+    /** Demandes jamais confirmees : effacees une semaine apres (elles contiennent des donnees personnelles). */
+    @org.springframework.scheduling.annotation.Scheduled(cron = "0 15 4 * * *")
+    public void purgerDemandes() {
+        jdbc.update("delete from inscription_attente where cree_le < now() - interval '7 days'");
+    }
+
+    private static String empreinte(String jeton) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(jeton.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static String signature() {
+        return "\n-- \nLJ SaaS\nMessage automatique : merci de ne pas y repondre.\n";
+    }
+
+    private String creer(Demande demande, Integer joursEssai, boolean creeParPlateforme, boolean motDePasseChiffre) {
         String email = demande.email().trim();
         if (utilisateurRepository.existsByEmailIgnoreCase(email)) {
             throw new BusinessException("Cette adresse ne peut pas servir a une nouvelle inscription."
@@ -107,7 +208,7 @@ public class InscriptionService {
         admin.setNom(demande.nom().trim());
         admin.setPrenom(vide(demande.prenom()));
         admin.setTelephone(vide(demande.telephone()));
-        admin.setMotDePasse(encodeur.encode(demande.motDePasse()));
+        admin.setMotDePasse(motDePasseChiffre ? demande.motDePasse() : encodeur.encode(demande.motDePasse()));
         // Saisi par l'exploitant : l'administrateur du client le remplace a sa premiere connexion.
         admin.setMotDePasseAChanger(creeParPlateforme);
         admin.setRoles(EnumSet.of(Role.ADMIN));

@@ -47,6 +47,8 @@ export class Inscription implements OnInit {
   /** 1 : entreprise et administrateur ; 2 : modules a activer. */
   readonly etape = signal<1 | 2>(1);
   readonly erreur = signal<string | null>(null);
+  /** Demande envoyee : message affiche a la place du formulaire (verifier sa boite mail). */
+  readonly envoye = signal<string | null>(null);
 
   readonly formulaire = this.fb.nonNullable.group(
     {
@@ -131,8 +133,9 @@ export class Inscription implements OnInit {
     modules.filter((m) => this.variantes()[m]).forEach((m) => (variantes[m] = this.variantes()[m]));
     this.service.inscrire({ ...saisie, modules, variantes }).subscribe({
       next: (reponse) => {
-        this.auth.ouvrirSession(reponse);
-        void this.router.navigateByUrl(this.auth.pageAccueil());
+        this.enCours.set(false);
+        this.envoye.set(reponse.message);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       },
       error: (reponse) => {
         this.enCours.set(false);
