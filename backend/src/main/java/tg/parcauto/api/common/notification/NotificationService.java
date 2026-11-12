@@ -44,7 +44,7 @@ import java.util.regex.Pattern;
  * serveur ; le super-administrateur le lit dans la console (Notifications).
  */
 @Slf4j
-@Service
+@Service("envoiNotifications")
 public class NotificationService {
 
     public enum Canal { EMAIL, SMS, WHATSAPP }

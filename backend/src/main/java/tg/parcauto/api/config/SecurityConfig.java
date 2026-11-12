@@ -60,6 +60,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC).permitAll()
+                        // Seconde etape de la connexion : le jeton intermediaire est dans le corps.
+                        .requestMatchers(HttpMethod.POST, "/api/auth/deux-facteurs").permitAll()
                         // Console de l'exploitant : regle d'URL en plus des @PreAuthorize de chaque methode.
                         .requestMatchers("/api/plateforme/**").hasRole("SUPER_ADMIN")
                         .anyRequest().authenticated())
