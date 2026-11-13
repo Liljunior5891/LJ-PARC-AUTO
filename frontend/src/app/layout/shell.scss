@@ -329,6 +329,10 @@
   }
 }
 
+.replier .mot-menu {
+  display: none;
+}
+
 .replier {
   flex: none;
   align-self: center;
@@ -553,6 +557,27 @@ button.entree {
     row-gap: 0.5rem;
   }
 
+  /* Le bouton qui replie le menu reste visible au bout des onglets qui defilent. */
+  .replier {
+    position: sticky;
+    right: 0;
+    z-index: 60;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    width: auto;
+    padding: 0 0.7rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    box-shadow: -10px 0 12px -6px rgba(0, 0, 0, 0.18);
+
+    .mot-menu {
+      display: inline;
+    }
+  }
+
   .entree:nth-child(odd)::before {
     display: none;
   }
@@ -560,6 +585,13 @@ button.entree {
   .contenu {
     padding: 1rem;
   }
+}
+
+@media (max-width: 560px) {
+  .panneau {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
 }
 
 /* ------------------------------------------------- menu du compte */

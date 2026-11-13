@@ -32,6 +32,12 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6" /><path d="M5 20c.8-3.8 3.6-6 7-6s6.2 2.2 7 6" /></svg>
                 Mon compte
               </button>
+              @if (installation.proposable()) {
+                <button type="button" role="menuitem" (click)="installer()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11" /><path d="M7.5 10.5 12 15l4.5-4.5" /><path d="M5 19h14" /></svg>
+                  Installer l'application
+                </button>
+              }
               <button type="button" role="menuitem" class="danger" (click)="deconnexion()">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v8" /><path d="M7 6.3a7.5 7.5 0 1 0 10 0" /></svg>
                 Deconnexion
@@ -105,7 +111,13 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6" /><path d="M5 20c.8-3.8 3.6-6 7-6s6.2 2.2 7 6" /></svg>
               Mon compte
             </button>
-            <button type="button" role="menuitem" class="danger" (click)="deconnexion()">
+            @if (installation.proposable()) {
+                <button type="button" role="menuitem" (click)="installer()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11" /><path d="M7.5 10.5 12 15l4.5-4.5" /><path d="M5 19h14" /></svg>
+                  Installer l'application
+                </button>
+              }
+              <button type="button" role="menuitem" class="danger" (click)="deconnexion()">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v8" /><path d="M7 6.3a7.5 7.5 0 1 0 10 0" /></svg>
               Deconnexion
             </button>
@@ -140,7 +152,7 @@
       <button class="replier" type="button" (click)="basculerPanneau()"
               [attr.aria-expanded]="panneauOuvert()"
               [attr.aria-label]="panneauOuvert() ? 'Replier le menu' : 'Deplier le menu'">
-        {{ panneauOuvert() ? '▴' : '▾' }}
+        <span aria-hidden="true">{{ panneauOuvert() ? '▴' : '▾' }}</span><span class="mot-menu">Menu</span>
       </button>
     </div>
 

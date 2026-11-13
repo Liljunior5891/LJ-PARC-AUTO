@@ -1527,3 +1527,15 @@ input.grand {
     font-size: 0.78rem;
   }
 }
+
+/* Telephone : la recherche prend toute la ligne, les boutons passent dessous. */
+@media (max-width: 620px) {
+  .barre-recherche {
+    flex-wrap: wrap;
+
+    .recherche {
+      flex: 1 1 100%;
+      min-height: 44px;
+    }
+  }
+}

@@ -217,3 +217,14 @@
   color: var(--couleur-texte-doux);
   text-align: center;
 }
+
+/* Telephone : les actions de la carte passent sur deux lignes au lieu d'etre tronquees. */
+@media (max-width: 520px) {
+  .actions-caisse {
+    flex-wrap: wrap;
+
+    .action {
+      flex: 1 1 calc(50% - 0.4rem);
+    }
+  }
+}

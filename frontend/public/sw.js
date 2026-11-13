@@ -1,9 +1,19 @@
-// Rend l'application rouvrable sans connexion pour servir les bons de retrait.
+// Service worker de l'application installable (PWA) : il la rend rouvrable sans connexion
+// (bons de retrait, file hors ligne des agences) et permet son installation.
 // Le reseau passe toujours d'abord : le cache ne sert que lorsqu'il ne repond plus.
 // Seuls les fichiers de l'application sont concernes ; l'API, sur une autre origine, n'est jamais mise en cache.
-const CACHE = 'lj-saas-application-v1';
+const CACHE = 'lj-saas-application-v2';
+// Coquille de l'application, gardee des l'installation : l'icone ouvre l'application meme sans reseau.
+const COQUILLE = ['/', '/manifest.webmanifest', '/favicon.ico', '/icones/icone-192.png', '/icones/icone-512.png'];
 
-self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('install', (evenement) => {
+  evenement.waitUntil(
+    caches.open(CACHE)
+      .then((cache) => cache.addAll(COQUILLE))
+      .catch(() => undefined)
+      .then(() => self.skipWaiting())
+  );
+});
 
 self.addEventListener('activate', (evenement) => {
   evenement.waitUntil(

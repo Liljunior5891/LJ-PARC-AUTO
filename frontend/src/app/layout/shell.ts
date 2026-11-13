@@ -23,6 +23,7 @@ import { OptionsPdvService } from '../core/services/options-pdv.service';
 import { environment } from '../../environments/environment';
 import { BandeauAbonnement } from '../shared/bandeau-abonnement';
 import { BandeauMaintenance } from '../shared/bandeau-maintenance';
+import { InstallationService } from '../core/services/installation.service';
 
 interface EntreeMenu {
   libelle: string;
@@ -135,7 +136,9 @@ export class Shell {
 
   readonly utilisateur = this.auth.utilisateur;
   /** Le panneau sous les onglets peut etre replie pour gagner de la hauteur. */
-  readonly panneauOuvert = signal(true);
+  /** Telephone ou petite tablette : le menu reste replie et se referme apres chaque page choisie. */
+  private readonly petitEcran = window.matchMedia('(max-width: 900px)');
+  readonly panneauOuvert = signal(!this.petitEcran.matches);
 
   /** Deux lettres du nom, a defaut de photo de profil. */
   readonly initiales = computed(() =>
@@ -536,6 +539,9 @@ export class Shell {
       .subscribe(() => {
         this.ongletChoisi.set(null);
         this.groupeChoisi.set(null);
+        if (this.petitEcran.matches) {
+          this.panneauOuvert.set(false);
+        }
       });
   }
 
@@ -561,6 +567,12 @@ export class Shell {
 
   /** Menu du compte, ouvert par le nom ou l'avatar : « Mon compte » et deconnexion. */
   readonly menuCompte = signal(false);
+  readonly installation = inject(InstallationService);
+
+  installer(): void {
+    this.menuCompte.set(false);
+    void this.installation.installer();
+  }
   readonly compteOuvert = signal(false);
 
   basculerMenuCompte(): void {

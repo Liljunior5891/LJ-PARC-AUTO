@@ -2,6 +2,7 @@ import { FondModules } from '../../shared/fond-modules';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { InstallationService } from '../../core/services/installation.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { environment } from '../../../environments/environment';
 import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
@@ -14,6 +15,7 @@ import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
 })
 export class Login {
   private readonly fb = inject(FormBuilder);
+  readonly installation = inject(InstallationService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);

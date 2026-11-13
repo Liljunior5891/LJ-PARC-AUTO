@@ -60,6 +60,10 @@ const APPARENCES: Record<NotificationPdv['type'], { icone: string; couleur: stri
       display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;
       width: min(380px, calc(100vw - 32px)); pointer-events: none;
     }
+    /* Telephone : les messages arrivent en bas, sans cacher la barre et le menu. */
+    @media (max-width: 640px) {
+      .pile { top: auto; right: 12px; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); width: auto; align-items: stretch; }
+    }
     .message-pdv {
       display: flex; align-items: stretch; width: 100%; overflow: hidden; pointer-events: auto;
       border-left: 5px solid var(--accent); border-radius: 12px; background: #fff;

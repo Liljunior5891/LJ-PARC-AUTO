@@ -75,6 +75,12 @@
         Pas encore de compte ? <a routerLink="/inscription">Creer le compte de votre entreprise</a>
       </p>
 
+      @if (installation.proposable()) {
+        <button type="button" class="installer" (click)="installation.installer()">
+          <span aria-hidden="true">⬇</span> Installer l'application sur cet appareil
+        </button>
+      }
+
       <p class="pied">
         <a routerLink="/">Retour a l'accueil</a>
         <span>{{ nomPlateforme }} — chaque entreprise ne voit que ses donnees</span>
