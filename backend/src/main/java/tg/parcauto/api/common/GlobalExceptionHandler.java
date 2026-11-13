@@ -104,6 +104,21 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, ex.getMessage(), req, null);
     }
 
+    /** Module en maintenance : 503, avec l'heure de retour prevue pour la page de maintenance. */
+    @ExceptionHandler(tg.parcauto.api.plateforme.maintenance.MaintenanceEnCoursException.class)
+    public ResponseEntity<Map<String, Object>> handleMaintenance(
+            tg.parcauto.api.plateforme.maintenance.MaintenanceEnCoursException ex, HttpServletRequest req) {
+        ResponseEntity<Map<String, Object>> reponse = build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), req, null);
+        Map<String, Object> corps = reponse.getBody();
+        corps.put("code", "MAINTENANCE");
+        corps.put("module", ex.getModule().name());
+        corps.put("moduleLibelle", ex.getModule().getLibelle());
+        corps.put("finPrevue", ex.getFinPrevue());
+        long secondes = Math.max(60, java.time.Duration.between(Instant.now(), ex.getFinPrevue()).getSeconds());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header(org.springframework.http.HttpHeaders.RETRY_AFTER, String.valueOf(secondes)).body(corps);
+    }
+
     @ExceptionHandler(tg.parcauto.api.plateforme.abonnement.AbonnementExpireException.class)
     public ResponseEntity<Map<String, Object>> handleAbonnementExpire(
             tg.parcauto.api.plateforme.abonnement.AbonnementExpireException ex, HttpServletRequest req) {

@@ -56,9 +56,14 @@ export function nouvelleCleOperation(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-/** Une erreur sans reponse du serveur : reseau coupe ou serveur injoignable. */
+/**
+ * Une erreur sans reponse du serveur (reseau coupe ou serveur injoignable), ou le
+ * module en maintenance : dans les deux cas, l'operation attend dans la file
+ * hors ligne et part au retour du service.
+ */
 export function erreurReseau(e: unknown): boolean {
-  return (e as { status?: number })?.status === 0;
+  const r = e as { status?: number; error?: { code?: string } | null };
+  return r?.status === 0 || (r?.status === 503 && r.error?.code === 'MAINTENANCE');
 }
 
 /**

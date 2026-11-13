@@ -730,6 +730,13 @@ export const routes: Routes = [
         canActivate: [roleGuard('SUPER_ADMIN')],
         title: 'Notifications — LJ SaaS'
       },
+      { path: 'plateforme/maintenance', pathMatch: 'full', redirectTo: 'plateforme/maintenance/maintenances' },
+      {
+        path: 'plateforme/maintenance/:vue',
+        loadComponent: () => import('./pages/plateforme/maintenance-plateforme').then((m) => m.ConsoleMaintenance),
+        canActivate: [roleGuard('SUPER_ADMIN')],
+        title: 'Maintenance — LJ SaaS'
+      },
       { path: 'plateforme/abonnements', pathMatch: 'full', redirectTo: 'plateforme/abonnements/paiements' },
       {
         path: 'plateforme/abonnements/:vue',

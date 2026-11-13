@@ -22,6 +22,7 @@ import { LieuxService } from '../core/services/lieux.service';
 import { OptionsPdvService } from '../core/services/options-pdv.service';
 import { environment } from '../../environments/environment';
 import { BandeauAbonnement } from '../shared/bandeau-abonnement';
+import { BandeauMaintenance } from '../shared/bandeau-maintenance';
 
 interface EntreeMenu {
   libelle: string;
@@ -64,7 +65,7 @@ interface Onglet {
 @Component({
   selector: 'app-shell',
   host: { '(document:click)': 'clicDocument($event)' },
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, EtatHorsLigneAgences, IconeDemandesEnLigne, VerrouCaisse, SansCaisse, NotificationsPdv, AlertesPdv, PanneauCompte, BonsAImprimer, BandeauAbonnement],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ClocheNotifications, EtatHorsLigneAgences, IconeDemandesEnLigne, VerrouCaisse, SansCaisse, NotificationsPdv, AlertesPdv, PanneauCompte, BonsAImprimer, BandeauAbonnement, BandeauMaintenance],
   templateUrl: './shell.html',
   styleUrl: './shell.scss'
 })
@@ -368,6 +369,13 @@ export class Shell {
       entrees: [
         { libelle: 'Journal general', route: '/plateforme/journal', description: 'Actions de toutes les entreprises et de la plateforme' },
         { libelle: 'Notifications', route: '/plateforme/notifications', description: 'E-mails, SMS et WhatsApp envoyes (ou simules)' }
+      ]
+    },
+    {
+      id: 'plateforme-maintenance', libelle: 'Maintenance',
+      entrees: [
+        { libelle: 'Maintenances', route: '/plateforme/maintenance/maintenances', description: 'Programmer, annoncer et terminer, module par module' },
+        { libelle: 'Versions', route: '/plateforme/maintenance/versions', description: 'Notes de version et rechargement des navigateurs' }
       ]
     }
   ];

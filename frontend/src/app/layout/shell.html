@@ -187,6 +187,7 @@
   }
 
   <main class="contenu" #contenu>
+    <app-bandeau-maintenance />
     @if (!estSuperAdmin && utilisateur()?.entrepriseId) {
       <app-bandeau-abonnement />
     }

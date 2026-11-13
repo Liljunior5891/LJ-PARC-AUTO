@@ -24,6 +24,7 @@ import tg.parcauto.api.plateforme.tenant.ContexteEntreprise;
 public class ControleModuleInterceptor implements HandlerInterceptor {
 
     private final ModuleService moduleService;
+    private final tg.parcauto.api.plateforme.maintenance.MaintenanceService maintenances;
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
@@ -34,6 +35,13 @@ public class ControleModuleInterceptor implements HandlerInterceptor {
         ModuleRequis requis = AnnotatedElementUtils.findMergedAnnotation(methode.getBeanType(), ModuleRequis.class);
         if (requis == null) {
             return true;
+        }
+        // Module en maintenance : ecrans et points publics refuses a tous (503), sauf la reception
+        // des positions GPS, que les traceurs envoient sans personne pour les rejouer.
+        if (!request.getRequestURI().startsWith("/api/public/gps/")) {
+            maintenances.enCours(requis.value()).ifPresent(m -> {
+                throw new tg.parcauto.api.plateforme.maintenance.MaintenanceEnCoursException(requis.value(), m);
+            });
         }
         Long entrepriseId = ContexteEntreprise.courante().orElse(null);
         if (!moduleService.estActif(entrepriseId, requis.value())) {
