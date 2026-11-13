@@ -122,6 +122,19 @@ class DepensePdvServiceTest {
     }
 
     @Test
+    @DisplayName("Un gerant n'a pas plus de 3 demandes au fonds de reserve en attente ; l'administrateur n'est pas limite")
+    void demandesAuFondsLimitees() {
+        when(repository.countByModeAndStatutInAndAuteurNom(eq(ModeSortie.RESERVE), any(), eq("Gerant"))).thenReturn(3L);
+        assertThatThrownBy(() -> service.creer(new DepensePdvService.Requete(4L, "Toiture", null, null,
+                new BigDecimal("1000"), null, ModeSortie.RESERVE, null, null, null, null, null), gerant()))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("3 depenses");
+        when(repository.countByModeAndStatutInAndAuteurNom(eq(ModeSortie.RESERVE), any(), any())).thenReturn(10L);
+        assertThat(service.creer(new DepensePdvService.Requete(4L, "Toiture", null, null,
+                new BigDecimal("1000"), null, ModeSortie.RESERVE, null, null, null, null, null), admin()).statut())
+                .isEqualTo(DepensePdv.Statut.VALIDE);
+    }
+
+    @Test
     @DisplayName("Avec la validation, la depense de caisse du gerant attend l'administrateur sans rien sortir ; approuvee, elle sort")
     void depenseDeCaisseValideeParLAdministrateur() {
         when(reglages.validationDepensesCaisse()).thenReturn(true);

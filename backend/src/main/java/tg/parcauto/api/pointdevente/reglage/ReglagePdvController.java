@@ -28,14 +28,19 @@ public class ReglagePdvController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','GERANT','CAISSIER','SERVEUR','PREPARATEUR','MAGASINIER','ASSOCIE')")
     @Operation(summary = "Options activees du point de vente")
-    public ReglagePdvService.Reglages lire() {
-        return service.lire();
+    public ReglagePdvService.Reglages lire(org.springframework.security.core.Authentication auth) {
+        ReglagePdvService.Reglages r = service.lire();
+        // Le fonds de reserve ne regarde que l'administrateur et le gerant.
+        boolean gestion = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_GERANT"));
+        return gestion ? r : r.sansFondsReserve();
     }
 
     @PutMapping
     @PreAuthorize(Autorisations.ADMINISTRATION)
     @Operation(summary = "Active ou desactive les options du point de vente")
-    public ReglagePdvService.Reglages modifier(@Valid @RequestBody ReglagePdvService.Requete requete) {
-        return service.modifier(requete);
+    public ReglagePdvService.Reglages modifier(@Valid @RequestBody ReglagePdvService.Requete requete,
+                                              org.springframework.security.core.Authentication auth) {
+        return service.modifier(requete, auth == null ? "l'administrateur" : auth.getName());
     }
 }

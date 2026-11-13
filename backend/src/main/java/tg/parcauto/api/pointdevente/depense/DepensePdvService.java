@@ -46,6 +46,9 @@ import java.util.Set;
 @Transactional
 public class DepensePdvService {
 
+    /** Demandes au fonds de reserve en attente, au plus, par gerant. */
+    static final int DEMANDES_FONDS_MAX = 3;
+
     private static final ZoneId FUSEAU = ZoneId.of("Africa/Lome");
     private static final long TAILLE_MAX_JUSTIFICATIF = 15L * 1024 * 1024;
     /** Mois en arriere examines pour les depenses recurrentes restees impayees. */
@@ -315,6 +318,13 @@ public class DepensePdvService {
             if (!CircuitDepensesCaisse.administrateur(auteur) && !CircuitDepensesCaisse.gerant(auteur)) {
                 throw new org.springframework.security.access.AccessDeniedException(
                         "Seuls l'administrateur et le gerant paient par le fonds de reserve");
+            }
+            if (!CircuitDepensesCaisse.administrateur(auteur) && repository.countByModeAndStatutInAndAuteurNom(
+                    ModeSortie.RESERVE, List.of(DepensePdv.Statut.ATTENTE_GERANT, DepensePdv.Statut.ATTENTE_ADMIN),
+                    auteur.getNomComplet()) >= DEMANDES_FONDS_MAX) {
+                // Des demandes sans limite reserveraient tout le fonds et bloqueraient l'administrateur.
+                throw new BusinessException("Vous avez deja " + DEMANDES_FONDS_MAX + " depenses par le fonds de reserve en "
+                        + "attente de l'administrateur : attendez sa decision avant d'en demander une autre");
             }
             fondsReserve.exigerDisponible(d.getMontant(), null);
             // L'argent sort du fonds aujourd'hui : une date passee placerait la depense avant le

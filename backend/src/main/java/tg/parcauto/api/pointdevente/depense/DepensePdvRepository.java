@@ -116,6 +116,12 @@ public interface DepensePdvRepository extends JpaRepository<DepensePdv, Long> {
 
     long countByModeAndStatutIn(ModeSortie mode, java.util.Collection<DepensePdv.Statut> statuts);
 
+    /** Demandes d'un meme auteur pour ce moyen de paiement, dans ces statuts. */
+    long countByModeAndStatutInAndAuteurNom(ModeSortie mode, java.util.Collection<DepensePdv.Statut> statuts,
+                                            String auteurNom);
+
+    List<DepensePdv> findByModeAndStatutIn(ModeSortie mode, java.util.Collection<DepensePdv.Statut> statuts);
+
     /** [jour, total] des depenses valides de la periode, hors un moyen de paiement (base du fonds de reserve). */
     @Query("""
             select d.dateDepense, coalesce(sum(d.montant), 0) from DepensePdv d

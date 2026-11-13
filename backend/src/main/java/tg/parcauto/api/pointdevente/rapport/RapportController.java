@@ -54,7 +54,27 @@ public class RapportController {
     @GetMapping
     @Operation(summary = "Rapports disponibles pour l'etablissement")
     public List<RapportPdvService.Catalogue> catalogue() {
-        return service.catalogue();
+        return service.catalogue().stream().filter(c -> autorise(TypeRapport.valueOf(c.type()))).toList();
+    }
+
+    /**
+     * Le journal de banque retrace le compte de l'entreprise (et le benefice net de chaque
+     * mois, par les versements au fonds de reserve) : comme ce compte, il est reserve a
+     * l'administrateur.
+     */
+    private static boolean autorise(TypeRapport type) {
+        if (type != TypeRapport.JOURNAL_BANQUE) {
+            return true;
+        }
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    private static void exigerAutorise(TypeRapport type) {
+        if (!autorise(type)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Le journal de banque est reserve a l'administrateur, comme le compte de l'entreprise");
+        }
     }
 
     @GetMapping("/{type}")
@@ -68,6 +88,7 @@ public class RapportController {
                            @RequestParam(defaultValue = "Africa/Lome") String fuseau) {
         ZoneId zone = zone(fuseau);
         Instant[] bornes = bornes(debut, fin, zone);
+        exigerAutorise(type);
         return service.calculer(type, bornes[0], bornes[1], zone, article, ecran, fournisseur);
     }
 
@@ -83,6 +104,7 @@ public class RapportController {
                                            @RequestParam(defaultValue = "Africa/Lome") String fuseau) {
         ZoneId zone = zone(fuseau);
         Instant[] bornes = bornes(debut, fin, zone);
+        exigerAutorise(type);
         Rapport rapport = service.calculer(type, bornes[0], bornes[1], zone, article, ecran, fournisseur);
         String nom = type.name().toLowerCase().replace('_', '-')
                 + (article != null && type.isParArticle() ? "-" + article : "")

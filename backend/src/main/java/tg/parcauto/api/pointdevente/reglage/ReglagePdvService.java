@@ -32,6 +32,12 @@ public class ReglagePdvService {
                            BigDecimal remiseMaxCaissierPourcent,
                            /** Fonds de reserve : pourcentage du benefice net mis de cote en continu. */
                            boolean fondsReserveActif, BigDecimal fondsReservePourcent) {
+
+        /** Pour les profils qui n'ont pas a connaitre le fonds de reserve (caissier, serveur, associe...). */
+        public Reglages sansFondsReserve() {
+            return new Reglages(associesActif, circuitCaisseActif, ecartTolere, validationDepensesCaisse,
+                    minutesVerrouCaisse, remiseMaxCaissierPourcent, false, null);
+        }
     }
 
     public record Requete(@NotNull Boolean associesActif, @NotNull Boolean circuitCaisseActif,
@@ -59,6 +65,12 @@ public class ReglagePdvService {
     }
 
     public Reglages modifier(Requete r) {
+        return modifier(r, "l'administrateur");
+    }
+
+    /** {@code auteur} : nom de l'administrateur, inscrit sur les demandes refusees a la desactivation du fonds. */
+    @Transactional
+    public Reglages modifier(Requete r, String auteur) {
         ReglagePdv reglage = repository.verrouiller().stream().findFirst().orElseGet(ReglagePdv::new);
         if (reglage.isCircuitCaisseActif() && !r.circuitCaisseActif()) {
             ControleOptions c = controle.getIfAvailable();
@@ -79,7 +91,7 @@ public class ReglagePdvService {
         if (r.remiseMaxCaissierPourcent() != null) {
             reglage.setRemiseMaxCaissierPourcent(r.remiseMaxCaissierPourcent());
         }
-        appliquerFondsReserve(reglage, r);
+        appliquerFondsReserve(reglage, r, auteur);
         repository.save(reglage);
         return lire();
     }
@@ -89,7 +101,7 @@ public class ReglagePdvService {
      * en cours s'arrete hier (supprimee si elle commencait aujourd'hui) et, si le
      * fonds reste actif, une nouvelle periode au nouveau taux commence ce jour.
      */
-    private void appliquerFondsReserve(ReglagePdv reglage, Requete r) {
+    private void appliquerFondsReserve(ReglagePdv reglage, Requete r, String auteur) {
         boolean actif = r.fondsReserveActif() == null ? reglage.isFondsReserveActif() : r.fondsReserveActif();
         BigDecimal pourcent = r.fondsReservePourcent() == null ? reglage.getFondsReservePourcent()
                 : r.fondsReservePourcent().setScale(2, java.math.RoundingMode.HALF_UP);
@@ -99,11 +111,18 @@ public class ReglagePdvService {
             reglage.setFondsReservePourcent(pourcent);
             return;
         }
-        if (!actif && depenses.countByModeAndStatutIn(tg.parcauto.api.pointdevente.depense.ModeSortie.RESERVE,
-                java.util.List.of(tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_GERANT,
-                        tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_ADMIN)) > 0) {
-            throw new BusinessException("Le fonds de reserve ne peut pas etre desactive : des depenses a payer par le fonds"
-                    + " attendent une validation. Approuvez-les ou refusez-les d'abord");
+        if (!actif) {
+            // Les demandes encore en attente ne seront plus payees par le fonds : refusees d'office,
+            // elles ne bloquent pas la desactivation.
+            java.time.Instant maintenant = java.time.Instant.now();
+            for (var d : depenses.findByModeAndStatutIn(tg.parcauto.api.pointdevente.depense.ModeSortie.RESERVE,
+                    java.util.List.of(tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_GERANT,
+                            tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_ADMIN))) {
+                d.setStatut(tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.REFUSEE);
+                d.setRefuseePar(auteur);
+                d.setRefuseeLe(maintenant);
+                d.setMotifRefus("Fonds de reserve desactive : redemandez la depense par un autre moyen de paiement");
+            }
         }
         java.time.LocalDate aujourdhui = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Lome"));
         periodes.findFirstByFinIsNull().ifPresent(p -> {
