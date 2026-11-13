@@ -73,7 +73,7 @@ import { PieceJointe } from './piece-jointe';
         @if (!depense()) {
           <div class="champ" style="margin-top: 0.8rem">
             <label>Paye par</label>
-            <app-choix-sortie [(mode)]="mode" [(sessionId)]="sessionId" />
+            <app-choix-sortie [(mode)]="mode" [(sessionId)]="sessionId" [avecReserve]="true" />
           </div>
         }
 

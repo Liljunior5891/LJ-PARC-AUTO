@@ -47,4 +47,12 @@ public class ReglagePdv extends BaseEntity {
     /** Remise maximale (en % du ticket) qu'un caissier accorde seul ; 100 : sans plafond. */
     @Column(name = "remise_max_caissier_pourcent", nullable = false, precision = 5, scale = 2)
     private BigDecimal remiseMaxCaissierPourcent = BigDecimal.TEN;
+
+    /** Fonds de reserve : un pourcentage du benefice net mis de cote en continu. */
+    @Column(name = "fonds_reserve_actif", nullable = false)
+    private boolean fondsReserveActif;
+
+    /** Pourcentage du benefice net verse au fonds de reserve. */
+    @Column(name = "fonds_reserve_pourcent", nullable = false, precision = 5, scale = 2)
+    private BigDecimal fondsReservePourcent = BigDecimal.TEN;
 }

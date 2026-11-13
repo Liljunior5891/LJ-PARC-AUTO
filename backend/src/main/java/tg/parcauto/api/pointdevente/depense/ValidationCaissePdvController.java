@@ -48,8 +48,9 @@ public class ValidationCaissePdvController {
     @PostMapping("/depenses/{id}/validation")
     @Operation(summary = "Vise (gerant) ou approuve (administrateur) une depense de caisse")
     public DepensePdvService.Reponse validerDepense(@PathVariable Long id,
+                                                    @org.springframework.web.bind.annotation.RequestParam(required = false) Integer version,
                                                     @AuthenticationPrincipal UtilisateurPrincipal principal) {
-        return depenses.valider(id, principal);
+        return depenses.valider(id, principal, version);
     }
 
     @PostMapping("/depenses/{id}/refus")

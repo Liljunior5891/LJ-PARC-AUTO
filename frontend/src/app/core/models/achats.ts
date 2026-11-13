@@ -1,13 +1,14 @@
 /** Fournisseurs et depenses du point de vente (toutes les variantes). */
 
 /** ESPECES et MOBILE_MONEY ne sont plus proposes : ils restent lisibles sur les pieces anciennes. */
-export type ModeSortie = 'CAISSE' | 'COFFRE' | 'BANQUE' | 'ESPECES' | 'MOBILE_MONEY';
+export type ModeSortie = 'CAISSE' | 'COFFRE' | 'BANQUE' | 'RESERVE' | 'ESPECES' | 'MOBILE_MONEY';
 
 /** Moyens proposes a la saisie : la caisse, le coffre du gerant ou la banque (compte de l'entreprise). */
 export const MODES_SORTIE: { valeur: ModeSortie; libelle: string; icone: string; aide: string }[] = [
   { valeur: 'CAISSE', libelle: 'Caisse', icone: '🗄', aide: 'Sortie d\'especes du tiroir d\'une caisse ouverte' },
   { valeur: 'COFFRE', libelle: 'Coffre', icone: '🔐', aide: 'Especes du coffre du gerant (circuit des especes)' },
-  { valeur: 'BANQUE', libelle: 'Banque', icone: '🏦', aide: 'Compte de l\'entreprise : virement ou cheque' }
+  { valeur: 'BANQUE', libelle: 'Banque', icone: '🏦', aide: 'Compte de l\'entreprise : virement ou cheque' },
+  { valeur: 'RESERVE', libelle: 'Fonds de reserve', icone: '🛟', aide: 'Fonds de reserve (depenses seulement), dans la limite de son solde' }
 ];
 
 // ---------------------------------------------------------------- fournisseurs
@@ -187,6 +188,8 @@ export interface Depense {
   refuseePar?: string;
   refuseeLe?: string;
   motifRefus?: string;
+  /** Version vue a l'ecran, renvoyee a l'approbation. */
+  version?: number | null;
 }
 
 /** Sortie d'especes demandee a la caisse, en attente des validations. */

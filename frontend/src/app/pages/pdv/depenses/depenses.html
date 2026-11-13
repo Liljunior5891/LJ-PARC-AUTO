@@ -389,7 +389,7 @@
           <label for="r-mode">Paye habituellement par</label>
           <select id="r-mode" name="mode" [(ngModel)]="r.mode">
             <option [ngValue]="null">—</option>
-            @for (m of modes; track m.valeur) { <option [ngValue]="m.valeur">{{ m.libelle }}</option> }
+            @for (m of modesRecurrence; track m.valeur) { <option [ngValue]="m.valeur">{{ m.libelle }}</option> }
           </select>
         </div>
         <div class="champ">

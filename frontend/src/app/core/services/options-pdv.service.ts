@@ -13,6 +13,7 @@ import {
   Degagement,
   EnAttenteTresorerie,
   EtatRemiseSession,
+  FondsReserve,
   PartAssocie,
   ReglagesPdv,
   Remise
@@ -33,13 +34,14 @@ export class OptionsPdvService {
   readonly associesActif = computed(() => !!this.reglages()?.associesActif);
   readonly circuitActif = computed(() => !!this.reglages()?.circuitCaisseActif);
   readonly validationDepensesActive = computed(() => !!this.reglages()?.validationDepensesCaisse);
+  readonly fondsReserveActif = computed(() => !!this.reglages()?.fondsReserveActif);
   /** Validations en attente, pour la pastille du menu. */
   readonly enAttente = signal<EnAttenteTresorerie>({ remises: 0, degagements: 0 });
 
   charger(): void {
     this.http.get<ReglagesPdv>(`${this.base}/reglages`).subscribe({
       next: (r) => this.reglages.set(r),
-      error: () => this.reglages.set({ associesActif: false, circuitCaisseActif: false, ecartTolere: 0, validationDepensesCaisse: false, minutesVerrouCaisse: 5, remiseMaxCaissierPourcent: 10 })
+      error: () => this.reglages.set({ associesActif: false, circuitCaisseActif: false, ecartTolere: 0, validationDepensesCaisse: false, minutesVerrouCaisse: 5, remiseMaxCaissierPourcent: 10, fondsReserveActif: false, fondsReservePourcent: 10 })
     });
   }
 
@@ -50,6 +52,12 @@ export class OptionsPdvService {
 
   modifierReglages(r: ReglagesPdv): Observable<ReglagesPdv> {
     return this.http.put<ReglagesPdv>(`${this.base}/reglages`, r).pipe(tap((nouveaux) => this.reglages.set(nouveaux)));
+  }
+
+  // --------------------------------------------------- fonds de reserve
+
+  fondsReserve(): Observable<FondsReserve> {
+    return this.http.get<FondsReserve>(`${this.base}/fonds-reserve`);
   }
 
   // ----------------------------------------------------------- associes

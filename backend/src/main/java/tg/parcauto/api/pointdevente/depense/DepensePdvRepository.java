@@ -113,4 +113,34 @@ public interface DepensePdvRepository extends JpaRepository<DepensePdv, Long> {
                                tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_ADMIN)
             """)
     java.math.BigDecimal enAttenteSession(@Param("sessionId") Long sessionId);
+
+    long countByModeAndStatutIn(ModeSortie mode, java.util.Collection<DepensePdv.Statut> statuts);
+
+    /** [jour, total] des depenses valides de la periode, hors un moyen de paiement (base du fonds de reserve). */
+    @Query("""
+            select d.dateDepense, coalesce(sum(d.montant), 0) from DepensePdv d
+            where d.dateDepense >= :debut and d.dateDepense <= :fin and d.mode <> :mode
+              and d.statut = tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.VALIDE
+            group by d.dateDepense
+            """)
+    List<Object[]> totauxParJourHors(@Param("debut") LocalDate debut, @Param("fin") LocalDate fin,
+                                     @Param("mode") ModeSortie mode);
+
+    /** Total des depenses d'un moyen de paiement dans ces statuts. */
+    @Query("""
+            select coalesce(sum(d.montant), 0) from DepensePdv d
+            where d.mode = :mode and d.statut in :statuts
+            """)
+    BigDecimal totalPar(@Param("mode") ModeSortie mode,
+                        @Param("statuts") java.util.Collection<DepensePdv.Statut> statuts);
+
+    /** Depenses d'un moyen de paiement dans ces statuts, les plus recentes d'abord. */
+    @Query("""
+            select d from DepensePdv d join fetch d.categorie
+            where d.mode = :mode and d.statut in :statuts
+            order by d.dateDepense desc, d.id desc
+            """)
+    List<DepensePdv> parModeEtStatuts(@Param("mode") ModeSortie mode,
+                                      @Param("statuts") java.util.Collection<DepensePdv.Statut> statuts,
+                                      Pageable pageable);
 }

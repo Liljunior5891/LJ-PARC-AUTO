@@ -164,8 +164,10 @@ export class AchatsService {
     return this.http.get<ValidationsCaisse>(`${environment.apiUrl}/pdv/validations-caisse`);
   }
 
-  validerDepenseCaisse(id: number): Observable<Depense> {
-    return this.http.post<Depense>(`${environment.apiUrl}/pdv/validations-caisse/depenses/${id}/validation`, {});
+  /** {@code version} : celle vue a l'ecran ; une depense changee depuis n'est pas approuvee. */
+  validerDepenseCaisse(id: number, version?: number | null): Observable<Depense> {
+    const params: Record<string, number> = version === null || version === undefined ? {} : { version };
+    return this.http.post<Depense>(`${environment.apiUrl}/pdv/validations-caisse/depenses/${id}/validation`, {}, { params });
   }
 
   refuserDepenseCaisse(id: number, motif: string): Observable<Depense> {

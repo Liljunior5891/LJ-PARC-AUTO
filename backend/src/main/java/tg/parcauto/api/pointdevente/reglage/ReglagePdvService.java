@@ -19,6 +19,8 @@ import java.math.BigDecimal;
 public class ReglagePdvService {
 
     private final ReglagePdvRepository repository;
+    private final tg.parcauto.api.pointdevente.reserve.PeriodeFondsReserveRepository periodes;
+    private final tg.parcauto.api.pointdevente.depense.DepensePdvRepository depenses;
     /** Fourni par la tresorerie, qui depend elle-meme des reglages : resolu a l'usage. */
     private final org.springframework.beans.factory.ObjectProvider<ControleOptions> controle;
 
@@ -27,7 +29,9 @@ public class ReglagePdvService {
                            /** Minutes sans geste avant le verrouillage de l'ecran de caisse. */
                            int minutesVerrouCaisse,
                            /** Remise maximale d'un caissier, en % du ticket. */
-                           BigDecimal remiseMaxCaissierPourcent) {
+                           BigDecimal remiseMaxCaissierPourcent,
+                           /** Fonds de reserve : pourcentage du benefice net mis de cote en continu. */
+                           boolean fondsReserveActif, BigDecimal fondsReservePourcent) {
     }
 
     public record Requete(@NotNull Boolean associesActif, @NotNull Boolean circuitCaisseActif,
@@ -37,19 +41,25 @@ public class ReglagePdvService {
                           /** Absent : inchange. */
                           @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(120) Integer minutesVerrouCaisse,
                           /** Absent : inchange. */
-                          @PositiveOrZero @jakarta.validation.constraints.DecimalMax("100") BigDecimal remiseMaxCaissierPourcent) {
+                          @PositiveOrZero @jakarta.validation.constraints.DecimalMax("100") BigDecimal remiseMaxCaissierPourcent,
+                          /** Absent : inchange. */
+                          Boolean fondsReserveActif,
+                          /** Absent : inchange. */
+                          @jakarta.validation.constraints.DecimalMin(value = "0.01", message = "Le pourcentage du fonds de reserve doit etre d'au moins 0,01 %")
+                          @jakarta.validation.constraints.DecimalMax("100") BigDecimal fondsReservePourcent) {
     }
 
     @Transactional(readOnly = true)
     public Reglages lire() {
         return repository.findFirstByOrderByIdAsc()
                 .map(r -> new Reglages(r.isAssociesActif(), r.isCircuitCaisseActif(), r.getEcartTolere(),
-                        r.isValidationDepensesCaisse(), r.getMinutesVerrouCaisse(), r.getRemiseMaxCaissierPourcent()))
-                .orElse(new Reglages(false, false, BigDecimal.ZERO, false, 5, BigDecimal.TEN));
+                        r.isValidationDepensesCaisse(), r.getMinutesVerrouCaisse(), r.getRemiseMaxCaissierPourcent(),
+                        r.isFondsReserveActif(), r.getFondsReservePourcent()))
+                .orElse(new Reglages(false, false, BigDecimal.ZERO, false, 5, BigDecimal.TEN, false, BigDecimal.TEN));
     }
 
     public Reglages modifier(Requete r) {
-        ReglagePdv reglage = repository.findFirstByOrderByIdAsc().orElseGet(ReglagePdv::new);
+        ReglagePdv reglage = repository.verrouiller().stream().findFirst().orElseGet(ReglagePdv::new);
         if (reglage.isCircuitCaisseActif() && !r.circuitCaisseActif()) {
             ControleOptions c = controle.getIfAvailable();
             String blocage = c == null ? null : c.blocageArretCircuit();
@@ -69,8 +79,49 @@ public class ReglagePdvService {
         if (r.remiseMaxCaissierPourcent() != null) {
             reglage.setRemiseMaxCaissierPourcent(r.remiseMaxCaissierPourcent());
         }
+        appliquerFondsReserve(reglage, r);
         repository.save(reglage);
         return lire();
+    }
+
+    /**
+     * Toute modification du fonds de reserve prend effet aujourd'hui : la periode
+     * en cours s'arrete hier (supprimee si elle commencait aujourd'hui) et, si le
+     * fonds reste actif, une nouvelle periode au nouveau taux commence ce jour.
+     */
+    private void appliquerFondsReserve(ReglagePdv reglage, Requete r) {
+        boolean actif = r.fondsReserveActif() == null ? reglage.isFondsReserveActif() : r.fondsReserveActif();
+        BigDecimal pourcent = r.fondsReservePourcent() == null ? reglage.getFondsReservePourcent()
+                : r.fondsReservePourcent().setScale(2, java.math.RoundingMode.HALF_UP);
+        boolean tauxChange = pourcent.compareTo(reglage.getFondsReservePourcent()) != 0;
+        boolean etatChange = actif != reglage.isFondsReserveActif();
+        if (!etatChange && !(actif && tauxChange)) {
+            reglage.setFondsReservePourcent(pourcent);
+            return;
+        }
+        if (!actif && depenses.countByModeAndStatutIn(tg.parcauto.api.pointdevente.depense.ModeSortie.RESERVE,
+                java.util.List.of(tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_GERANT,
+                        tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_ADMIN)) > 0) {
+            throw new BusinessException("Le fonds de reserve ne peut pas etre desactive : des depenses a payer par le fonds"
+                    + " attendent une validation. Approuvez-les ou refusez-les d'abord");
+        }
+        java.time.LocalDate aujourdhui = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Lome"));
+        periodes.findFirstByFinIsNull().ifPresent(p -> {
+            if (!p.getDebut().isBefore(aujourdhui)) {
+                periodes.delete(p);
+            } else {
+                p.setFin(aujourdhui.minusDays(1));
+            }
+            periodes.flush();
+        });
+        if (actif) {
+            tg.parcauto.api.pointdevente.reserve.PeriodeFondsReserve p = new tg.parcauto.api.pointdevente.reserve.PeriodeFondsReserve();
+            p.setDebut(aujourdhui);
+            p.setPourcent(pourcent);
+            periodes.save(p);
+        }
+        reglage.setFondsReserveActif(actif);
+        reglage.setFondsReservePourcent(pourcent);
     }
 
     /** Les depenses payees par la caisse passent par le gerant puis l'administrateur. */
@@ -83,6 +134,19 @@ public class ReglagePdvService {
     public void exigerAssocies() {
         if (!lire().associesActif()) {
             throw new BusinessException("La gestion des benefices des associes n'est pas activee dans les reglages");
+        }
+    }
+
+    /**
+     * Verrouille le reglage jusqu'a la fin de la transaction de l'appelant, puis
+     * exige le fonds actif : deux depenses simultanees ne depassent pas a elles deux
+     * le disponible, et le fonds ne change pas pendant la verification.
+     */
+    @Transactional
+    public void verrouillerFondsReserve() {
+        boolean actif = repository.verrouiller().stream().findFirst().map(ReglagePdv::isFondsReserveActif).orElse(false);
+        if (!actif) {
+            throw new BusinessException("Le fonds de reserve n'est pas active dans les reglages");
         }
     }
 

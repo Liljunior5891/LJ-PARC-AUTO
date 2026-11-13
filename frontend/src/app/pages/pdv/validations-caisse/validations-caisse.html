@@ -10,7 +10,7 @@
   <button class="bouton secondaire" type="button" (click)="charger()" [disabled]="chargement()">Actualiser</button>
 </div>
 
-@if (!options.validationDepensesActive()) {
+@if (!options.validationDepensesActive() && !options.fondsReserveActif()) {
   <div class="message info">La validation des depenses de caisse est desactivee dans les reglages : les nouvelles depenses sortent directement.
     Celles deja en attente restent a traiter ici.</div>
 }
@@ -27,11 +27,11 @@
 </section>
 
 <div class="carte">
-  <h3 class="titre-section">Depenses payees par la caisse</h3>
+  <h3 class="titre-section">Depenses payees par la caisse{{ options.fondsReserveActif() ? ' ou le fonds de reserve' : '' }}</h3>
   <div class="tableau-conteneur">
     <table class="tableau">
       <thead>
-        <tr><th>Depense</th><th>Categorie et libelle</th><th>Caisse</th><th>Etape</th><th class="numerique">Montant</th><th></th></tr>
+        <tr><th>Depense</th><th>Categorie et libelle</th><th>Paye par</th><th>Etape</th><th class="numerique">Montant</th><th></th></tr>
       </thead>
       <tbody>
         @for (d of depenses(); track d.id) {
@@ -39,7 +39,7 @@
             <td><strong>{{ d.numero }}</strong><br /><small>{{ d.auteurNom }} · {{ d.creeLe | date: 'dd/MM HH:mm' }}</small></td>
             <td>{{ d.categorieIcone }} {{ d.categorieNom }}<br /><small>{{ d.libelle }}@if (d.beneficiaire) { · {{ d.beneficiaire }} }</small>
               @if (d.note) { <br /><small>{{ d.note }}</small> }</td>
-            <td>{{ d.caisseNom ?? '—' }}@if (d.sessionNumero) { <br /><small>{{ d.sessionNumero }}</small> }</td>
+            <td>{{ d.mode === 'RESERVE' ? 'Fonds de reserve' : (d.caisseNom ?? '—') }}@if (d.sessionNumero) { <br /><small>{{ d.sessionNumero }}</small> }</td>
             <td><span class="badge attente-validation">{{ libelles[d.statut] }}</span>
               @if (d.viseePar) { <br /><small>Visee par {{ d.viseePar }}</small> }</td>
             <td class="numerique"><strong>{{ d.montant | number: '1.0-0' }}</strong></td>

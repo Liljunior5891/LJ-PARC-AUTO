@@ -308,7 +308,8 @@ public class FournisseurService {
         if (date.isAfter(aujourdhui)) {
             throw new BusinessException("La date du reglement ne peut pas etre dans le futur");
         }
-        if (!demande.mode().propose()) {
+        // Le fonds de reserve paie des depenses, pas les fournisseurs.
+        if (!demande.mode().propose() || demande.mode() == ModeSortie.RESERVE) {
             throw new BusinessException("Choisissez la caisse, le coffre ou la banque");
         }
         Long coffre = demande.mode() == ModeSortie.COFFRE ? tresorerie.exigerCoffre(auteur, montant) : null;

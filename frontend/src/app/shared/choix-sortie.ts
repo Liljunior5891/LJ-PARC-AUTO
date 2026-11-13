@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, OnInit, computed, effect, inject, model, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, input, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/auth/auth.service';
 import { MODES_SORTIE, ModeSortie } from '../core/models/achats';
@@ -9,8 +9,9 @@ import { SessionTravailService } from '../core/services/session-travail.service'
 /**
  * Moyen de paiement d'une depense ou d'un fournisseur : la caisse (la caisse
  * ouverte d'ou sortent les especes est choisie ici), le coffre du gerant (avec
- * le circuit des especes, pour un gerant, dans la limite de son solde) ou la
- * banque, c'est-a-dire le compte de l'entreprise.
+ * le circuit des especes, pour un gerant, dans la limite de son solde), la
+ * banque, c'est-a-dire le compte de l'entreprise, ou le fonds de reserve
+ * (depenses seulement, quand l'option est active).
  */
 @Component({
   selector: 'app-choix-sortie',
@@ -48,6 +49,12 @@ import { SessionTravailService } from '../core/services/session-travail.service'
       @case ('BANQUE') {
         <p class="info-moyen">🏦 Paye par le compte de l'entreprise (virement ou cheque) : indiquez la reference.</p>
       }
+      @case ('RESERVE') {
+        <p class="info-moyen">🛟 Paye par le fonds de reserve
+          @if (disponibleFonds() !== null) { — disponible : <strong>{{ disponibleFonds() | number: '1.0-0' }} F</strong>
+            <br /><small>Le versement du mois en cours devient utilisable a la fin du mois.</small> }
+          @if (!auth.aRole('ADMIN')) { <br />La depense attend l'approbation de l'administrateur avant de sortir du fonds. }</p>
+      }
     }
   `,
   styles: `
@@ -65,16 +72,23 @@ import { SessionTravailService } from '../core/services/session-travail.service'
 export class ChoixSortie implements OnInit {
   private readonly sessions = inject(SessionTravailService);
   private readonly options = inject(OptionsPdvService);
-  private readonly auth = inject(AuthService);
+  readonly auth = inject(AuthService);
 
   readonly mode = model<ModeSortie>('CAISSE');
   readonly sessionId = model<number | null>(null);
+  /** Le fonds de reserve paie les depenses, pas les fournisseurs. */
+  readonly avecReserve = input(false);
 
   /** Le coffre n'existe qu'avec le circuit des especes, et seul un gerant paie depuis le sien. */
   private readonly aUnCoffre = computed(() =>
     this.options.circuitActif() && this.auth.aRole('GERANT') && !this.auth.aRole('ADMIN'));
-  readonly modes = computed(() => MODES_SORTIE.filter((m) => m.valeur !== 'COFFRE' || this.aUnCoffre()));
+  /** Seuls l'administrateur et le gerant paient par le fonds de reserve (le serveur refuse les autres). */
+  private readonly payeParFonds = this.auth.aRole('ADMIN') || this.auth.aRole('GERANT');
+  readonly modes = computed(() => MODES_SORTIE.filter((m) =>
+    (m.valeur !== 'COFFRE' || this.aUnCoffre())
+    && (m.valeur !== 'RESERVE' || (this.avecReserve() && this.payeParFonds && this.options.fondsReserveActif()))));
   readonly soldeCoffre = signal<number | null>(null);
+  readonly disponibleFonds = signal<number | null>(null);
   readonly ouvertes = this.sessions.ouvertes;
   private readonly seule = computed(() => {
     const liste = this.ouvertes() ?? [];
@@ -95,6 +109,21 @@ export class ChoixSortie implements OnInit {
         this.options.coffre().subscribe({ next: (c) => this.soldeCoffre.set(c.solde), error: () => this.soldeCoffre.set(null) });
       }
     });
+    // Le disponible du fonds de reserve, relu chaque fois qu'il est choisi : il change a chaque depense.
+    let precedent: ModeSortie | null = null;
+    effect(() => {
+      const mode = this.mode();
+      if (mode === 'RESERVE' && precedent !== 'RESERVE') {
+        this.actualiserFonds();
+      }
+      precedent = mode;
+    });
+  }
+
+  /** Relit le disponible du fonds de reserve (apres une depense, par exemple). */
+  actualiserFonds(): void {
+    this.disponibleFonds.set(null);
+    this.options.fondsReserve().subscribe({ next: (f) => this.disponibleFonds.set(f.disponible), error: () => this.disponibleFonds.set(null) });
   }
 
   ngOnInit(): void {

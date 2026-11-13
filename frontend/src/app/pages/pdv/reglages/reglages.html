@@ -126,6 +126,38 @@
         }
       </section>
 
+      <!-- ============================================ fonds de reserve -->
+      <section class="bloc-reglage" id="reglage-fonds-reserve" [class.actif]="f.fondsReserveActif">
+        <label class="entete-bloc">
+          <span class="pictogramme" aria-hidden="true">🛟</span>
+          <span>
+            <span class="titre-bloc">Fonds de reserve</span>
+            <span class="texte-bloc">Un pourcentage du benefice net est mis de cote en continu sur un compte separe ; le fonds peut ensuite payer des depenses.</span>
+          </span>
+          <input class="bascule" type="checkbox" name="fondsReserveActif" [(ngModel)]="f.fondsReserveActif" aria-label="Activer le fonds de reserve" />
+        </label>
+        @if (f.fondsReserveActif) {
+          <div class="corps-bloc">
+            <div class="champs-bloc">
+              <div class="champ">
+                <label for="fonds-pourcent">Part du benefice net mise en reserve (%)</label>
+                <input id="fonds-pourcent" name="fondsReservePourcent" type="number" min="0.01" max="100" step="any" [(ngModel)]="f.fondsReservePourcent" />
+                <small>Benefice net = ventes − cout d'achat des articles vendus − depenses, avant les parts des associes.</small>
+              </div>
+            </div>
+            <ol class="etapes-circuit">
+              <li><span class="etape">📈</span><strong>Chaque jour</strong><small>Le pourcentage du benefice net du jour entre dans le fonds</small></li>
+              <li><span class="etape">🏦</span><strong>Compte separe</strong><small>Ce qui entre dans le fonds quitte le compte de l'entreprise</small></li>
+              <li><span class="etape">🧾</span><strong>Depenses</strong><small>« Fonds de reserve » comme moyen de paiement, dans la limite du solde</small></li>
+            </ol>
+            <p class="note-bloc">Le calcul se met a jour tout seul : une vente ou une depense annulee apres coup corrige le fonds, et un mois en perte reprend une partie de la reserve.
+              Un nouveau pourcentage s'applique a partir d'aujourd'hui ; les jours passes gardent l'ancien. Les depenses payees par le fonds ne diminuent pas sa base de calcul.
+              Une depense du gerant payee par le fonds attend l'approbation de l'administrateur.
+              <a routerLink="/pdv/fonds-reserve">Voir le fonds</a></p>
+          </div>
+        }
+      </section>
+
       <!-- ============================================= verrouillage -->
       <section class="bloc-reglage actif" id="reglage-verrou">
         <div class="entete-bloc">

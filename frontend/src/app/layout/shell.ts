@@ -32,7 +32,7 @@ interface EntreeMenu {
   /** Visible seulement quand l'entreprise a un entrepot. */
   avecLieux?: boolean;
   /** Option du point de vente a activer dans ses reglages pour voir l'entree. */
-  option?: 'associes' | 'circuit' | 'validation';
+  option?: 'associes' | 'circuit' | 'validation' | 'reserve';
   /** Profils autorises ; absent, l'entree est visible de tous. */
   roles?: Role[];
   /** Module dont depend l'entree ; absent, elle fait partie du socle commun. */
@@ -241,7 +241,8 @@ export class Shell {
             { libelle: 'Fournisseurs', route: '/pdv/fournisseurs', description: 'Fiches, dettes, echeances et paiements' },
             { libelle: 'Reapprovisionnement', route: '/pdv/stock', description: 'Commandes, receptions, sorties et pertes' },
             { libelle: 'Depenses', route: '/pdv/depenses', description: 'Salaires, loyer, electricite, recurrentes' },
-            { libelle: 'Depenses de caisse a valider', route: '/pdv/validations-caisse', description: 'Visa du gerant, puis approbation par l\'administrateur', option: 'validation' }
+            { libelle: 'Depenses de caisse a valider', route: '/pdv/validations-caisse', description: 'Visa du gerant, puis approbation par l\'administrateur', option: 'validation' },
+            { libelle: 'Fonds de reserve', route: '/pdv/fonds-reserve', description: 'Part du benefice mise de cote et depenses payees par le fonds', option: 'reserve' }
           ]
         },
         {
@@ -382,11 +383,13 @@ export class Shell {
     }
     const lieuxActifs = this.lieux.actif();
     const optionsActives = { associes: this.optionsPdv.associesActif(), circuit: this.optionsPdv.circuitActif(),
-      validation: this.optionsPdv.validationDepensesActive() };
+      // Les depenses du gerant payees par le fonds de reserve passent aussi par l'ecran des validations.
+      validation: this.optionsPdv.validationDepensesActive() || this.optionsPdv.fondsReserveActif(),
+      reserve: this.optionsPdv.fondsReserveActif() };
     const varianteCourante = this.auth.variante('POINT_DE_VENTE') ?? '';
     const autorise = (e: { roles?: Role[]; module?: CodeModule; variante?: string | string[]; sansModules?: CodeModule[];
                            avecModules?: CodeModule[]; avecUnDesModules?: CodeModule[]; avecLieux?: boolean;
-                           option?: 'associes' | 'circuit' | 'validation' }) =>
+                           option?: 'associes' | 'circuit' | 'validation' | 'reserve' }) =>
       (!e.avecLieux || lieuxActifs) &&
       (!e.option || optionsActives[e.option]) &&
       (!e.roles || this.auth.aRole(...e.roles)) &&

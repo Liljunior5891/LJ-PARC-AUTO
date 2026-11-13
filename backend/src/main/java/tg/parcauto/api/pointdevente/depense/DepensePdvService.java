@@ -68,6 +68,7 @@ public class DepensePdvService {
     private final NumerotationService numerotation;
     private final tg.parcauto.api.pointdevente.tresorerie.TresorerieService tresorerie;
     private final CircuitDepensesCaisse circuit;
+    private final tg.parcauto.api.pointdevente.reserve.FondsReserveService fondsReserve;
 
     // ------------------------------------------------------------------ dto
 
@@ -115,7 +116,9 @@ public class DepensePdvService {
                           String annuleePar, String motifAnnulation,
                           /** Circuit de validation des depenses de caisse. */
                           String viseePar, Instant viseeLe, String approuveePar, Instant approuveeLe,
-                          String refuseePar, Instant refuseeLe, String motifRefus) {
+                          String refuseePar, Instant refuseeLe, String motifRefus,
+                          /** Version vue a l'ecran : l'approbation la renvoie, une depense changee entre-temps est refusee. */
+                          Integer version) {
 
         static Reponse de(DepensePdv d) {
             return new Reponse(d.getId(), d.getNumero(), d.getCategorie().getId(), d.getCategorie().getNom(),
@@ -129,7 +132,7 @@ public class DepensePdvService {
                     d.getJustificatifChemin() != null, d.getJustificatifNom(), d.getAuteurNom(), d.getCreeLe(),
                     d.getStatut(), d.getAnnuleeLe(), d.getAnnuleePar(), d.getMotifAnnulation(),
                     d.getViseePar(), d.getViseeLe(), d.getApprouveePar(), d.getApprouveeLe(),
-                    d.getRefuseePar(), d.getRefuseeLe(), d.getMotifRefus());
+                    d.getRefuseePar(), d.getRefuseeLe(), d.getMotifRefus(), d.getVersion());
         }
     }
 
@@ -306,6 +309,23 @@ public class DepensePdvService {
         if (!r.mode().propose()) {
             throw new BusinessException("Choisissez la caisse, le coffre ou la banque");
         }
+        if (r.mode() == ModeSortie.RESERVE) {
+            // Payee par le fonds de reserve : directe pour l'administrateur ; celle du
+            // gerant attend l'administrateur, le montant restant reserve d'ici la.
+            if (!CircuitDepensesCaisse.administrateur(auteur) && !CircuitDepensesCaisse.gerant(auteur)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Seuls l'administrateur et le gerant paient par le fonds de reserve");
+            }
+            fondsReserve.exigerDisponible(d.getMontant(), null);
+            // L'argent sort du fonds aujourd'hui : une date passee placerait la depense avant le
+            // versement qui la finance.
+            d.setDateDepense(LocalDate.now(FUSEAU));
+            if (!CircuitDepensesCaisse.administrateur(auteur)) {
+                d.setStatut(DepensePdv.Statut.ATTENTE_ADMIN);
+                d.setViseePar(auteur.getNomComplet());
+                d.setViseeLe(Instant.now());
+            }
+        }
         if (r.mode() == ModeSortie.COFFRE) {
             d.setCoffreId(tresorerie.exigerCoffre(auteur, d.getMontant()));
         }
@@ -333,9 +353,11 @@ public class DepensePdvService {
         return Reponse.de(repository.saveAndFlush(d));
     }
 
-    public Reponse modifier(Long id, Modification r) {
+    public Reponse modifier(Long id, Modification r, UtilisateurPrincipal u) {
         DepensePdv d = chargerValide(id);
-        LocalDate date = r.dateDepense() == null ? d.getDateDepense() : r.dateDepense();
+        exigerAdminSiFonds(d, u, "modifier");
+        // Une depense du fonds garde la date de sa sortie du fonds.
+        LocalDate date = r.dateDepense() == null || d.getMode() == ModeSortie.RESERVE ? d.getDateDepense() : r.dateDepense();
         if (date.isAfter(LocalDate.now(FUSEAU))) {
             throw new BusinessException("La date de la depense ne peut pas etre dans le futur");
         }
@@ -368,9 +390,21 @@ public class DepensePdvService {
      * l'approuve (a l'une ou l'autre etape), ce qui fait sortir les especes de la caisse.
      */
     public Reponse valider(Long id, UtilisateurPrincipal u) {
+        return valider(id, u, null);
+    }
+
+    /**
+     * Meme validation, avec la version de la depense vue a l'ecran : si elle a
+     * change depuis (libelle, beneficiaire, justificatif...), l'approbation est refusee.
+     */
+    public Reponse valider(Long id, UtilisateurPrincipal u, Integer versionVue) {
         DepensePdv d = charger(id);
         if (!d.getStatut().enAttente()) {
             throw new BusinessException("La depense " + d.getNumero() + " n'attend plus de validation");
+        }
+        if (versionVue != null && !versionVue.equals(d.getVersion())) {
+            throw new BusinessException("La depense " + d.getNumero()
+                    + " a ete modifiee depuis son affichage : actualisez la liste avant de la valider");
         }
         Instant maintenant = Instant.now();
         if (!CircuitDepensesCaisse.administrateur(u)) {
@@ -388,8 +422,16 @@ public class DepensePdvService {
             d.setViseePar(u.getNomComplet());
             d.setViseeLe(maintenant);
         }
-        // Les especes sortent maintenant : la depense compte a la date de l'approbation.
+        // L'argent sort maintenant : la depense compte a la date de l'approbation.
         d.setDateDepense(LocalDate.now(FUSEAU));
+        if (d.getMode() == ModeSortie.RESERVE) {
+            fondsReserve.exigerDisponible(d.getMontant(), d.getMontant());
+            d.setStatut(DepensePdv.Statut.VALIDE);
+            d.setApprouveePar(u.getNomComplet());
+            d.setApprouveeLe(maintenant);
+            repository.flush();
+            return Reponse.de(d);
+        }
         MouvementCaisse sortie = caisseService.sortieApprouvee(d.getSession(), d.getMontant(), motifSortie(d), u);
         d.setSession(sortie.getSession());
         d.setMouvementCaisse(sortie);
@@ -427,6 +469,9 @@ public class DepensePdvService {
     /** Annulation : la depense ne compte plus ; payee depuis la caisse, sa sortie est retiree de la session. */
     public Reponse annuler(Long id, String motif, UtilisateurPrincipal auteur) {
         DepensePdv d = chargerValide(id);
+        if (d.getStatut() == DepensePdv.Statut.VALIDE) {
+            exigerAdminSiFonds(d, auteur, "annuler");
+        }
         MouvementCaisse sortie = d.getMouvementCaisse();
         if (sortie != null) {
             d.setMouvementCaisse(null);
@@ -443,8 +488,11 @@ public class DepensePdvService {
 
     // ---------------------------------------------------------- justificatif
 
-    public Reponse joindre(Long id, MultipartFile fichier) {
+    public Reponse joindre(Long id, MultipartFile fichier, UtilisateurPrincipal u) {
         DepensePdv d = charger(id);
+        if (d.getStatut() == DepensePdv.Statut.VALIDE) {
+            exigerAdminSiFonds(d, u, "changer le justificatif d'");
+        }
         if (fichier == null || fichier.isEmpty()) {
             throw new BusinessException("Fichier vide");
         }
@@ -468,8 +516,11 @@ public class DepensePdvService {
         return stockage.charger(d.getJustificatifChemin());
     }
 
-    public Reponse retirerJustificatif(Long id) {
+    public Reponse retirerJustificatif(Long id, UtilisateurPrincipal u) {
         DepensePdv d = charger(id);
+        if (d.getStatut() == DepensePdv.Statut.VALIDE) {
+            exigerAdminSiFonds(d, u, "retirer le justificatif d'");
+        }
         stockage.supprimer(d.getJustificatifChemin());
         d.setJustificatifChemin(null);
         d.setJustificatifNom(null);
@@ -551,6 +602,10 @@ public class DepensePdvService {
     }
 
     private void appliquer(DepenseRecurrente m, RecurrenteRequete r) {
+        if (r.mode() == ModeSortie.RESERVE) {
+            throw new BusinessException("Une depense recurrente ne se paie pas par le fonds de reserve : "
+                    + "choisissez ce moyen au moment de la payer");
+        }
         YearMonth debut = mois(r.debut(), "premier mois");
         YearMonth fin = r.fin() == null || r.fin().isBlank() ? null : mois(r.fin(), "dernier mois");
         if (fin != null && fin.isBefore(debut)) {
@@ -597,6 +652,19 @@ public class DepensePdvService {
 
     private DepensePdv charger(Long id) {
         return repository.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Depense", id));
+    }
+
+    /**
+     * Une depense payee par le fonds de reserve ne se modifie et, une fois sortie,
+     * ne s'annule que par l'administrateur : le gerant ne peut pas defaire ce que
+     * l'administrateur a approuve.
+     */
+    private static void exigerAdminSiFonds(DepensePdv d, UtilisateurPrincipal u, String action) {
+        if (d.getMode() == ModeSortie.RESERVE && (u == null || !CircuitDepensesCaisse.administrateur(u))) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Seul l'administrateur peut " + action + (action.endsWith("'") ? "" : " ")
+                            + "une depense payee par le fonds de reserve");
+        }
     }
 
     private DepensePdv chargerValide(Long id) {

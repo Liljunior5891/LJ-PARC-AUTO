@@ -45,7 +45,7 @@ class TresorerieServiceTest {
         degagements = mock(DegagementCoffreRepository.class);
         caisse = mock(CaisseService.class);
         ReglagePdvService reglages = mock(ReglagePdvService.class);
-        when(reglages.lire()).thenReturn(new ReglagePdvService.Reglages(false, true, new BigDecimal("500"), false, 5, BigDecimal.TEN));
+        when(reglages.lire()).thenReturn(new ReglagePdvService.Reglages(false, true, new BigDecimal("500"), false, 5, BigDecimal.TEN, false, BigDecimal.TEN));
         NumerotationService numerotation = mock(NumerotationService.class);
         when(numerotation.prochainNumero(anyString())).thenAnswer(i -> i.getArgument(0) + "-2026-0001");
         when(remises.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -72,7 +72,8 @@ class TresorerieServiceTest {
                 mock(UtilisateurRepository.class), depenses, paiements,
                 mock(tg.parcauto.api.pointdevente.vente.VenteRepository.class),
                 mock(tg.parcauto.api.pointdevente.materiaux.ReglementClientRepository.class),
-                mock(tg.parcauto.api.parc.document.StockageFichierService.class));
+                mock(tg.parcauto.api.parc.document.StockageFichierService.class),
+                mock(tg.parcauto.api.pointdevente.reserve.FondsReserveService.class));
     }
 
     @Test

@@ -1,0 +1,119 @@
+<div class="entete-page">
+  <div>
+    <h1>Fonds de reserve</h1>
+    <p class="sous-titre">
+      @if (fonds(); as f) {
+        @if (f.actif) {
+          {{ f.pourcent | number: '1.0-2' }} % du benefice net mis de cote chaque jour@if (f.depuis) {, depuis le {{ f.depuis | date: 'dd/MM/yyyy' }} }.
+        } @else {
+          Le fonds n'est plus alimente : le solde reste visible.
+        }
+      } @else {
+        Part du benefice net mise de cote sur un compte separe.
+      }
+    </p>
+  </div>
+  <div class="actions-entete">
+    <a class="bouton secondaire" routerLink="/pdv/rapports" [queryParams]="{ type: 'JOURNAL_FONDS_RESERVE' }">Journal du fonds</a>
+    <button class="bouton secondaire" type="button" (click)="charger()" [disabled]="chargement()">Actualiser</button>
+  </div>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+
+@if (fonds(); as f) {
+  @if (!f.actif) {
+    <div class="message info">Le fonds de reserve est desactive : il ne recoit plus de dotation et ne paie plus de depense.
+      @if (estAdmin) { <a routerLink="/pdv/reglages">Reactivez-le dans les reglages.</a> }</div>
+  }
+
+  @if (f.solde < 0) {
+    <div class="message avertissement">Le fonds est a decouvert de {{ -f.solde | number: '1.0-0' }} F : des mois en perte ont repris
+      plus que ce qui restait apres les depenses. Les prochaines dotations le combleront avant toute nouvelle depense.</div>
+  }
+
+  <section class="cartes-apercu indicateurs">
+    <div class="carte-apercu vert">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.5" /><path d="M12 4v4.5M12 15.5V20M4 12h4.5M15.5 12H20" /></svg></span>
+      <span class="textes"><span class="libelle">Solde du fonds</span><strong [class.negatif]="f.solde < 0">{{ f.solde | number: '1.0-0' }}<em> F</em></strong>
+        <small>disponible : {{ f.disponible | number: '1.0-0' }} F@if (f.moisEnCours > 0) { · {{ f.moisEnCours | number: '1.0-0' }} F a la fin du mois }</small></span>
+    </div>
+    <div class="carte-apercu bleu">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 18l5-5 4 3 7-8" /><path d="M15 8h5v5" /></svg></span>
+      <span class="textes"><span class="libelle">Dotations cumulees</span><strong>{{ f.totalDotations | number: '1.0-0' }}<em> F</em></strong>
+        <small>sorties du compte de l'entreprise</small></span>
+    </div>
+    <div class="carte-apercu rouge">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></svg></span>
+      <span class="textes"><span class="libelle">Depenses payees</span><strong>{{ f.totalUtilise | number: '1.0-0' }}<em> F</em></strong>
+        <small>par le fonds de reserve</small></span>
+    </div>
+    <div class="carte-apercu orange">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg></span>
+      <span class="textes"><span class="libelle">En attente</span><strong>{{ f.enAttente | number: '1.0-0' }}<em> F</em></strong>
+        <small>depenses a approuver par l'administrateur</small></span>
+    </div>
+  </section>
+
+  <div class="carte">
+    <h3 class="titre-section">Dotations par mois</h3>
+    <p class="aide">Benefice net = ventes − cout d'achat des articles vendus − depenses (hors celles payees par le fonds), avant les parts des associes.
+      Un mois en perte reprend une partie de la reserve, au plus ce qui avait ete verse.
+      Le versement du mois en cours n'est utilisable qu'une fois le mois termine.</p>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr><th>Mois</th><th class="numerique">Ventes</th><th class="numerique">Cout d'achat</th><th class="numerique">Depenses</th>
+            <th class="numerique">Benefice net</th><th class="numerique">Taux</th><th class="numerique">Dotation</th></tr>
+        </thead>
+        <tbody>
+          @for (d of f.dotations; track d.debut) {
+            <tr>
+              <td><strong class="mois">{{ d.libelle }}</strong>
+                @if (d.enCours) { <span class="badge attente-validation">en cours</span> }
+                <br /><small>du {{ d.debut | date: 'dd/MM' }} au {{ d.fin | date: 'dd/MM' }}</small></td>
+              <td class="numerique">{{ d.chiffreAffaires | number: '1.0-0' }}</td>
+              <td class="numerique">{{ d.coutAchats | number: '1.0-0' }}</td>
+              <td class="numerique">{{ d.depenses | number: '1.0-0' }}</td>
+              <td class="numerique" [class.negatif]="d.beneficeNet < 0">{{ d.beneficeNet | number: '1.0-0' }}</td>
+              <td class="numerique">{{ d.pourcent | number: '1.0-2' }} %</td>
+              <td class="numerique"><strong [class.negatif]="d.verse < 0">{{ d.verse | number: '1.0-0' }}</strong>
+                @if (d.verse !== d.dotation) { <br /><small>calcule : {{ d.dotation | number: '1.0-0' }}</small> }</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7"><div class="message vide">{{ chargement() ? 'Chargement...' : 'Aucune dotation pour le moment.' }}</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="carte">
+    <h3 class="titre-section">Depenses payees par le fonds</h3>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr><th>Depense</th><th>Categorie et libelle</th><th>Statut</th><th class="numerique">Montant</th></tr>
+        </thead>
+        <tbody>
+          @for (s of f.sorties; track s.id) {
+            <tr>
+              <td><strong>{{ s.numero }}</strong><br /><small>{{ s.date | date: 'dd/MM/yyyy' }} · {{ s.auteurNom }}</small></td>
+              <td>{{ s.categorie }}<br /><small>{{ s.libelle }}@if (s.beneficiaire) { · {{ s.beneficiaire }} }</small></td>
+              <td>
+                @if (s.statut === 'VALIDE') { {{ libelles[s.statut] }} }
+                @else { <span class="badge attente-validation">⏳ {{ libelles[s.statut] }}</span> }
+              </td>
+              <td class="numerique"><strong>{{ s.montant | number: '1.0-0' }}</strong></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4"><div class="message vide">Aucune depense payee par le fonds.
+              @if (f.actif) { Choisissez « Fonds de reserve » comme moyen de paiement dans <a routerLink="/pdv/depenses">Depenses</a>. }</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+} @else if (chargement()) {
+  <div class="message vide">Chargement...</div>
+}

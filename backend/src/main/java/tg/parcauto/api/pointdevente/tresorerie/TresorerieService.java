@@ -61,6 +61,8 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
     private final tg.parcauto.api.pointdevente.vente.VenteRepository ventes;
     private final tg.parcauto.api.pointdevente.materiaux.ReglementClientRepository reglementsClients;
     private final tg.parcauto.api.parc.document.StockageFichierService stockage;
+    /** Le fonds de reserve est un compte separe : ses dotations quittent le compte de l'entreprise. */
+    private final tg.parcauto.api.pointdevente.reserve.FondsReserveService fondsReserve;
 
     private static final long TAILLE_MAX_PIECE = 15L * 1024 * 1024;
     private static final Instant ORIGINE = Instant.parse("2000-01-01T00:00:00Z");
@@ -127,7 +129,9 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
 
     public record CompteEntreprise(BigDecimal solde, BigDecimal parDegagements, BigDecimal parRemisesDirectes,
                                    BigDecimal ventesElectroniques, BigDecimal sortiesBanque,
-                                   List<SoldeCoffre> coffres, List<MouvementCoffre> entrees) {
+                                   List<SoldeCoffre> coffres, List<MouvementCoffre> entrees,
+                                   /** Total verse au fonds de reserve depuis son activation. */
+                                   BigDecimal versFondsReserve) {
     }
 
     /** Compteurs des validations en attente, pour les pastilles du menu. */
@@ -429,13 +433,19 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
                     rf.getNumero(), "Paiement " + rf.getFournisseur().getNom() + " (" + rf.getCommande().getNumero() + ")",
                     null, rf.getMontant()));
         }
+        BigDecimal versFonds = fondsReserve.totalDotations();
+        if (versFonds.signum() > 0) {
+            entrees.add(new MouvementCoffre(Instant.now(), "RESERVE",
+                    "Dotations cumulees au fonds de reserve (compte separe)", null, versFonds));
+        }
         entrees.sort(Comparator.comparing(MouvementCoffre::date).reversed());
         List<SoldeCoffre> coffres = gerants().stream()
                 .map(g -> new SoldeCoffre((Long) g[0], (String) g[1], solde((Long) g[0])))
                 .sorted(Comparator.comparing(SoldeCoffre::solde).reversed())
                 .toList();
-        return new CompteEntreprise(parDegagements.add(parRemises).add(electroniques).subtract(sorties), parDegagements,
-                parRemises, electroniques, sorties, coffres, entrees.size() > 150 ? entrees.subList(0, 150) : entrees);
+        return new CompteEntreprise(parDegagements.add(parRemises).add(electroniques).subtract(sorties).subtract(versFonds),
+                parDegagements, parRemises, electroniques, sorties, coffres,
+                entrees.size() > 150 ? entrees.subList(0, 150) : entrees, versFonds);
     }
 
     @Transactional(readOnly = true)

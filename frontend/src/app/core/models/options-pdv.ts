@@ -11,6 +11,58 @@ export interface ReglagesPdv {
   minutesVerrouCaisse: number;
   /** Remise maximale (en % du ticket) qu'un caissier accorde seul ; 100 : sans plafond. */
   remiseMaxCaissierPourcent?: number;
+  /** Fonds de reserve : un pourcentage du benefice net mis de cote en continu, sur un compte separe. */
+  fondsReserveActif?: boolean;
+  fondsReservePourcent?: number;
+}
+
+// ------------------------------------------------------------ fonds de reserve
+
+export interface DotationFonds {
+  mois: string;
+  libelle: string;
+  debut: string;
+  fin: string;
+  pourcent: number;
+  chiffreAffaires: number;
+  coutAchats: number;
+  depenses: number;
+  beneficeNet: number;
+  /** Pourcentage du benefice net du mois. */
+  dotation: number;
+  /** Montant reellement verse (une reprise ne depasse pas ce qui avait ete verse). */
+  verse: number;
+  /** Mois non termine : son versement n'est pas encore utilisable. */
+  enCours: boolean;
+}
+
+export interface SortieFonds {
+  id: number;
+  numero: string;
+  date: string;
+  categorie: string;
+  libelle: string;
+  beneficiaire?: string;
+  montant: number;
+  statut: 'ATTENTE_GERANT' | 'ATTENTE_ADMIN' | 'VALIDE' | 'REFUSEE' | 'ANNULEE';
+  auteurNom: string;
+}
+
+export interface FondsReserve {
+  actif: boolean;
+  pourcent: number;
+  depuis?: string | null;
+  totalDotations: number;
+  totalUtilise: number;
+  enAttente: number;
+  solde: number;
+  /** Versement du mois en cours, utilisable a la fin du mois. */
+  moisEnCours: number;
+  disponible: number;
+  periodes: { debut: string; fin?: string | null; pourcent: number }[];
+  /** Les plus recentes d'abord. */
+  dotations: DotationFonds[];
+  sorties: SortieFonds[];
 }
 
 // ------------------------------------------------------------------ associes
@@ -165,6 +217,8 @@ export interface CompteEntreprise {
   sortiesBanque: number;
   coffres: { gerantId: number; gerantNom: string; solde: number }[];
   entrees: MouvementCoffre[];
+  /** Total verse au fonds de reserve, compte separe. */
+  versFondsReserve?: number;
 }
 
 export interface EnAttenteTresorerie {

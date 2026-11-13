@@ -302,4 +302,23 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
             order by v.dateVente, v.id
             """)
     List<Object[]> encaissements(@Param("debut") Instant debut, @Param("fin") Instant fin);
+
+    /**
+     * [jour a Lome, chiffre d'affaires, cout d'achat] des ventes validees, jour par
+     * jour (fonds de reserve). Requete native : l'entreprise est filtree ici.
+     */
+    @Query(nativeQuery = true, value = """
+            select t.jour, coalesce(sum(t.total), 0), coalesce(sum(t.cout), 0) from (
+                select cast(v.date_vente at time zone 'Africa/Lome' as date) as jour, v.total,
+                       (select coalesce(sum(l.quantite * coalesce(l.prix_achat, 0)), 0)
+                          from pdv_ligne_vente l where l.vente_id = v.id) as cout
+                from pdv_vente v
+                where v.entreprise_id = :entreprise and v.statut = 'VALIDEE'
+                  and v.date_vente >= :debut and v.date_vente < :fin
+            ) t
+            group by t.jour
+            order by t.jour
+            """)
+    List<Object[]> margeParJour(@Param("entreprise") Long entreprise, @Param("debut") Instant debut,
+                                @Param("fin") Instant fin);
 }

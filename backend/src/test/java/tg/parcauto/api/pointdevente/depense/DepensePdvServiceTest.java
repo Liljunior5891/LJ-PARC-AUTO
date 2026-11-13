@@ -40,6 +40,7 @@ class DepensePdvServiceTest {
     private CaisseService caisse;
     private CategorieDepensePdv loyer;
     private tg.parcauto.api.pointdevente.reglage.ReglagePdvService reglages;
+    private tg.parcauto.api.pointdevente.reserve.FondsReserveService fonds;
 
     @BeforeEach
     void preparer() {
@@ -55,11 +56,69 @@ class DepensePdvServiceTest {
         when(categories.findById(4L)).thenReturn(Optional.of(loyer));
         when(repository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
         reglages = mock(tg.parcauto.api.pointdevente.reglage.ReglagePdvService.class);
+        fonds = mock(tg.parcauto.api.pointdevente.reserve.FondsReserveService.class);
         service = new DepensePdvService(repository, categories, recurrentes, mock(FournisseurRepository.class), caisse,
                 mock(StockageFichierService.class), numerotation,
                 mock(tg.parcauto.api.pointdevente.tresorerie.TresorerieService.class),
                 new tg.parcauto.api.pointdevente.caisse.CircuitDepensesCaisse(reglages,
-                        mock(tg.parcauto.api.pointdevente.caisse.SessionCaisseRepository.class)));
+                        mock(tg.parcauto.api.pointdevente.caisse.SessionCaisseRepository.class)), fonds);
+    }
+
+    @Test
+    @DisplayName("Fonds de reserve : la depense du gerant attend l'administrateur, celle de l'administrateur passe ; jamais au-dela du disponible")
+    void depenseParLeFondsDeReserve() {
+        DepensePdvService.Reponse g = service.creer(new DepensePdvService.Requete(4L, "Toiture", null,
+                null, new BigDecimal("80000"), null, ModeSortie.RESERVE, null, null, null, null, null), gerant());
+        assertThat(g.statut()).isEqualTo(DepensePdv.Statut.ATTENTE_ADMIN);
+        assertThat(g.viseePar()).isEqualTo("Gerant");
+        verify(fonds).exigerDisponible(new BigDecimal("80000.00"), null);
+
+        DepensePdvService.Reponse a = service.creer(new DepensePdvService.Requete(4L, "Toiture", null,
+                null, new BigDecimal("50000"), null, ModeSortie.RESERVE, null, null, null, null, null), admin());
+        assertThat(a.statut()).isEqualTo(DepensePdv.Statut.VALIDE);
+        verify(caisse, org.mockito.Mockito.never()).sortie(any(), any(), anyString(), any());
+
+        DepensePdv enregistree = new DepensePdv();
+        enregistree.setNumero("DEP-2026-0001");
+        enregistree.setCategorie(loyer);
+        enregistree.setLibelle("Toiture");
+        enregistree.setMontant(new BigDecimal("80000.00"));
+        enregistree.setMode(ModeSortie.RESERVE);
+        enregistree.setDateDepense(LocalDate.now(ZoneId.of("Africa/Lome")));
+        enregistree.setAuteurNom("Gerant");
+        enregistree.setStatut(DepensePdv.Statut.ATTENTE_ADMIN);
+        enregistree.setViseePar("Gerant");
+        when(repository.findById(1L)).thenReturn(Optional.of(enregistree));
+
+        org.mockito.Mockito.doThrow(new BusinessException("Le fonds de reserve ne dispose que de 10 000 F"))
+                .when(fonds).exigerDisponible(new BigDecimal("80000.00"), new BigDecimal("80000.00"));
+        assertThatThrownBy(() -> service.valider(1L, admin())).isInstanceOf(BusinessException.class);
+        assertThat(enregistree.getStatut()).isEqualTo(DepensePdv.Statut.ATTENTE_ADMIN);
+
+        org.mockito.Mockito.doNothing().when(fonds).exigerDisponible(any(), any());
+        // Changee depuis son affichage : l'approbation est refusee.
+        enregistree.setVersion(3);
+        assertThatThrownBy(() -> service.valider(1L, admin(), 2)).isInstanceOf(BusinessException.class);
+        assertThat(service.valider(1L, admin(), 3).statut()).isEqualTo(DepensePdv.Statut.VALIDE);
+        assertThat(enregistree.getMouvementCaisse()).isNull();
+
+        // Sortie du fonds : le gerant ne peut ni l'annuler, ni la modifier, ni changer son justificatif.
+        assertThatThrownBy(() -> service.annuler(1L, "erreur", gerant()))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        assertThatThrownBy(() -> service.modifier(1L, new DepensePdvService.Modification(4L, "Autre", null, null,
+                null, null, null), gerant())).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        assertThatThrownBy(() -> service.retirerJustificatif(1L, gerant()))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        assertThat(service.annuler(1L, "erreur", admin()).statut()).isEqualTo(DepensePdv.Statut.ANNULEE);
+    }
+
+    @Test
+    @DisplayName("Une depense payee par le fonds est datee du jour, meme saisie a une date passee")
+    void depenseDuFondsDateeDuJour() {
+        LocalDate hier = LocalDate.now(ZoneId.of("Africa/Lome")).minusDays(10);
+        DepensePdvService.Reponse a = service.creer(new DepensePdvService.Requete(4L, "Toiture", null,
+                null, new BigDecimal("50000"), hier, ModeSortie.RESERVE, null, null, null, null, null), admin());
+        assertThat(a.dateDepense()).isEqualTo(LocalDate.now(ZoneId.of("Africa/Lome")));
     }
 
     @Test

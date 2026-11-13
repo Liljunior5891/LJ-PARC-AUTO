@@ -43,6 +43,8 @@ export class DepensesPdv implements OnInit {
   readonly estAdmin = inject(AuthService).aRole('ADMIN');
 
   readonly modes = MODES_SORTIE;
+  /** Une depense recurrente ne se paie pas d'office par le fonds de reserve : ce choix se fait a chaque paiement. */
+  readonly modesRecurrence = MODES_SORTIE.filter((m) => m.valeur !== 'RESERVE');
   readonly onglet = signal<Onglet>('depenses');
   readonly onglets = computed(() => [
     { id: 'depenses' as Onglet, libelle: 'Depenses', icone: '💸' },

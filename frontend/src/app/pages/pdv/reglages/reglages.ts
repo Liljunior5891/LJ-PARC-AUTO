@@ -51,6 +51,7 @@ export class ReglagesPdvPage implements OnInit {
     { id: 'reglage-associes', libelle: 'Benefices des associes', icone: '🤝', groupe: 'Options' },
     { id: 'reglage-circuit', libelle: 'Circuit des especes', icone: '🔐', groupe: 'Options' },
     { id: 'reglage-validation-depenses', libelle: 'Validation des depenses de caisse', icone: '✅', groupe: 'Options' },
+    { id: 'reglage-fonds-reserve', libelle: 'Fonds de reserve', icone: '🛟', groupe: 'Options' },
     { id: 'reglage-verrou', libelle: 'Verrouillage de la caisse', icone: '🔒', groupe: 'Options' },
     ...(this.materiaux ? [
       { id: 'reglage-credit', libelle: 'Vente a credit', icone: '💳', groupe: 'Quincaillerie' },
@@ -113,11 +114,19 @@ export class ReglagesPdvPage implements OnInit {
     if (!f || this.envoi()) {
       return;
     }
+    // Pourcentage du fonds : une valeur vide, nulle ou hors bornes est signalee, jamais remplacee en silence.
+    const pourcent = Number(f.fondsReservePourcent);
+    if (f.fondsReserveActif && (!Number.isFinite(pourcent) || pourcent < 0.01 || pourcent > 100)) {
+      this.erreur.set('Le pourcentage du fonds de reserve doit etre compris entre 0,01 et 100 %. '
+        + 'Pour ne plus alimenter le fonds, desactivez-le.');
+      return;
+    }
     const appels: Observable<unknown>[] = [];
     if (JSON.stringify(f) !== this.enregistre) {
       appels.push(this.options.modifierReglages({ ...f, ecartTolere: Math.max(0, Number(f.ecartTolere) || 0),
         minutesVerrouCaisse: Math.min(120, Math.max(1, Math.round(Number(f.minutesVerrouCaisse) || 5))),
-        remiseMaxCaissierPourcent: Math.min(100, Math.max(0, Number(f.remiseMaxCaissierPourcent ?? 10) || 0)) }));
+        remiseMaxCaissierPourcent: Math.min(100, Math.max(0, Number(f.remiseMaxCaissierPourcent ?? 10) || 0)),
+        fondsReservePourcent: f.fondsReserveActif ? pourcent : (Number.isFinite(pourcent) && pourcent >= 0.01 && pourcent <= 100 ? pourcent : 10) }));
     }
     const materiaux = this.partieMateriaux();
     if (materiaux?.modifie()) {

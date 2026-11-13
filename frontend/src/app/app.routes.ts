@@ -422,6 +422,12 @@ export const routes: Routes = [
                 title: 'Depenses — LJ SaaS'
               },
               {
+                path: 'fonds-reserve',
+                canActivate: [roleGuard('ADMIN', 'GERANT')],
+                loadComponent: () => import('./pages/pdv/fonds-reserve/fonds-reserve').then((m) => m.FondsReservePdv),
+                title: 'Fonds de reserve — LJ SaaS'
+              },
+              {
                 path: 'validations-caisse',
                 canActivate: [roleGuard('ADMIN', 'GERANT')],
                 loadComponent: () => import('./pages/pdv/validations-caisse/validations-caisse').then((m) => m.ValidationsCaissePdv),

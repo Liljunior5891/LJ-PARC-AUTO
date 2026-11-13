@@ -21,6 +21,7 @@ public enum TypeRapport {
     RESULTAT("Compte de resultat (benefice net)", "Depenses", true),
     JOURNAL_CAISSE("Journal de caisse", "Tresorerie", true),
     JOURNAL_BANQUE("Journal de banque (compte de l'entreprise)", "Tresorerie", true),
+    JOURNAL_FONDS_RESERVE("Journal du fonds de reserve", "Tresorerie", true),
     CAISSES("Sessions de caisse", "Caisses", true),
     COMMANDES_TABLE("Commandes de table", "Restaurant", true),
     PREPARATION_BONS("Bons par ecran de preparation", "Restaurant", true, false, true),

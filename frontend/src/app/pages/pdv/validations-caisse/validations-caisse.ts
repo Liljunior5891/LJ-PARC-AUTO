@@ -73,7 +73,7 @@ export class ValidationsCaissePdv implements OnInit {
   }
 
   validerDepense(d: Depense): void {
-    this.lancer('depense-' + d.id, this.service.validerDepenseCaisse(d.id), (r: Depense) => r.statut === 'VALIDE'
+    this.lancer('depense-' + d.id, this.service.validerDepenseCaisse(d.id, d.version), (r: Depense) => r.statut === 'VALIDE'
       ? `Depense ${r.numero} approuvee : ${this.f(r.montant)} F sortis de ${r.caisseNom ?? 'la caisse'}.`
       : `Depense ${r.numero} visee : elle attend l'administrateur.`);
   }

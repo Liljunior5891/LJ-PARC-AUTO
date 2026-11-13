@@ -136,7 +136,7 @@
         <div class="carte-apercu vert">
           <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" /></svg></span>
           <span class="textes"><span class="libelle">Solde du compte</span><strong>{{ c.solde | number: '1.0-0' }}<em> F</em></strong>
-            <small>entrees − sorties par la banque</small></span>
+            <small>entrees − sorties par la banque{{ c.versFondsReserve ? ' et fonds de reserve' : '' }}</small></span>
         </div>
         <div class="carte-apercu bleu">
           <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z" /><path d="M8 7V5h8v2M12 16v-5M9.5 13.5L12 11l2.5 2.5" /></svg></span>
@@ -153,6 +153,13 @@
           <span class="textes"><span class="libelle">Sorties par la banque</span><strong>{{ c.sortiesBanque | number: '1.0-0' }}<em> F</em></strong>
             <small>depenses et paiements de fournisseurs</small></span>
         </div>
+        @if (c.versFondsReserve) {
+          <div class="carte-apercu orange">
+            <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.5" /><path d="M12 4v4.5M12 15.5V20M4 12h4.5M15.5 12H20" /></svg></span>
+            <span class="textes"><span class="libelle">Vers le fonds de reserve</span><strong>{{ c.versFondsReserve | number: '1.0-0' }}<em> F</em></strong>
+              <small>dotations versees au compte separe</small></span>
+          </div>
+        }
       </section>
       <div class="deux-colonnes">
         <div class="carte">

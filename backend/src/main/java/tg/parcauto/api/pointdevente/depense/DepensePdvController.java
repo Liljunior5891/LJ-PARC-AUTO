@@ -85,8 +85,9 @@ public class DepensePdvController {
     @PutMapping("/{id}")
     @Operation(summary = "Corrige une depense (hors montant et moyen de paiement)")
     public DepensePdvService.Reponse modifier(@PathVariable Long id,
-                                              @Valid @RequestBody DepensePdvService.Modification requete) {
-        return service.modifier(id, requete);
+                                              @Valid @RequestBody DepensePdvService.Modification requete,
+                                              @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.modifier(id, requete, principal);
     }
 
     @PostMapping("/{id}/annulation")
@@ -99,8 +100,9 @@ public class DepensePdvController {
 
     @PostMapping(value = "/{id}/justificatif", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Joint ou remplace le justificatif (photo ou PDF, 15 Mo au plus)")
-    public DepensePdvService.Reponse joindre(@PathVariable Long id, @RequestPart("fichier") MultipartFile fichier) {
-        return service.joindre(id, fichier);
+    public DepensePdvService.Reponse joindre(@PathVariable Long id, @RequestPart("fichier") MultipartFile fichier,
+                                             @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.joindre(id, fichier, principal);
     }
 
     @GetMapping("/{id}/justificatif")
@@ -123,8 +125,9 @@ public class DepensePdvController {
 
     @DeleteMapping("/{id}/justificatif")
     @Operation(summary = "Retire le justificatif")
-    public DepensePdvService.Reponse retirerJustificatif(@PathVariable Long id) {
-        return service.retirerJustificatif(id);
+    public DepensePdvService.Reponse retirerJustificatif(@PathVariable Long id,
+                                                         @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.retirerJustificatif(id, principal);
     }
 
     // ----------------------------------------------------------- categories

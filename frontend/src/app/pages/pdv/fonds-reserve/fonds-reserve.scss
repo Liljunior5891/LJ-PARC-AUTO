@@ -1,0 +1,27 @@
+.carte + .carte {
+  margin-top: 1rem;
+}
+
+.aide {
+  margin: -0.2rem 0 0.8rem;
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}
+
+.negatif {
+  color: #c62828;
+}
+
+.mois {
+  text-transform: capitalize;
+}
+
+.badge {
+  margin-left: 0.35rem;
+}
+
+.actions-entete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
