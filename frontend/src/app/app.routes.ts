@@ -292,6 +292,20 @@ export const routes: Routes = [
             ]
           },
           {
+            // Espace de l'associe : tableau de bord, sous-compte, fonds de reserve commun.
+            path: 'mon-compte',
+            canActivate: [roleGuard('ASSOCIE')],
+            loadComponent: () => import('./pages/pdv/espace-associe/espace-associe').then((m) => m.EspaceAssociePdv),
+            title: 'Mon espace associe — Nova'
+          },
+          {
+            // Versements de leur part aux associes : depots en banque saisis par le gerant.
+            path: 'versements-associes',
+            canActivate: [roleGuard('ADMIN', 'GERANT')],
+            loadComponent: () => import('./pages/pdv/versements-associes/versements-associes').then((m) => m.VersementsAssociesPdv),
+            title: 'Versements aux associes — Nova'
+          },
+          {
             // Benefices des associes : l'administrateur voit tout, un associe sa seule part.
             path: 'benefices',
             canActivate: [roleGuard('ADMIN', 'ASSOCIE')],

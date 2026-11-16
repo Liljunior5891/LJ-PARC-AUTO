@@ -25,3 +25,19 @@
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+.deux-colonnes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+
+  .carte + .carte {
+    margin-top: 0;
+  }
+}
+
+.carte + .carte,
+.deux-colonnes + .carte {
+  margin-top: 1rem;
+}

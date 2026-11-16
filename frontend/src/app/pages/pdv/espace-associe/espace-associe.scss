@@ -1,0 +1,81 @@
+.carte + .carte,
+.cartes-apercu + .carte {
+  margin-top: 1rem;
+}
+
+.filtres-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.pastille {
+  display: inline-block;
+  min-width: 1.3rem;
+  margin-left: 0.3rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #c62828;
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 1.3rem;
+  text-align: center;
+}
+
+.entete-section {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+
+  .titre-section {
+    margin: 0;
+  }
+}
+
+.versement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--couleur-bordure);
+
+  &:first-of-type {
+    border-top: none;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+}
+
+.mois {
+  text-transform: capitalize;
+}
+
+.badge {
+  margin-left: 0.35rem;
+}
+
+.lien {
+  border: none;
+  background: none;
+  padding: 0 0.2rem;
+  color: var(--couleur-primaire);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.aide {
+  color: var(--couleur-texte-doux);
+  font-size: 0.85rem;
+}

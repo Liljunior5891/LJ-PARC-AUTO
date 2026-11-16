@@ -1,0 +1,178 @@
+<div class="entete-page">
+  <div>
+    <h1>Versements aux associes</h1>
+    <p class="sous-titre">La part de chaque associe est figee a la fin du mois. Versez-la par un depot en banque, bordereau joint :
+      l'associe le valide et son sous-compte est credite.</p>
+  </div>
+  <div class="actions-entete">
+    <button class="bouton secondaire" type="button" (click)="charger()" [disabled]="chargement()">Actualiser</button>
+    <button class="bouton" type="button" (click)="nouveau()">+ Nouveau versement</button>
+  </div>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+@if (refuses()) {
+  <div class="message avertissement">{{ refuses() }} versement(s) refuse(s) par l'associe : corrigez-les ou annulez-les ci-dessous.</div>
+}
+
+@if (donnees(); as d) {
+  <section class="cartes-apercu indicateurs">
+    <div class="carte-apercu orange">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg></span>
+      <span class="textes"><span class="libelle">Reste a verser</span><strong>{{ totaux().reste | number: '1.0-0' }}<em> F</em></strong>
+        <small>parts des mois termines non versees</small></span>
+    </div>
+    <div class="carte-apercu bleu">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z" /><path d="M8 7V5h8v2M12 11v5M9.5 13.5L12 16l2.5-2.5" /></svg></span>
+      <span class="textes"><span class="libelle">En cours</span><strong>{{ totaux().enCours | number: '1.0-0' }}<em> F</em></strong>
+        <small>deposes, attendent l'associe ou a corriger</small></span>
+    </div>
+    <div class="carte-apercu vert">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+      <span class="textes"><span class="libelle">Verse et valide</span><strong>{{ totaux().verse | number: '1.0-0' }}<em> F</em></strong>
+        <small>credite sur les sous-comptes</small></span>
+    </div>
+    <div class="carte-apercu violet">
+      <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M5 15l4-4 3 3 6-6" /><path d="M14 8h4v4" /></svg></span>
+      <span class="textes"><span class="libelle">Mois en cours</span><strong>{{ totaux().estimation | number: '1.0-0' }}<em> F</em></strong>
+        <small>estimation, versable a la fin du mois</small></span>
+    </div>
+  </section>
+
+  <div class="carte">
+    <h3 class="titre-section">Associes</h3>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr><th>Associe</th><th class="numerique">Parts des mois clos</th><th class="numerique">Verse</th><th class="numerique">En cours</th>
+            <th class="numerique">Reste a verser</th><th class="numerique">Mois en cours</th><th class="numerique">Sous-compte</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (a of d.associes; track a.associeId) {
+            <tr>
+              <td><strong>{{ a.nom }}</strong>@if (!a.actif) { <span class="badge">inactif</span> }<br /><small>{{ a.email }}</small></td>
+              <td class="numerique">{{ a.partsCloses | number: '1.0-0' }}</td>
+              <td class="numerique">{{ a.verse | number: '1.0-0' }}</td>
+              <td class="numerique">{{ a.enCours | number: '1.0-0' }}</td>
+              <td class="numerique"><strong [class.du]="a.resteAVerser > 0">{{ a.resteAVerser | number: '1.0-0' }}</strong></td>
+              <td class="numerique"><small>{{ a.estimation | number: '1.0-0' }}</small></td>
+              <td class="numerique">{{ a.solde | number: '1.0-0' }}</td>
+              <td class="actions-ligne">
+                <button class="bouton petit" type="button" [disabled]="a.resteAVerser <= 0" (click)="nouveau(a)">Verser</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8"><div class="message vide">Aucun associe. Donnez le profil « Associe » a un compte, puis rattachez-le a ses produits dans les reglages.</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="carte">
+    <div class="entete-section">
+      <h3 class="titre-section">Versements</h3>
+      <div class="onglets compact">
+        <button type="button" [class.actif]="filtre() === 'A_TRAITER'" (click)="filtre.set('A_TRAITER')">En cours</button>
+        <button type="button" [class.actif]="filtre() === 'TOUS'" (click)="filtre.set('TOUS')">Tous</button>
+      </div>
+    </div>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr><th>Versement</th><th>Associe</th><th>Bordereau</th><th>Statut</th><th class="numerique">Montant</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (v of depotsAffiches(); track v.id) {
+            <tr>
+              <td><strong>{{ v.numero }}</strong><br /><small>{{ v.soumisLe | date: 'dd/MM/yyyy HH:mm' }} · {{ v.auteurNom }}</small></td>
+              <td>{{ v.associeNom }}@if (v.periode) { <br /><small>{{ v.periode }}</small> }</td>
+              <td>{{ v.reference }}<br /><small>{{ v.banque || 'Banque' }} · {{ v.dateDepot | date: 'dd/MM/yyyy' }} ·
+                {{ v.source === 'COFFRE' ? 'depuis le coffre' : 'compte de l\'entreprise' }}</small></td>
+              <td>
+                <span class="badge" [class.attente-validation]="v.statut === 'EN_ATTENTE'" [class.refuse]="v.statut === 'REFUSE'"
+                      [class.valide]="v.statut === 'VALIDE'">{{ libelles[v.statut] }}</span>
+                @if (v.statut === 'REFUSE' && v.motifRefus) { <br /><small class="motif">« {{ v.motifRefus }} »</small> }
+              </td>
+              <td class="numerique"><strong>{{ v.montant | number: '1.0-0' }}</strong></td>
+              <td class="actions-ligne">
+                @if (v.piece) { <button class="bouton secondaire petit" type="button" (click)="voirPiece(v)">Bordereau</button> }
+                @if (modifiable(v)) {
+                  <button class="bouton secondaire petit" type="button" (click)="corriger(v)">Corriger</button>
+                  <button class="bouton danger petit" type="button" (click)="annuler(v)">
+                    {{ aAnnuler() === v.id ? 'Confirmer l\'annulation' : 'Annuler' }}</button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6"><div class="message vide">{{ filtre() === 'TOUS' ? 'Aucun versement pour le moment.' : 'Aucun versement en cours.' }}</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+} @else if (chargement()) {
+  <div class="message vide">Chargement...</div>
+}
+
+@if (formulaire(); as f) {
+  <app-modale [titre]="f.depotId ? 'Corriger le versement' : 'Nouveau versement'"
+              sousTitre="Depot en banque de la part d'un associe : il le validera a reception" largeur="640px"
+              [erreur]="erreurFormulaire()" (ferme)="formulaire.set(null)">
+    <form class="formulaire" (ngSubmit)="enregistrer()">
+      <div class="grille-champs">
+        <div class="champ large">
+          <label for="v-associe">Associe *</label>
+          <select id="v-associe" name="associe" [(ngModel)]="f.associeId" [disabled]="!!f.depotId" required>
+            <option [ngValue]="null" disabled>Choisir l'associe</option>
+            @for (a of donnees()?.associes ?? []; track a.associeId) {
+              <option [ngValue]="a.associeId">{{ a.nom }} — reste {{ a.resteAVerser | number: '1.0-0' }} F</option>
+            }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="v-montant">Montant depose (F) *</label>
+          <input id="v-montant" name="montant" type="number" min="1" [max]="plafond(f)" [(ngModel)]="f.montant" required />
+          <small [class.depasse]="(f.montant ?? 0) > plafond(f)">Au plus {{ plafond(f) | number: '1.0-0' }} F (mois termines)</small>
+        </div>
+        <div class="champ">
+          <label for="v-source">L'argent sort de *</label>
+          <select id="v-source" name="source" [(ngModel)]="f.source">
+            <option value="BANQUE">Compte de l'entreprise</option>
+            @if (coffrePossible() || f.source === 'COFFRE') { <option value="COFFRE">Mon coffre (especes)</option> }
+          </select>
+        </div>
+        <div class="champ">
+          <label for="v-banque">Banque</label>
+          <input id="v-banque" name="banque" maxlength="100" [(ngModel)]="f.banque" placeholder="Ex. Ecobank, Orabank" />
+        </div>
+        <div class="champ">
+          <label for="v-ref">Reference du bordereau *</label>
+          <input id="v-ref" name="reference" maxlength="80" [(ngModel)]="f.reference" required />
+        </div>
+        <div class="champ">
+          <label for="v-date">Date du depot *</label>
+          <input id="v-date" name="dateDepot" type="date" [max]="aujourdhui" [(ngModel)]="f.dateDepot" required />
+        </div>
+        <div class="champ">
+          <label for="v-periode">Periode couverte</label>
+          <input id="v-periode" name="periode" maxlength="100" [(ngModel)]="f.periode" placeholder="Ex. octobre 2026, exercice 2026" />
+        </div>
+        <div class="champ large">
+          <label for="v-note">Note</label>
+          <textarea id="v-note" name="note" rows="2" maxlength="2000" [(ngModel)]="f.note"></textarea>
+        </div>
+        <div class="champ large">
+          <label>Bordereau de depot {{ f.pieceExistante ? '(deja joint, a remplacer au besoin)' : '*' }}</label>
+          <app-piece-jointe libelle="Bordereau de la banque" [fichier]="fichier()" (fichierChange)="fichier.set($event)" />
+        </div>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="formulaire.set(null)">Annuler</button>
+        <button class="bouton succes" type="submit" [disabled]="!envoyable(f)">
+          {{ envoi() ? 'Envoi...' : (f.depotId ? 'Renvoyer a l\'associe' : 'Envoyer a l\'associe') }}</button>
+      </div>
+    </form>
+  </app-modale>
+}

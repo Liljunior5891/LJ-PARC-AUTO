@@ -11,29 +11,23 @@ export interface ReglagesPdv {
   minutesVerrouCaisse: number;
   /** Remise maximale (en % du ticket) qu'un caissier accorde seul ; 100 : sans plafond. */
   remiseMaxCaissierPourcent?: number;
-  /** Fonds de reserve : un pourcentage du benefice net mis de cote en continu, sur un compte separe. */
+  /** Fonds de reserve commun : alimente par les apports des associes et de l'entreprise, compte separe. */
   fondsReserveActif?: boolean;
-  fondsReservePourcent?: number;
 }
 
 // ------------------------------------------------------------ fonds de reserve
 
-export interface DotationFonds {
-  mois: string;
-  libelle: string;
-  debut: string;
-  fin: string;
-  pourcent: number;
-  chiffreAffaires: number;
-  coutAchats: number;
-  depenses: number;
-  beneficeNet: number;
-  /** Pourcentage du benefice net du mois. */
-  dotation: number;
-  /** Montant reellement verse (une reprise ne depasse pas ce qui avait ete verse). */
-  verse: number;
-  /** Mois non termine : son versement n'est pas encore utilisable. */
-  enCours: boolean;
+/** Apport au fonds : d'un associe (depuis son sous-compte) ou de l'entreprise (apport direct de l'administrateur). */
+export interface ApportFonds {
+  id: number;
+  numero: string;
+  date: string;
+  origine: 'ASSOCIE' | 'ENTREPRISE';
+  associeId?: number | null;
+  associeNom?: string | null;
+  montant: number;
+  note?: string | null;
+  auteurNom: string;
 }
 
 export interface SortieFonds {
@@ -50,19 +44,124 @@ export interface SortieFonds {
 
 export interface FondsReserve {
   actif: boolean;
-  pourcent: number;
-  depuis?: string | null;
-  totalDotations: number;
+  totalApports: number;
   totalUtilise: number;
   enAttente: number;
   solde: number;
-  /** Versement du mois en cours, utilisable a la fin du mois. */
-  moisEnCours: number;
   disponible: number;
-  periodes: { debut: string; fin?: string | null; pourcent: number }[];
-  /** Les plus recentes d'abord. */
-  dotations: DotationFonds[];
+  /** Cumul des apports par associe, et de l'entreprise (associeId nul). */
+  contributeurs: { associeId?: number | null; nom: string; total: number }[];
+  /** Les plus recents d'abord. */
+  apports: ApportFonds[];
   sorties: SortieFonds[];
+}
+
+/** Le fonds vu par un associe : solde, ses propres apports, toutes les depenses. */
+export interface FondsAssocie {
+  actif: boolean;
+  solde: number;
+  disponible: number;
+  totalApports: number;
+  mesApports: number;
+  totalUtilise: number;
+  enAttente: number;
+  apports: ApportFonds[];
+  depenses: SortieFonds[];
+}
+
+// ------------------------------------------------- sous-compte des associes
+
+export type StatutDepotAssocie = 'EN_ATTENTE' | 'VALIDE' | 'REFUSE' | 'ANNULE';
+export type SourceDepotAssocie = 'COFFRE' | 'BANQUE';
+
+export const LIBELLES_STATUT_DEPOT: Record<StatutDepotAssocie, string> = {
+  EN_ATTENTE: "Attend l'associe",
+  VALIDE: 'Valide',
+  REFUSE: 'Refuse, a corriger',
+  ANNULE: 'Annule'
+};
+
+/** Versement de sa part a un associe : depot en banque, bordereau joint. */
+export interface DepotAssocie {
+  id: number;
+  numero: string;
+  associeId: number;
+  associeNom: string;
+  montant: number;
+  source: SourceDepotAssocie;
+  banque?: string | null;
+  reference: string;
+  dateDepot: string;
+  periode?: string | null;
+  note?: string | null;
+  piece: boolean;
+  pieceNom?: string | null;
+  statut: StatutDepotAssocie;
+  motifRefus?: string | null;
+  auteurId: number;
+  auteurNom: string;
+  soumisLe: string;
+  traiteLe?: string | null;
+}
+
+export interface DemandeDepotAssocie {
+  associeId: number;
+  montant: number;
+  source: SourceDepotAssocie;
+  banque?: string | null;
+  reference: string;
+  dateDepot: string;
+  periode?: string | null;
+  note?: string | null;
+}
+
+export interface PartMois {
+  mois: string;
+  libelle: string;
+  chiffreAffaires: number;
+  marge: number;
+  part: number;
+  /** Mois en cours : estimation, versable a sa fin. */
+  enCours: boolean;
+}
+
+export interface CompteAssocie {
+  associeId: number;
+  nom: string;
+  /** Parts figees des mois termines. */
+  partsCloses: number;
+  /** Part estimee du mois en cours. */
+  estimation: number;
+  /** Depots valides par l'associe. */
+  verse: number;
+  /** Depots en attente ou refuses (a corriger). */
+  enCours: number;
+  resteAVerser: number;
+  apportsFonds: number;
+  /** Solde du sous-compte : depots valides - apports au fonds. */
+  solde: number;
+  depotsAValider: number;
+  mois: PartMois[];
+  depots: DepotAssocie[];
+  apports: ApportFonds[];
+}
+
+export interface LigneVersementAssocie {
+  associeId: number;
+  nom: string;
+  email: string;
+  actif: boolean;
+  partsCloses: number;
+  estimation: number;
+  verse: number;
+  enCours: number;
+  resteAVerser: number;
+  solde: number;
+}
+
+export interface SyntheseVersements {
+  associes: LigneVersementAssocie[];
+  depots: DepotAssocie[];
 }
 
 // ------------------------------------------------------------------ associes
@@ -217,8 +316,10 @@ export interface CompteEntreprise {
   sortiesBanque: number;
   coffres: { gerantId: number; gerantNom: string; solde: number }[];
   entrees: MouvementCoffre[];
-  /** Total verse au fonds de reserve, compte separe. */
+  /** Apports directs de l'entreprise au fonds de reserve, compte separe. */
   versFondsReserve?: number;
+  /** Versements aux associes payes par le compte de l'entreprise. */
+  versAssocies?: number;
 }
 
 export interface EnAttenteTresorerie {

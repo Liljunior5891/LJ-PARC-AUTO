@@ -1,0 +1,81 @@
+.carte + .carte {
+  margin-top: 1rem;
+}
+
+.actions-entete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.entete-section {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+
+  .onglets {
+    margin: 0 0 0.6rem;
+    border-bottom: none;
+
+    button {
+      padding: 0.35rem 0.8rem;
+    }
+  }
+}
+
+.actions-ligne {
+  white-space: nowrap;
+  text-align: right;
+
+  .bouton + .bouton {
+    margin-left: 0.3rem;
+  }
+}
+
+.du {
+  color: #b45309;
+}
+
+.motif {
+  color: #c62828;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  &:not(.attente-validation) { background: color-mix(in srgb, var(--couleur-texte) 10%, transparent); }
+  white-space: nowrap;
+}
+
+.badge.refuse {
+  background: #fdecea;
+  color: #c62828;
+}
+
+.badge.valide {
+  background: #e7f6ec;
+  color: #1b7a3d;
+}
+
+.grille-champs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem 1rem;
+
+  .large {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.depasse {
+  color: #c62828;
+}

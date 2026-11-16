@@ -1,47 +1,36 @@
 <div class="entete-page">
   <div>
     <h1>Fonds de reserve</h1>
-    <p class="sous-titre">
-      @if (fonds(); as f) {
-        @if (f.actif) {
-          {{ f.pourcent | number: '1.0-2' }} % du benefice net mis de cote chaque jour@if (f.depuis) {, depuis le {{ f.depuis | date: 'dd/MM/yyyy' }} }.
-        } @else {
-          Le fonds n'est plus alimente : le solde reste visible.
-        }
-      } @else {
-        Part du benefice net mise de cote sur un compte separe.
-      }
-    </p>
+    <p class="sous-titre">Fonds commun alimente par les apports des associes et de l'entreprise ; il paie les depenses communes.</p>
   </div>
   <div class="actions-entete">
     <a class="bouton secondaire" routerLink="/pdv/rapports" [queryParams]="{ type: 'JOURNAL_FONDS_RESERVE' }">Journal du fonds</a>
     <button class="bouton secondaire" type="button" (click)="charger()" [disabled]="chargement()">Actualiser</button>
+    @if (estAdmin && fonds()?.actif) {
+      <button class="bouton" type="button" (click)="apport.set({ montant: null, note: '' })">+ Apport de l'entreprise</button>
+    }
   </div>
 </div>
 
-@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (erreur() && !apport()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
 
 @if (fonds(); as f) {
   @if (!f.actif) {
-    <div class="message info">Le fonds de reserve est desactive : il ne recoit plus de dotation et ne paie plus de depense.
+    <div class="message info">Le fonds de reserve est desactive : il ne recoit plus d'apport et ne paie plus de depense.
       @if (estAdmin) { <a routerLink="/pdv/reglages">Reactivez-le dans les reglages.</a> }</div>
-  }
-
-  @if (f.solde < 0) {
-    <div class="message avertissement">Le fonds est a decouvert de {{ -f.solde | number: '1.0-0' }} F : des mois en perte ont repris
-      plus que ce qui restait apres les depenses. Les prochaines dotations le combleront avant toute nouvelle depense.</div>
   }
 
   <section class="cartes-apercu indicateurs">
     <div class="carte-apercu vert">
       <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.5" /><path d="M12 4v4.5M12 15.5V20M4 12h4.5M15.5 12H20" /></svg></span>
-      <span class="textes"><span class="libelle">Solde du fonds</span><strong [class.negatif]="f.solde < 0">{{ f.solde | number: '1.0-0' }}<em> F</em></strong>
-        <small>disponible : {{ f.disponible | number: '1.0-0' }} F@if (f.moisEnCours > 0) { · {{ f.moisEnCours | number: '1.0-0' }} F a la fin du mois }</small></span>
+      <span class="textes"><span class="libelle">Solde du fonds</span><strong>{{ f.solde | number: '1.0-0' }}<em> F</em></strong>
+        <small>disponible : {{ f.disponible | number: '1.0-0' }} F</small></span>
     </div>
     <div class="carte-apercu bleu">
       <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 18l5-5 4 3 7-8" /><path d="M15 8h5v5" /></svg></span>
-      <span class="textes"><span class="libelle">Dotations cumulees</span><strong>{{ f.totalDotations | number: '1.0-0' }}<em> F</em></strong>
-        <small>sorties du compte de l'entreprise</small></span>
+      <span class="textes"><span class="libelle">Apports cumules</span><strong>{{ f.totalApports | number: '1.0-0' }}<em> F</em></strong>
+        <small>des associes et de l'entreprise</small></span>
     </div>
     <div class="carte-apercu rouge">
       <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></svg></span>
@@ -55,36 +44,46 @@
     </div>
   </section>
 
-  <div class="carte">
-    <h3 class="titre-section">Dotations par mois</h3>
-    <p class="aide">Benefice net = ventes − cout d'achat des articles vendus − depenses (hors celles payees par le fonds), avant les parts des associes.
-      Un mois en perte reprend une partie de la reserve, au plus ce qui avait ete verse.
-      Le versement du mois en cours n'est utilisable qu'une fois le mois termine.</p>
-    <div class="tableau-conteneur">
-      <table class="tableau">
-        <thead>
-          <tr><th>Mois</th><th class="numerique">Ventes</th><th class="numerique">Cout d'achat</th><th class="numerique">Depenses</th>
-            <th class="numerique">Benefice net</th><th class="numerique">Taux</th><th class="numerique">Dotation</th></tr>
-        </thead>
-        <tbody>
-          @for (d of f.dotations; track d.debut) {
-            <tr>
-              <td><strong class="mois">{{ d.libelle }}</strong>
-                @if (d.enCours) { <span class="badge attente-validation">en cours</span> }
-                <br /><small>du {{ d.debut | date: 'dd/MM' }} au {{ d.fin | date: 'dd/MM' }}</small></td>
-              <td class="numerique">{{ d.chiffreAffaires | number: '1.0-0' }}</td>
-              <td class="numerique">{{ d.coutAchats | number: '1.0-0' }}</td>
-              <td class="numerique">{{ d.depenses | number: '1.0-0' }}</td>
-              <td class="numerique" [class.negatif]="d.beneficeNet < 0">{{ d.beneficeNet | number: '1.0-0' }}</td>
-              <td class="numerique">{{ d.pourcent | number: '1.0-2' }} %</td>
-              <td class="numerique"><strong [class.negatif]="d.verse < 0">{{ d.verse | number: '1.0-0' }}</strong>
-                @if (d.verse !== d.dotation) { <br /><small>calcule : {{ d.dotation | number: '1.0-0' }}</small> }</td>
-            </tr>
-          } @empty {
-            <tr><td colspan="7"><div class="message vide">{{ chargement() ? 'Chargement...' : 'Aucune dotation pour le moment.' }}</div></td></tr>
-          }
-        </tbody>
-      </table>
+  <div class="deux-colonnes">
+    <div class="carte">
+      <h3 class="titre-section">Apports par contributeur</h3>
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Contributeur</th><th class="numerique">Apports</th><th class="numerique">Part</th></tr></thead>
+          <tbody>
+            @for (c of f.contributeurs; track c.nom) {
+              <tr>
+                <td><strong>{{ c.nom }}</strong></td>
+                <td class="numerique">{{ c.total | number: '1.0-0' }}</td>
+                <td class="numerique">{{ f.totalApports ? (c.total / f.totalApports * 100 | number: '1.0-1') : 0 }} %</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="3"><div class="message vide">Aucun apport pour le moment. Les associes apportent depuis leur sous-compte.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h3 class="titre-section">Derniers apports</h3>
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Apport</th><th>De</th><th class="numerique">Montant</th></tr></thead>
+          <tbody>
+            @for (a of f.apports; track a.id) {
+              <tr>
+                <td><strong>{{ a.numero }}</strong><br /><small>{{ a.date | date: 'dd/MM/yyyy HH:mm' }}</small></td>
+                <td>{{ a.origine === 'ENTREPRISE' ? 'Entreprise (compte de l\'entreprise)' : a.associeNom }}
+                  @if (a.note) { <br /><small>{{ a.note }}</small> }</td>
+                <td class="numerique"><strong>{{ a.montant | number: '1.0-0' }}</strong></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="3"><div class="message vide">Aucun apport.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -116,4 +115,24 @@
   </div>
 } @else if (chargement()) {
   <div class="message vide">Chargement...</div>
+}
+
+@if (apport(); as a) {
+  <app-modale titre="Apport de l'entreprise au fonds" sousTitre="Verse depuis le compte de l'entreprise, definitif"
+              largeur="520px" [erreur]="erreur()" (ferme)="apport.set(null)">
+    <form class="formulaire" (ngSubmit)="apporter()">
+      <div class="champ">
+        <label for="apport-montant">Montant (F) *</label>
+        <input id="apport-montant" name="montant" type="number" min="1" [(ngModel)]="a.montant" required />
+      </div>
+      <div class="champ">
+        <label for="apport-note">Note</label>
+        <input id="apport-note" name="note" maxlength="500" [(ngModel)]="a.note" placeholder="Ex. complement pour le loyer" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="apport.set(null)">Annuler</button>
+        <button class="bouton succes" type="submit" [disabled]="!(+(a.montant ?? 0) > 0) || envoi()">{{ envoi() ? 'Envoi...' : 'Verser au fonds' }}</button>
+      </div>
+    </form>
+  </app-modale>
 }

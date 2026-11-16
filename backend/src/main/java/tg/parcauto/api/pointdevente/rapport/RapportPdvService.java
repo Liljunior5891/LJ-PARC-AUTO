@@ -84,6 +84,7 @@ public class RapportPdvService {
     private final tg.parcauto.api.pointdevente.tresorerie.DegagementCoffreRepository degagementRepository;
     private final tg.parcauto.api.pointdevente.tresorerie.RemiseCaisseRepository remiseCaisseRepository;
     private final tg.parcauto.api.pointdevente.reserve.FondsReserveService fondsReserve;
+    private final tg.parcauto.api.pointdevente.associe.DepotAssocieRepository depotAssocieRepository;
     private final tg.parcauto.api.pointdevente.vente.MargeVentes marges;
 
     public record Catalogue(String type, String libelle, String famille, boolean periode, boolean parArticle,
@@ -857,8 +858,16 @@ public class RapportPdvService {
                     "Paiement fournisseur " + rf.getFournisseur().getNom() + " (" + rf.getCommande().getNumero() + ")",
                     rf.getAuteurNom(), null, rf.getMontant()));
         }
-        // Fonds de reserve (compte separe) : le versement de chaque mois termine quitte le compte de l'entreprise.
-        ecritures.addAll(ecrituresFondsReserve(fuseau, false));
+        // Fonds de reserve (compte separe) : les apports directs de l'entreprise quittent son compte.
+        for (var a : fondsReserve.apportsEntreprise()) {
+            ecritures.add(new Ecriture(a.date(), null, a.numero(), a.ecriture(), a.auteurNom(), null, a.montant()));
+        }
+        // Versements aux associes payes par le compte de l'entreprise (engages des la saisie).
+        for (var d : depotAssocieRepository.engagesPar(tg.parcauto.api.pointdevente.associe.DepotAssocie.Source.BANQUE)) {
+            ecritures.add(new Ecriture(d.getSoumisLe(), null, d.getNumero(),
+                    tg.parcauto.api.pointdevente.tresorerie.TresorerieService.libelleVersement(d), d.getAuteurNom(),
+                    null, d.getMontant()));
+        }
         ecritures.sort(java.util.Comparator.comparing(Ecriture::date));
         BigDecimal solde = BigDecimal.ZERO;
         BigDecimal ouverture = null;
@@ -892,25 +901,9 @@ public class RapportPdvService {
     }
 
     /**
-     * Versements des mois termines au fonds de reserve, dates du dernier jour du
-     * mois : en credit cote fonds, en debit cote compte de l'entreprise (et
-     * l'inverse pour la reprise d'un mois en perte). Un seul libelle pour les deux journaux.
-     */
-    private List<Ecriture> ecrituresFondsReserve(ZoneId fuseau, boolean coteFonds) {
-        List<Ecriture> lignes = new java.util.ArrayList<>();
-        for (var dot : fondsReserve.versementsClos()) {
-            BigDecimal montant = dot.verse().abs();
-            boolean entree = (dot.verse().signum() > 0) == coteFonds;
-            lignes.add(new Ecriture(dot.fin().atTime(23, 59).atZone(fuseau).toInstant(), null, null, dot.ecriture(), null,
-                    entree ? montant : null, entree ? null : montant));
-        }
-        return lignes;
-    }
-
-    /**
-     * Journal du fonds de reserve : le versement de chaque mois termine en credit
-     * (date du dernier jour du mois), la reprise d'un mois en perte et les depenses
-     * payees par le fonds en debit. Le solde court depuis la premiere activation.
+     * Journal du fonds de reserve : les apports des associes et de l'entreprise en
+     * credit, les depenses payees par le fonds en debit. Le solde court depuis le
+     * premier apport.
      */
     private Rapport journalFondsReserve(Instant debut, Instant fin, ZoneId fuseau, String periode) {
         Rapport.Constructeur r = new Rapport.Constructeur("JOURNAL_FONDS_RESERVE", "Journal du fonds de reserve", periode)
@@ -922,7 +915,9 @@ public class RapportPdvService {
                 .colonne("sortie", "Debit", MONTANT)
                 .colonne("solde", "Solde", MONTANT);
         List<Ecriture> ecritures = new java.util.ArrayList<>();
-        ecritures.addAll(ecrituresFondsReserve(fuseau, true));
+        for (var a : fondsReserve.apports()) {
+            ecritures.add(new Ecriture(a.date(), null, a.numero(), a.ecriture(), a.auteurNom(), a.montant(), null));
+        }
         java.time.LocalDate dernierJour = fin.minusSeconds(1).atZone(fuseau).toLocalDate();
         for (var dp : depenseRepository.payeesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.RESERVE, dernierJour)) {
             String par = dp.getApprouveePar() != null && !dp.getApprouveePar().equals(dp.getAuteurNom())
@@ -957,8 +952,8 @@ public class RapportPdvService {
         }
         return r.total("entree", credits).total("sortie", debits)
                 .indicateur("Solde au debut", ouverture, MONTANT)
-                .indicateur("Dotations", credits, MONTANT)
-                .indicateur("Depenses et reprises", debits, MONTANT)
+                .indicateur("Apports", credits, MONTANT)
+                .indicateur("Depenses", debits, MONTANT)
                 .indicateur("Solde a la fin", solde, MONTANT)
                 .construire();
     }

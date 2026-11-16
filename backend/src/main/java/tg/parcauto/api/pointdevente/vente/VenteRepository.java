@@ -323,4 +323,8 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
             """)
     List<Object[]> margeParJour(@Param("entreprise") Long entreprise, @Param("debut") Instant debut,
                                 @Param("fin") Instant fin);
+
+    /** Date de la premiere vente validee, ou nul : point de depart des parts mensuelles des associes. */
+    @Query("select min(v.dateVente) from Vente v where v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE")
+    Instant premiereVente();
 }

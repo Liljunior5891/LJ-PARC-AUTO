@@ -97,7 +97,7 @@ export class Shell {
     && !this.auth.aRole('ADMIN', 'SUPERVISEUR_AGENCE');
   /** Sons et messages du point de vente : commandes a valider, bons, plats prets, caisse ouverte. */
   readonly notificationsPdv = this.auth.peutUtiliser('POINT_DE_VENTE')
-    && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'PREPARATEUR', 'MAGASINIER');
+    && this.auth.aRole('ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR', 'PREPARATEUR', 'MAGASINIER', 'ASSOCIE');
   readonly verrou = inject(VerrouService);
   readonly pleinEcran = signal(false);
 
@@ -249,7 +249,7 @@ export class Shell {
             { libelle: 'Depenses', route: '/pdv/depenses', description: 'Salaires, loyer, electricite, recurrentes' },
             { libelle: 'Depenses de caisse a valider', route: '/pdv/validations-caisse', description: 'Visa du gerant, puis approbation par l\'administrateur', option: 'validation' },
             { libelle: 'Ventes hors ligne', route: '/pdv/hors-ligne', description: 'Ventes encaissees sans connexion, a regulariser ou a traiter', roles: ['ADMIN', 'GERANT'] },
-            { libelle: 'Fonds de reserve', route: '/pdv/fonds-reserve', description: 'Part du benefice mise de cote et depenses payees par le fonds', option: 'reserve' }
+            { libelle: 'Fonds de reserve', route: '/pdv/fonds-reserve', description: 'Apports des associes et de l\'entreprise, depenses payees par le fonds', option: 'reserve' }
           ]
         },
         {
@@ -270,7 +270,14 @@ export class Shell {
             { libelle: 'Codes QR', route: '/pdv/codes-qr', description: 'Commande des clients depuis leur table', variante: 'RESTAURATION' }
           ]
         },
-        { libelle: 'Benefices associes', route: '/pdv/benefices', description: 'Part de chaque associe sur la marge de ses produits', roles: ['ADMIN', 'ASSOCIE'], option: 'associes' },
+        { libelle: 'Mon espace associe', route: '/pdv/mon-compte', description: 'Mes produits, ma part, mon sous-compte et le fonds de reserve', roles: ['ASSOCIE'], option: 'associes' },
+        {
+          libelle: 'Associes', description: 'Benefices et versements des associes', roles: ['ADMIN', 'GERANT'], option: 'associes',
+          enfants: [
+            { libelle: 'Benefices associes', route: '/pdv/benefices', description: 'Part de chaque associe sur la marge de ses produits', roles: ['ADMIN'] },
+            { libelle: 'Versements aux associes', route: '/pdv/versements-associes', description: 'Depots en banque de leur part, valides par chaque associe' }
+          ]
+        },
         { libelle: 'Rapports', route: '/pdv/rapports', description: 'Statistiques, exports et imports', roles: ['ADMIN', 'GERANT'] },
         { libelle: 'Reglages', route: '/pdv/reglages', description: 'Options et reglages du point de vente', roles: ['ADMIN'] }
       ]

@@ -1,0 +1,307 @@
+<div class="entete-page">
+  <div>
+    <h1>Mon espace associe</h1>
+    <p class="sous-titre">Vos produits, votre part des benefices, votre sous-compte et le fonds de reserve commun</p>
+  </div>
+</div>
+
+<div class="onglets">
+  <button type="button" [class.actif]="onglet() === 'tableau'" (click)="ouvrir('tableau')">Tableau de bord</button>
+  <button type="button" [class.actif]="onglet() === 'compte'" (click)="ouvrir('compte')">
+    Mon compte @if (aValider().length) { <span class="pastille">{{ aValider().length }}</span> }
+  </button>
+  <button type="button" [class.actif]="onglet() === 'fonds'" (click)="ouvrir('fonds')">Fonds de reserve</button>
+</div>
+
+@if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
+@if (succes()) { <div class="message succes">{{ succes() }}</div> }
+@if (aValider().length && onglet() !== 'compte') {
+  <div class="message info">{{ aValider().length }} versement(s) attendent votre validation.
+    <button class="lien" type="button" (click)="ouvrir('compte')">Les voir</button></div>
+}
+
+@switch (onglet()) {
+  <!-- =================================================== tableau de bord -->
+  @case ('tableau') {
+    <div class="filtres-ligne">
+      <select [ngModel]="portee()" (ngModelChange)="changerPortee($event)" aria-label="Periode observee">
+        @for (p of portees; track p.valeur) { <option [ngValue]="p.valeur">{{ p.libelle }}</option> }
+      </select>
+      @if (portee() === 'PERSONNALISEE') {
+        <div class="dates-periode" [class.invalides]="!datesValides()">
+          <span>Du</span>
+          <input type="date" [max]="dateFin()" [ngModel]="dateDebut()" (ngModelChange)="changerDate('debut', $event)" aria-label="Date de debut" />
+          <span>au</span>
+          <input type="date" [min]="dateDebut()" [ngModel]="dateFin()" (ngModelChange)="changerDate('fin', $event)" aria-label="Date de fin" />
+        </div>
+      }
+    </div>
+
+    <section class="cartes-apercu indicateurs">
+      <div class="carte-apercu bleu">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z" /><path d="M9 8h6M9 12h6M9 16h3" /></svg></span>
+        <span class="textes"><span class="libelle">Ventes de mes produits</span><strong>{{ (moi()?.chiffreAffaires ?? 0) | number: '1.0-0' }}<em> F</em></strong>
+          <small>ventes validees de la periode</small></span>
+      </div>
+      <div class="carte-apercu violet">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M5 15l4-4 3 3 6-6" /><path d="M14 8h4v4" /></svg></span>
+        <span class="textes"><span class="libelle">Marge de mes produits</span><strong>{{ (moi()?.marge ?? 0) | number: '1.0-0' }}<em> F</em></strong>
+          <small>{{ tauxMarge() }} % des ventes</small></span>
+      </div>
+      <div class="carte-apercu orange">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" /><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" /></svg></span>
+        <span class="textes"><span class="libelle">Ma part</span><strong>{{ (moi()?.part ?? 0) | number: '1.0-0' }}<em> F</em></strong>
+          <small>sur la periode choisie</small></span>
+      </div>
+      <div class="carte-apercu vert">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z" /><path d="M8 7V5h8v2M12 11v5" /></svg></span>
+        <span class="textes"><span class="libelle">Reste a me verser</span><strong>{{ (compte()?.resteAVerser ?? 0) | number: '1.0-0' }}<em> F</em></strong>
+          <small>mois termines · sous-compte : {{ (compte()?.solde ?? 0) | number: '1.0-0' }} F</small></span>
+      </div>
+    </section>
+
+    <div class="carte">
+      <h3 class="titre-section">Mes produits</h3>
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead>
+            <tr><th>Produit</th><th>Categorie</th><th class="numerique">Quantite</th><th class="numerique">Ventes</th>
+              <th class="numerique">Marge</th><th class="numerique">Mon taux</th><th class="numerique">Ma part</th></tr>
+          </thead>
+          <tbody>
+            @for (l of moi()?.lignes ?? []; track l.articleId) {
+              <tr>
+                <td><strong>{{ l.produit }}</strong><br /><small>{{ l.origine }}</small></td>
+                <td>{{ l.categorie || '—' }}</td>
+                <td class="numerique">{{ l.quantite | number: '1.0-3' }}</td>
+                <td class="numerique">{{ l.chiffreAffaires | number: '1.0-0' }}</td>
+                <td class="numerique">{{ l.marge | number: '1.0-0' }}</td>
+                <td class="numerique">{{ l.taux | number: '1.0-2' }} %</td>
+                <td class="numerique"><strong>{{ l.part | number: '1.0-0' }}</strong></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7"><div class="message vide">{{ chargementStats() ? 'Calcul...' : 'Aucune vente de vos produits sur la periode.' }}</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h3 class="titre-section">Ma part, mois par mois</h3>
+      <div class="tableau-conteneur">
+        <table class="tableau">
+          <thead><tr><th>Mois</th><th class="numerique">Ventes</th><th class="numerique">Marge</th><th class="numerique">Ma part</th></tr></thead>
+          <tbody>
+            @for (m of moisRecents(); track m.mois) {
+              <tr>
+                <td><strong class="mois">{{ m.libelle }}</strong>@if (m.enCours) { <span class="badge attente-validation">en cours, estimation</span> }</td>
+                <td class="numerique">{{ m.chiffreAffaires | number: '1.0-0' }}</td>
+                <td class="numerique">{{ m.marge | number: '1.0-0' }}</td>
+                <td class="numerique"><strong>{{ m.part | number: '1.0-0' }}</strong></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4"><div class="message vide">Aucun mois pour le moment.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- ======================================================= sous-compte -->
+  @case ('compte') {
+    @if (compte(); as c) {
+      <section class="cartes-apercu indicateurs">
+        <div class="carte-apercu vert">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" /></svg></span>
+          <span class="textes"><span class="libelle">Solde de mon sous-compte</span><strong>{{ c.solde | number: '1.0-0' }}<em> F</em></strong>
+            <small>versements valides − apports au fonds</small></span>
+        </div>
+        <div class="carte-apercu orange">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg></span>
+          <span class="textes"><span class="libelle">Reste a me verser</span><strong>{{ c.resteAVerser | number: '1.0-0' }}<em> F</em></strong>
+            <small>{{ c.enCours | number: '1.0-0' }} F deja deposes, a valider ou a corriger</small></span>
+        </div>
+        <div class="carte-apercu bleu">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+          <span class="textes"><span class="libelle">Recu au total</span><strong>{{ c.verse | number: '1.0-0' }}<em> F</em></strong>
+            <small>sur {{ c.partsCloses | number: '1.0-0' }} F de parts des mois termines</small></span>
+        </div>
+        <div class="carte-apercu violet">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M5 15l4-4 3 3 6-6" /></svg></span>
+          <span class="textes"><span class="libelle">Mois en cours</span><strong>{{ c.estimation | number: '1.0-0' }}<em> F</em></strong>
+            <small>estimation, versable a la fin du mois</small></span>
+        </div>
+      </section>
+
+      <div class="carte">
+        <div class="entete-section">
+          <h3 class="titre-section">Versements a valider</h3>
+          <button class="bouton" type="button" [disabled]="c.solde <= 0 || !fonds()?.actif"
+                  [title]="!fonds()?.actif ? 'Le fonds de reserve n\'est pas active' : ''"
+                  (click)="apport.set({ montant: null, note: '' })">Apporter au fonds de reserve</button>
+        </div>
+        @for (d of aValider(); track d.id) {
+          <article class="versement">
+            <div class="infos">
+              <strong>{{ d.montant | number: '1.0-0' }} F</strong> · {{ d.numero }}
+              <br /><small>Depose le {{ d.dateDepot | date: 'dd/MM/yyyy' }} a {{ d.banque || 'la banque' }}, bordereau {{ d.reference }}
+                @if (d.periode) { · {{ d.periode }} } · par {{ d.auteurNom }}</small>
+              @if (d.note) { <br /><small>{{ d.note }}</small> }
+            </div>
+            <div class="actions">
+              @if (d.piece) { <button class="bouton secondaire petit" type="button" (click)="voirPiece(d)">Voir le bordereau</button> }
+              <button class="bouton danger petit" type="button" [disabled]="traitement() !== null" (click)="refus.set({ depot: d, motif: '' })">Refuser</button>
+              <button class="bouton succes petit" type="button" [disabled]="traitement() !== null || !d.piece" (click)="valider(d)">
+                {{ traitement() === d.id ? '...' : 'Valider la reception' }}</button>
+            </div>
+          </article>
+        } @empty {
+          <div class="message vide">Aucun versement n'attend votre validation.</div>
+        }
+      </div>
+
+      <div class="carte">
+        <h3 class="titre-section">Historique de mon sous-compte</h3>
+        <div class="tableau-conteneur">
+          <table class="tableau">
+            <thead><tr><th>Date</th><th>Operation</th><th>Statut</th><th class="numerique">Credit</th><th class="numerique">Debit</th></tr></thead>
+            <tbody>
+              @for (d of historique(); track d.id) {
+                <tr>
+                  <td>{{ (d.traiteLe || d.soumisLe) | date: 'dd/MM/yyyy' }}</td>
+                  <td>Versement {{ d.numero }}@if (d.periode) { · {{ d.periode }} }<br /><small>bordereau {{ d.reference }}</small>
+                    @if (d.piece) { <button class="lien" type="button" (click)="voirPiece(d)">voir</button> }</td>
+                  <td>{{ libellesDepot[d.statut] }}@if (d.statut === 'REFUSE' && d.motifRefus) { <br /><small>« {{ d.motifRefus }} »</small> }</td>
+                  <td class="numerique">@if (d.statut === 'VALIDE') { <strong>{{ d.montant | number: '1.0-0' }}</strong> }</td>
+                  <td class="numerique"></td>
+                </tr>
+              }
+              @for (a of c.apports; track a.id) {
+                <tr>
+                  <td>{{ a.date | date: 'dd/MM/yyyy' }}</td>
+                  <td>Apport {{ a.numero }} au fonds de reserve@if (a.note) { <br /><small>{{ a.note }}</small> }</td>
+                  <td>Definitif</td>
+                  <td class="numerique"></td>
+                  <td class="numerique"><strong>{{ a.montant | number: '1.0-0' }}</strong></td>
+                </tr>
+              }
+              @if (!historique().length && !c.apports.length) {
+                <tr><td colspan="5"><div class="message vide">Aucune operation pour le moment.</div></td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    } @else {
+      <div class="message vide">Chargement...</div>
+    }
+  }
+
+  <!-- ============================================================ fonds -->
+  @case ('fonds') {
+    @if (fonds(); as f) {
+      @if (!f.actif) { <div class="message info">Le fonds de reserve n'est pas active : il ne recoit pas d'apport pour le moment.</div> }
+      <section class="cartes-apercu indicateurs">
+        <div class="carte-apercu vert">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.5" /></svg></span>
+          <span class="textes"><span class="libelle">Solde du fonds</span><strong>{{ f.solde | number: '1.0-0' }}<em> F</em></strong>
+            <small>disponible : {{ f.disponible | number: '1.0-0' }} F</small></span>
+        </div>
+        <div class="carte-apercu orange">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" /><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" /></svg></span>
+          <span class="textes"><span class="libelle">Mes apports</span><strong>{{ f.mesApports | number: '1.0-0' }}<em> F</em></strong>
+            <small>sur {{ f.totalApports | number: '1.0-0' }} F d'apports au total</small></span>
+        </div>
+        <div class="carte-apercu rouge">
+          <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></svg></span>
+          <span class="textes"><span class="libelle">Depenses payees</span><strong>{{ f.totalUtilise | number: '1.0-0' }}<em> F</em></strong>
+            <small>{{ f.enAttente | number: '1.0-0' }} F en attente d'approbation</small></span>
+        </div>
+      </section>
+
+      <div class="carte">
+        <h3 class="titre-section">Depenses communes payees par le fonds</h3>
+        <div class="tableau-conteneur">
+          <table class="tableau">
+            <thead><tr><th>Depense</th><th>Categorie et libelle</th><th>Statut</th><th class="numerique">Montant</th></tr></thead>
+            <tbody>
+              @for (s of f.depenses; track s.id) {
+                <tr>
+                  <td><strong>{{ s.numero }}</strong><br /><small>{{ s.date | date: 'dd/MM/yyyy' }} · {{ s.auteurNom }}</small></td>
+                  <td>{{ s.categorie }}<br /><small>{{ s.libelle }}@if (s.beneficiaire) { · {{ s.beneficiaire }} }</small></td>
+                  <td>@if (s.statut === 'VALIDE') { {{ libellesDepense[s.statut] }} } @else { <span class="badge attente-validation">{{ libellesDepense[s.statut] }}</span> }</td>
+                  <td class="numerique"><strong>{{ s.montant | number: '1.0-0' }}</strong></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="4"><div class="message vide">Aucune depense payee par le fonds.</div></td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="carte">
+        <h3 class="titre-section">Mes apports</h3>
+        <div class="tableau-conteneur">
+          <table class="tableau">
+            <thead><tr><th>Apport</th><th>Note</th><th class="numerique">Montant</th></tr></thead>
+            <tbody>
+              @for (a of f.apports; track a.id) {
+                <tr>
+                  <td><strong>{{ a.numero }}</strong><br /><small>{{ a.date | date: 'dd/MM/yyyy HH:mm' }}</small></td>
+                  <td>{{ a.note || '—' }}</td>
+                  <td class="numerique"><strong>{{ a.montant | number: '1.0-0' }}</strong></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="3"><div class="message vide">Vous n'avez encore rien apporte au fonds.</div></td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    } @else {
+      <div class="message vide">Chargement...</div>
+    }
+  }
+}
+
+@if (refus(); as r) {
+  <app-modale titre="Refuser le versement" [sousTitre]="r.depot.numero + ' · ' + (r.depot.montant | number: '1.0-0') + ' F'"
+              largeur="520px" [erreur]="erreur()" (ferme)="refus.set(null)">
+    <form class="formulaire" (ngSubmit)="confirmerRefus()">
+      <div class="champ">
+        <label for="refus-motif">Motif du refus *</label>
+        <textarea id="refus-motif" name="motif" rows="3" maxlength="2000" [(ngModel)]="r.motif" required
+                  placeholder="Ex. montant different de ce que j'ai recu, bordereau illisible"></textarea>
+        <small>Rien n'est credite : le gerant corrigera le versement et vous le renverra.</small>
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="refus.set(null)">Annuler</button>
+        <button class="bouton danger" type="submit" [disabled]="!r.motif.trim() || traitement() !== null">Refuser le versement</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (apport(); as a) {
+  <app-modale titre="Apporter au fonds de reserve" [sousTitre]="'Solde de votre sous-compte : ' + ((compte()?.solde ?? 0) | number: '1.0-0') + ' F'"
+              largeur="520px" [erreur]="erreur()" (ferme)="apport.set(null)">
+    <form class="formulaire" (ngSubmit)="confirmerApport()">
+      <div class="champ">
+        <label for="apport-montant">Montant (F) *</label>
+        <input id="apport-montant" name="montant" type="number" min="1" [max]="compte()?.solde ?? 0" [(ngModel)]="a.montant" required />
+      </div>
+      <div class="champ">
+        <label for="apport-note">Note</label>
+        <input id="apport-note" name="note" maxlength="500" [(ngModel)]="a.note" placeholder="Ex. loyer de decembre" />
+      </div>
+      <p class="aide">L'apport est definitif : il passe de votre sous-compte au fonds commun, qui paie les depenses de l'entreprise.</p>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="apport.set(null)">Annuler</button>
+        <button class="bouton succes" type="submit" [disabled]="!apportPossible()">{{ traitement() === -1 ? 'Envoi...' : 'Apporter' }}</button>
+      </div>
+    </form>
+  </app-modale>
+}

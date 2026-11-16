@@ -1,87 +1,69 @@
 package tg.parcauto.api.pointdevente.reserve;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tg.parcauto.api.common.BusinessException;
+import tg.parcauto.api.common.NumerotationService;
 import tg.parcauto.api.pointdevente.depense.DepensePdv;
 import tg.parcauto.api.pointdevente.depense.DepensePdvRepository;
 import tg.parcauto.api.pointdevente.depense.ModeSortie;
 import tg.parcauto.api.pointdevente.reglage.ReglagePdvService;
-import tg.parcauto.api.pointdevente.vente.MargeVentes;
+import tg.parcauto.api.security.UtilisateurPrincipal;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.YearMonth;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Fonds de reserve du point de vente, compte separe du compte de l'entreprise.
+ * Fonds de reserve commun du point de vente, compte separe du compte de l'entreprise.
  * <p>
- * Chaque mois, il recoit le pourcentage alors en vigueur du benefice net :
- * ventes validees - cout d'achat des articles vendus - depenses valides, avant
- * les parts des associes. Les depenses payees par le fonds lui-meme sont exclues
- * de cette base : elles sont deja financees par la reserve. Un mois en perte
- * reprend une partie des versements, au plus ce qui avait ete verse : le cumul
- * ne descend jamais sous zero.
+ * Il est alimente par les apports des associes, depuis leur sous-compte, et par
+ * les apports directs de l'administrateur, depuis le compte de l'entreprise. Un
+ * apport est definitif. Le fonds paie les depenses communes de l'entreprise ;
+ * celles du gerant attendent l'administrateur.
  * <p>
- * Le versement a lieu a la fin du mois : il est alors fige ({@link MoisFondsReserve})
- * et une correction ulterieure ne le change plus. Tant que le mois court, son
- * montant n'est qu'une estimation : il ne quitte pas encore le compte de
- * l'entreprise et ne peut pas etre depense ; une perte estimee reduit en revanche
- * deja le disponible, puisqu'elle sera reprise a la cloture.
- * <p>
- * Solde = versements des mois termines - depenses payees par le fonds ;
- * disponible = solde - depenses en attente - perte estimee du mois en cours.
+ * Solde = apports - depenses payees par le fonds ;
+ * disponible = solde - depenses en attente.
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class FondsReserveService {
 
-    private static final ZoneId FUSEAU = ZoneId.of("Africa/Lome");
-    private static final BigDecimal CENT = BigDecimal.valueOf(100);
     private static final List<DepensePdv.Statut> VALIDES = List.of(DepensePdv.Statut.VALIDE);
     private static final List<DepensePdv.Statut> EN_ATTENTE =
             List.of(DepensePdv.Statut.ATTENTE_GERANT, DepensePdv.Statut.ATTENTE_ADMIN);
-    private static final String[] MOIS = {"janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout",
-            "septembre", "octobre", "novembre", "decembre"};
 
-    private final PeriodeFondsReserveRepository periodes;
-    private final MoisFondsReserveRepository moisClos;
-    private final ClotureFondsReserve cloture;
+    private final ApportFondsRepository apports;
     private final DepensePdvRepository depenses;
-    private final MargeVentes marges;
     private final ReglagePdvService reglages;
+    private final NumerotationService numerotation;
 
-    /**
-     * Versement d'un mois (ou de la partie d'un mois couverte par une periode) :
-     * {@code dotation} est le pourcentage du benefice net, {@code verse} ce qui a
-     * reellement bouge (une reprise ne depasse pas le cumul deja verse).
-     * {@code enCours} : le mois n'est pas termine, le montant est une estimation.
-     */
-    public record Dotation(String mois, String libelle, LocalDate debut, LocalDate fin, BigDecimal pourcent,
-                           BigDecimal chiffreAffaires, BigDecimal coutAchats, BigDecimal depenses,
-                           BigDecimal beneficeNet, BigDecimal dotation, BigDecimal verse, boolean enCours) {
+    public record Apport(Long id, String numero, Instant date, ApportFonds.Origine origine, Long associeId,
+                         String associeNom, BigDecimal montant, String note, String auteurNom) {
+
+        static Apport de(ApportFonds a) {
+            return new Apport(a.getId(), a.getNumero(), a.getDateApport(), a.getOrigine(), a.getAssocieId(),
+                    a.getAssocieNom(), a.getMontant(), a.getNote(), a.getAuteurNom());
+        }
 
         /** Libelle d'ecriture, le meme dans le journal de banque et celui du fonds. */
         public String ecriture() {
-            String taux = pourcent.stripTrailingZeros().toPlainString() + " %";
-            if (verse.signum() < 0) {
-                return "Reprise du fonds de reserve - " + libelle + " : perte de " + entier(beneficeNet.negate())
-                        + " F (" + taux + ")";
-            }
-            return "Dotation au fonds de reserve - " + libelle + " : " + taux + " de " + entier(beneficeNet)
-                    + " F de benefice net" + (verse.compareTo(dotation) != 0 ? ", limitee a ce qui avait ete verse" : "");
+            return (origine == ApportFonds.Origine.ENTREPRISE ? "Apport de l'entreprise au fonds de reserve"
+                    : "Apport de " + associeNom + " au fonds de reserve") + (note == null ? "" : " - " + note);
         }
+    }
+
+    /** Cumul des apports d'un contributeur (un associe, ou l'entreprise quand associeId est nul). */
+    public record Contributeur(Long associeId, String nom, BigDecimal total) {
     }
 
     /** Depense payee (ou a payer) par le fonds. */
@@ -89,60 +71,89 @@ public class FondsReserveService {
                          String beneficiaire, BigDecimal montant, DepensePdv.Statut statut, String auteurNom) {
     }
 
-    public record Periode(LocalDate debut, LocalDate fin, BigDecimal pourcent) {
+    public record Etat(boolean actif, BigDecimal totalApports, BigDecimal totalUtilise, BigDecimal enAttente,
+                       BigDecimal solde, BigDecimal disponible, List<Contributeur> contributeurs,
+                       List<Apport> apports, List<Sortie> sorties) {
     }
 
-    /**
-     * {@code totalDotations} : versements des mois termines (sortis du compte de
-     * l'entreprise) ; {@code moisEnCours} : estimation du mois en cours, versee a sa fin.
-     */
-    public record Etat(boolean actif, BigDecimal pourcent, LocalDate depuis, BigDecimal totalDotations,
-                       BigDecimal totalUtilise, BigDecimal enAttente, BigDecimal solde, BigDecimal moisEnCours,
-                       BigDecimal disponible, List<Periode> periodes, List<Dotation> dotations, List<Sortie> sorties) {
+    public record ApportDirect(@jakarta.validation.constraints.NotNull @jakarta.validation.constraints.Positive BigDecimal montant,
+                               @jakarta.validation.constraints.Size(max = 500) String note) {
     }
 
-    /** Calcul complet : chaque ligne, la somme des mois clos et l'estimation du mois en cours. */
-    private record Calcul(List<Dotation> lignes, BigDecimal verseClos, BigDecimal estimation) {
-        static final Calcul VIDE = new Calcul(List.of(), BigDecimal.ZERO, BigDecimal.ZERO);
-    }
-
-    /** Etat complet du fonds, pour son ecran. */
+    /** Etat complet du fonds : apports (du plus recent au plus ancien), cumul par contributeur, depenses. */
     public Etat etat() {
-        ReglagePdvService.Reglages r = reglages.lire();
-        List<PeriodeFondsReserve> liste = periodes.findAllByOrderByDebutAscIdAsc();
-        Calcul c = calcul(liste, true);
+        boolean actif = reglages.lire().fondsReserveActif();
+        List<ApportFonds> liste = apports.findAllByOrderByDateApportAsc();
+        Map<String, Contributeur> parContributeur = new LinkedHashMap<>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (ApportFonds a : liste) {
+            total = total.add(a.getMontant());
+            String cle = a.getAssocieId() == null ? "entreprise" : "a" + a.getAssocieId();
+            String nom = a.getAssocieId() == null ? "Entreprise" : a.getAssocieNom();
+            Contributeur c = parContributeur.getOrDefault(cle, new Contributeur(a.getAssocieId(), nom, BigDecimal.ZERO));
+            parContributeur.put(cle, new Contributeur(c.associeId(), nom, c.total().add(a.getMontant())));
+        }
         BigDecimal utilise = depenses.totalPar(ModeSortie.RESERVE, VALIDES);
         BigDecimal attente = depenses.totalPar(ModeSortie.RESERVE, EN_ATTENTE);
-        List<Sortie> sorties = new ArrayList<>();
         List<DepensePdv.Statut> statuts = new ArrayList<>(EN_ATTENTE);
         statuts.add(DepensePdv.Statut.VALIDE);
+        List<Sortie> sorties = new ArrayList<>();
         for (DepensePdv d : depenses.parModeEtStatuts(ModeSortie.RESERVE, statuts, PageRequest.of(0, 200))) {
             sorties.add(new Sortie(d.getId(), d.getNumero(), d.getDateDepense(), d.getCategorie().getNom(),
                     d.getLibelle(), d.getBeneficiaire(), d.getMontant(), d.getStatut(), d.getAuteurNom()));
         }
-        List<Dotation> recentes = new ArrayList<>(c.lignes());
-        Collections.reverse(recentes);
-        return new Etat(r.fondsReserveActif(), r.fondsReservePourcent(),
-                liste.isEmpty() ? null : liste.get(0).getDebut(), c.verseClos(), utilise, attente,
-                c.verseClos().subtract(utilise), c.estimation(), disponible(c, utilise, attente),
-                liste.stream().map(p -> new Periode(p.getDebut(), p.getFin(), p.getPourcent())).toList(),
-                recentes, sorties);
+        List<Apport> recents = new ArrayList<>(liste.stream().map(Apport::de).toList());
+        recents.sort(Comparator.comparing(Apport::date).reversed());
+        List<Contributeur> contributeurs = new ArrayList<>(parContributeur.values());
+        contributeurs.sort(Comparator.comparing(Contributeur::total).reversed());
+        BigDecimal solde = total.subtract(utilise);
+        return new Etat(actif, total, utilise, attente, solde, solde.subtract(attente), contributeurs,
+                recents.size() > 200 ? recents.subList(0, 200) : recents, sorties);
     }
 
-    /** Le fonds a deja ete active : son journal a un sens. */
+    /** Le fonds a deja servi : son journal a un sens. */
     public boolean aExiste() {
-        return reglages.lire().fondsReserveActif() || periodes.count() > 0;
+        return reglages.lire().fondsReserveActif() || apports.count() > 0;
     }
 
-    /** Versements des mois termines, du plus ancien au plus recent (journaux de banque et du fonds). */
-    public List<Dotation> versementsClos() {
-        return calcul(periodes.findAllByOrderByDebutAscIdAsc(), true).lignes().stream()
-                .filter(d -> !d.enCours() && d.verse().signum() != 0).toList();
+    /** Tous les apports, du plus ancien au plus recent (journal du fonds). */
+    public List<Apport> apports() {
+        return apports.findAllByOrderByDateApportAsc().stream().map(Apport::de).toList();
     }
 
-    /** Total verse au fonds par les mois termines : ce qui a quitte le compte de l'entreprise. */
-    public BigDecimal totalDotations() {
-        return calcul(periodes.findAllByOrderByDebutAscIdAsc(), true).verseClos();
+    /** Apports directs de l'entreprise : ils quittent le compte de l'entreprise (journal de banque). */
+    public List<Apport> apportsEntreprise() {
+        return apports.findByOrigineOrderByDateApportAsc(ApportFonds.Origine.ENTREPRISE).stream().map(Apport::de).toList();
+    }
+
+    public BigDecimal totalApportsEntreprise() {
+        return apports.totalPar(ApportFonds.Origine.ENTREPRISE);
+    }
+
+    /** Apports d'un associe, du plus recent au plus ancien. */
+    public List<Apport> apportsDe(Long associeId) {
+        return apports.findByAssocieIdOrderByDateApportDesc(associeId).stream().map(Apport::de).toList();
+    }
+
+    public BigDecimal totalApportsDe(Long associeId) {
+        return apports.totalAssocie(associeId);
+    }
+
+    /** L'administrateur verse directement au fonds depuis le compte de l'entreprise. */
+    @Transactional
+    public Apport apportDirect(ApportDirect demande, UtilisateurPrincipal admin) {
+        reglages.verrouillerFondsReserve();
+        return Apport.de(enregistrer(ApportFonds.Origine.ENTREPRISE, null, null, demande.montant(), demande.note(), admin));
+    }
+
+    /**
+     * Apport d'un associe depuis son sous-compte ; l'appelant a deja verifie son
+     * solde, sous le verrou du reglage pris ici.
+     */
+    @Transactional
+    public Apport apportAssocie(Long associeId, String associeNom, BigDecimal montant, String note,
+                                UtilisateurPrincipal auteur) {
+        return Apport.de(enregistrer(ApportFonds.Origine.ASSOCIE, associeId, associeNom, montant, note, auteur));
     }
 
     /**
@@ -155,14 +166,13 @@ public class FondsReserveService {
     @Transactional
     public void exigerDisponible(BigDecimal montant, BigDecimal dejaEnAttente) {
         reglages.verrouillerFondsReserve();
-        Calcul c = calcul(periodes.findAllByOrderByDebutAscIdAsc(), true);
-        BigDecimal disponible = disponible(c, depenses.totalPar(ModeSortie.RESERVE, VALIDES),
-                depenses.totalPar(ModeSortie.RESERVE, EN_ATTENTE))
+        BigDecimal disponible = apports.total()
+                .subtract(depenses.totalPar(ModeSortie.RESERVE, VALIDES))
+                .subtract(depenses.totalPar(ModeSortie.RESERVE, EN_ATTENTE))
                 .add(dejaEnAttente == null ? BigDecimal.ZERO : dejaEnAttente);
         if (montant.compareTo(disponible) > 0) {
             throw new BusinessException("Le fonds de reserve ne dispose que de " + entier(disponible.max(BigDecimal.ZERO))
-                    + " F (le versement du mois en cours n'arrive qu'a la fin du mois) : la depense de "
-                    + entier(montant) + " F le depasse");
+                    + " F : la depense de " + entier(montant) + " F le depasse");
         }
     }
 
@@ -171,129 +181,22 @@ public class FondsReserveService {
         return String.format(java.util.Locale.FRENCH, "%,.0f", v).replace(' ', ' ').replace(' ', ' ');
     }
 
-    // ------------------------------------------------------------- internes
-
-    /** La seule regle du disponible, pour l'ecran comme pour le controle. */
-    private static BigDecimal disponible(Calcul c, BigDecimal utilise, BigDecimal attente) {
-        return c.verseClos().subtract(utilise).subtract(attente).add(c.estimation().min(BigDecimal.ZERO));
-    }
-
-    /** Tranche d'un mois couverte par une periode. */
-    private record Tranche(LocalDate debut, LocalDate fin, BigDecimal pourcent, boolean enCours) {
-    }
-
-    /**
-     * Lignes de chaque mois : les mois clos sont relus tels qu'ils ont ete figes,
-     * ceux qui viennent de se terminer sont calcules puis figes, le mois en cours
-     * est estime. Seule la periode non figee est relue dans les ventes et les depenses.
-     */
-    private Calcul calcul(List<PeriodeFondsReserve> liste, boolean reessai) {
-        if (liste.isEmpty()) {
-            return Calcul.VIDE;
+    private ApportFonds enregistrer(ApportFonds.Origine origine, Long associeId, String associeNom, BigDecimal montant,
+                                    String note, UtilisateurPrincipal auteur) {
+        BigDecimal propre = montant.setScale(2, RoundingMode.HALF_UP);
+        if (propre.signum() <= 0) {
+            throw new BusinessException("Le montant de l'apport doit etre positif");
         }
-        LocalDate aujourdhui = LocalDate.now(FUSEAU);
-        List<Tranche> tranches = tranches(liste, aujourdhui);
-        if (tranches.isEmpty()) {
-            return Calcul.VIDE;
-        }
-        Map<LocalDate, MoisFondsReserve> figes = new HashMap<>();
-        for (MoisFondsReserve m : moisClos.findAllByOrderByDebutAsc()) {
-            figes.put(m.getDebut(), m);
-        }
-        LocalDate premierACalculer = tranches.stream().filter(t -> t.enCours() || !figes.containsKey(t.debut()))
-                .map(Tranche::debut).findFirst().orElse(null);
-        Map<LocalDate, MargeVentes.Marge> ventesParJour = new HashMap<>();
-        Map<LocalDate, BigDecimal> depensesParJour = new HashMap<>();
-        if (premierACalculer != null) {
-            ventesParJour.putAll(marges.parJour(premierACalculer.atStartOfDay(FUSEAU).toInstant(),
-                    aujourdhui.plusDays(1).atStartOfDay(FUSEAU).toInstant()));
-            for (Object[] l : depenses.totauxParJourHors(premierACalculer, aujourdhui, ModeSortie.RESERVE)) {
-                depensesParJour.put((LocalDate) l[0], (BigDecimal) l[1]);
-            }
-        }
-        List<Dotation> lignes = new ArrayList<>();
-        List<MoisFondsReserve> aFiger = new ArrayList<>();
-        BigDecimal cumul = BigDecimal.ZERO;
-        BigDecimal verseClos = BigDecimal.ZERO;
-        BigDecimal estimation = BigDecimal.ZERO;
-        for (Tranche t : tranches) {
-            MoisFondsReserve fige = t.enCours() ? null : figes.get(t.debut());
-            Dotation d;
-            if (fige != null) {
-                d = ligne(t, fige.getChiffreAffaires(), fige.getCoutAchats(), fige.getDepenses(), fige.getBeneficeNet(),
-                        fige.getDotation(), fige.getVerse());
-            } else {
-                MargeVentes.Marge marge = MargeVentes.Marge.NULLE;
-                BigDecimal frais = BigDecimal.ZERO;
-                for (LocalDate j = t.debut(); !j.isAfter(t.fin()); j = j.plusDays(1)) {
-                    marge = marge.plus(ventesParJour.getOrDefault(j, MargeVentes.Marge.NULLE));
-                    frais = frais.add(depensesParJour.getOrDefault(j, BigDecimal.ZERO));
-                }
-                BigDecimal net = marge.brute().subtract(frais);
-                BigDecimal dotation = net.multiply(t.pourcent()).divide(CENT, 2, RoundingMode.HALF_UP);
-                BigDecimal verse = cumul.add(dotation).max(BigDecimal.ZERO).subtract(cumul);
-                d = ligne(t, marge.chiffreAffaires(), marge.coutAchats(), frais, net, dotation, verse);
-                if (!t.enCours()) {
-                    aFiger.add(enregistrement(d));
-                }
-            }
-            cumul = cumul.add(d.verse());
-            if (t.enCours()) {
-                estimation = estimation.add(d.verse());
-            } else {
-                verseClos = verseClos.add(d.verse());
-            }
-            lignes.add(d);
-        }
-        if (!aFiger.isEmpty()) {
-            try {
-                cloture.figer(aFiger);
-            } catch (DataIntegrityViolationException e) {
-                // Une autre lecture vient de figer les memes mois : on relit ce qu'elle a enregistre.
-                if (!reessai) {
-                    throw e;
-                }
-                return calcul(liste, false);
-            }
-        }
-        return new Calcul(lignes, verseClos, estimation);
-    }
-
-    /** Une tranche par mois de chaque periode, jusqu'a aujourd'hui. */
-    private static List<Tranche> tranches(List<PeriodeFondsReserve> liste, LocalDate aujourdhui) {
-        YearMonth moisCourant = YearMonth.from(aujourdhui);
-        List<Tranche> tranches = new ArrayList<>();
-        for (PeriodeFondsReserve p : liste) {
-            LocalDate finPeriode = p.getFin() == null || p.getFin().isAfter(aujourdhui) ? aujourdhui : p.getFin();
-            LocalDate jour = p.getDebut();
-            while (!jour.isAfter(finPeriode)) {
-                YearMonth mois = YearMonth.from(jour);
-                LocalDate finMois = mois.atEndOfMonth().isBefore(finPeriode) ? mois.atEndOfMonth() : finPeriode;
-                tranches.add(new Tranche(jour, finMois, p.getPourcent(), !mois.isBefore(moisCourant)));
-                jour = finMois.plusDays(1);
-            }
-        }
-        return tranches;
-    }
-
-    private static Dotation ligne(Tranche t, BigDecimal chiffre, BigDecimal cout, BigDecimal frais, BigDecimal net,
-                                  BigDecimal dotation, BigDecimal verse) {
-        YearMonth mois = YearMonth.from(t.debut());
-        return new Dotation(mois.toString(), MOIS[mois.getMonthValue() - 1] + " " + mois.getYear(), t.debut(), t.fin(),
-                t.pourcent(), chiffre, cout, frais, net, dotation, verse, t.enCours());
-    }
-
-    private static MoisFondsReserve enregistrement(Dotation d) {
-        MoisFondsReserve m = new MoisFondsReserve();
-        m.setDebut(d.debut());
-        m.setFin(d.fin());
-        m.setPourcent(d.pourcent());
-        m.setChiffreAffaires(d.chiffreAffaires());
-        m.setCoutAchats(d.coutAchats());
-        m.setDepenses(d.depenses());
-        m.setBeneficeNet(d.beneficeNet());
-        m.setDotation(d.dotation());
-        m.setVerse(d.verse());
-        return m;
+        ApportFonds a = new ApportFonds();
+        a.setNumero(numerotation.prochainNumero("APF"));
+        a.setOrigine(origine);
+        a.setAssocieId(associeId);
+        a.setAssocieNom(associeNom);
+        a.setMontant(propre);
+        a.setDateApport(Instant.now());
+        a.setNote(note == null || note.isBlank() ? null : note.trim());
+        a.setAuteurId(auteur.getId());
+        a.setAuteurNom(auteur.getNomComplet());
+        return apports.save(a);
     }
 }

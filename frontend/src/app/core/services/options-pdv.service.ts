@@ -13,7 +13,13 @@ import {
   Degagement,
   EnAttenteTresorerie,
   EtatRemiseSession,
+  ApportFonds,
+  CompteAssocie,
+  DemandeDepotAssocie,
+  DepotAssocie,
+  FondsAssocie,
   FondsReserve,
+  SyntheseVersements,
   PartAssocie,
   ReglagesPdv,
   Remise
@@ -41,7 +47,7 @@ export class OptionsPdvService {
   charger(): void {
     this.http.get<ReglagesPdv>(`${this.base}/reglages`).subscribe({
       next: (r) => this.reglages.set(r),
-      error: () => this.reglages.set({ associesActif: false, circuitCaisseActif: false, ecartTolere: 0, validationDepensesCaisse: false, minutesVerrouCaisse: 5, remiseMaxCaissierPourcent: 10, fondsReserveActif: false, fondsReservePourcent: 10 })
+      error: () => this.reglages.set({ associesActif: false, circuitCaisseActif: false, ecartTolere: 0, validationDepensesCaisse: false, minutesVerrouCaisse: 5, remiseMaxCaissierPourcent: 10, fondsReserveActif: false })
     });
   }
 
@@ -58,6 +64,74 @@ export class OptionsPdvService {
 
   fondsReserve(): Observable<FondsReserve> {
     return this.http.get<FondsReserve>(`${this.base}/fonds-reserve`);
+  }
+
+  /** Apport direct de l'entreprise au fonds (administrateur), depuis le compte de l'entreprise. */
+  apportDirectFonds(montant: number, note: string | null): Observable<ApportFonds> {
+    return this.http.post<ApportFonds>(`${this.base}/fonds-reserve/apports`, { montant, note });
+  }
+
+  // ------------------------------------------------- sous-compte des associes
+
+  /** Depots qui attendent la decision de l'associe connecte (pastille du menu). */
+  readonly depotsAValider = signal(0);
+
+  rafraichirDepotsAValider(): void {
+    this.http.get<number>(`${this.base}/associes/compte/a-valider`).subscribe({
+      next: (n) => this.depotsAValider.set(n),
+      error: () => this.depotsAValider.set(0)
+    });
+  }
+
+  monCompteAssocie(): Observable<CompteAssocie> {
+    return this.http.get<CompteAssocie>(`${this.base}/associes/compte`)
+      .pipe(tap((c) => this.depotsAValider.set(c.depotsAValider)));
+  }
+
+  fondsVuParAssocie(): Observable<FondsAssocie> {
+    return this.http.get<FondsAssocie>(`${this.base}/associes/fonds`);
+  }
+
+  apporterAuFonds(montant: number, note: string | null): Observable<ApportFonds> {
+    return this.http.post<ApportFonds>(`${this.base}/associes/compte/apports`, { montant, note });
+  }
+
+  validerDepotAssocie(id: number): Observable<DepotAssocie> {
+    return this.http.post<DepotAssocie>(`${this.base}/associes/depots/${id}/validation`, {});
+  }
+
+  refuserDepotAssocie(id: number, motif: string): Observable<DepotAssocie> {
+    return this.http.post<DepotAssocie>(`${this.base}/associes/depots/${id}/refus`, { motif });
+  }
+
+  pieceDepotAssocie(id: number): Observable<Blob> {
+    return this.http.get(`${this.base}/associes/depots/${id}/piece`, { responseType: 'blob' });
+  }
+
+  versementsAssocies(): Observable<SyntheseVersements> {
+    return this.http.get<SyntheseVersements>(`${this.base}/associes/versements`);
+  }
+
+  compteAssocie(id: number): Observable<CompteAssocie> {
+    return this.http.get<CompteAssocie>(`${this.base}/associes/${id}/compte`);
+  }
+
+  creerDepotAssocie(demande: DemandeDepotAssocie): Observable<DepotAssocie> {
+    return this.http.post<DepotAssocie>(`${this.base}/associes/depots`, demande);
+  }
+
+  corrigerDepotAssocie(id: number, demande: DemandeDepotAssocie): Observable<DepotAssocie> {
+    return this.http.put<DepotAssocie>(`${this.base}/associes/depots/${id}`, demande);
+  }
+
+  annulerDepotAssocie(id: number): Observable<DepotAssocie> {
+    return this.http.post<DepotAssocie>(`${this.base}/associes/depots/${id}/annulation`, {});
+  }
+
+  joindrePieceDepotAssocie(id: number, fichier: File): Observable<DepotAssocie> {
+    const form = new FormData();
+    form.append('fichier', fichier);
+    return this.http.post<DepotAssocie>(`${this.base}/associes/depots/${id}/piece`, form);
   }
 
   // ----------------------------------------------------------- associes

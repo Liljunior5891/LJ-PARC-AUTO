@@ -61,8 +61,10 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
     private final tg.parcauto.api.pointdevente.vente.VenteRepository ventes;
     private final tg.parcauto.api.pointdevente.materiaux.ReglementClientRepository reglementsClients;
     private final tg.parcauto.api.parc.document.StockageFichierService stockage;
-    /** Le fonds de reserve est un compte separe : ses dotations quittent le compte de l'entreprise. */
+    /** Le fonds de reserve est un compte separe : les apports directs de l'entreprise quittent son compte. */
     private final tg.parcauto.api.pointdevente.reserve.FondsReserveService fondsReserve;
+    /** Versements aux associes : ils sortent du coffre du gerant ou du compte de l'entreprise. */
+    private final tg.parcauto.api.pointdevente.associe.DepotAssocieRepository depotsAssocies;
 
     private static final long TAILLE_MAX_PIECE = 15L * 1024 * 1024;
     private static final Instant ORIGINE = Instant.parse("2000-01-01T00:00:00Z");
@@ -130,8 +132,10 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
     public record CompteEntreprise(BigDecimal solde, BigDecimal parDegagements, BigDecimal parRemisesDirectes,
                                    BigDecimal ventesElectroniques, BigDecimal sortiesBanque,
                                    List<SoldeCoffre> coffres, List<MouvementCoffre> entrees,
-                                   /** Total verse au fonds de reserve depuis son activation. */
-                                   BigDecimal versFondsReserve) {
+                                   /** Apports directs de l'entreprise au fonds de reserve. */
+                                   BigDecimal versFondsReserve,
+                                   /** Versements aux associes payes par le compte de l'entreprise. */
+                                   BigDecimal versAssocies) {
     }
 
     /** Compteurs des validations en attente, pour les pastilles du menu. */
@@ -433,19 +437,24 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
                     rf.getNumero(), "Paiement " + rf.getFournisseur().getNom() + " (" + rf.getCommande().getNumero() + ")",
                     null, rf.getMontant()));
         }
-        BigDecimal versFonds = fondsReserve.totalDotations();
-        if (versFonds.signum() > 0) {
-            entrees.add(new MouvementCoffre(Instant.now(), "RESERVE",
-                    "Dotations cumulees au fonds de reserve (compte separe)", null, versFonds));
+        BigDecimal versFonds = BigDecimal.ZERO;
+        for (var a : fondsReserve.apportsEntreprise()) {
+            versFonds = versFonds.add(a.montant());
+            entrees.add(new MouvementCoffre(a.date(), a.numero(), a.ecriture(), null, a.montant()));
+        }
+        BigDecimal versAssocies = BigDecimal.ZERO;
+        for (var d : depotsAssocies.engagesPar(tg.parcauto.api.pointdevente.associe.DepotAssocie.Source.BANQUE)) {
+            versAssocies = versAssocies.add(d.getMontant());
+            entrees.add(new MouvementCoffre(d.getSoumisLe(), d.getNumero(), libelleVersement(d), null, d.getMontant()));
         }
         entrees.sort(Comparator.comparing(MouvementCoffre::date).reversed());
         List<SoldeCoffre> coffres = gerants().stream()
                 .map(g -> new SoldeCoffre((Long) g[0], (String) g[1], solde((Long) g[0])))
                 .sorted(Comparator.comparing(SoldeCoffre::solde).reversed())
                 .toList();
-        return new CompteEntreprise(parDegagements.add(parRemises).add(electroniques).subtract(sorties).subtract(versFonds),
-                parDegagements, parRemises, electroniques, sorties, coffres,
-                entrees.size() > 150 ? entrees.subList(0, 150) : entrees, versFonds);
+        return new CompteEntreprise(parDegagements.add(parRemises).add(electroniques).subtract(sorties).subtract(versFonds)
+                .subtract(versAssocies), parDegagements, parRemises, electroniques, sorties, coffres,
+                entrees.size() > 150 ? entrees.subList(0, 150) : entrees, versFonds, versAssocies);
     }
 
     @Transactional(readOnly = true)
@@ -503,6 +512,11 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
                         rf.getNumero(), "Paiement " + rf.getFournisseur().getNom(), null, rf.getMontant()));
             }
         }
+        for (var d : depotsAssocies.engagesPar(tg.parcauto.api.pointdevente.associe.DepotAssocie.Source.COFFRE)) {
+            if (gerantId.equals(d.getCoffreId())) {
+                mouvements.add(new MouvementCoffre(d.getSoumisLe(), d.getNumero(), libelleVersement(d), null, d.getMontant()));
+            }
+        }
         mouvements.sort(Comparator.comparing(MouvementCoffre::date).reversed());
         return new Coffre(gerantId, nom, solde(gerantId),
                 degagements.findFirstByGerantIdAndStatut(gerantId, DegagementCoffre.Statut.EN_ATTENTE).map(this::dto)
@@ -510,10 +524,25 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
                 mouvements);
     }
 
-    /** Remises recues − depots en banque valides − depenses et paiements payes depuis le coffre. */
+    /**
+     * Remises recues − depots en banque valides − depenses et paiements payes depuis le coffre
+     * − versements aux associes engages (l'argent est depose a la banque des la saisie).
+     */
     public BigDecimal solde(Long gerantId) {
         return remises.recuParCoffre(gerantId).subtract(degagements.sortiParCoffre(gerantId))
-                .subtract(depenses.sortiDuCoffre(gerantId)).subtract(reglementsFournisseurs.sortiDuCoffre(gerantId));
+                .subtract(depenses.sortiDuCoffre(gerantId)).subtract(reglementsFournisseurs.sortiDuCoffre(gerantId))
+                .subtract(depotsAssocies.sortiDuCoffre(gerantId));
+    }
+
+    /** Libelle d'un versement a un associe, dans le coffre comme sur le compte de l'entreprise. */
+    public static String libelleVersement(tg.parcauto.api.pointdevente.associe.DepotAssocie d) {
+        String etat = switch (d.getStatut()) {
+            case EN_ATTENTE -> " (attend la validation de l'associe)";
+            case REFUSE -> " (refuse par l'associe, a corriger)";
+            default -> "";
+        };
+        return "Versement a " + d.getAssocieNom() + (d.getPeriode() == null ? "" : " - " + d.getPeriode())
+                + " - bordereau " + d.getReference() + etat;
     }
 
     private static boolean electronique(Object mode) {

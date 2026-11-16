@@ -19,7 +19,6 @@ import java.math.BigDecimal;
 public class ReglagePdvService {
 
     private final ReglagePdvRepository repository;
-    private final tg.parcauto.api.pointdevente.reserve.PeriodeFondsReserveRepository periodes;
     private final tg.parcauto.api.pointdevente.depense.DepensePdvRepository depenses;
     /** Fourni par la tresorerie, qui depend elle-meme des reglages : resolu a l'usage. */
     private final org.springframework.beans.factory.ObjectProvider<ControleOptions> controle;
@@ -30,13 +29,13 @@ public class ReglagePdvService {
                            int minutesVerrouCaisse,
                            /** Remise maximale d'un caissier, en % du ticket. */
                            BigDecimal remiseMaxCaissierPourcent,
-                           /** Fonds de reserve : pourcentage du benefice net mis de cote en continu. */
-                           boolean fondsReserveActif, BigDecimal fondsReservePourcent) {
+                           /** Fonds de reserve commun, alimente par les apports des associes et de l'entreprise. */
+                           boolean fondsReserveActif) {
 
         /** Pour les profils qui n'ont pas a connaitre le fonds de reserve (caissier, serveur, associe...). */
         public Reglages sansFondsReserve() {
             return new Reglages(associesActif, circuitCaisseActif, ecartTolere, validationDepensesCaisse,
-                    minutesVerrouCaisse, remiseMaxCaissierPourcent, false, null);
+                    minutesVerrouCaisse, remiseMaxCaissierPourcent, false);
         }
     }
 
@@ -49,10 +48,7 @@ public class ReglagePdvService {
                           /** Absent : inchange. */
                           @PositiveOrZero @jakarta.validation.constraints.DecimalMax("100") BigDecimal remiseMaxCaissierPourcent,
                           /** Absent : inchange. */
-                          Boolean fondsReserveActif,
-                          /** Absent : inchange. */
-                          @jakarta.validation.constraints.DecimalMin(value = "0.01", message = "Le pourcentage du fonds de reserve doit etre d'au moins 0,01 %")
-                          @jakarta.validation.constraints.DecimalMax("100") BigDecimal fondsReservePourcent) {
+                          Boolean fondsReserveActif) {
     }
 
     @Transactional(readOnly = true)
@@ -60,8 +56,8 @@ public class ReglagePdvService {
         return repository.findFirstByOrderByIdAsc()
                 .map(r -> new Reglages(r.isAssociesActif(), r.isCircuitCaisseActif(), r.getEcartTolere(),
                         r.isValidationDepensesCaisse(), r.getMinutesVerrouCaisse(), r.getRemiseMaxCaissierPourcent(),
-                        r.isFondsReserveActif(), r.getFondsReservePourcent()))
-                .orElse(new Reglages(false, false, BigDecimal.ZERO, false, 5, BigDecimal.TEN, false, BigDecimal.TEN));
+                        r.isFondsReserveActif()))
+                .orElse(new Reglages(false, false, BigDecimal.ZERO, false, 5, BigDecimal.TEN, false));
     }
 
     public Reglages modifier(Requete r) {
@@ -97,23 +93,13 @@ public class ReglagePdvService {
     }
 
     /**
-     * Toute modification du fonds de reserve prend effet aujourd'hui : la periode
-     * en cours s'arrete hier (supprimee si elle commencait aujourd'hui) et, si le
-     * fonds reste actif, une nouvelle periode au nouveau taux commence ce jour.
+     * Desactiver le fonds refuse d'office les depenses encore en attente : elles ne
+     * seront plus payees par le fonds et ne bloquent pas la desactivation. Le solde
+     * reste acquis au fonds et redevient utilisable a la reactivation.
      */
     private void appliquerFondsReserve(ReglagePdv reglage, Requete r, String auteur) {
         boolean actif = r.fondsReserveActif() == null ? reglage.isFondsReserveActif() : r.fondsReserveActif();
-        BigDecimal pourcent = r.fondsReservePourcent() == null ? reglage.getFondsReservePourcent()
-                : r.fondsReservePourcent().setScale(2, java.math.RoundingMode.HALF_UP);
-        boolean tauxChange = pourcent.compareTo(reglage.getFondsReservePourcent()) != 0;
-        boolean etatChange = actif != reglage.isFondsReserveActif();
-        if (!etatChange && !(actif && tauxChange)) {
-            reglage.setFondsReservePourcent(pourcent);
-            return;
-        }
-        if (!actif) {
-            // Les demandes encore en attente ne seront plus payees par le fonds : refusees d'office,
-            // elles ne bloquent pas la desactivation.
+        if (reglage.isFondsReserveActif() && !actif) {
             java.time.Instant maintenant = java.time.Instant.now();
             for (var d : depenses.findByModeAndStatutIn(tg.parcauto.api.pointdevente.depense.ModeSortie.RESERVE,
                     java.util.List.of(tg.parcauto.api.pointdevente.depense.DepensePdv.Statut.ATTENTE_GERANT,
@@ -124,23 +110,17 @@ public class ReglagePdvService {
                 d.setMotifRefus("Fonds de reserve desactive : redemandez la depense par un autre moyen de paiement");
             }
         }
-        java.time.LocalDate aujourdhui = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Lome"));
-        periodes.findFirstByFinIsNull().ifPresent(p -> {
-            if (!p.getDebut().isBefore(aujourdhui)) {
-                periodes.delete(p);
-            } else {
-                p.setFin(aujourdhui.minusDays(1));
-            }
-            periodes.flush();
-        });
-        if (actif) {
-            tg.parcauto.api.pointdevente.reserve.PeriodeFondsReserve p = new tg.parcauto.api.pointdevente.reserve.PeriodeFondsReserve();
-            p.setDebut(aujourdhui);
-            p.setPourcent(pourcent);
-            periodes.save(p);
-        }
         reglage.setFondsReserveActif(actif);
-        reglage.setFondsReservePourcent(pourcent);
+    }
+
+    /**
+     * Verrouille le reglage jusqu'a la fin de la transaction de l'appelant : les
+     * versements et apports simultanes passent l'un apres l'autre.
+     */
+    @Transactional
+    public Reglages verrouiller() {
+        repository.verrouiller();
+        return lire();
     }
 
     /** Les depenses payees par la caisse passent par le gerant puis l'administrateur. */

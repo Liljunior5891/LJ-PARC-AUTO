@@ -212,8 +212,14 @@ public class AssocieService {
 
     // ------------------------------------------------------------ internes
 
+    /** Compte au profil ASSOCIE de l'entreprise, ou introuvable. */
+    Utilisateur compteAssocie(Long id) {
+        return comptesAssocies().stream().filter(u -> u.getId().equals(id)).findFirst()
+                .orElseThrow(() -> ResourceNotFoundException.of("Associe", id));
+    }
+
     /** Comptes de l'entreprise au profil ASSOCIE. */
-    private List<Utilisateur> comptesAssocies() {
+    List<Utilisateur> comptesAssocies() {
         return utilisateurs.findByEntrepriseIdOrderByNomAscPrenomAsc(ContexteEntreprise.exiger()).stream()
                 .filter(u -> u.getRoles().contains(Role.ASSOCIE))
                 .toList();

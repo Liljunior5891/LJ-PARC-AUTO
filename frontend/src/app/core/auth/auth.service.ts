@@ -111,9 +111,9 @@ export class AuthService {
       if (this.aRole('ADMIN', 'GERANT')) {
         return '/pdv/tableau-bord';
       }
-      // Un associe sans autre profil n'a que sa part des benefices.
+      // Un associe sans autre profil arrive sur son espace : tableau de bord, sous-compte, fonds.
       if (this.aRole('ASSOCIE') && !this.aRole('CAISSIER', 'SERVEUR', 'PREPARATEUR', 'MAGASINIER')) {
-        return '/pdv/benefices';
+        return '/pdv/mon-compte';
       }
       if (this.aRole('MAGASINIER') && !this.aRole('CAISSIER', 'SERVEUR')) {
         return '/pdv/retraits';

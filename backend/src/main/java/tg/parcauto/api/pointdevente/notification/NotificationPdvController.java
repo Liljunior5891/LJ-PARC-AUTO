@@ -18,6 +18,7 @@ import java.util.List;
 /** Evenements en attente pour le poste de l'utilisateur, interroges regulierement par le navigateur. */
 @RestController
 @ModuleRequis(ModuleApplicatif.POINT_DE_VENTE)
+@tg.parcauto.api.plateforme.module.OuvertAuxAssocies
 @RequestMapping("/api/pdv/notifications")
 @RequiredArgsConstructor
 @Tag(name = "Point de vente - notifications")
@@ -26,7 +27,8 @@ public class NotificationPdvController {
     private final NotificationPdvService service;
 
     @GetMapping
-    @PreAuthorize(Autorisations.PDV_PERSONNEL)
+    // Un associe y apprend les versements de sa part a valider.
+    @PreAuthorize("hasAnyRole('ADMIN','GERANT','CAISSIER','SERVEUR','PREPARATEUR','MAGASINIER','ASSOCIE')")
     @Operation(summary = "Commandes a valider, appels, plats prets, nouveaux bons et caisses ouvertes")
     public List<NotificationPdvService.Evenement> evenements(@AuthenticationPrincipal UtilisateurPrincipal principal) {
         return service.pour(principal);

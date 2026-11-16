@@ -72,6 +72,7 @@ public class NotificationPdvService {
     private final tg.parcauto.api.pointdevente.depense.DepensePdvRepository depenses;
     private final tg.parcauto.api.pointdevente.caisse.SortieAttenteRepository sortiesAttente;
     private final tg.parcauto.api.pointdevente.horsligne.VenteHorsLignePdvRepository ventesHorsLigne;
+    private final tg.parcauto.api.pointdevente.associe.DepotAssocieRepository depotsAssocies;
 
     public List<Evenement> pour(UtilisateurPrincipal u) {
         List<Evenement> evenements = new ArrayList<>();
@@ -100,6 +101,7 @@ public class NotificationPdvService {
             preparation(u, evenements);
         }
         depensesDeCaisse(u, evenements);
+        versementsAssocies(u, evenements);
         if (aRole(u, Role.ADMIN, Role.GERANT)) {
             horsLigne(evenements);
         }
@@ -156,6 +158,31 @@ public class NotificationPdvService {
                     s.getNumero() + " · " + entier(s.getMontant()) + " F"
                             + (refusee ? " · " + s.getMotifRefus() : " · les especes peuvent sortir"),
                     null, refusee ? s.getRefuseeLe() : s.getApprouveeLe()));
+        }
+    }
+
+    /**
+     * Versements aux associes : l'associe est prevenu d'un depot a valider ; le
+     * gerant et l'administrateur, d'un depot refuse a corriger.
+     */
+    private void versementsAssocies(UtilisateurPrincipal u, List<Evenement> sortie) {
+        var aTraiter = depotsAssocies.findByStatutInOrderBySoumisLeAsc(List.of(
+                tg.parcauto.api.pointdevente.associe.DepotAssocie.Statut.EN_ATTENTE,
+                tg.parcauto.api.pointdevente.associe.DepotAssocie.Statut.REFUSE));
+        boolean gestion = aRole(u, Role.ADMIN, Role.GERANT);
+        for (var d : aTraiter) {
+            boolean refuse = d.getStatut() == tg.parcauto.api.pointdevente.associe.DepotAssocie.Statut.REFUSE;
+            if (refuse && gestion) {
+                sortie.add(new Evenement("versement-refuse-" + d.getId() + "-" + d.getTraiteLe(), Type.VALIDATION,
+                        "Versement refuse par l'associe",
+                        d.getNumero() + " · " + entier(d.getMontant()) + " F · " + d.getAssocieNom() + " · " + d.getMotifRefus(),
+                        "/pdv/versements-associes", d.getTraiteLe()));
+            } else if (!refuse && d.getAssocieId().equals(u.getId())) {
+                sortie.add(new Evenement("versement-attente-" + d.getId() + "-" + d.getSoumisLe(), Type.VALIDATION,
+                        "Versement a valider",
+                        d.getNumero() + " · " + entier(d.getMontant()) + " F · bordereau " + d.getReference(),
+                        "/pdv/mon-compte", d.getSoumisLe()));
+            }
         }
     }
 
