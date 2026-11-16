@@ -1,23 +1,27 @@
 <div class="entete-page">
   <div>
-    <h1>Mon espace associe</h1>
-    <p class="sous-titre">Vos produits, votre part des benefices, votre sous-compte et le fonds de reserve commun</p>
+    @switch (onglet()) {
+      @case ('compte') {
+        <h1>Mon compte</h1>
+        <p class="sous-titre">Votre sous-compte : versements de votre part a valider, historique et apports au fonds de reserve</p>
+      }
+      @case ('fonds') {
+        <h1>Fonds de reserve</h1>
+        <p class="sous-titre">Fonds commun alimente par les apports des associes et de l'entreprise ; il paie les depenses communes</p>
+      }
+      @default {
+        <h1>Mon tableau de bord</h1>
+        <p class="sous-titre">Ventes, marge et part de vos produits</p>
+      }
+    }
   </div>
-</div>
-
-<div class="onglets">
-  <button type="button" [class.actif]="onglet() === 'tableau'" (click)="ouvrir('tableau')">Tableau de bord</button>
-  <button type="button" [class.actif]="onglet() === 'compte'" (click)="ouvrir('compte')">
-    Mon compte @if (aValider().length) { <span class="pastille">{{ aValider().length }}</span> }
-  </button>
-  <button type="button" [class.actif]="onglet() === 'fonds'" (click)="ouvrir('fonds')">Fonds de reserve</button>
 </div>
 
 @if (erreur()) { <div class="message erreur">{{ erreur() }}</div> }
 @if (succes()) { <div class="message succes">{{ succes() }}</div> }
 @if (aValider().length && onglet() !== 'compte') {
   <div class="message info">{{ aValider().length }} versement(s) attendent votre validation.
-    <button class="lien" type="button" (click)="ouvrir('compte')">Les voir</button></div>
+    <a routerLink="/pdv/mon-compte">Les voir</a></div>
 }
 
 @switch (onglet()) {

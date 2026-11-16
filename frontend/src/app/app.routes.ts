@@ -291,12 +291,27 @@ export const routes: Routes = [
               }
             ]
           },
+          // Espace de l'associe, un ecran par menu : tableau de bord, sous-compte, fonds de reserve commun.
           {
-            // Espace de l'associe : tableau de bord, sous-compte, fonds de reserve commun.
+            path: 'tableau-associe',
+            canActivate: [roleGuard('ASSOCIE')],
+            data: { vue: 'tableau' },
+            loadComponent: () => import('./pages/pdv/espace-associe/espace-associe').then((m) => m.EspaceAssociePdv),
+            title: 'Mon tableau de bord — Nova'
+          },
+          {
             path: 'mon-compte',
             canActivate: [roleGuard('ASSOCIE')],
+            data: { vue: 'compte' },
             loadComponent: () => import('./pages/pdv/espace-associe/espace-associe').then((m) => m.EspaceAssociePdv),
-            title: 'Mon espace associe — Nova'
+            title: 'Mon compte associe — Nova'
+          },
+          {
+            path: 'fonds-associe',
+            canActivate: [roleGuard('ASSOCIE')],
+            data: { vue: 'fonds' },
+            loadComponent: () => import('./pages/pdv/espace-associe/espace-associe').then((m) => m.EspaceAssociePdv),
+            title: 'Fonds de reserve — Nova'
           },
           {
             // Versements de leur part aux associes : depots en banque saisis par le gerant.

@@ -1,7 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { LIBELLES_STATUT_DEPENSE } from '../../../core/models/achats';
 import {
@@ -18,20 +18,20 @@ import { PERIODES, Periode, bornesPeriode, datesDePeriode } from '../../../share
 type Onglet = 'tableau' | 'compte' | 'fonds';
 
 /**
- * Espace de l'associe : le tableau de bord de ses produits et de sa part, son
- * sous-compte (parts mensuelles, versements a valider, apports au fonds) et le
- * fonds de reserve commun (solde, ses apports, depenses en detail).
+ * Espace de l'associe, un ecran par menu (donnee de route « vue ») : le tableau
+ * de bord de ses produits et de sa part, son sous-compte (parts mensuelles,
+ * versements a valider, apports au fonds) et le fonds de reserve commun (solde,
+ * ses apports, depenses en detail).
  */
 @Component({
   selector: 'app-espace-associe-pdv',
-  imports: [DatePipe, DecimalPipe, FormsModule, Modale],
+  imports: [DatePipe, DecimalPipe, FormsModule, Modale, RouterLink],
   templateUrl: './espace-associe.html',
   styleUrl: './espace-associe.scss'
 })
 export class EspaceAssociePdv implements OnInit {
   private readonly options = inject(OptionsPdvService);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly monId = inject(AuthService).utilisateur()?.id;
   readonly libellesDepot = LIBELLES_STATUT_DEPOT;
   readonly libellesDepense = LIBELLES_STATUT_DEPENSE;
@@ -67,20 +67,14 @@ export class EspaceAssociePdv implements OnInit {
   readonly fonds = signal<FondsAssocie | null>(null);
 
   ngOnInit(): void {
-    const demande = this.route.snapshot.queryParamMap.get('onglet') as Onglet | null;
-    if (demande === 'compte' || demande === 'fonds') {
-      this.onglet.set(demande);
-    }
-    this.chargerStats();
+    this.onglet.set((this.route.snapshot.data['vue'] as Onglet | undefined) ?? 'tableau');
+    // Le compte sert aux trois ecrans (reste a verser, solde, versements a valider) ; le fonds, au compte et au fonds.
     this.chargerCompte();
-    this.chargerFonds();
-  }
-
-  ouvrir(onglet: Onglet): void {
-    this.onglet.set(onglet);
-    this.erreur.set(null);
-    this.succes.set(null);
-    this.router.navigate([], { queryParams: { onglet: onglet === 'tableau' ? null : onglet }, replaceUrl: true });
+    if (this.onglet() === 'tableau') {
+      this.chargerStats();
+    } else {
+      this.chargerFonds();
+    }
   }
 
   chargerStats(): void {

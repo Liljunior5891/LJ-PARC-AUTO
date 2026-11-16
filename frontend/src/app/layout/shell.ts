@@ -270,7 +270,9 @@ export class Shell {
             { libelle: 'Codes QR', route: '/pdv/codes-qr', description: 'Commande des clients depuis leur table', variante: 'RESTAURATION' }
           ]
         },
-        { libelle: 'Mon espace associe', route: '/pdv/mon-compte', description: 'Mes produits, ma part, mon sous-compte et le fonds de reserve', roles: ['ASSOCIE'], option: 'associes' },
+        { libelle: 'Mon tableau de bord', route: '/pdv/tableau-associe', description: 'Ventes, marge et part de mes produits', roles: ['ASSOCIE'], option: 'associes' },
+        { libelle: 'Mon compte', route: '/pdv/mon-compte', description: 'Mon sous-compte, versements a valider, apports au fonds', roles: ['ASSOCIE'], option: 'associes' },
+        { libelle: 'Fonds de reserve', route: '/pdv/fonds-associe', description: 'Solde du fonds commun, mes apports et ses depenses', roles: ['ASSOCIE'], option: 'associes' },
         {
           libelle: 'Associes', description: 'Benefices et versements des associes', roles: ['ADMIN', 'GERANT'], option: 'associes',
           enfants: [

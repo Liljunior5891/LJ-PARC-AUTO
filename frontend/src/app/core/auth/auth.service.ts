@@ -113,7 +113,7 @@ export class AuthService {
       }
       // Un associe sans autre profil arrive sur son espace : tableau de bord, sous-compte, fonds.
       if (this.aRole('ASSOCIE') && !this.aRole('CAISSIER', 'SERVEUR', 'PREPARATEUR', 'MAGASINIER')) {
-        return '/pdv/mon-compte';
+        return '/pdv/tableau-associe';
       }
       if (this.aRole('MAGASINIER') && !this.aRole('CAISSIER', 'SERVEUR')) {
         return '/pdv/retraits';
