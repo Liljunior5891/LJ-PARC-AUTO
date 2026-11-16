@@ -39,6 +39,8 @@ interface EntreeMenu {
   option?: 'associes' | 'circuit' | 'validation' | 'reserve';
   /** Profils autorises ; absent, l'entree est visible de tous. */
   roles?: Role[];
+  /** Entree cachee aux comptes qui ont l'un de ces profils (ils la trouvent ailleurs dans le menu). */
+  sansRoles?: Role[];
   /** Module dont depend l'entree ; absent, elle fait partie du socle commun. */
   module?: CodeModule;
   /** Type(s) d'activite du point de vente exige(s) (les tables n'existent qu'en restauration). */
@@ -213,7 +215,14 @@ export class Shell {
         { libelle: 'Caisse', route: '/pdv/caisse', description: 'Ouvrir la caisse et encaisser au comptoir', roles: ['CAISSIER', 'SERVEUR'], variante: ['BOUTIQUE', 'MATERIAUX'] },
         { libelle: 'Caisse', route: '/pdv/comptoir', description: 'Vente au comptoir, ouverture et fermeture de caisse', roles: ['CAISSIER', 'SERVEUR'], variante: 'RESTAURATION' },
         { libelle: 'Tableau de bord', route: '/pdv/tableau-bord', description: 'Chiffre du jour, marge et meilleures ventes', roles: ['ADMIN', 'GERANT'] },
-        { libelle: 'Ventes', route: '/pdv/ventes', description: 'Commandes, reimpression et annulations', roles: ['ADMIN', 'GERANT', 'CAISSIER', 'SERVEUR'] },
+        { libelle: 'Ventes', route: '/pdv/ventes', description: 'Commandes, reimpression et annulations', roles: ['CAISSIER', 'SERVEUR'], sansRoles: ['ADMIN', 'GERANT'] },
+        {
+          libelle: 'Ventes', description: 'Ventes, annulations et ventes hors ligne', roles: ['ADMIN', 'GERANT'],
+          enfants: [
+            { libelle: 'Ventes', route: '/pdv/ventes', description: 'Commandes, reimpression et annulations' },
+            { libelle: 'Ventes hors ligne', route: '/pdv/hors-ligne', description: 'Ventes encaissees sans connexion, a regulariser ou a traiter' }
+          ]
+        },
         { libelle: 'Reste a livrer', route: '/pdv/livraisons', description: 'Commandes a remettre et bons de livraison', roles: ['CAISSIER'], variante: 'MATERIAUX' },
         { libelle: 'Bons de retrait', route: '/pdv/retraits', description: 'Servir les bons presentes par les clients', roles: ['MAGASINIER'], variante: 'MATERIAUX' },
         { libelle: 'Transferts', route: '/pdv/transferts', description: 'Expedier et receptionner la marchandise', roles: ['MAGASINIER'], variante: 'MATERIAUX' },
@@ -247,16 +256,13 @@ export class Shell {
             { libelle: 'Fournisseurs', route: '/pdv/fournisseurs', description: 'Fiches, dettes, echeances et paiements' },
             { libelle: 'Reapprovisionnement', route: '/pdv/stock', description: 'Commandes, receptions, sorties et pertes' },
             { libelle: 'Depenses', route: '/pdv/depenses', description: 'Salaires, loyer, electricite, recurrentes' },
-            { libelle: 'Depenses de caisse a valider', route: '/pdv/validations-caisse', description: 'Visa du gerant, puis approbation par l\'administrateur', option: 'validation' },
-            { libelle: 'Ventes hors ligne', route: '/pdv/hors-ligne', description: 'Ventes encaissees sans connexion, a regulariser ou a traiter', roles: ['ADMIN', 'GERANT'] },
-            { libelle: 'Fonds de reserve', route: '/pdv/fonds-reserve', description: 'Apports des associes et de l\'entreprise, depenses payees par le fonds', option: 'reserve' }
+            { libelle: 'Depenses de caisse a valider', route: '/pdv/validations-caisse', description: 'Visa du gerant, puis approbation par l\'administrateur', option: 'validation' }
           ]
         },
         {
           libelle: 'Caisse', description: 'Caisses et vente au comptoir', roles: ['ADMIN', 'GERANT'], variante: ['BOUTIQUE', 'MATERIAUX'],
           enfants: [
             { libelle: 'Caisses', route: '/pdv/caisses', description: 'Caisses, affectations et historique' },
-            { libelle: 'Remises et coffre', route: '/pdv/tresorerie', description: 'Recettes des caissiers, coffre, compte de l\'entreprise', option: 'circuit' },
             { libelle: 'Vente au comptoir', route: '/pdv/caisse', description: 'Encaisser a la caisse' }
           ]
         },
@@ -264,20 +270,25 @@ export class Shell {
           libelle: 'Caisse', description: 'Caisses, cuisine, salle et codes QR', roles: ['ADMIN', 'GERANT'], variante: 'RESTAURATION',
           enfants: [
             { libelle: 'Caisses', route: '/pdv/caisses', description: 'Caisses, affectations et historique' },
-            { libelle: 'Remises et coffre', route: '/pdv/tresorerie', description: 'Recettes des caissiers, coffre, compte de l\'entreprise', option: 'circuit' },
             { libelle: 'Postes et imprimantes', route: '/pdv/ecrans', description: 'Ecrans, imprimantes de cuisine, categories et personnel', variante: 'RESTAURATION' },
             { libelle: 'Salle et tables', route: '/pdv/plan-salle', description: 'Plan du restaurant et service', variante: 'RESTAURATION' },
             { libelle: 'Codes QR', route: '/pdv/codes-qr', description: 'Commande des clients depuis leur table', variante: 'RESTAURATION' }
           ]
         },
-        { libelle: 'Mon tableau de bord', route: '/pdv/tableau-associe', description: 'Ventes, marge et part de mes produits', roles: ['ASSOCIE'], option: 'associes' },
-        { libelle: 'Mon compte', route: '/pdv/mon-compte', description: 'Mon sous-compte, versements a valider, apports au fonds', roles: ['ASSOCIE'], option: 'associes' },
-        { libelle: 'Fonds de reserve', route: '/pdv/fonds-associe', description: 'Solde du fonds commun, mes apports et ses depenses', roles: ['ASSOCIE'], option: 'associes' },
+        // Un associe sans profil de gestion : ses trois ecrans, en haut du menu.
+        { libelle: 'Mon tableau de bord', route: '/pdv/tableau-associe', description: 'Ventes, marge et part de mes produits', roles: ['ASSOCIE'], sansRoles: ['ADMIN', 'GERANT'], option: 'associes' },
+        { libelle: 'Mon compte', route: '/pdv/mon-compte', description: 'Mon sous-compte, versements a valider, apports au fonds', roles: ['ASSOCIE'], sansRoles: ['ADMIN', 'GERANT'], option: 'associes' },
+        { libelle: 'Fonds de reserve', route: '/pdv/fonds-associe', description: 'Solde du fonds commun, mes apports et ses depenses', roles: ['ASSOCIE'], sansRoles: ['ADMIN', 'GERANT'], option: 'associes' },
         {
-          libelle: 'Associes', description: 'Benefices et versements des associes', roles: ['ADMIN', 'GERANT'], option: 'associes',
+          // Argent de l'entreprise hors caisse : coffre, fonds de reserve, associes (selon les options activees).
+          libelle: 'Tresorerie', description: 'Coffre, fonds de reserve et associes', roles: ['ADMIN', 'GERANT'],
           enfants: [
-            { libelle: 'Benefices associes', route: '/pdv/benefices', description: 'Part de chaque associe sur la marge de ses produits', roles: ['ADMIN'] },
-            { libelle: 'Versements aux associes', route: '/pdv/versements-associes', description: 'Depots en banque de leur part, valides par chaque associe' }
+            { libelle: 'Remises et coffre', route: '/pdv/tresorerie', description: 'Recettes des caissiers, coffre, compte de l\'entreprise', option: 'circuit' },
+            { libelle: 'Fonds de reserve', route: '/pdv/fonds-reserve', description: 'Apports des associes et de l\'entreprise, depenses payees par le fonds', option: 'reserve' },
+            { libelle: 'Benefices associes', route: '/pdv/benefices', description: 'Part de chaque associe sur la marge de ses produits', roles: ['ADMIN'], option: 'associes' },
+            { libelle: 'Versements aux associes', route: '/pdv/versements-associes', description: 'Depots en banque de leur part, valides par chaque associe', option: 'associes' },
+            // Gerant ou administrateur qui est aussi associe : son propre compte.
+            { libelle: 'Mon compte d\'associe', route: '/pdv/mon-compte', description: 'Ma part, mon sous-compte et mes apports au fonds', roles: ['ASSOCIE'], option: 'associes' }
           ]
         },
         { libelle: 'Rapports', route: '/pdv/rapports', description: 'Statistiques, exports et imports', roles: ['ADMIN', 'GERANT'] },
@@ -413,12 +424,13 @@ export class Shell {
       validation: this.optionsPdv.validationDepensesActive() || this.optionsPdv.fondsReserveActif(),
       reserve: this.optionsPdv.fondsReserveActif() };
     const varianteCourante = this.auth.variante('POINT_DE_VENTE') ?? '';
-    const autorise = (e: { roles?: Role[]; module?: CodeModule; variante?: string | string[]; sansModules?: CodeModule[];
+    const autorise = (e: { roles?: Role[]; sansRoles?: Role[]; module?: CodeModule; variante?: string | string[]; sansModules?: CodeModule[];
                            avecModules?: CodeModule[]; avecUnDesModules?: CodeModule[]; avecLieux?: boolean;
                            option?: 'associes' | 'circuit' | 'validation' | 'reserve' }) =>
       (!e.avecLieux || lieuxActifs) &&
       (!e.option || optionsActives[e.option]) &&
       (!e.roles || this.auth.aRole(...e.roles)) &&
+      (!e.sansRoles || !this.auth.aRole(...e.sansRoles)) &&
       (!e.sansModules || !e.sansModules.some((m) => this.auth.aModule(m))) &&
       (!e.avecModules || e.avecModules.every((m) => this.auth.aModule(m))) &&
       (!e.avecUnDesModules || e.avecUnDesModules.some((m) => this.auth.aModule(m))) &&
