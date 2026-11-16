@@ -160,8 +160,8 @@
             }
             @if (estRecharge()) {
               <div class="champ">
-                <label for="tx-carte">Numero de la carte</label>
-                <input id="tx-carte" name="carte" maxlength="30" inputmode="numeric" [(ngModel)]="carte"
+                <label for="tx-carte">Numero de la carte *</label>
+                <input id="tx-carte" name="carte" maxlength="30" inputmode="numeric" required [(ngModel)]="carte"
                        placeholder="4 derniers chiffres gardes" />
               </div>
             }

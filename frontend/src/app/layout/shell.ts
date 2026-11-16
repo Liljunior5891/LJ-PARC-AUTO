@@ -31,6 +31,8 @@ interface EntreeMenu {
   route?: string;
   /** Ligne d'explication affichee sous le libelle, dans le panneau de l'onglet. */
   description: string;
+  /** Explication montree au caissier d'agence seul (ni administrateur ni superviseur), quand elle differe. */
+  descriptionCaissier?: string;
   /** Visible seulement quand l'entreprise a un entrepot. */
   avecLieux?: boolean;
   /** Option du point de vente a activer dans ses reglages pour voir l'entree. */
@@ -246,6 +248,7 @@ export class Shell {
             { libelle: 'Reapprovisionnement', route: '/pdv/stock', description: 'Commandes, receptions, sorties et pertes' },
             { libelle: 'Depenses', route: '/pdv/depenses', description: 'Salaires, loyer, electricite, recurrentes' },
             { libelle: 'Depenses de caisse a valider', route: '/pdv/validations-caisse', description: 'Visa du gerant, puis approbation par l\'administrateur', option: 'validation' },
+            { libelle: 'Ventes hors ligne', route: '/pdv/hors-ligne', description: 'Ventes encaissees sans connexion, a regulariser ou a traiter', roles: ['ADMIN', 'GERANT'] },
             { libelle: 'Fonds de reserve', route: '/pdv/fonds-reserve', description: 'Part du benefice mise de cote et depenses payees par le fonds', option: 'reserve' }
           ]
         },
@@ -307,7 +310,8 @@ export class Shell {
           ]
         },
         { libelle: 'Cartes prepayees', route: '/agences/cartes', description: 'Vendre, recharger, stock et rentabilite' },
-        { libelle: 'Depenses', route: '/agences/depenses', description: 'Charges, suivi mensuel et charges recurrentes' },
+        { libelle: 'Depenses', route: '/agences/depenses', description: 'Charges, suivi mensuel et charges recurrentes',
+          descriptionCaissier: 'Petites depenses payees par votre petite caisse' },
         { libelle: 'Rapports', route: '/agences/rapports', description: 'Journalier a annuel, exports Excel, PDF, CSV', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'] },
         {
           libelle: 'Reglages', description: 'Baremes, services et droits des profils', roles: ['ADMIN', 'SUPERVISEUR_AGENCE'],
@@ -338,6 +342,7 @@ export class Shell {
         { libelle: 'Ma boutique', route: '/marketplace/boutique', description: 'Boutique en ligne : vitrine, livraison, paiement et lien', module: 'MARKETPLACE', avecUnDesModules: ['POINT_DE_VENTE', 'GESTION_PARC'], roles: ['ADMIN', 'GERANT', 'GESTIONNAIRE_PARC'] },
         { libelle: 'Utilisateurs', route: '/utilisateurs', description: 'Comptes et profils d\'acces', roles: ['ADMIN'] },
         { libelle: 'Parametrage', route: '/parametrage', description: 'Societe, logo et referentiels', roles: ['ADMIN'] },
+        { libelle: 'Notifications', route: '/notifications', description: 'Alertes recues sur WhatsApp et par e-mail', roles: ['ADMIN'] },
         { libelle: 'Mon abonnement', route: '/abonnement', description: 'Formule, echeance, paiements et factures', roles: ['ADMIN'] },
         { libelle: 'Journal d\'audit', route: '/journal-audit', description: 'Toute l\'entreprise : donnees et connexions', roles: ['ADMIN'] }
       ]
@@ -371,7 +376,8 @@ export class Shell {
       id: 'plateforme-journal', libelle: "Journal d'audit",
       entrees: [
         { libelle: 'Journal general', route: '/plateforme/journal', description: 'Actions de toutes les entreprises et de la plateforme' },
-        { libelle: 'Notifications', route: '/plateforme/notifications', description: 'E-mails, SMS et WhatsApp envoyes (ou simules)' }
+        { libelle: 'Notifications', route: '/plateforme/notifications', description: 'E-mails, SMS et WhatsApp envoyes (ou simules)' },
+        { libelle: 'WhatsApp (WAHA)', route: '/plateforme/whatsapp', description: 'Serveur WAHA, compte relie par code QR, essai' }
       ]
     },
     {
@@ -409,9 +415,11 @@ export class Shell {
       (!e.avecUnDesModules || e.avecUnDesModules.some((m) => this.auth.aModule(m))) &&
       (!e.module || this.auth.peutUtiliser(e.module)) &&
       (!e.variante || (Array.isArray(e.variante) ? e.variante.includes(varianteCourante) : e.variante === varianteCourante));
+    const caissierAgenceSeul = this.auth.aRole('CAISSIER_AGENCE') && !this.auth.aRole('ADMIN', 'SUPERVISEUR_AGENCE');
     const filtrer = (entrees: EntreeMenu[]): EntreeMenu[] =>
       entrees
         .filter(autorise)
+        .map((e) => (caissierAgenceSeul && e.descriptionCaissier ? { ...e, description: e.descriptionCaissier } : e))
         .map((e) => (e.enfants ? { ...e, enfants: e.enfants.filter(autorise) } : e))
         .filter((e) => !e.enfants || e.enfants.length > 0);
     return this.menu

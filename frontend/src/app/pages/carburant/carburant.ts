@@ -5,6 +5,7 @@ import { SyntheseCarburant } from '../../core/models/finance';
 import { Camion } from '../../core/models/models';
 import { CamionService } from '../../core/services/camion.service';
 import { CarburantService } from '../../core/services/carburant.service';
+import { datesDePeriode } from '../../shared/periodes';
 
 @Component({
   selector: 'app-carburant',
@@ -21,8 +22,8 @@ export class Carburant implements OnInit {
   readonly erreur = signal<string | null>(null);
 
   camionId?: number;
-  debut = this.premierJourDeLAnnee();
-  fin = this.aujourdhui();
+  debut = datesDePeriode('CE_MOIS').du;
+  fin = datesDePeriode('CE_MOIS').au;
 
   ngOnInit(): void {
     this.camionService.lister({ actif: true, size: 200 }).subscribe({
@@ -69,13 +70,5 @@ export class Carburant implements OnInit {
       return 0;
     }
     return Math.round((consommation / maximum) * 100);
-  }
-
-  private aujourdhui(): string {
-    return new Date().toISOString().slice(0, 10);
-  }
-
-  private premierJourDeLAnnee(): string {
-    return new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
   }
 }

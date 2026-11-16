@@ -6,6 +6,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { Page } from '../../core/models/models';
 import { JournalAuditService, LigneJournal, ReferentielsJournal } from '../../core/services/journal-audit.service';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
+import { datesDePeriode } from '../../shared/periodes';
 
 /** Modules du journal et leur libelle. */
 const MODULES: { valeur: string; libelle: string }[] = [
@@ -62,7 +63,7 @@ export class JournalAudit implements OnInit {
   titre = 'Journal d\'audit';
   modulesProposes = MODULES;
 
-  f = { module: '', action: '', objet: '', auteurId: null as number | null, du: '', au: '', recherche: '' };
+  f = { module: '', action: '', objet: '', auteurId: null as number | null, ...datesDePeriode('CE_MOIS'), recherche: '' };
 
   ngOnInit(): void {
     const donnees = this.route.snapshot.data as { modules?: string; titre?: string };

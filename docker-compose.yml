@@ -18,5 +18,28 @@ services:
       timeout: 5s
       retries: 5
 
+  # WhatsApp HTTP API (WAHA Core) : envoi des notifications WhatsApp. Le compte se relie par
+  # code QR depuis la console du super-administrateur (WhatsApp (WAHA)).
+  waha:
+    # Version figee : une mise a jour de WAHA se fait volontairement, apres essai.
+    image: devlikeapro/waha:2026.10.1
+    container_name: nova-waha
+    restart: unless-stopped
+    environment:
+      WAHA_API_KEY: ${WAHA_API_KEY:?definir WAHA_API_KEY dans .env}
+      # NOWEB : sans navigateur, leger.
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+      WAHA_PRINT_QR: "False"
+      # Tableau de bord et Swagger de WAHA coupes : tout passe par la console du super-administrateur.
+      # Pour un depannage ponctuel, les rallumer avec un mot de passe distinct de la cle d'API.
+      WAHA_DASHBOARD_ENABLED: "False"
+      WHATSAPP_SWAGGER_ENABLED: "False"
+    ports:
+      # Joignable depuis ce poste uniquement : l'API seule l'appelle.
+      - "127.0.0.1:3005:3000"
+    volumes:
+      - waha-sessions:/app/.sessions
+
 volumes:
   parcauto-data:
+  waha-sessions:

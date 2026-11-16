@@ -53,6 +53,26 @@ class StockServiceTest {
     }
 
     @Test
+    @DisplayName("Une vente faite hors ligne sort ce qui reste, sans passer sous zero, et renvoie le manque")
+    void sortieConstatee() {
+        BigDecimal manque = service.sortieConstatee(article, null, new BigDecimal("13"), "Commande hors ligne", 1L);
+        assertThat(manque).isEqualByComparingTo("3");
+        assertThat(article.getStockActuel()).isEqualByComparingTo("0");
+
+        // Plus rien en rayon : tout manque, rien n'est ecrit.
+        assertThat(service.sortieConstatee(article, null, new BigDecimal("2"), "Commande hors ligne", 2L)).isEqualByComparingTo("2");
+        assertThat(article.getStockActuel()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("Hors ligne non plus, une vente n'entame pas ce qui est reserve a un client")
+    void sortieConstateeRespecteLesReservations() {
+        article.setStockReserve(new BigDecimal("4"));
+        assertThat(service.sortieConstatee(article, null, new BigDecimal("8"), "Commande hors ligne", 1L)).isEqualByComparingTo("2");
+        assertThat(article.getStockActuel()).isEqualByComparingTo("4");
+    }
+
+    @Test
     @DisplayName("Un inventaire remplace le stock et enregistre l'ecart constate")
     void inventaire() {
         MouvementStock m = service.appliquer(article, TypeMouvementStock.INVENTAIRE, new BigDecimal("8"),

@@ -1,4 +1,4 @@
-# Audit de sécurité 8/13 : module GPS (LJ SAAS, branche saas)
+# Audit de sécurité 8/13 : module GPS (Nova, branche saas)
 
 Date : 2026-11-11. Périmètre : `backend/src/main/java/tg/parcauto/api/gps/**` (traceurs, réception publique par jeton, positions, trajets, géorepères, alertes, veille, diffusion STOMP), `config/WebSocketConfig.java`, `plateforme/tenant/DiffusionEntreprise.java`, et côté Angular `pages/carte-parc/*`, `shared/carte-camion.ts`, `shared/picto-vehicule.ts`, `core/services/gps.service.ts`.
 

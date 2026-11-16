@@ -132,6 +132,10 @@ public class DepenseAgenceService {
     public record Generation(String mois, List<DepenseDto> creees, List<String> dejaReglees) {
     }
 
+    /** Petite caisse de depenses du caissier dans une agence, et le plafond d'une depense. */
+    public record PetiteCaisse(Long compteId, String libelle, long solde, long plafond) {
+    }
+
     // ------------------------------------------------------------ categories
 
     public List<CategorieDto> categories() {
@@ -176,6 +180,9 @@ public class DepenseAgenceService {
                 .orElseThrow(() -> ResourceNotFoundException.of("Categorie", r.categorieId()));
         if (!categorie.isActif()) {
             throw new BusinessException("La categorie " + categorie.getNom() + " est desactivee");
+        }
+        if (r.recurrenteId() != null && caissierSeul()) {
+            throw new BusinessException("Les charges recurrentes (loyer, electricite...) sont reglees par le superviseur ou l'administrateur");
         }
         CompteAgence compte = compteDebite(agence, r.compteId(), r.montant(), auteur);
         DepenseAgence d = new DepenseAgence();
@@ -385,8 +392,8 @@ public class DepenseAgenceService {
     }
 
     /**
-     * Compte debite : la caisse ouverte pour un caissier (dans la limite du
-     * plafond), le compte choisi sinon.
+     * Compte debite : la petite caisse de depenses affectee au caissier (dans la
+     * limite du plafond), le compte choisi sinon.
      */
     private CompteAgence compteDebite(Agence agence, Long compteId, long montant, UtilisateurPrincipal auteur) {
         if (caissierSeul()) {
@@ -395,10 +402,9 @@ public class DepenseAgenceService {
                 throw new BusinessException("Une depense de caissier est limitee a " + RegistreService.francs(reglage.getPlafondDepenseCaissier())
                         + " : demandez a votre superviseur");
             }
-            var session = sessions.ouverte(agence.getId(), auteur.getId())
-                    .orElseThrow(() -> new BusinessException(sessions.motifSansCaisse(agence.getId(), agence.getNom(), auteur.getId())
-                            + " (une depense de caissier se paie depuis sa caisse)"));
-            return comptes.findById(session.getCompteId()).orElseThrow();
+            return petiteCaisseDe(agence.getId(), auteur.getId())
+                    .orElseThrow(() -> new BusinessException("Aucune petite caisse de depenses ne vous est affectee a "
+                            + agence.getNom() + " : demandez a l'administrateur de vous en ouvrir une"));
         }
         if (compteId == null) {
             throw new BusinessException("Choisissez le compte qui paie la depense");
@@ -411,6 +417,21 @@ public class DepenseAgenceService {
             throw new BusinessException("Le compte " + c.getLibelle() + " est desactive");
         }
         return c;
+    }
+
+    private java.util.Optional<CompteAgence> petiteCaisseDe(Long agenceId, Long caissierId) {
+        return comptes.findByAgenceIdIn(List.of(agenceId)).stream()
+                .filter(c -> c.getType() == TypeCompte.PETITE_CAISSE && c.isActif() && caissierId.equals(c.getUtilisateurId()))
+                .findFirst();
+    }
+
+    /** Petite caisse de depenses de l'utilisateur dans l'agence, nulle s'il n'en a pas. */
+    @Transactional(readOnly = true)
+    public PetiteCaisse petiteCaisse(Long agenceId, UtilisateurPrincipal u) {
+        Agence agence = perimetre.exiger(agenceId);
+        long plafond = reglages.findFirstByOrderByIdAsc().orElseGet(ReglageAgence::new).getPlafondDepenseCaissier();
+        return petiteCaisseDe(agence.getId(), u.getId())
+                .map(c -> new PetiteCaisse(c.getId(), c.getLibelle(), c.getSolde(), plafond)).orElse(null);
     }
 
     public DepenseDto annuler(Long id, String motif, UtilisateurPrincipal auteur) {
@@ -572,6 +593,7 @@ public class DepenseAgenceService {
 
     @Transactional(readOnly = true)
     public List<RecurrenteDto> recurrentes(Long agenceId, String mois) {
+        refuserAuCaissier();
         Agence agence = perimetre.exiger(agenceId);
         String periode = mois == null || mois.isBlank() ? YearMonth.from(registre.journee(Instant.now())).toString() : YearMonth.parse(mois).toString();
         Map<Long, String> noms = categories.findAll().stream().collect(Collectors.toMap(CategorieDepenseAgence::getId, CategorieDepenseAgence::getNom));
@@ -609,6 +631,7 @@ public class DepenseAgenceService {
      * encore, depuis le compte choisi. Lancee deux fois, elle ne cree rien de plus.
      */
     public Generation generer(Long agenceId, String mois, Long compteId, UtilisateurPrincipal auteur) {
+        refuserAuCaissier();
         Agence agence = perimetre.exiger(agenceId);
         YearMonth m = mois == null || mois.isBlank() ? YearMonth.from(registre.journee(Instant.now())) : YearMonth.parse(mois);
         List<DepenseDto> creees = new ArrayList<>();
@@ -655,6 +678,14 @@ public class DepenseAgenceService {
     static String libelleMois(YearMonth m) {
         String nom = m.getMonth().getDisplayName(TextStyle.FULL, Locale.FRANCE);
         return Character.toUpperCase(nom.charAt(0)) + nom.substring(1) + " " + m.getYear();
+    }
+
+    /** Le caissier ne fait que de petites depenses : les charges recurrentes ne le concernent pas. */
+    private static void refuserAuCaissier() {
+        if (caissierSeul()) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Les charges recurrentes sont reservees au superviseur et a l'administrateur");
+        }
     }
 
     private static boolean caissierSeul() {

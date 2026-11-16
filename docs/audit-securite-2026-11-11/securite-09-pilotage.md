@@ -1,4 +1,4 @@
-# Audit de sécurité 9/13 : PILOTAGE (LJ SAAS, branche saas)
+# Audit de sécurité 9/13 : PILOTAGE (Nova, branche saas)
 
 Date : 2026-11-11. Audit en lecture seule : aucun fichier du dépôt n'a été modifié, aucun build n'a été lancé.
 
@@ -42,12 +42,12 @@ Je n'ai fait aucun test authentifié. Une connexion écrit une ligne `CONNEXION`
 - **Gravité** : Moyenne. CVSS 3.1 indicatif : 6.5 (AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H). OWASP A04:2021 (conception non sûre), API4:2023 (consommation de ressources sans limite).
 - **Statut** : confirmé par lecture du code, non rejoué.
 - **Emplacements** :
-  - `D:\LJ SAAS\backend\src\main\java\tg\parcauto\api\pilotage\PilotageController.java:134` : `@RequestParam(required = false) List<Long> camionIds` est accepté tel quel ;
-  - `D:\LJ SAAS\backend\src\main\java\tg\parcauto\api\pilotage\RapportPdfService.java:175-188` : `camionsDetail` boucle sur chaque identifiant reçu ;
+  - `D:\Nova\backend\src\main\java\tg\parcauto\api\pilotage\PilotageController.java:134` : `@RequestParam(required = false) List<Long> camionIds` est accepté tel quel ;
+  - `D:\Nova\backend\src\main\java\tg\parcauto\api\pilotage\RapportPdfService.java:175-188` : `camionsDetail` boucle sur chaque identifiant reçu ;
   - `RapportPdfService.java:191-194` : chaque tour appelle `camionService.parId`, `pilotageService.ficheSynthese` **et** `rentabiliteService.ficheCamion` ;
   - `RapportPdfService.java:406-408` : `carburant` boucle de la même façon ;
-  - `D:\LJ SAAS\backend\src\main\java\tg\parcauto\api\pilotage\PilotageService.java:313-341` : `ficheSynthese` recharge **toute** la vue du parc (`tableauBordService.vueParc()` : tous les camions, affectations, missions et locations en cours), puis tous les documents à expirer et 100 alertes GPS, pour un seul véhicule ;
-  - `D:\LJ SAAS\backend\src\main\java\tg\parcauto\api\finance\rentabilite\RentabiliteService.java:104-108` : `ficheCamion` calcule les distances de **tout le parc** puis filtre sur un camion. Il lance aussi 5 sommes de revenus, les contrats et missions jour par jour, et 3 répartitions.
+  - `D:\Nova\backend\src\main\java\tg\parcauto\api\pilotage\PilotageService.java:313-341` : `ficheSynthese` recharge **toute** la vue du parc (`tableauBordService.vueParc()` : tous les camions, affectations, missions et locations en cours), puis tous les documents à expirer et 100 alertes GPS, pour un seul véhicule ;
+  - `D:\Nova\backend\src\main\java\tg\parcauto\api\finance\rentabilite\RentabiliteService.java:104-108` : `ficheCamion` calcule les distances de **tout le parc** puis filtre sur un camion. Il lance aussi 5 sommes de revenus, les contrats et missions jour par jour, et 3 répartitions.
 - **Description** : Spring convertit `camionIds=1,1,1,…` en liste. La limite d'en-tête de Tomcat (8 Ko, aucun réglage dans `application.yml`) laisse passer environ **4 000 identifiants**, éventuellement tous identiques. Aucun `distinct()` ni plafond n'existe : `LIGNES_MAX = 500` ne s'applique qu'à `tousLesCamions()`, quand la liste est vide. Chaque identifiant déclenche une quarantaine de requêtes SQL et deux parcours complets du parc. Le PDF entier (une page par identifiant) est assemblé en mémoire (`ByteArrayOutputStream` de `MiseEnPagePdf`).
 - **Scénario** : un gestionnaire de parc (rôle `GESTIONNAIRE_PARC`, pas besoin d'être admin) ou un jeton volé lance quelques requêtes en parallèle :
   `GET /api/pilotage/rapports-pdf/CAMIONS_DETAIL?debut=2021-11-12&fin=2026-11-11&camionIds=7,7,7,…(≈4000 fois)`.
@@ -74,7 +74,7 @@ Je n'ai fait aucun test authentifié. Une connexion écrit une ligne `CONNEXION`
 
 - **Gravité** : Faible. CVSS indicatif : 4.3 (A:L). OWASP API4:2023.
 - **Statut** : confirmé par le code.
-- **Emplacement** : `D:\LJ SAAS\backend\src\main\java\tg\parcauto\api\pilotage\PilotageService.java:276-292`.
+- **Emplacement** : `D:\Nova\backend\src\main\java\tg\parcauto\api\pilotage\PilotageService.java:276-292`.
 - **Description** : `kpi()` appelle `rentabiliteService.ficheCamion(...)` (une vingtaine de requêtes, plus les distances de tout le parc) et `carburantService.synthese(...)` pour **chaque** véhicule, juste pour en tirer le taux d'utilisation et la consommation. Pour 300 véhicules sur 5 ans, cela fait environ 7 000 requêtes et 300 parcours complets des distances par appel de `/api/pilotage/kpi`. Le volume est borné par la taille de la flotte de l'entreprise, d'où la gravité faible. Mais l'écran Direction peut être rafraîchi en boucle, et `RapportPdfService.ficheCamion` (M1) reprend ce même chemin.
 - **Correctif** : calculer en une requête groupée le taux d'utilisation (jours couverts par contrats et missions) et la consommation (litres et distance par camion), comme le fait déjà `RentabiliteService.global`. Mettre en cache 1 à 5 minutes par entreprise et par période.
 
@@ -82,7 +82,7 @@ Je n'ai fait aucun test authentifié. Une connexion écrit une ligne `CONNEXION`
 
 - **Gravité** : Faible. CVSS indicatif : 2.7. OWASP A03 (motif `LIKE`), API4.
 - **Statut** : confirmé par le code.
-- **Emplacement** : `D:\LJ SAAS\backend\src\main\java\tg\parcauto\api\common\audit\JournalActiviteService.java:74-77` (fragment `lister`, lignes du fichier : `motif = "%" + recherche + "%"`). Voir aussi `JournalActiviteRepository.java:9-14` : `select distinct` sur toute la table pour les référentiels.
+- **Emplacement** : `D:\Nova\backend\src\main\java\tg\parcauto\api\common\audit\JournalActiviteService.java:74-77` (fragment `lister`, lignes du fichier : `motif = "%" + recherche + "%"`). Voir aussi `JournalActiviteRepository.java:9-14` : `select distinct` sur toute la table pour les référentiels.
 - **Description** : les jokers `%` et `_` saisis ne sont pas échappés. Ce n'est pas une injection SQL : le critère est paramétré, et le cloisonnement `@TenantId` s'applique, donc aucune fuite entre entreprises. En revanche, `lower(description) like '%…%'` et les deux `distinct` relisent tout le journal de l'entreprise. Or ce journal ne fait que grossir, puisqu'il est immuable. Les paramètres `du` et `au` sont facultatifs et rien ne borne la période. Il faut le rôle ADMIN, d'où la gravité faible.
 - **Correctif** :
   - échapper `\`, `%` et `_` puis utiliser `cb.like(..., motif, '\\')` ;
@@ -94,7 +94,7 @@ Je n'ai fait aucun test authentifié. Une connexion écrit une ligne `CONNEXION`
 
 - **Gravité** : Faible (défense en profondeur). OWASP A09:2021.
 - **Statut** : constat de conception. **Aucune fuite actuelle constatée.**
-- **Emplacement** : `D:\LJ SAAS\backend\src\main\java\tg\parcauto\api\common\audit\EcouteurAudit.java:68-70` et `:299-300`.
+- **Emplacement** : `D:\Nova\backend\src\main\java\tg\parcauto\api\common\audit\EcouteurAudit.java:68-70` et `:299-300`.
 - **Description** : le masquage repose sur une liste figée de noms : `motDePasse`, `pinHash`, `pin`, `token`, `secret`, `cleApi`, `secretQr`, `jeton`, `jetonEmpreinte`, `codeAppairage`, `pinEmpreinte`. J'ai vérifié tous les champs `String` des entités au nom sensible. Les champs secrets présents aujourd'hui sont couverts. `jetonPublic` (`presence/LieuPresence.java:44`) est un identifiant public de QR, et `cle` (`OperationHorsLigne`, `RemiseHorsLigne`) est une clé d'idempotence, pas un secret. Mais un futur champ (`cleSecrete`, `jetonGps`, `motDePasseProvisoire`, `secretWebhook`…) apparaîtrait **en clair** dans le journal. Ce journal est immuable : une fois écrit, il est impossible de purger le secret.
 - **Correctif** : créer une annotation `@Secret` (ou `@NonJournalise`) posée sur les champs, lue par `EcouteurAudit`. Ajouter une règle de repli par motif (`(?i).*(motdepasse|password|secret|token|jeton|pin|cle(api|secrete)|hash|empreinte).*`, sauf liste blanche comme `jetonPublic`), et un test qui parcourt les entités et échoue sur tout nom suspect non annoté.
 
@@ -115,7 +115,7 @@ Je n'ai fait aucun test authentifié. Une connexion écrit une ligne `CONNEXION`
 
 ### I3. Aperçu PDF : type du blob non forcé
 
-- **Emplacement** : `D:\LJ SAAS\frontend\src\app\pages\rapports\rapports.ts:150-154`.
+- **Emplacement** : `D:\Nova\frontend\src\app\pages\rapports\rapports.ts:150-154`.
 - **Description** : `URL.createObjectURL(fichier)` est passé à `bypassSecurityTrustResourceUrl` et affiché en iframe. Le type du blob vient de l'en-tête de réponse. Aujourd'hui, seule une réponse 200 avec `application/pdf` y arrive (les erreurs passent par `error`). Si un proxy ou une erreur renvoyait un jour du HTML en 200, ce HTML s'exécuterait dans l'origine de l'application.
 - **Correctif** : `new Blob([fichier], { type: 'application/pdf' })` avant `createObjectURL`, et vérifier `fichier.type` au préalable.
 
@@ -126,7 +126,7 @@ Je n'ai fait aucun test authentifié. Une connexion écrit une ligne `CONNEXION`
 
 ### I5. Dépendance OpenPDF 2.0.3
 
-- **Emplacement** : `D:\LJ SAAS\backend\pom.xml:86-90`.
+- **Emplacement** : `D:\Nova\backend\pom.xml:86-90`.
 - **Description** : je n'ai pas trouvé de CVE exploitable dans l'usage fait ici (génération seule, aucun PDF ni HTML d'entrée analysé). À garder dans la veille des dépendances.
 
 ---

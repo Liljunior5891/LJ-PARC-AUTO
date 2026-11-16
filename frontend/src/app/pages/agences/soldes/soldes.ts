@@ -2,12 +2,13 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { CompteAgence, EtatSoldes, FamilleCompte, LigneRegistre, RequeteCompte, SoldesAgence, TypeCompte, VerificationSolde, ServiceFinancier } from '../../../core/models/agences';
+import { Agence, CompteAgence, EtatSoldes, FamilleCompte, LigneRegistre, RequeteCompte, SoldesAgence, TypeCompte, VerificationSolde, ServiceFinancier } from '../../../core/models/agences';
 import { Page } from '../../../core/models/models';
 import { AgencesService } from '../../../core/services/agences.service';
 import { LogoService } from '../../../shared/logo-service';
 import { Modale } from '../../../shared/modale';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
+import { datesDePeriode } from '../../../shared/periodes';
 
 const FAMILLES: Record<FamilleCompte, string> = {
   CASH: 'Cash',
@@ -59,8 +60,8 @@ export class SoldesAgences implements OnInit {
   readonly compteRegistre = signal<CompteAgence | null>(null);
   readonly lignes = signal<Page<LigneRegistre> | null>(null);
   private readonly suite = new SuiteDePages();
-  filtreDu = '';
-  filtreAu = '';
+  filtreDu = datesDePeriode('CE_MOIS').du;
+  filtreAu = datesDePeriode('CE_MOIS').au;
   jourReconstitue = '';
   readonly soldeReconstitue = signal<{ jour: string; solde: number } | null>(null);
 
@@ -76,6 +77,13 @@ export class SoldesAgences implements OnInit {
   formulaireCompte: RequeteCompte & { type: TypeCompte } = { type: 'BANQUE' };
 
   readonly verification = signal<VerificationSolde[] | null>(null);
+
+  /** Agences avec leur personnel, pour affecter une petite caisse a un caissier. */
+  private readonly agencesDetail = signal<Agence[]>([]);
+  /** Agence du compte en cours de saisie : l'agence affichee, ou celle choisie dans le formulaire (vue de toutes les agences). */
+  readonly agenceFormulaire = signal<number | null>(null);
+  readonly caissiersAgence = computed(() => (this.agencesDetail().find((a) => a.id === this.agenceFormulaire())?.utilisateurs ?? [])
+    .filter((m) => m.actif && m.codes.includes('CAISSIER_AGENCE')));
 
   ngOnInit(): void {
     this.service.catalogue().subscribe({ next: (c) => this.catalogueLogos.set(c) });
@@ -139,8 +147,7 @@ export class SoldesAgences implements OnInit {
   ouvrirRegistre(compte: CompteAgence): void {
     this.compteRegistre.set(compte);
     this.lignes.set(null);
-    this.filtreDu = '';
-    this.filtreAu = '';
+    ({ du: this.filtreDu, au: this.filtreAu } = datesDePeriode('CE_MOIS'));
     this.jourReconstitue = '';
     this.soldeReconstitue.set(null);
     this.chargerRegistre();
@@ -218,8 +225,11 @@ export class SoldesAgences implements OnInit {
   }
 
   // -------------------------------------------------------------- comptes
-  nouveauCompte(): void {
-    this.formulaireCompte = { type: 'BANQUE', libelle: '', banque: '', numeroCompte: '', decouvertAutorise: 0, bloque: false };
+  nouveauCompte(type: TypeCompte = 'BANQUE'): void {
+    this.formulaireCompte = { type, libelle: '', banque: '', numeroCompte: '', decouvertAutorise: 0, bloque: false, utilisateurId: null };
+    const agences = (this.service.moi()?.agences ?? []).filter((a) => a.actif);
+    this.agenceFormulaire.set(this.agence()?.id ?? (agences.length === 1 ? agences[0].id : null));
+    this.chargerPersonnel();
     this.erreurModale.set(null);
     this.compteEdite.set('nouveau');
   }
@@ -227,16 +237,21 @@ export class SoldesAgences implements OnInit {
   modifierCompte(c: CompteAgence): void {
     this.formulaireCompte = {
       type: c.type, libelle: c.libelle, banque: c.banque ?? '', numeroCompte: c.numeroCompte ?? '',
-      decouvertAutorise: c.decouvertAutorise, bloque: c.bloque, actif: c.actif, seuilAlerte: c.seuilAlerte ?? null
+      decouvertAutorise: c.decouvertAutorise, bloque: c.bloque, actif: c.actif, seuilAlerte: c.seuilAlerte ?? null,
+      utilisateurId: c.utilisateurId ?? null
     };
+    this.agenceFormulaire.set(c.agenceId);
+    if (c.type === 'PETITE_CAISSE') {
+      this.chargerPersonnel();
+    }
     this.erreurModale.set(null);
     this.compteEdite.set(c);
   }
 
   enregistrerCompte(): void {
     const edition = this.compteEdite();
-    const agence = this.agence();
-    if (!edition || !agence) {
+    const agenceId = this.agenceFormulaire();
+    if (!edition || !agenceId) {
       return;
     }
     const f = this.formulaireCompte;
@@ -244,9 +259,10 @@ export class SoldesAgences implements OnInit {
       type: f.type, libelle: f.libelle?.trim(), banque: f.banque?.trim() || undefined,
       numeroCompte: f.numeroCompte?.trim() || undefined, decouvertAutorise: Math.max(0, Math.round(f.decouvertAutorise ?? 0)),
       bloque: !!f.bloque, actif: edition === 'nouveau' ? true : f.actif,
-      seuilAlerte: f.seuilAlerte == null || (f.seuilAlerte as unknown) === '' ? null : Math.max(0, Math.round(f.seuilAlerte))
+      seuilAlerte: f.seuilAlerte == null || (f.seuilAlerte as unknown) === '' ? null : Math.max(0, Math.round(f.seuilAlerte)),
+      utilisateurId: f.type === 'PETITE_CAISSE' ? f.utilisateurId : undefined
     };
-    const appel = edition === 'nouveau' ? this.service.creerCompte(agence.id, requete) : this.service.modifierCompte(edition.id, requete);
+    const appel = edition === 'nouveau' ? this.service.creerCompte(agenceId, requete) : this.service.modifierCompte(edition.id, requete);
     appel.subscribe({
       next: (c) => {
         this.compteEdite.set(null);
@@ -255,6 +271,12 @@ export class SoldesAgences implements OnInit {
       },
       error: (e) => this.erreurModale.set(this.message(e, 'Enregistrement impossible.'))
     });
+  }
+
+  private chargerPersonnel(): void {
+    if (!this.agencesDetail().length) {
+      this.service.agences().subscribe({ next: (l) => this.agencesDetail.set(l) });
+    }
   }
 
   // --------------------------------------------------------- verification

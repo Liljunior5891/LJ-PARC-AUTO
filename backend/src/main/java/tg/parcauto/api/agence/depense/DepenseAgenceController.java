@@ -127,6 +127,14 @@ public class DepenseAgenceController {
                 () -> service.creer(r, principal), DepenseAgenceService.DepenseDto::numero);
     }
 
+    @GetMapping("/petite-caisse")
+    @PreAuthorize("@droitsAgence.a('DEPENSE_SAISIR')")
+    @Operation(summary = "Ma petite caisse de depenses dans l'agence (vide si aucune ne m'est affectee)")
+    public DepenseAgenceService.PetiteCaisse petiteCaisse(@RequestParam Long agenceId,
+                                                          @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.petiteCaisse(agenceId, principal);
+    }
+
     @GetMapping("/a-valider")
     @PreAuthorize("@droitsAgence.a('DEPENSE_VALIDER')")
     @Operation(summary = "Depenses payees par la caisse qui attendent ma validation (visa du superviseur, approbation de l'administrateur)")

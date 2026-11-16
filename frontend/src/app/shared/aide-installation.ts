@@ -8,7 +8,7 @@ import { Modale } from './modale';
   imports: [Modale],
   template: `
     @if (installation.aideIos()) {
-      <app-modale titre="Installer LJ SaaS sur l'iPhone" largeur="460px" (ferme)="installation.aideIos.set(false)">
+      <app-modale titre="Installer Nova sur l'iPhone" largeur="460px" (ferme)="installation.aideIos.set(false)">
         <ol class="etapes">
           <li>Ouvrez cette page dans <strong>Safari</strong>.</li>
           <li>Touchez le bouton <strong>Partager</strong> <span class="symbole" aria-hidden="true">⎋</span>

@@ -14,7 +14,7 @@ import { AideInstallation } from './shared/aide-installation';
   styleUrl: './app.scss'
 })
 export class App {
-  protected readonly titre = 'PARC AUTO';
+  protected readonly titre = 'Nova';
 
   constructor() {
     // Toutes les listes deroulantes passent par Select2 des le premier rendu.

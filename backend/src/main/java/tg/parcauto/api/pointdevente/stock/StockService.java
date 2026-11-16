@@ -175,6 +175,22 @@ public class StockService {
         return ecrire(article, cible, type, quantite, coutUnitaire, motif, venteId);
     }
 
+    /**
+     * Vente deja faite (encaissee hors ligne) : elle sort ce qui est disponible,
+     * sans jamais passer sous zero ni entamer les reservations, et renvoie la
+     * quantite qui manquait, a regulariser par le gerant (reception oubliee, inventaire).
+     */
+    public BigDecimal sortieConstatee(Article article, LieuStock lieu, BigDecimal quantite, String motif, Long venteId) {
+        LieuStock cible = lieux.cible(lieu);
+        BigDecimal disponible = (cible == null ? article.stockDisponible() : lieux.ligne(cible, article).disponible())
+                .max(BigDecimal.ZERO);
+        BigDecimal sortie = quantite.min(disponible);
+        if (sortie.signum() > 0) {
+            ecrire(article, cible, TypeMouvementStock.VENTE, sortie, null, motif, venteId);
+        }
+        return quantite.subtract(sortie);
+    }
+
     /** Vente non remise tout de suite : la marchandise reste en magasin, reservee au client. */
     public void reserver(Article article, BigDecimal quantite) {
         reserver(article, null, quantite);

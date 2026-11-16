@@ -61,7 +61,7 @@ public class CatalogueService {
     /** Catalogue complet des articles actifs, charge une fois par l'ecran de caisse. */
     @Transactional(readOnly = true)
     public List<CatalogueDto.ArticleReponse> catalogueCaisse() {
-        return articleRepository.catalogueCaisse().stream().map(CatalogueDto.ArticleReponse::de).toList();
+        return articleRepository.catalogueCaisse().stream().map(CatalogueDto.ArticleReponse::pourCaisse).toList();
     }
 
     @Transactional(readOnly = true)

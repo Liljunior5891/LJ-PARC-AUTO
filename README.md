@@ -1,4 +1,4 @@
-# LJ SaaS
+# Nova
 
 Plateforme SaaS de gestion pour entreprises. Chaque entreprise crée son compte
 en libre-service, active les modules dont elle a besoin et travaille sur ses
@@ -145,12 +145,35 @@ L'application est servie sur `http://localhost:4200`.
 | `PROXIES_DE_CONFIANCE` | `127\.0\.0\.1\|0:0:0:0:0:0:0:1` | Expression des adresses des proxys inverses dont l'en-tête `X-Forwarded-For` est cru (adresse IP du journal et des limiteurs) |
 | `SWAGGER_ACTIF` | `false` | `true` ouvre `/v3/api-docs` et Swagger UI (développement uniquement) |
 | `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | vides | Serveur SMTP des e-mails (ajouter `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true`). Sans serveur, les e-mails sont simules et se lisent dans la console (Notifications) |
-| `MAIL_EXPEDITEUR`, `MAIL_NOM_EXPEDITEUR` | `no-reply@lj-saas.local`, `LJ SaaS` | Expediteur des e-mails |
+| `MAIL_EXPEDITEUR`, `MAIL_NOM_EXPEDITEUR` | `no-reply@nova.local`, `Nova` | Expediteur des e-mails |
 | `URL_APPLICATION` | `http://localhost:4300` | Adresse publique du site, pour les liens envoyes par e-mail |
 | `DEUX_FACTEURS_SUPER_ADMIN` | `true` | Double authentification (application d'authentification) imposee au super-administrateur. `false` seulement sur un poste de developpement |
 | `DEUX_FACTEURS_CLE` | cle des jetons | Cle de chiffrement des secrets de double authentification ; la definir des le depart (la changer ensuite oblige a reactiver la double authentification) |
 | `PAYGATE_AUTH_TOKEN` | vide | Cle API de PayGate Global (espace marchand). Renseignee : les entreprises paient leur abonnement en ligne par T-Money ou Flooz. Adresse de rappel a declarer chez PayGate : `https://<domaine>/api/public/paygate/abonnements` |
 | `NIVEAU_LOG` | `INFO` | Niveau des journaux de l'application (`DEBUG` en développement) |
+
+### Notifications WhatsApp (WAHA)
+
+Les messages WhatsApp partent par [WAHA](https://waha.devlike.pro) (WhatsApp HTTP API), un serveur
+auto-heberge qui pilote un compte WhatsApp relie par code QR. Lancement (service `waha` du
+`docker-compose.yml`, cle dans `.env`) :
+
+```bash
+# .env : WAHA_API_KEY=<longue cle aleatoire>
+docker compose up -d waha        # API sur http://127.0.0.1:3005 (poste local uniquement)
+```
+
+Puis, dans la console du super-administrateur, **Journal d'audit > WhatsApp (WAHA)** : adresse,
+cle d'API et session (`default` en version Core), **Demarrer** puis scanner le code QR depuis
+WhatsApp (Reglages > Appareils connectes), message d'essai, et enfin **Envoyer vraiment les
+messages**. Desactive, les messages sont simules et se lisent dans **Notifications**.
+
+Chaque administrateur d'entreprise choisit, type par type, ce qu'il recoit sur WhatsApp (numero
+donne a l'inscription) et par e-mail : **Administration > Notifications** (compte, abonnement,
+validations, stock, ecarts de caisse, ventes hors ligne, commandes en ligne, GPS, echeances du
+parc, resume du soir). Une veille relit les tables toutes les 2 minutes (stock : toutes les heures
+de 8 h a 19 h) et n'envoie chaque evenement qu'une fois. Utiliser de preference un numero
+WhatsApp dedie : WhatsApp peut bloquer un compte qui envoie en masse.
 
 ## Périmètre livré
 

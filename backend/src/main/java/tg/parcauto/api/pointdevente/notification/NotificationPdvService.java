@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class NotificationPdvService {
 
-    public enum Type { VALIDATION, APPEL, ADDITION, PRET, BON, CAISSE, RETRAIT, TRANSFERT }
+    public enum Type { VALIDATION, APPEL, ADDITION, PRET, BON, CAISSE, RETRAIT, TRANSFERT, HORS_LIGNE }
 
     public record Evenement(String cle, Type type, String titre, String message, String lien, Instant date) {
     }
@@ -71,6 +71,7 @@ public class NotificationPdvService {
     private final RemiseHorsLigneRepository remises;
     private final tg.parcauto.api.pointdevente.depense.DepensePdvRepository depenses;
     private final tg.parcauto.api.pointdevente.caisse.SortieAttenteRepository sortiesAttente;
+    private final tg.parcauto.api.pointdevente.horsligne.VenteHorsLignePdvRepository ventesHorsLigne;
 
     public List<Evenement> pour(UtilisateurPrincipal u) {
         List<Evenement> evenements = new ArrayList<>();
@@ -99,11 +100,28 @@ public class NotificationPdvService {
             preparation(u, evenements);
         }
         depensesDeCaisse(u, evenements);
+        if (aRole(u, Role.ADMIN, Role.GERANT)) {
+            horsLigne(evenements);
+        }
         if (aRole(u, Role.ADMIN, Role.GERANT, Role.MAGASINIER) && lieux.actif()) {
             magasins(u, evenements);
         }
         evenements.sort(Comparator.comparing(Evenement::date, Comparator.nullsLast(Comparator.reverseOrder())));
         return evenements;
+    }
+
+    /** Ventes faites sans connexion : conflits a traiter, stock manquant ou prix different a regulariser. */
+    private void horsLigne(List<Evenement> sortie) {
+        for (var v : ventesHorsLigne.findByStatutOrderBySaisieLeAsc(tg.parcauto.api.pointdevente.horsligne.VenteHorsLignePdv.Statut.CONFLIT)) {
+            sortie.add(new Evenement("hors-ligne-conflit-" + v.getId(), Type.HORS_LIGNE, "Vente hors ligne a traiter",
+                    v.getNumeroProvisoire() + " · " + entier(v.getTotal()) + " F · " + v.getCaissierNom() + " · " + v.getMessage(),
+                    "/pdv/hors-ligne", v.getSaisieLe()));
+        }
+        for (var v : ventesHorsLigne.aRegulariser(Instant.now().minus(3, ChronoUnit.DAYS))) {
+            String detail = v.getManques() != null ? "Stock manquant : " + v.getManques() : "Prix : " + v.getEcartsPrix();
+            sortie.add(new Evenement("hors-ligne-regulariser-" + v.getId(), Type.HORS_LIGNE, "Vente hors ligne a regulariser",
+                    v.getNumeroProvisoire() + " · " + detail, "/pdv/hors-ligne", v.getSaisieLe()));
+        }
     }
 
     /**

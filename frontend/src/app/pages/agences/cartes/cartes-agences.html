@@ -230,8 +230,8 @@
           <input id="montant" name="montant" type="number" min="1" step="1" [(ngModel)]="fr.montant" (ngModelChange)="recalculer()" />
         </div>
         <div class="champ">
-          <label for="carte">Numero de la carte</label>
-          <input id="carte" name="carte" maxlength="30" inputmode="numeric" [(ngModel)]="fr.carte" placeholder="Seuls les 4 derniers chiffres sont gardes" />
+          <label for="carte">Numero de la carte *</label>
+          <input id="carte" name="carte" maxlength="30" inputmode="numeric" required [(ngModel)]="fr.carte" placeholder="Seuls les 4 derniers chiffres sont gardes" />
         </div>
         <div class="champ">
           <label for="ref">Reference operateur</label>
@@ -259,7 +259,8 @@
       }
       <div class="actions-formulaire">
         <button class="bouton secondaire annuler" type="button" (click)="recharge.set(false)">Annuler</button>
-        <button class="bouton" type="submit" [disabled]="!apercu() || !!apercu()?.blocages?.length">Recharger</button>
+        <button class="bouton" type="submit" [disabled]="!apercu() || !!apercu()?.blocages?.length || !carteValide(fr.carte)"
+                [title]="carteValide(fr.carte) ? '' : 'Saisissez le numero de la carte'">Recharger</button>
       </div>
     </form>
   </app-modale>

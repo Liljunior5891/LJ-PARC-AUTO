@@ -6,7 +6,7 @@ import { PresenceService } from '../../../core/services/presence.service';
 import { ClavierPin } from '../clavier-pin';
 import { HistoriqueEmploye } from '../historique-employe';
 
-const CLE_JETON = 'lj-borne-presence';
+const CLE_JETON = 'nova-borne-presence';
 /** Retour automatique a l'ecran du code QR apres un pointage ou un historique. */
 const RETOUR_RESULTAT = 6000;
 const RETOUR_HISTORIQUE = 30000;

@@ -1,4 +1,4 @@
-# Audit sécurité 7/13 — Module MAINTENANCE (LJ SAAS, branche saas)
+# Audit sécurité 7/13 — Module MAINTENANCE (Nova, branche saas)
 
 Date : 2026-11-11. Audit uniquement : aucun fichier du dépôt n'a été modifié, rien n'a été écrit dans la base, l'API 8085 n'a pas été relancée.
 

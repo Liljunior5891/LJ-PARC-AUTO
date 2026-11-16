@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { SessionCaisse } from '../models/pdv';
 import { PdvService } from './pdv.service';
+import { PdvHorsLigneService } from './pdv-hors-ligne.service';
 
 const CLE_CHOIX = 'pdv.session-caisse';
 
@@ -13,6 +14,7 @@ const CLE_CHOIX = 'pdv.session-caisse';
 @Injectable({ providedIn: 'root' })
 export class SessionTravailService {
   private readonly pdv = inject(PdvService);
+  private readonly horsLigne = inject(PdvHorsLigneService);
 
   /** Sessions ouvertes a l'utilisateur ; indefini tant qu'elles ne sont pas lues. */
   readonly ouvertes = signal<SessionCaisse[] | undefined>(undefined);
@@ -31,7 +33,8 @@ export class SessionTravailService {
   readonly choixRequis = computed(() => (this.ouvertes()?.length ?? 0) > 1 && !this.courante());
 
   rafraichir(): void {
-    this.pdv.sessionsOuvertes().subscribe({
+    // Gardees sur l'appareil : sans connexion, la caisse sait encore sur quelle session elle vend.
+    this.horsLigne.avecCopie('sessions', this.pdv.sessionsOuvertes()).subscribe({
       next: (s) => this.ouvertes.set(s),
       error: () => this.ouvertes.set(this.ouvertes() ?? [])
     });

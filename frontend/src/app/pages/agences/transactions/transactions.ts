@@ -10,6 +10,7 @@ import { MaCaisseAgence } from '../caisses/ma-caisse-agence';
 import { Modale } from '../../../shared/modale';
 import { FormulaireTransaction } from './formulaire-transaction';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
+import { datesDePeriode } from '../../../shared/periodes';
 
 /**
  * Historique des transactions avec recherche et filtres (periode, service,
@@ -40,7 +41,7 @@ export class TransactionsAgences implements OnInit {
   readonly erreurModale = signal<string | null>(null);
   private readonly suite = new SuiteDePages();
 
-  f: FiltresTransactions = { du: this.jour(0), au: this.jour(0), statut: '' };
+  f: FiltresTransactions = { ...datesDePeriode('CE_MOIS'), statut: '' };
   readonly serviceFiltre = computed(() => this.catalogue().find((s) => s.id === this.serviceFiltreId()));
   private readonly serviceFiltreId = signal<number | null>(null);
 
@@ -89,7 +90,7 @@ export class TransactionsAgences implements OnInit {
   }
 
   /** Periode choisie dans la liste, comme au PDV ; « Entre deux dates » montre les deux dates. */
-  portee = 'AUJOURDHUI';
+  portee = 'MOIS';
   readonly portees = [
     { valeur: 'AUJOURDHUI', libelle: 'Aujourd\'hui' },
     { valeur: 'HIER', libelle: 'Hier' },

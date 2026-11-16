@@ -1,4 +1,4 @@
-# Audit sécurité LJ SAAS, module 1/13 : le socle
+# Audit sécurité Nova, module 1/13 : le socle
 
 - **Date** : 2026-11-11
 - **Branche** : `saas` (dernier commit 4698cb4)
@@ -71,7 +71,7 @@ Légende : **[CONFIRMÉ]** = prouvé par un test ou sans ambiguïté dans le cod
   3. Dans `JwtService` :
      - générer avec `.signWith(key, Jwts.SIG.HS512)` ;
      - parser avec `Jwts.parser().verifyWith(key).sig().add(Jwts.SIG.HS512)…`, ou vérifier `header.getAlgorithm()` ;
-     - ajouter `.issuer("lj-saas")` et `.audience().add("lj-saas-api")`, et les exiger à la lecture (`requireIssuer`, `requireAudience`) ;
+     - ajouter `.issuer("nova")` et `.audience().add("nova-api")`, et les exiger à la lecture (`requireIssuer`, `requireAudience`) ;
      - n'accepter que les clés d'au moins 64 octets aléatoires (`openssl rand -base64 64`).
   4. Utiliser une clé distincte par environnement (8083, 8085, production), pour qu'un jeton de test ne soit pas rejouable ailleurs.
   5. Changer l'adresse par défaut du super-admin (`PLATEFORME_ADMIN_EMAIL` obligatoire).
@@ -119,7 +119,7 @@ Légende : **[CONFIRMÉ]** = prouvé par un test ou sans ambiguïté dans le cod
 
 - **OWASP** : A04 Insecure Design / A07. CVSS indicatif 5,7 (accès physique au poste).
 - **Emplacements** :
-  - `frontend/src/app/core/services/verrou.service.ts:63-77` : empreinte `SHA-256("lj-saas:" + id + ":" + email + ":" + pin)` stockée dans `localStorage['pin.empreinte.<id>']` ;
+  - `frontend/src/app/core/services/verrou.service.ts:63-77` : empreinte `SHA-256("nova:" + id + ":" + email + ":" + pin)` stockée dans `localStorage['pin.empreinte.<id>']` ;
   - `verrou.service.ts:102-119` : l'état « déverrouillé » est `sessionStorage['pdv.caisse.deverrouillee']='1'` ;
   - `auth.service.ts:207-209` : `logout()` ne supprime pas l'empreinte du PIN ;
   - `backend/.../security/PinController.java:225-230` : la vérification du PIN ne pose aucun état côté serveur ; les endpoints de caisse ne le contrôlent pas.

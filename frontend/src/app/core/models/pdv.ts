@@ -394,6 +394,8 @@ export interface Encaissement {
   clientId?: number | null;
   credit?: boolean;
   acompte?: number | null;
+  /** Cle de la vente, reprise par sa copie hors ligne si la reponse se perd. */
+  cleHorsLigne?: string;
 }
 
 export interface LigneTicket {

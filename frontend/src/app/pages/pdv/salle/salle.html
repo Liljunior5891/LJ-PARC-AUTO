@@ -11,6 +11,7 @@
       }
     </p>
   </div>
+
   <div class="actions-entete">
     <button class="bouton secondaire" type="button" [disabled]="salleFermee()" (click)="ouvrirComptoir()">+ Comptoir / a emporter</button>
   </div>
@@ -19,6 +20,12 @@
 <div class="bandeau-salle">
   <app-bandeau-session />
 </div>
+
+@if (!horsLigne.enLigne()) {
+  <div class="message avertissement">📴 Pas de connexion : le plan de salle, les tables et la cuisine attendent le serveur.
+    <a routerLink="/pdv/caisse" [queryParams]="{ horsLigne: 1 }">Encaisser au comptoir hors ligne</a>
+    (especes, bon de cuisine imprime sur cet appareil).</div>
+}
 
 @if (erreur() && !ouverture()) {
   <div class="message erreur">{{ erreur() }}</div>

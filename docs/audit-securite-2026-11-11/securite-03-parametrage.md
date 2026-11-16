@@ -1,4 +1,4 @@
-# Audit sécurité LJ SAAS — module 3/13 : PARAMÉTRAGE
+# Audit sécurité Nova — module 3/13 : PARAMÉTRAGE
 
 Date : 2026-11-11 — branche `saas` — périmètre : `tg.parcauto.api.parametrage` (identité de l'entreprise, logo, format, TVA), comptes et profils (`security/UtilisateurController`, `UtilisateurService`, `UtilisateurDto`, `PinController`/`PinService`), activation des modules (`plateforme/module/ModuleController`), réglages des modules (`pointdevente/reglage`, droits des agences `agence/DroitsAgence` + `ReglageAgenceService.enregistrerDroits`), écrans Angular `pages/parametrage`, `pages/utilisateurs`, `core/services/verrou.service.ts`.
 
@@ -71,7 +71,7 @@ Aucune élévation de privilèges ni aucun IDOR entre entreprises n'a été trou
 - **Statut** : confirmé par le code.
 - **Emplacement** :
   - `frontend/src/app/core/services/verrou.service.ts:42-62` (repli hors ligne dès que `status === 0`) ;
-  - `verrou.service.ts:66-69` (empreinte = SHA-256 d'un sel prévisible `lj-saas:<id>:<email>:` + PIN) ;
+  - `verrou.service.ts:66-69` (empreinte = SHA-256 d'un sel prévisible `nova:<id>:<email>:` + PIN) ;
   - `verrou.service.ts:71-75` (empreinte écrite dans `localStorage`) ;
   - `backend/src/main/java/tg/parcauto/api/security/PinController.java:173-178` / `PinService.java:68-95` (la vérification ne change aucun état côté serveur : le JWT reste pleinement valide pendant le verrouillage).
 - **Description** :
@@ -93,7 +93,7 @@ Aucune élévation de privilèges ni aucun IDOR entre entreprises n'a été trou
 - **Statut** : confirmé par le code (le POST/PUT n'a pas pu être joué).
 - **Emplacement** : `UtilisateurService.java:57-59` (`existsByEmailIgnoreCase` global) et `:75-79` (`findByEmailIgnoreCase` global), message « Un compte existe deja avec l'adresse … ».
 - **Description** : la table `utilisateur` n'est pas cloisonnée et l'unicité est globale (index `ux_utilisateur_email_minuscules`). Un administrateur d'entreprise peut appeler en boucle `PUT /api/utilisateurs/{sonPropreCompteNonAdmin}` avec des adresses candidates : la réponse 400 « existe déjà » révèle qu'un compte existe dans **une autre** entreprise, y compris le super-admin. L'appel PUT n'écrit rien quand l'adresse existe ; s'il n'existe pas, il modifie l'adresse (réversible). Le POST est freiné par la limite d'utilisateurs de l'abonnement.
-- **Scénario** : un concurrent abonné repère quels de ses prospects sont clients de LJ SAAS, puis repère l'adresse du super-admin (cible du bourrage d'identifiants, sans limite sur le login).
+- **Scénario** : un concurrent abonné repère quels de ses prospects sont clients de Nova, puis repère l'adresse du super-admin (cible du bourrage d'identifiants, sans limite sur le login).
 - **Correctif** : un message générique (« Cette adresse ne peut pas être utilisée »), un limiteur (`LimiteurRequetes`) sur ces endpoints, et une journalisation des refus. Le constat recoupe celui de l'inscription : le corriger au même endroit.
 
 ### F2 — Logo : type déclaré par le navigateur, pas de contrôle du contenu ni de ré-encodage ; métadonnées publiées

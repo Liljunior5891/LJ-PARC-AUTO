@@ -2,7 +2,7 @@ package tg.parcauto.api.agence.tresorerie;
 
 /**
  * Types de compte d'une agence et la famille dans laquelle chacun compte : le
- * cash (caisse generale et caisses des caissiers, sans double comptage), le
+ * cash (caisse generale, caisses des caissiers et petites caisses de depenses), le
  * virtuel (float de chaque service, compte de recharge), la banque, les
  * commissions et les fonds d'exploitation.
  */
@@ -10,6 +10,8 @@ public enum TypeCompte {
 
     CAISSE_GENERALE("Caisse generale", Famille.CASH, false),
     CAISSE_CAISSIER("Caisse de caissier", Famille.CASH, false),
+    /** Especes mises par l'administrateur a la disposition d'un caissier, pour ses seules depenses. */
+    PETITE_CAISSE("Petite caisse de depenses", Famille.CASH, true),
     FLOAT("Float", Famille.VIRTUEL, false),
     RECHARGE("Compte de recharge", Famille.VIRTUEL, false),
     COMMISSIONS("Commissions", Famille.COMMISSIONS, false),

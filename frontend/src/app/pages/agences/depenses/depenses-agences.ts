@@ -4,14 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ActivatedRoute } from '@angular/router';
 import {
-  CategorieDepense, ChargeRecurrente, CompteAgence, DepenseAgence, LIBELLES_STATUT_DEPENSE_AGENCE, ResumeDepenses, SyntheseDepenses
+  CategorieDepense, ChargeRecurrente, CompteAgence, DepenseAgence, LIBELLES_STATUT_DEPENSE_AGENCE, PetiteCaisseAgence, ResumeDepenses,
+  SyntheseDepenses
 } from '../../../core/models/agences';
 import { Page } from '../../../core/models/models';
 import { AgencesService } from '../../../core/services/agences.service';
 import { Modale } from '../../../shared/modale';
+import { PieceJointe } from '../../../shared/piece-jointe';
 import { OngletsInclines } from '../../../shared/onglets-inclines';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 import { AgencesHorsLigneService, erreurReseau, nouvelleCleOperation } from '../../../core/services/agences-hors-ligne.service';
+import { datesDePeriode } from '../../../shared/periodes';
 
 type Onglet = 'liste' | 'a-valider' | 'suivi' | 'recurrentes';
 
@@ -26,14 +29,14 @@ function moisCourant(): string {
  */
 @Component({
   selector: 'app-depenses-agences',
-  imports: [DatePipe, DecimalPipe, FormsModule, Modale, OngletsInclines, SuiteListe],
+  imports: [DatePipe, DecimalPipe, FormsModule, Modale, PieceJointe, OngletsInclines, SuiteListe],
   templateUrl: './depenses-agences.html',
   styleUrl: './depenses-agences.scss'
 })
 export class DepensesAgences implements OnInit {
   readonly service = inject(AgencesService);
   private readonly horsLigne = inject(AgencesHorsLigneService);
-  /** Le caissier paie depuis sa caisse ouverte : pas de choix de compte. */
+  /** Le caissier paie depuis sa petite caisse de depenses : pas de choix de compte, pas de charges recurrentes. */
   readonly caissierSeul = !inject(AuthService).aRole('ADMIN', 'SUPERVISEUR_AGENCE');
   readonly estAdmin = inject(AuthService).aRole('ADMIN');
   private readonly route = inject(ActivatedRoute);
@@ -45,8 +48,11 @@ export class DepensesAgences implements OnInit {
     ...(this.service.peut('DEPENSE_VALIDER')
       ? [{ id: 'a-valider', libelle: 'A valider' + (this.aValider().length ? ' (' + this.aValider().length + ')' : ''), icone: '⏳' }] : []),
     ...(this.service.peut('SOLDES_CONSULTER') ? [{ id: 'suivi', libelle: 'Suivi mensuel', icone: '📊' }] : []),
-    { id: 'recurrentes', libelle: 'Charges recurrentes', icone: '🔁' }
+    ...(this.caissierSeul ? [] : [{ id: 'recurrentes', libelle: 'Charges recurrentes', icone: '🔁' }])
   ]);
+  /** Petite caisse du caissier dans l'agence choisie ; null : aucune ne lui est affectee. */
+  readonly petiteCaisse = signal<PetiteCaisseAgence | null>(null);
+  readonly petiteCaisseLue = signal(false);
   readonly agences = computed(() => (this.service.moi()?.agences ?? []).filter((a) => a.actif));
   agenceId: number | null = null;
   readonly categories = signal<CategorieDepense[]>([]);
@@ -59,7 +65,7 @@ export class DepensesAgences implements OnInit {
   readonly page = signal<Page<DepenseAgence> | null>(null);
   readonly resume = signal<ResumeDepenses | null>(null);
   private readonly suite = new SuiteDePages();
-  filtre = { du: '', au: '', categorieId: null as number | null, statut: '', q: '' };
+  filtre = { ...datesDePeriode('CE_MOIS'), categorieId: null as number | null, statut: '', q: '' };
 
   // Suivi
   mois = moisCourant();
@@ -203,7 +209,11 @@ export class DepensesAgences implements OnInit {
   }
 
   private chargerComptes(): void {
-    if (!this.agenceId || this.caissierSeul) {
+    if (this.caissierSeul) {
+      this.chargerPetiteCaisse();
+      return;
+    }
+    if (!this.agenceId) {
       return;
     }
     this.service.soldes(this.agenceId).subscribe({
@@ -212,6 +222,22 @@ export class DepensesAgences implements OnInit {
         this.comptes.set(liste);
         this.compteGeneration = liste.find((c) => c.type === 'CAISSE_GENERALE')?.id ?? null;
       }
+    });
+  }
+
+  private chargerPetiteCaisse(): void {
+    this.petiteCaisse.set(null);
+    this.petiteCaisseLue.set(false);
+    if (!this.agenceId) {
+      return;
+    }
+    this.service.petiteCaisse(this.agenceId).subscribe({
+      next: (p) => {
+        this.petiteCaisse.set(p ?? null);
+        this.petiteCaisseLue.set(true);
+      },
+      // Hors ligne : on laisse saisir, la depense partira dans la file.
+      error: () => this.petiteCaisseLue.set(false)
     });
   }
 
@@ -224,9 +250,6 @@ export class DepensesAgences implements OnInit {
     this.saisie.set(true);
   }
 
-  choisirFichier(evenement: Event): void {
-    this.fichier = (evenement.target as HTMLInputElement).files?.[0] ?? null;
-  }
 
   enregistrer(): void {
     const f = this.f;
@@ -248,6 +271,7 @@ export class DepensesAgences implements OnInit {
               + `rien n'est debite de ${d.compteNom ?? 'la caisse'} avant l'approbation de l'administrateur.`
             : `${d.numero} enregistree : ${d.montant.toLocaleString('fr-FR')} F debites de ${d.compteNom ?? 'la caisse'}.`);
           this.chargerAValider();
+          this.chargerComptes();
           this.charger();
         };
         if (this.fichier) {

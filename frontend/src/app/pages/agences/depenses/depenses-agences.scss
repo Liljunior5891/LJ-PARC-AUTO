@@ -189,3 +189,12 @@ td.actions-validation {
     margin-left: 0.35rem;
   }
 }
+
+/* Petite caisse du caissier : compte impose, affiche sans choix. */
+.valeur-fixe {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: var(--fond-doux, #f3f6f4);
+  font-weight: 600;
+}

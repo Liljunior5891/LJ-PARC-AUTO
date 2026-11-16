@@ -145,6 +145,11 @@
         </div>
       }
 
+      @if (!horsLigne.enLigne()) {
+        <div class="message avertissement">📴 Pas de connexion : les commandes et la cuisine attendent le serveur.
+          <a routerLink="/pdv/caisse" [queryParams]="{ horsLigne: 1 }">Encaisser au comptoir hors ligne</a>
+          (especes, bon de cuisine imprime ici).</div>
+      }
       @if (erreur() && !paiement() && !ligneNote() && !reglages() && !transfert()) {
         <div class="message erreur">{{ erreur() }}</div>
       }
@@ -549,7 +554,10 @@
   }
 } @else if (erreur()) {
   <div class="message erreur">{{ erreur() }}</div>
-  <a class="bouton" routerLink="/pdv/salle">Retour au plan de salle</a>
+  @if (!horsLigne.enLigne()) {
+    <a class="bouton" routerLink="/pdv/caisse" [queryParams]="{ horsLigne: 1 }">Encaisser au comptoir hors ligne</a>
+  }
+  <a class="bouton secondaire" routerLink="/pdv/salle">Retour au plan de salle</a>
 } @else {
   <p class="vide">Chargement de la commande...</p>
 }

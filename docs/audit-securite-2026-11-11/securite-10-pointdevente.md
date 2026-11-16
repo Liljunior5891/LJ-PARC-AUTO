@@ -1,4 +1,4 @@
-# Audit sécurité 10/13 : module POINT DE VENTE (LJ SAAS, branche saas)
+# Audit sécurité 10/13 : module POINT DE VENTE (Nova, branche saas)
 
 Date : 2026-11-11. Périmètre : `backend/src/main/java/tg/parcauto/api/pointdevente/**` (168 fichiers, environ 22 000 lignes) et écrans Angular `frontend/src/app/pages/pdv/**`, `shared/ticket-pdv.ts`, `shared/bon-cuisine.ts`, `core/services/retraits-hors-ligne.service.ts`.
 

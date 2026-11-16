@@ -14,6 +14,7 @@ import {
 } from '../../core/services/journal-plateforme.service';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../shared/suite-liste';
 import { GrapheBarres } from './graphe-barres';
+import { datesDePeriode } from '../../shared/periodes';
 
 /** Modules du journal general et leur libelle. */
 const MODULES: { valeur: string; libelle: string }[] = [
@@ -75,7 +76,7 @@ export class JournalPlateforme implements OnInit, OnDestroy {
   private requeteRapport?: Subscription;
 
   /** Trente derniers jours par defaut. */
-  f: FiltresJournalGeneral = { entreprise: '', module: '', action: '', du: jour(-29), au: jour(), recherche: '' };
+  f: FiltresJournalGeneral = { entreprise: '', module: '', action: '', ...datesDePeriode('CE_MOIS'), recherche: '' };
 
   /** Activite par jour, pour l'histogramme. */
   readonly parJour = computed<PointSerie[]>(() => (this.synthese()?.parJour ?? []).map((j) => ({
@@ -138,6 +139,11 @@ export class JournalPlateforme implements OnInit, OnDestroy {
   periode(jours: number): void {
     this.f.du = jour(-(jours - 1));
     this.f.au = jour();
+    this.filtrer();
+  }
+
+  ceMois(): void {
+    ({ du: this.f.du, au: this.f.au } = datesDePeriode('CE_MOIS'));
     this.filtrer();
   }
 

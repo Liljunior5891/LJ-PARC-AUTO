@@ -25,6 +25,14 @@ interface CarteCatalogue {
  * avec leur regle de mouvement. Tout se change ici, sans developpement ; rien
  * ne se supprime, un element desactive disparait seulement de la saisie.
  */
+interface ModeleOperation {
+  libelle: string;
+  effetCash: number;
+  compteVirtuel: CompteVirtuel;
+  effetVirtuel: number;
+  nature: NatureOperation;
+}
+
 @Component({
   selector: 'app-services-agences',
   imports: [FormsModule, NgTemplateOutlet, LogoService, Modale],
@@ -147,6 +155,33 @@ export class ServicesAgences implements OnInit {
   }
 
   /** Sans compte electronique, le virtuel ne bouge pas ; avec, il doit bouger. */
+  /** Modeles proposes a la creation : ils remplissent la regle, qui reste modifiable. */
+  readonly modeles: ModeleOperation[] = [
+    { libelle: 'Depot', effetCash: 1, compteVirtuel: 'FLOAT', effetVirtuel: -1, nature: 'TRANSIT' },
+    { libelle: 'Retrait', effetCash: -1, compteVirtuel: 'FLOAT', effetVirtuel: 1, nature: 'TRANSIT' },
+    { libelle: 'Vente de carte', effetCash: 1, compteVirtuel: 'RECHARGE', effetVirtuel: -1, nature: 'VENTE_CARTE' }
+  ];
+
+  appliquerModele(m: ModeleOperation): void {
+    const libelleModele = this.modeles.some((x) => x.libelle === this.formType.libelle.trim());
+    this.formType = {
+      ...this.formType,
+      libelle: !this.formType.libelle.trim() || libelleModele ? m.libelle : this.formType.libelle,
+      effetCash: m.effetCash, compteVirtuel: m.compteVirtuel, effetVirtuel: m.effetVirtuel, nature: m.nature
+    };
+  }
+
+  modeleChoisi(m: ModeleOperation): boolean {
+    const f = this.formType;
+    return f.effetCash === m.effetCash && f.compteVirtuel === m.compteVirtuel && f.effetVirtuel === m.effetVirtuel
+      && f.nature === m.nature && f.libelle.trim() === m.libelle;
+  }
+
+  /** Montant de l'apercu pour 100 000 F, selon le sens. */
+  montantExemple(effet: number): string {
+    return effet > 0 ? '+100 000 F' : effet < 0 ? '−100 000 F' : 'Inchange';
+  }
+
   changerCompte(compte: CompteVirtuel): void {
     this.formType.compteVirtuel = compte;
     if (compte === 'AUCUN') {
@@ -154,17 +189,6 @@ export class ServicesAgences implements OnInit {
     } else if (this.formType.effetVirtuel === 0) {
       this.formType.effetVirtuel = this.formType.effetCash > 0 ? -1 : 1;
     }
-  }
-
-  /** Exemple chiffre de la regle, pour 100 000 F. */
-  exemple(): string {
-    const f = this.formType;
-    const signe = (e: number) => (e > 0 ? '+100 000' : e < 0 ? '−100 000' : 'inchange');
-    const parties = [`Cash ${signe(f.effetCash)}`];
-    if (f.compteVirtuel !== 'AUCUN') {
-      parties.push(`${f.compteVirtuel === 'FLOAT' ? 'float' : 'compte de recharge'} ${signe(f.effetVirtuel)}`);
-    }
-    return parties.join(', ');
   }
 
   titre(e: Edition): string {

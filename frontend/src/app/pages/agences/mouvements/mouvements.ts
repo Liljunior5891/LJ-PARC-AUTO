@@ -1,10 +1,12 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { CompteAgence, MouvementAgence, StatutMouvement, TypeMouvement } from '../../../core/models/agences';
 import { Page } from '../../../core/models/models';
 import { AgencesService } from '../../../core/services/agences.service';
 import { Modale } from '../../../shared/modale';
+import { PieceJointe } from '../../../shared/piece-jointe';
 import { OngletsInclines } from '../../../shared/onglets-inclines';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
 
@@ -32,7 +34,7 @@ const STATUTS: Record<StatutMouvement, string> = {
  */
 @Component({
   selector: 'app-mouvements-agences',
-  imports: [DatePipe, DecimalPipe, FormsModule, Modale, OngletsInclines, SuiteListe],
+  imports: [DatePipe, DecimalPipe, FormsModule, Modale, PieceJointe, OngletsInclines, SuiteListe],
   templateUrl: './mouvements.html',
   styleUrl: './mouvements.scss'
 })
@@ -45,6 +47,7 @@ export class MouvementsAgences implements OnInit {
     { id: 'ANNULE', libelle: 'Annules', icone: '↩' }
   ];
   readonly service = inject(AgencesService);
+  private readonly route = inject(ActivatedRoute);
   readonly types = TYPES;
   readonly statuts = STATUTS;
 
@@ -76,7 +79,23 @@ export class MouvementsAgences implements OnInit {
   motifDecision = '';
 
   ngOnInit(): void {
-    this.service.chargerMoi().subscribe({ next: () => this.charger() });
+    this.service.chargerMoi().subscribe({
+      next: () => {
+        this.charger();
+        // Depuis les soldes (« Alimenter ») : approvisionnement d'une petite caisse, depuis la caisse generale.
+        const parametres = this.route.snapshot.queryParamMap;
+        const destination = Number(parametres.get('approvisionner'));
+        const agence = Number(parametres.get('agence'));
+        if (destination && agence && this.service.peut('MOUVEMENT_SAISIR')) {
+          this.f = this.vide();
+          this.f.agenceId = agence;
+          this.fichier = null;
+          this.erreurModale.set(null);
+          this.chargerComptes(destination);
+          this.saisie.set(true);
+        }
+      }
+    });
   }
 
   charger(): void {
@@ -111,20 +130,27 @@ export class MouvementsAgences implements OnInit {
     this.saisie.set(true);
   }
 
-  chargerComptes(): void {
+  chargerComptes(destination?: number): void {
     this.comptes.set([]);
     if (!this.f.agenceId) {
       return;
     }
     this.service.soldes(this.f.agenceId).subscribe({
-      next: (e) => this.comptes.set(e.agences[0]?.comptes ?? []),
+      next: (e) => {
+        const comptes = e.agences[0]?.comptes ?? [];
+        this.comptes.set(comptes);
+        const cible = destination ? comptes.find((c) => c.id === destination) : undefined;
+        if (cible) {
+          this.f.type = 'APPROVISIONNEMENT';
+          this.f.destination = cible.id;
+          this.f.source = comptes.find((c) => c.type === 'CAISSE_GENERALE')?.id ?? null;
+          this.f.motif = `Approvisionnement de ${cible.libelle}`;
+        }
+      },
       error: (e) => this.erreurModale.set(this.message(e, 'Lecture des comptes impossible.'))
     });
   }
 
-  choisirFichier(evenement: Event): void {
-    this.fichier = (evenement.target as HTMLInputElement).files?.[0] ?? null;
-  }
 
   enregistrer(): void {
     const f = this.f;

@@ -7,7 +7,7 @@ import { AgencesService } from '../../../core/services/agences.service';
 import { Modale } from '../../../shared/modale';
 
 /**
- * Agences de l'entreprise (LJ-Agoe, LJ-Be...) : chacune a sa caisse, ses floats
+ * Agences de l'entreprise (Agoe, Be...) : chacune a sa caisse, ses floats
  * et son personnel ; l'administrateur les pilote toutes. Les comptes de
  * l'agence se creent d'office a l'enregistrement.
  */

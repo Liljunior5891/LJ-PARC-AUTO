@@ -46,6 +46,8 @@ public class SoldeService {
     private final RegistreService registre;
     private final ServiceFinancierRepository services;
     private final AuditAgenceService audit;
+    private final tg.parcauto.api.agence.AgenceRepository agencesRepository;
+    private final tg.parcauto.api.security.UtilisateurRepository utilisateurs;
 
     public record Totaux(long cash, long virtuel, long banque, long tresorerie, long commissions, long fonds) {
 
@@ -77,6 +79,8 @@ public class SoldeService {
                             String libelle, Long serviceId, String serviceNom, String categorie, boolean serviceActif,
                             String banque, String numeroCompte, long solde, long decouvertAutorise, boolean bloque,
                             boolean actif, boolean manuel, Long seuilAlerte,
+                            /** Caissier d'une caisse de caissier ou d'une petite caisse de depenses. */
+                            Long utilisateurId, String utilisateurNom,
                             /** Totaux du registre : ouverture, entrees et sorties hors ouverture. */
                             long ouverture, long entrees, long sorties, long nombreMouvements) {
     }
@@ -100,7 +104,9 @@ public class SoldeService {
 
     public record RequeteCompte(TypeCompte type, @Size(max = 120) String libelle, @Size(max = 120) String banque,
                                 @Size(max = 60) String numeroCompte, @PositiveOrZero Long decouvertAutorise,
-                                Boolean bloque, Boolean actif, @PositiveOrZero Long seuilAlerte) {
+                                Boolean bloque, Boolean actif, @PositiveOrZero Long seuilAlerte,
+                                /** Petite caisse de depenses : le caissier a qui elle est affectee. */
+                                Long utilisateurId) {
     }
 
     public record Verification(Long compteId, String libelle, long soldeEnregistre, long soldeRegistre, long ecart) {
@@ -119,11 +125,13 @@ public class SoldeService {
         List<AgenceSoldes> resultats = new ArrayList<>();
         for (Agence agence : agences) {
             List<CompteAgence> liste = compteService.synchroniser(agence);
+            Map<Long, String> noms = noms(liste);
             Map<Long, Object[]> syntheses = liste.isEmpty() ? Map.of()
                     : lignes.syntheses(liste.stream().map(CompteAgence::getId).toList(), NatureEcriture.OUVERTURE).stream()
                     .collect(Collectors.toMap(s -> (Long) s[0], s -> s));
             List<CompteDto> dtos = liste.stream()
-                    .map(c -> versDto(c, parService.get(c.getServiceId()), syntheses.get(c.getId())))
+                    .map(c -> versDto(c, parService.get(c.getServiceId()), syntheses.get(c.getId()),
+                            c.getUtilisateurId() == null ? null : noms.get(c.getUtilisateurId())))
                     .sorted(ordre(parService))
                     .toList();
             resultats.add(new AgenceSoldes(agence.getId(), agence.getCode(), agence.getNom(), agence.isActif(),
@@ -232,28 +240,36 @@ public class SoldeService {
 
     // ------------------------------------------------------------------ comptes
 
-    /** Compte bancaire ou fonds d'exploitation, crees a la main ; les autres comptes se creent seuls. */
+    /**
+     * Compte bancaire, fonds d'exploitation ou petite caisse de depenses (affectee a
+     * un caissier de l'agence), crees a la main ; les autres comptes se creent seuls.
+     */
     public CompteDto creerCompte(Long agenceId, RequeteCompte r) {
         Agence agence = perimetre.exiger(agenceId);
         if (r.type() == null || !r.type().isManuel()) {
-            throw new BusinessException("Seuls les comptes bancaires et les fonds d'exploitation se creent a la main");
-        }
-        if (r.libelle() == null || r.libelle().isBlank()) {
-            throw new BusinessException("Donnez un nom au compte");
+            throw new BusinessException("Seuls les comptes bancaires, les fonds d'exploitation et les petites caisses de depenses se creent a la main");
         }
         CompteAgence c = new CompteAgence();
         c.setAgenceId(agence.getId());
         c.setType(r.type());
+        if (r.type() == TypeCompte.PETITE_CAISSE) {
+            affecter(c, agence, r.utilisateurId());
+            if (r.libelle() == null || r.libelle().isBlank()) {
+                c.setLibelle("Petite caisse de " + nom(c.getUtilisateurId()));
+            }
+        } else if (r.libelle() == null || r.libelle().isBlank()) {
+            throw new BusinessException("Donnez un nom au compte");
+        }
         appliquer(c, r);
         c = comptes.save(c);
         audit.tracer(agence.getId(), "CREATION", "COMPTE", c.getId(), "Compte " + c.getLibelle() + " cree", null, r);
-        return versDto(c, null, null);
+        return versDto(c, null, null, nom(c.getUtilisateurId()));
     }
 
     /** Nom et banque (comptes manuels), decouvert tolere, blocage et activation. */
     public CompteDto modifierCompte(Long compteId, RequeteCompte r) {
         CompteAgence c = charger(compteId);
-        CompteDto avant = versDto(c, null, null);
+        CompteDto avant = versDto(c, null, null, nom(c.getUtilisateurId()));
         if (Boolean.FALSE.equals(r.actif()) && c.isActif()) {
             if (!c.getType().isManuel()) {
                 throw new BusinessException("Le compte " + c.getLibelle() + " est cree par le systeme et ne se desactive pas");
@@ -263,8 +279,15 @@ public class SoldeService {
                         + RegistreService.francs(c.getSolde()) + " : videz-le avant de le desactiver");
             }
         }
+        if (c.getType() == TypeCompte.PETITE_CAISSE && r.utilisateurId() != null && !r.utilisateurId().equals(c.getUtilisateurId())) {
+            Agence agence = agencesRepository.findById(c.getAgenceId()).orElseThrow();
+            affecter(c, agence, r.utilisateurId());
+        }
+        if (c.getType() == TypeCompte.PETITE_CAISSE && Boolean.TRUE.equals(r.actif()) && !c.isActif()) {
+            unique(c, c.getUtilisateurId());
+        }
         appliquer(c, r);
-        CompteDto apres = versDto(c, null, null);
+        CompteDto apres = versDto(c, null, null, nom(c.getUtilisateurId()));
         audit.tracer(c.getAgenceId(), "MODIFICATION", "COMPTE", c.getId(), "Compte " + c.getLibelle() + " modifie",
                 avant, apres);
         return apres;
@@ -291,6 +314,38 @@ public class SoldeService {
         }
     }
 
+    /** Affecte une petite caisse a un caissier de l'agence : une seule petite caisse active par caissier. */
+    private void affecter(CompteAgence c, Agence agence, Long utilisateurId) {
+        if (utilisateurId == null) {
+            throw new BusinessException("Choisissez le caissier a qui la petite caisse est affectee");
+        }
+        if (!agence.getUtilisateurIds().contains(utilisateurId)) {
+            throw new BusinessException("Ce caissier n'est pas rattache a l'agence " + agence.getNom());
+        }
+        unique(c, utilisateurId);
+        c.setUtilisateurId(utilisateurId);
+    }
+
+    private void unique(CompteAgence c, Long utilisateurId) {
+        boolean deja = comptes.findByAgenceIdOrderByIdAsc(c.getAgenceId()).stream()
+                .anyMatch(x -> x.getType() == TypeCompte.PETITE_CAISSE && x.isActif() && utilisateurId.equals(x.getUtilisateurId())
+                        && !x.getId().equals(c.getId()));
+        if (deja) {
+            throw new BusinessException(nom(utilisateurId) + " a deja une petite caisse de depenses active dans cette agence");
+        }
+    }
+
+    private String nom(Long utilisateurId) {
+        return utilisateurId == null ? null
+                : utilisateurs.findById(utilisateurId).map(tg.parcauto.api.security.Utilisateur::nomComplet).orElse("?");
+    }
+
+    private Map<Long, String> noms(List<CompteAgence> liste) {
+        List<Long> ids = liste.stream().map(CompteAgence::getUtilisateurId).filter(java.util.Objects::nonNull).distinct().toList();
+        return ids.isEmpty() ? Map.of() : utilisateurs.findAllById(ids).stream()
+                .collect(Collectors.toMap(tg.parcauto.api.security.Utilisateur::getId, tg.parcauto.api.security.Utilisateur::nomComplet));
+    }
+
     // ---------------------------------------------------------------- outils
 
     private CompteAgence charger(Long compteId) {
@@ -307,7 +362,7 @@ public class SoldeService {
                 .thenComparing(CompteDto::libelle);
     }
 
-    private static CompteDto versDto(CompteAgence c, ServiceFinancier service, Object[] synthese) {
+    private static CompteDto versDto(CompteAgence c, ServiceFinancier service, Object[] synthese, String utilisateurNom) {
         long ouverture = synthese == null ? 0 : ((Number) synthese[1]).longValue();
         long entrees = synthese == null ? 0 : ((Number) synthese[2]).longValue();
         long sorties = synthese == null ? 0 : ((Number) synthese[3]).longValue();
@@ -316,6 +371,6 @@ public class SoldeService {
                 c.getLibelle(), c.getServiceId(), service == null ? null : service.getNom(),
                 service == null ? null : service.getCategorie(), service == null || service.isActif(),
                 c.getBanque(), c.getNumeroCompte(), c.getSolde(), c.getDecouvertAutorise(), c.isBloque(), c.isActif(),
-                c.getType().isManuel(), c.getSeuilAlerte(), ouverture, entrees, sorties, nombre);
+                c.getType().isManuel(), c.getSeuilAlerte(), c.getUtilisateurId(), utilisateurNom, ouverture, entrees, sorties, nombre);
     }
 }

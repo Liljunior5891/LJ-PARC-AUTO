@@ -21,6 +21,8 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
     @Query("select v from Vente v where v.id = :id")
     Optional<Vente> detail(@Param("id") Long id);
 
+    Optional<Vente> findFirstByCleHorsLigne(String cleHorsLigne);
+
     @Query("""
             select v from Vente v
             where v.dateVente >= :debut and v.dateVente < :fin

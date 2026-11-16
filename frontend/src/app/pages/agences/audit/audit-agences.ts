@@ -5,6 +5,7 @@ import { LigneAudit } from '../../../core/models/agences';
 import { Page } from '../../../core/models/models';
 import { AgencesService } from '../../../core/services/agences.service';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
+import { datesDePeriode } from '../../../shared/periodes';
 
 const OBJETS: { code: string; libelle: string }[] = [
   { code: 'TRANSACTION', libelle: 'Transactions' },
@@ -41,7 +42,7 @@ export class AuditAgences implements OnInit {
   readonly erreur = signal<string | null>(null);
   readonly ouverte = signal<number | null>(null);
 
-  f: { agenceId: number | null; du: string; au: string; objet: string; q: string } = { agenceId: null, du: '', au: '', objet: '', q: '' };
+  f: { agenceId: number | null; du: string; au: string; objet: string; q: string } = { agenceId: null, ...datesDePeriode('CE_MOIS'), objet: '', q: '' };
 
   ngOnInit(): void {
     this.service.chargerMoi().subscribe();

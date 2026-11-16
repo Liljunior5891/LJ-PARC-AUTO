@@ -264,6 +264,11 @@ export class CartesAgences implements OnInit {
     }, 300);
   }
 
+  /** Numero de carte exige pour une recharge : au moins ses 4 derniers chiffres. */
+  carteValide(carte: string | null | undefined): boolean {
+    return (carte ?? '').replace(/\D/g, '').length >= 4;
+  }
+
   recharger(): void {
     const s = this.saisieRecharge();
     if (!s) {

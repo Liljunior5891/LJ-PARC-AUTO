@@ -177,7 +177,7 @@ public class InscriptionService {
     }
 
     private static String signature() {
-        return "\n-- \nLJ SaaS\nMessage automatique : merci de ne pas y repondre.\n";
+        return "\n-- \nNova\nMessage automatique : merci de ne pas y repondre.\n";
     }
 
     private String creer(Demande demande, Integer joursEssai, boolean creeParPlateforme, boolean motDePasseChiffre) {

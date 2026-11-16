@@ -31,6 +31,10 @@ import { imprimerTicket } from '../../../shared/ticket-pdv';
 import { CompteClientPdv } from '../../../shared/compte-client-pdv';
 import { OperationService } from '../../../core/operation/operation.service';
 import { FormulaireClientPdv } from '../../../shared/formulaire-client-pdv';
+import { PdvHorsLigneService, VenteHorsLigne } from '../../../core/services/pdv-hors-ligne.service';
+import { erreurReseau } from '../../../core/services/agences-hors-ligne.service';
+import { MESSAGE_ANNULATION } from '../../../core/operation/operation.interceptor';
+import { imprimerBonsCuisine } from '../../../shared/bon-cuisine';
 
 /** Ligne du panier en cours de constitution. */
 interface LignePanier {
@@ -80,6 +84,10 @@ export class Caisse implements OnInit, OnDestroy {
   private readonly societeService = inject(SocieteService);
   private readonly materiauxService = inject(MateriauxService);
   private readonly router = inject(Router);
+  /** Vente sans connexion : copies du catalogue et file des ventes a envoyer. */
+  readonly horsLigne = inject(PdvHorsLigneService);
+  /** Restaurant passe sur cette caisse pendant une coupure : les bons de cuisine s'impriment ici. */
+  readonly restauration = this.auth.estRestauration();
 
   readonly modes = MODES_PAIEMENT_PDV;
   readonly estGestionnaire = this.auth.aRole('ADMIN', 'GERANT');
@@ -285,9 +293,13 @@ export class Caisse implements OnInit, OnDestroy {
   readonly formatDocuments = signal<'A4' | 'A5'>('A4');
 
   ngOnInit(): void {
-    this.societeService.lire().subscribe({ next: (s) => this.formatDocuments.set(s.formatDocuments ?? 'A4') });
-    this.service.catalogueCaisse().subscribe({ next: (a) => this.articles.set(a) });
-    this.service.categories().subscribe({ next: (c) => this.categories.set(c.filter((x) => x.actif)) });
+    this.horsLigne.demarrer();
+    this.horsLigne.avecCopie('societe', this.societeService.lire())
+      .subscribe({ next: (s) => this.formatDocuments.set(s.formatDocuments ?? 'A4') });
+    // Catalogue et categories gardes sur l'appareil : la caisse vend encore sans connexion.
+    this.horsLigne.avecCopie('catalogue', this.service.catalogueCaisse()).subscribe({ next: (a) => this.articles.set(a) });
+    this.horsLigne.avecCopie('categories', this.service.categories())
+      .subscribe({ next: (c) => this.categories.set(c.filter((x) => x.actif)) });
     this.refocaliser();
     if (this.marketplace) {
       this.chargerEnLigne();
@@ -533,6 +545,10 @@ export class Caisse implements OnInit, OnDestroy {
     if (this.panier().length === 0) {
       return;
     }
+    if (!this.horsLigne.enLigne()) {
+      // Sans connexion, seules les especes peuvent etre gardees sur l'appareil.
+      mode = 'ESPECES';
+    }
     if (!this.session()) {
       // Pas de vente sans session : seul un gerant l'ouvre.
       this.signaler(this.sessions.choixRequis()
@@ -754,6 +770,14 @@ export class Caisse implements OnInit, OnDestroy {
       this.encaisserDevis(devis);
       return;
     }
+    // Une seule cle pour la vente : si la reponse se perd, sa copie hors ligne la reprend
+    // et le serveur reconnait la vente deja enregistree au lieu d'en creer une seconde.
+    const cle = this.horsLigne.nouvelleCle();
+    // Deja sans connexion : la vente est gardee sur l'appareil sans attendre le delai du reseau.
+    if (!this.horsLigne.enLigne() && this.venteHorsLignePossible() === null) {
+      this.encaisserHorsLigne(cle);
+      return;
+    }
     this.service
       .encaisser({
         lignes: this.panier().map((l) => ({
@@ -772,15 +796,113 @@ export class Caisse implements OnInit, OnDestroy {
         commandeEnLigneId: this.commandeEnLigne()?.id ?? null,
         clientId: this.client()?.id ?? null,
         credit: this.credit(),
-        acompte: this.credit() ? this.acompte() ?? 0 : null
+        acompte: this.credit() ? this.acompte() ?? 0 : null,
+        cleHorsLigne: cle
       })
       .subscribe({
         next: (ticket) => this.venteTerminee(ticket),
         error: (e) => {
+          // Coupure du reseau (ou maintenance) pendant l'encaissement : la vente est gardee sur l'appareil.
+          const coupure = erreurReseau(e) && e?.error?.message !== MESSAGE_ANNULATION;
+          if (coupure) {
+            this.horsLigne.signalerCoupure();
+          }
+          if (coupure && this.venteHorsLignePossible() === null) {
+            this.operation.imposerSucces('Vente gardee sur l\'appareil : elle partira au retour du reseau');
+            this.encaisserHorsLigne(cle);
+            return;
+          }
           this.enCours.set(false);
-          this.erreur.set(this.message(e, 'Encaissement impossible.'));
+          this.erreur.set(coupure
+            ? `Pas de connexion : ${this.venteHorsLignePossible()}`
+            : this.message(e, 'Encaissement impossible.'));
         }
       });
+  }
+
+  // ---------------------------------------------------- vente sans connexion
+
+  /**
+   * Hors ligne, seule une vente simple au comptoir est possible : en especes,
+   * sans compte client ni credit, sans devis, commande en ligne ou reste a livrer.
+   * Renvoie la raison du refus, ou null si la vente peut etre gardee.
+   */
+  venteHorsLignePossible(): string | null {
+    if (!this.session()) {
+      return 'aucune session de caisse ouverte sur cet appareil';
+    }
+    if (this.mode() !== 'ESPECES') {
+      return 'hors ligne, seules les especes sont acceptees';
+    }
+    if (this.credit() || this.client()) {
+      return 'la vente sur compte client attend le retour du reseau';
+    }
+    if (this.devisCharge() || this.commandeEnLigne()) {
+      return 'un devis ou une commande en ligne s\'encaisse avec le reseau';
+    }
+    if (this.resteALivrer() || (this.choixLieux() && this.panier().some((l) => l.article.suiviStock
+        && this.lieuLigne(l) !== this.magasin()?.id))) {
+      return 'une livraison en plusieurs fois ou depuis un autre lieu attend le retour du reseau';
+    }
+    return null;
+  }
+
+  /** Garde la vente sur l'appareil, imprime son ticket provisoire (et ses bons de cuisine au restaurant). */
+  private encaisserHorsLigne(cle: string): void {
+    const session = this.session();
+    const maintenant = new Date().toISOString();
+    const numero = this.horsLigne.numeroProvisoire();
+    const lignes = this.panier().map((l) => ({
+      articleId: l.article.id,
+      conditionnementId: l.conditionnement?.id ?? null,
+      quantite: l.quantite,
+      prixUnitaire: prix(l),
+      remise: 0,
+      libelle: l.conditionnement ? `${l.article.nom} (${l.conditionnement.nom})` : l.article.nom
+    }));
+    const vente: VenteHorsLigne = {
+      cle,
+      numeroProvisoire: numero,
+      saisieLe: maintenant,
+      sessionId: session?.id ?? null,
+      lignes,
+      remise: this.remise() || 0,
+      montantRecu: this.montantRecu(),
+      clientNom: this.clientNom.trim() || null,
+      total: this.total()
+    };
+    const garde = this.horsLigne.mettreEnFile(vente);
+    const ticket: Ticket = {
+      id: 0,
+      numero,
+      dateVente: maintenant,
+      caissierNom: this.vendeur,
+      clientNom: vente.clientNom ?? undefined,
+      sessionNumero: session?.numero ?? '',
+      lignes: lignes.map((l) => ({ articleId: l.articleId, libelle: l.libelle, prixUnitaire: l.prixUnitaire,
+        quantite: l.quantite, remise: 0, total: l.prixUnitaire * l.quantite, conditionnementId: l.conditionnementId })),
+      totalBrut: this.totalBrut(),
+      remise: vente.remise,
+      total: this.total(),
+      modePaiement: 'ESPECES',
+      modePaiementLibelle: 'Especes',
+      montantRecu: this.montantRecu() ?? this.total(),
+      monnaieRendue: this.monnaie(),
+      statut: 'VALIDEE'
+    };
+    if (this.restauration) {
+      // Les ecrans de cuisine ne recoivent rien sans reseau : le bon s'imprime depuis cet appareil.
+      imprimerBonsCuisine([{
+        poste: 'Cuisine et bar', type: 'BON', repere: 'Comptoir', numero, date: maintenant, caissier: this.vendeur,
+        lignes: lignes.map((l) => ({ quantite: l.quantite, libelle: l.libelle })), note: 'Commande prise hors ligne',
+        largeurPapier: 80, copies: 1
+      }]);
+    }
+    this.venteTerminee(ticket);
+    this.information.set(garde
+      ? `Vente ${numero} gardee sur l'appareil : elle sera enregistree au retour du reseau.`
+      : `Vente ${numero} gardee seulement tant que cette page reste ouverte (stockage de l'appareil plein) : `
+        + 'ne fermez pas la caisse avant le retour du reseau.');
   }
 
   /** Devis charge : enregistre d'abord les modifications du panier, puis l'encaisse a ses prix. */
@@ -854,8 +976,8 @@ export class Caisse implements OnInit, OnDestroy {
   }
 
   imprimer(ticket: Ticket): void {
-    // Le parametrage complet porte l'adresse et le NIF imprimes en tete du recu.
-    this.societeService.lire().subscribe({
+    // Le parametrage complet porte l'adresse et le NIF imprimes en tete du recu (copie de l'appareil hors ligne).
+    this.horsLigne.avecCopie('societe', this.societeService.lire()).subscribe({
       next: (societe) => imprimerTicket(ticket, societe),
       error: () => imprimerTicket(ticket, null)
     });

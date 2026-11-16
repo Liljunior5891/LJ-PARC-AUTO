@@ -52,7 +52,7 @@ public final class ExportRapport {
     public static byte[] excel(Rapport r, ZoneId fuseau) {
         ByteArrayOutputStream sortie = new ByteArrayOutputStream();
         try {
-            Workbook classeur = new Workbook(sortie, "LJ SaaS", "1.0");
+            Workbook classeur = new Workbook(sortie, "Nova", "1.0");
             Worksheet feuille = classeur.newWorksheet(nomFeuille(r.titre()));
             feuille.value(0, 0, r.titre());
             feuille.style(0, 0).bold().fontSize(14).set();
@@ -90,7 +90,7 @@ public final class ExportRapport {
     public static byte[] pdf(Rapport r, ZoneId fuseau, String entreprise) {
         List<Rapport.Colonne> colonnes = r.colonnes();
         boolean paysage = colonnes.size() > 6;
-        MiseEnPagePdf pdf = new MiseEnPagePdf(entreprise == null || entreprise.isBlank() ? "LJ SaaS" : entreprise,
+        MiseEnPagePdf pdf = new MiseEnPagePdf(entreprise == null || entreprise.isBlank() ? "Nova" : entreprise,
                 r.titre(), r.sousTitre(), paysage);
         try (pdf) {
             pdf.indicateurs(r.indicateurs().stream()

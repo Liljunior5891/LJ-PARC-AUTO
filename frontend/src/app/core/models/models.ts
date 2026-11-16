@@ -1,4 +1,4 @@
-/** Types partages avec l'API PARC AUTO. */
+/** Types partages avec l'API Nova. */
 
 export interface Page<T> {
   content: T[];

@@ -75,12 +75,24 @@ public final class CatalogueDto {
             BigDecimal stockDisponible) {
 
         public static ArticleReponse de(Article a) {
+            return de(a, gestionnaire());
+        }
+
+        /**
+         * Ecran de caisse : jamais de prix d'achat, meme pour le gerant. Ce catalogue est garde
+         * sur l'appareil pour vendre hors ligne et y resterait apres la deconnexion.
+         */
+        public static ArticleReponse pourCaisse(Article a) {
+            return de(a, false);
+        }
+
+        private static ArticleReponse de(Article a, boolean avecPrixAchat) {
             Categorie c = a.getCategorie();
             return new ArticleReponse(
                     a.getId(), a.getCode(), a.getCodeBarres(), a.getNom(),
                     c == null ? null : c.getId(), c == null ? null : c.getNom(), c == null ? null : c.getCouleur(),
                     // Prix d'achat (donc la marge) : reserve au gerant et a l'administrateur.
-                    a.getPrixVente(), gestionnaire() ? a.getPrixAchat() : null, a.getUnite(), a.isSuiviStock(),
+                    a.getPrixVente(), avecPrixAchat ? a.getPrixAchat() : null, a.getUnite(), a.isSuiviStock(),
                     a.getStockActuel(), a.getSeuilAlerte(), a.stockBas(), a.isActif(),
                     a.getImage(), c == null ? null : c.getIcone(), a.getStockReserve(), a.stockDisponible());
         }

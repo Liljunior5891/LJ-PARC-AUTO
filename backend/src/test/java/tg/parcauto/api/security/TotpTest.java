@@ -40,7 +40,7 @@ class TotpTest {
 
     @Test
     void ladresseOtpauthPorteLEmetteurEtLeSecret() {
-        String adresse = Totp.adresse("LJ SaaS", "admin@exemple.tg", "ABCDEF");
-        assertThat(adresse).startsWith("otpauth://totp/LJ%20SaaS:admin%40exemple.tg?secret=ABCDEF&issuer=LJ%20SaaS");
+        String adresse = Totp.adresse("Nova", "admin@exemple.tg", "ABCDEF");
+        assertThat(adresse).startsWith("otpauth://totp/Nova:admin%40exemple.tg?secret=ABCDEF&issuer=Nova");
     }
 }

@@ -107,7 +107,7 @@ export interface RequeteType {
   actif?: boolean;
 }
 
-export type TypeCompte = 'CAISSE_GENERALE' | 'CAISSE_CAISSIER' | 'FLOAT' | 'RECHARGE' | 'COMMISSIONS' | 'BANQUE' | 'FONDS_EXPLOITATION';
+export type TypeCompte = 'CAISSE_GENERALE' | 'CAISSE_CAISSIER' | 'PETITE_CAISSE' | 'FLOAT' | 'RECHARGE' | 'COMMISSIONS' | 'BANQUE' | 'FONDS_EXPLOITATION';
 export type FamilleCompte = 'CASH' | 'VIRTUEL' | 'BANQUE' | 'COMMISSIONS' | 'FONDS';
 
 export interface TotauxTresorerie {
@@ -138,6 +138,9 @@ export interface CompteAgence {
   actif: boolean;
   manuel: boolean;
   seuilAlerte?: number;
+  /** Caissier d'une caisse de caissier ou d'une petite caisse de depenses. */
+  utilisateurId?: number;
+  utilisateurNom?: string;
   ouverture: number;
   entrees: number;
   sorties: number;
@@ -184,6 +187,16 @@ export interface RequeteCompte {
   bloque?: boolean;
   actif?: boolean;
   seuilAlerte?: number | null;
+  /** Petite caisse de depenses : le caissier a qui elle est affectee. */
+  utilisateurId?: number | null;
+}
+
+/** Petite caisse de depenses du caissier : seule source de ses depenses. */
+export interface PetiteCaisseAgence {
+  compteId: number;
+  libelle: string;
+  solde: number;
+  plafond: number;
 }
 
 export interface VerificationSolde {
@@ -601,6 +614,8 @@ export interface TableauBordAgences {
   mouvementsEnAttente: number;
   /** CAISSIER : ses seules donnees ; AGENCE : une agence ; TOUTES : toutes les agences. */
   perimetre: 'CAISSIER' | 'AGENCE' | 'TOUTES';
+  /** Caissier : solde de sa petite caisse de depenses. */
+  petiteCaisse: number;
 }
 
 export interface LigneAudit {

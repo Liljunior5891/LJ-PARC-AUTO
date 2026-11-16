@@ -98,6 +98,18 @@ public class Vente extends BaseEntity {
     @Column(name = "en_ligne", nullable = false)
     private boolean enLigne;
 
+    /** Encaissee sans connexion, puis envoyee au retour du reseau. */
+    @Column(name = "hors_ligne", nullable = false)
+    private boolean horsLigne;
+
+    /** Numero imprime sur le ticket remis au client pendant la coupure (HL-...). */
+    @Column(name = "numero_provisoire", length = 40)
+    private String numeroProvisoire;
+
+    /** Cle donnee par l'appareil : un renvoi de la meme vente (en ligne ou hors ligne) est reconnu. */
+    @Column(name = "cle_hors_ligne", length = 64)
+    private String cleHorsLigne;
+
     /** Table servie, imprimee sur le ticket d'une addition. */
     @Column(name = "table_nom", length = 80)
     private String tableNom;

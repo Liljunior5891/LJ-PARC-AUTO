@@ -214,40 +214,110 @@
           </div>
         }
         @case ('type') {
+          @if (!e.id) {
+            <div class="modeles">
+              <span>Partir d'un modele :</span>
+              @for (m of modeles; track m.libelle) {
+                <button type="button" class="modele" [class.choisi]="modeleChoisi(m)" (click)="appliquerModele(m)">{{ m.libelle }}</button>
+              }
+            </div>
+          }
+
           <div class="champ">
-            <label for="libelle">Nom de l'operation *</label>
+            <label for="libelle">Nom de l'operation <span class="requis">*</span></label>
             <input id="libelle" name="libelle" required maxlength="120" [(ngModel)]="formType.libelle" placeholder="Ex. Depot" />
           </div>
 
-          <fieldset class="choix">
-            <legend>Le cash de la caisse...</legend>
-            <label><input type="radio" name="cash" [value]="1" [(ngModel)]="formType.effetCash" /> augmente du montant</label>
-            <label><input type="radio" name="cash" [value]="-1" [(ngModel)]="formType.effetCash" /> diminue du montant</label>
-            <label><input type="radio" name="cash" [value]="0" [(ngModel)]="formType.effetCash" /> ne bouge pas</label>
-          </fieldset>
+          <div class="regle">
+            <div class="question">
+              <span class="numero">1</span>
+              <div><strong>Le cash de la caisse</strong><small>Les billets dans le tiroir du caissier.</small></div>
+            </div>
+            <div class="tuiles trois" role="radiogroup" aria-label="Effet sur le cash">
+              <label class="tuile plus" [class.choisie]="formType.effetCash === 1">
+                <input type="radio" name="cash" [value]="1" [(ngModel)]="formType.effetCash" />
+                <span class="icone" aria-hidden="true">↑</span><span>Augmente</span>
+              </label>
+              <label class="tuile moins" [class.choisie]="formType.effetCash === -1">
+                <input type="radio" name="cash" [value]="-1" [(ngModel)]="formType.effetCash" />
+                <span class="icone" aria-hidden="true">↓</span><span>Diminue</span>
+              </label>
+              <label class="tuile neutre" [class.choisie]="formType.effetCash === 0">
+                <input type="radio" name="cash" [value]="0" [(ngModel)]="formType.effetCash" />
+                <span class="icone" aria-hidden="true">=</span><span>Ne bouge pas</span>
+              </label>
+            </div>
+          </div>
 
-          <fieldset class="choix">
-            <legend>Compte electronique touche</legend>
-            <label><input type="radio" name="compte" value="FLOAT" [ngModel]="formType.compteVirtuel" (ngModelChange)="changerCompte($event)" /> Float du service</label>
-            <label><input type="radio" name="compte" value="RECHARGE" [ngModel]="formType.compteVirtuel" (ngModelChange)="changerCompte($event)" /> Compte de recharge</label>
-            <label><input type="radio" name="compte" value="AUCUN" [ngModel]="formType.compteVirtuel" (ngModelChange)="changerCompte($event)" /> Aucun</label>
-          </fieldset>
+          <div class="regle">
+            <div class="question">
+              <span class="numero">2</span>
+              <div><strong>Le compte electronique touche</strong><small>Le solde virtuel de l'agence chez l'operateur.</small></div>
+            </div>
+            <div class="tuiles trois" role="radiogroup" aria-label="Compte electronique">
+              <label class="tuile" [class.choisie]="formType.compteVirtuel === 'FLOAT'">
+                <input type="radio" name="compte" value="FLOAT" [ngModel]="formType.compteVirtuel" (ngModelChange)="changerCompte($event)" />
+                <span>Float du service</span>
+              </label>
+              <label class="tuile" [class.choisie]="formType.compteVirtuel === 'RECHARGE'">
+                <input type="radio" name="compte" value="RECHARGE" [ngModel]="formType.compteVirtuel" (ngModelChange)="changerCompte($event)" />
+                <span>Compte de recharge</span>
+              </label>
+              <label class="tuile neutre" [class.choisie]="formType.compteVirtuel === 'AUCUN'">
+                <input type="radio" name="compte" value="AUCUN" [ngModel]="formType.compteVirtuel" (ngModelChange)="changerCompte($event)" />
+                <span>Aucun</span>
+              </label>
+            </div>
+            @if (formType.compteVirtuel !== 'AUCUN') {
+              <div class="sous-question">
+                <span>Ce compte</span>
+                <div class="tuiles deux compactes" role="radiogroup" aria-label="Effet sur le compte electronique">
+                  <label class="tuile plus" [class.choisie]="formType.effetVirtuel === 1">
+                    <input type="radio" name="virtuel" [value]="1" [(ngModel)]="formType.effetVirtuel" />
+                    <span class="icone" aria-hidden="true">↑</span><span>Augmente</span>
+                  </label>
+                  <label class="tuile moins" [class.choisie]="formType.effetVirtuel === -1">
+                    <input type="radio" name="virtuel" [value]="-1" [(ngModel)]="formType.effetVirtuel" />
+                    <span class="icone" aria-hidden="true">↓</span><span>Diminue</span>
+                  </label>
+                </div>
+              </div>
+            }
+          </div>
 
-          @if (formType.compteVirtuel !== 'AUCUN') {
-            <fieldset class="choix">
-              <legend>Ce compte electronique...</legend>
-              <label><input type="radio" name="virtuel" [value]="1" [(ngModel)]="formType.effetVirtuel" /> augmente du montant</label>
-              <label><input type="radio" name="virtuel" [value]="-1" [(ngModel)]="formType.effetVirtuel" /> diminue du montant</label>
-            </fieldset>
-          }
+          <div class="regle">
+            <div class="question">
+              <span class="numero">3</span>
+              <div><strong>L'argent encaisse</strong><small>Decide s'il compte dans le chiffre d'affaires.</small></div>
+            </div>
+            <div class="tuiles deux" role="radiogroup" aria-label="Nature de l'argent encaisse">
+              <label class="tuile detaillee" [class.choisie]="formType.nature === 'TRANSIT'">
+                <input type="radio" name="nature" value="TRANSIT" [(ngModel)]="formType.nature" />
+                <span><strong>Il ne fait que passer</strong><small>Depot, retrait, transfert</small></span>
+              </label>
+              <label class="tuile detaillee" [class.choisie]="formType.nature === 'VENTE_CARTE'">
+                <input type="radio" name="nature" value="VENTE_CARTE" [(ngModel)]="formType.nature" />
+                <span><strong>Vente de carte</strong><small>Le prix est un chiffre d'affaires</small></span>
+              </label>
+            </div>
+          </div>
 
-          <fieldset class="choix">
-            <legend>Nature de l'argent encaisse</legend>
-            <label><input type="radio" name="nature" value="TRANSIT" [(ngModel)]="formType.nature" /> Il ne fait que passer (depot, retrait, transfert)</label>
-            <label><input type="radio" name="nature" value="VENTE_CARTE" [(ngModel)]="formType.nature" /> Vente de carte : le prix est un chiffre d'affaires</label>
-          </fieldset>
-
-          <p class="exemple">Pour une operation de 100 000 F : <strong>{{ exemple() }}</strong>. La commission va sur le sous-compte des commissions.</p>
+          <div class="apercu" aria-live="polite">
+            <span class="titre-apercu">Pour une operation de 100 000 F</span>
+            <div class="compteurs">
+              <div class="compteur" [class.plus]="formType.effetCash > 0" [class.moins]="formType.effetCash < 0">
+                <small>Cash de la caisse</small>
+                <strong>{{ montantExemple(formType.effetCash) }}</strong>
+              </div>
+              @if (formType.compteVirtuel !== 'AUCUN') {
+                <div class="compteur" [class.plus]="formType.effetVirtuel > 0" [class.moins]="formType.effetVirtuel < 0">
+                  <small>{{ formType.compteVirtuel === 'FLOAT' ? 'Float du service' : 'Compte de recharge' }}</small>
+                  <strong>{{ montantExemple(formType.effetVirtuel) }}</strong>
+                </div>
+              }
+            </div>
+            <small>La commission va sur le sous-compte des commissions.</small>
+          </div>
 
           @if (e.id) {
             <label class="case"><input type="checkbox" name="actif" [(ngModel)]="formType.actif" /> Operation active (proposee a la saisie)</label>

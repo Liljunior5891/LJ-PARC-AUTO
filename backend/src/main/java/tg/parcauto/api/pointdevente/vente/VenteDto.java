@@ -56,7 +56,9 @@ public final class VenteDto {
             Long clientId,
             /** Vente a credit : seul l'acompte est paye maintenant. */
             Boolean credit,
-            @PositiveOrZero BigDecimal acompte) {
+            @PositiveOrZero BigDecimal acompte,
+            /** Cle de la vente sur l'appareil, reprise par sa copie hors ligne si la reponse se perd. */
+            @Size(max = 64) String cleHorsLigne) {
 
         public Reglement reglement() {
             return new Reglement(remise, modePaiement, montantRecu, referencePaiement, clientNom, sessionId);
@@ -79,6 +81,28 @@ public final class VenteDto {
 
     /** Compte client d'une vente de quincaillerie, et vente a credit avec son acompte. */
     public record Compte(Long clientId, boolean credit, BigDecimal acompte) {
+    }
+
+    /** Vente faite sans connexion, telle que l'appareil l'a gardee (especes seules). */
+    public record VenteHorsLigne(
+            @jakarta.validation.constraints.NotBlank @Size(max = 64) String cle,
+            @jakarta.validation.constraints.NotBlank @Size(max = 40) String numeroProvisoire,
+            @NotNull Instant saisieLe,
+            Long sessionId,
+            @NotEmpty @Size(max = 200) List<@jakarta.validation.Valid LigneHorsLigne> lignes,
+            @PositiveOrZero BigDecimal remise,
+            @PositiveOrZero BigDecimal montantRecu,
+            @Size(max = 150) String clientNom) {
+    }
+
+    /** Ligne vendue hors ligne, au prix affiche sur l'appareil au moment de la vente. */
+    public record LigneHorsLigne(
+            @NotNull Long articleId,
+            Long conditionnementId,
+            @NotNull @jakarta.validation.constraints.Positive BigDecimal quantite,
+            @NotNull @PositiveOrZero BigDecimal prixUnitaire,
+            @PositiveOrZero BigDecimal remise,
+            @Size(max = 255) String note) {
     }
 
     public record Annulation(@Size(max = 255) String motif) {

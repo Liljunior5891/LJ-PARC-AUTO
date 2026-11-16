@@ -18,6 +18,11 @@
           </select>
         </div>
       }
+      @if (service.peut('PARAMETRAGE')) {
+        <!-- Visible aussi sur la vue de toutes les agences : l'agence se choisit alors dans le formulaire. -->
+        <button class="bouton secondaire" type="button" (click)="nouveauCompte('PETITE_CAISSE')"
+                title="Especes mises a la disposition d'un caissier pour ses depenses">+ Petite caisse</button>
+      }
       @if (agence()) {
         @if (service.peut('SOLDES_INITIAUX') && comptesOuvrables().length) {
           <button class="bouton" type="button" (click)="ouvrirSaisieOuverture()">Soldes d'ouverture</button>
@@ -180,6 +185,7 @@
                       {{ c.categorie ?? c.typeLibelle }}
                       @if (c.banque) { · {{ c.banque }} }
                       @if (c.numeroCompte) { · {{ c.numeroCompte }} }
+                      @if (c.type === 'PETITE_CAISSE' && c.utilisateurNom) { · affectee a {{ c.utilisateurNom }} }
                     </small>
                     @if (c.bloque) { <span class="etiquette bloque">Bloque</span> }
                     @if (!c.actif) { <span class="etiquette">Desactive</span> }
@@ -192,6 +198,10 @@
                   <td class="montant numerique">{{ c.decouvertAutorise ? (c.decouvertAutorise | number: '1.0-0') : '—' }}</td>
                   <td class="actions">
                     <button class="bouton secondaire petit" type="button" (click)="ouvrirRegistre(c)">Registre</button>
+                    @if (c.type === 'PETITE_CAISSE' && c.actif && service.peut('MOUVEMENT_SAISIR')) {
+                      <a class="bouton secondaire petit" routerLink="/agences/mouvements"
+                         [queryParams]="{ approvisionner: c.id, agence: c.agenceId }" title="Mettre de l'argent dans la petite caisse">Alimenter</a>
+                    }
                     @if (service.peut('PARAMETRAGE')) {
                       <button class="bouton secondaire petit" type="button" (click)="modifierCompte(c)" title="Decouvert, blocage, banque">Regler</button>
                     }
@@ -310,10 +320,37 @@
           <select id="type" name="type" [(ngModel)]="formulaireCompte.type">
             <option value="BANQUE">Compte bancaire</option>
             <option value="FONDS_EXPLOITATION">Fonds d'exploitation</option>
+            <option value="PETITE_CAISSE">Petite caisse de depenses</option>
           </select>
         </div>
       }
-      @if (edition === 'nouveau' || edition.manuel) {
+      @if (formulaireCompte.type === 'PETITE_CAISSE') {
+        @if (edition === 'nouveau' && !agence()) {
+          <div class="champ">
+            <label for="agencePc">Agence *</label>
+            <select id="agencePc" name="agencePc" [ngModel]="agenceFormulaire()" (ngModelChange)="agenceFormulaire.set($event); formulaireCompte.utilisateurId = null">
+              <option [ngValue]="null">—</option>
+              @for (a of service.moi()?.agences ?? []; track a.id) { @if (a.actif) { <option [ngValue]="a.id">{{ a.nom }}</option> } }
+            </select>
+          </div>
+        }
+        <div class="grille-formulaire">
+          <div class="champ">
+            <label for="caissier">Caissier *</label>
+            <select id="caissier" name="caissier" required [(ngModel)]="formulaireCompte.utilisateurId">
+              <option [ngValue]="null">—</option>
+              @for (m of caissiersAgence(); track m.id) { <option [ngValue]="m.id">{{ m.nomComplet }}</option> }
+            </select>
+            @if (!caissiersAgence().length) { <small class="aide">Aucun caissier rattache a cette agence.</small> }
+          </div>
+          <div class="champ">
+            <label for="libellePc">Nom</label>
+            <input id="libellePc" name="libellePc" maxlength="120" [(ngModel)]="formulaireCompte.libelle" placeholder="Petite caisse de ..." />
+          </div>
+        </div>
+        <p class="aide">Le caissier ne paie ses depenses que depuis cette caisse. Alimentez-la ensuite par un mouvement
+          (bouton « Alimenter ») depuis la caisse generale ou la banque.</p>
+      } @else if (edition === 'nouveau' || edition.manuel) {
         <div class="grille-formulaire">
           <div class="champ">
             <label for="libelle">Nom du compte *</label>
@@ -351,7 +388,9 @@
       }
       <div class="actions-formulaire">
         <button class="bouton secondaire annuler" type="button" (click)="compteEdite.set(null)">Annuler</button>
-        <button class="bouton" type="submit" [disabled]="(edition === 'nouveau' || edition.manuel) && !formulaireCompte.libelle?.trim()">Enregistrer</button>
+        <button class="bouton" type="submit"
+                [disabled]="formulaireCompte.type === 'PETITE_CAISSE' ? !formulaireCompte.utilisateurId || !agenceFormulaire()
+                            : (edition === 'nouveau' || edition.manuel) && !formulaireCompte.libelle?.trim()">Enregistrer</button>
       </div>
     </form>
   </app-modale>

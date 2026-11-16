@@ -68,9 +68,9 @@ export class TableauBordAgencesPage implements OnInit {
   readonly caissiers = signal<{ id: number; nom: string }[]>([]);
   readonly alertes = signal<AlerteAgence[]>([]);
 
-  periode: PeriodeAgence = 'AUJOURDHUI';
-  du = dateIso(new Date());
-  au = dateIso(new Date());
+  periode: PeriodeAgence = 'CE_MOIS';
+  du = datesDePeriode('CE_MOIS').du;
+  au = datesDePeriode('CE_MOIS').au;
   agenceId: number | null = null;
   serviceId: number | null = null;
   reseauId: number | null = null;

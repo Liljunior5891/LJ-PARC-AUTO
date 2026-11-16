@@ -175,6 +175,11 @@ public class TransactionService {
         if (!plan.blocages.isEmpty()) {
             throw new BusinessException(plan.blocages.get(0));
         }
+        // Une recharge de carte se rattache toujours a la carte rechargee.
+        if (plan.type.getCompteVirtuel() == TypeOperation.CompteVirtuel.RECHARGE
+                && (s.carte() == null || s.carte().replaceAll("\\D", "").length() < 4)) {
+            throw new BusinessException("Saisissez le numero de la carte rechargee (au moins ses 4 derniers chiffres)");
+        }
         if (plan.doublon != null && !s.confirmerDoublon()) {
             throw new BusinessException("Doublon possible : " + plan.doublon.texte() + ". Confirmez pour enregistrer quand meme.");
         }

@@ -295,6 +295,10 @@ export class FormulaireTransaction implements OnInit, OnDestroy {
   }
 
   peutValider(): boolean {
+    // Une recharge exige le numero de la carte (au moins ses 4 derniers chiffres).
+    if (this.estRecharge() && this.carte.replace(/\D/g, '').length < 4) {
+      return false;
+    }
     if (this.sansReseau()) {
       return !this.envoi() && !!this.saisie();
     }

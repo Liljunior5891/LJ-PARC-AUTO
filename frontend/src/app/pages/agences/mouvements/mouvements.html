@@ -140,8 +140,7 @@
           <input id="justification" name="justification" maxlength="1000" [(ngModel)]="f.justification" placeholder="Numero de bordereau, explication..." />
         </div>
         <div class="champ large">
-          <label for="piece">Piece justificative (photo ou PDF)</label>
-          <input id="piece" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,image/*,application/pdf" (change)="choisirFichier($event)" />
+          <app-piece-jointe libelle="Piece justificative (bordereau, recu)" [(fichier)]="fichier" />
         </div>
       </div>
       <div class="actions-formulaire">

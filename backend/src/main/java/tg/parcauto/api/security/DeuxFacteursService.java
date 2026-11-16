@@ -36,7 +36,7 @@ import java.util.Map;
 @Transactional
 public class DeuxFacteursService {
 
-    private static final String EMETTEUR = "LJ SaaS";
+    private static final String EMETTEUR = "Nova";
     private static final int CODES_SECOURS = 8;
     private static final SecureRandom ALEA = new SecureRandom();
 

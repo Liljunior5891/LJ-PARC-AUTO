@@ -71,7 +71,7 @@ export function moduleDeLaPage(url: string): CodeModule | null {
   return PAGES_PARC.some(sous) ? 'GESTION_PARC' : null;
 }
 
-const CLE_VERSION_VUE = 'lj.version.vue';
+const CLE_VERSION_VUE = 'nova.version.vue';
 const INTERVALLE = 60 * 1000;
 
 /** Une reponse d'erreur est-elle le refus d'un module en maintenance ? */

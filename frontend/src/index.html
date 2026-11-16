@@ -2,11 +2,11 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>LJ SaaS</title>
+  <title>Nova</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Point de vente, agences multiservices, gestion de parc, marketplace et presence.">
-  <meta name="theme-color" content="#1e4fc7">
+  <meta name="theme-color" content="#000000">
   <!-- Application installable (PWA) : ordinateur, Android et iPhone. -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -14,10 +14,27 @@
   <link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="LJ SaaS">
+  <meta name="apple-mobile-web-app-title" content="Nova">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body>
-  <app-root></app-root>
+  <!-- Ecran de chargement : visible jusqu'au premier rendu de l'application, qui le remplace. -->
+  <app-root>
+    <style>
+      .chargement-nova { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 28px; background: #000; }
+      .chargement-nova img { width: min(260px, 62vw); height: auto; animation: nova-respire 1.8s ease-in-out infinite; }
+      .chargement-nova .barre { width: min(180px, 44vw); height: 3px; border-radius: 3px; overflow: hidden; background: #1c1c1c; }
+      .chargement-nova .barre::after { content: ''; display: block; width: 40%; height: 100%;
+        background: linear-gradient(90deg, #ffd666, #4fe3a5, #3b5bdb, #ff5a5a); animation: nova-avance 1.2s ease-in-out infinite; }
+      @keyframes nova-respire { 50% { opacity: .72; transform: scale(.98); } }
+      @keyframes nova-avance { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+      @media (prefers-reduced-motion: reduce) { .chargement-nova img, .chargement-nova .barre::after { animation: none; } }
+    </style>
+    <div class="chargement-nova" role="status" aria-label="Chargement de Nova">
+      <img src="nova-detoure.png" alt="Nova">
+      <div class="barre"></div>
+    </div>
+  </app-root>
 </body>
 </html>

@@ -1,4 +1,4 @@
-# Audit sécurité 6/13 — FINANCE (LJ SAAS, branche saas)
+# Audit sécurité 6/13 — FINANCE (Nova, branche saas)
 
 Périmètre : `backend/src/main/java/tg/parcauto/api/finance/**` (facture, recette, depense, rentabilite, commun) et écrans Angular `pages/factures`, `recettes`, `depenses`, `fournisseurs-parc`, `carburant`, `rentabilite`, `rapports`.
 Le package ne contient **ni comptes bancaires, ni trésorerie, ni caisse du parc** : il n'y a donc rien à auditer sur ces surfaces côté parc.

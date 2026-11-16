@@ -6,6 +6,7 @@ import { Camion } from '../../core/models/models';
 import { CamionService } from '../../core/services/camion.service';
 import { PilotageService } from '../../core/services/pilotage.service';
 import { CHOIX_PERIODES, ChoixPeriode, periodeCourante } from '../../shared/periode';
+import { datesDePeriode } from '../../shared/periodes';
 
 /**
  * Menu Rapports (chapitre 35).
@@ -40,8 +41,8 @@ export class Rapports implements OnInit, OnDestroy {
   /** Vrai quand les parametres ont bouge depuis l'edition de l'apercu. */
   readonly apercuPerime = signal(false);
 
-  debut = this.premierJourDeLAnnee();
-  fin = this.aujourdhui();
+  debut = datesDePeriode('CE_MOIS').du;
+  fin = datesDePeriode('CE_MOIS').au;
   recherche = '';
 
   /** Le rapport selectionne, ou null tant que rien n'est choisi. */
@@ -252,10 +253,6 @@ export class Rapports implements OnInit, OnDestroy {
 
   private aujourdhui(): string {
     return this.iso(new Date());
-  }
-
-  private premierJourDeLAnnee(): string {
-    return this.iso(new Date(new Date().getFullYear(), 0, 1));
   }
 
   /** Date locale au format ISO : toISOString decalerait d'un jour. */

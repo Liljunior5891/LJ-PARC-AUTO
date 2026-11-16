@@ -6,7 +6,7 @@
     @if (jetonDeuxFacteurs()) {
       <form class="carte-connexion" (ngSubmit)="validerCode()">
         <div class="marque">
-          <span class="logo">◆</span>
+          <img class="logo-nova" src="nova-detoure.png" [alt]="nomPlateforme" />
           <h1>Double authentification</h1>
           <p class="sous-titre">Tapez le code a 6 chiffres de votre application d'authentification, ou un code de secours.</p>
         </div>
@@ -26,8 +26,7 @@
     } @else {
     <form class="carte-connexion" [formGroup]="formulaire" (ngSubmit)="soumettre()">
       <div class="marque">
-        <span class="logo">◆</span>
-        <h1>{{ nomPlateforme }}</h1>
+        <img class="logo-nova" src="nova-detoure.png" [alt]="nomPlateforme" />
         <p class="sous-titre">Connectez-vous a l'espace de votre entreprise</p>
       </div>
 

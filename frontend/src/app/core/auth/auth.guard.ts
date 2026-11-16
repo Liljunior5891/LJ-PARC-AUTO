@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { CodeModule, Role } from '../models/models';
+import { PdvHorsLigneService } from '../services/pdv-hors-ligne.service';
 
 export const authGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthService);
@@ -49,9 +50,14 @@ export const varianteGuard =
   };
 
 /** L'ancienne caisse est celle des boutiques ; un restaurant encaisse au comptoir sur sa nouvelle caisse. */
-export const caisseBoutiqueGuard: CanActivateFn = () => {
+export const caisseBoutiqueGuard: CanActivateFn = (route) => {
   const auth = inject(AuthService);
   const router = inject(Router);
+  // Pendant une coupure, le restaurant encaisse sur cette caisse simple : le comptoir a besoin du serveur.
+  // Seulement pendant une vraie coupure : en ligne, le restaurant garde son comptoir.
+  if (route.queryParamMap.has('horsLigne') && (!inject(PdvHorsLigneService).enLigne() || !navigator.onLine)) {
+    return true;
+  }
   return auth.estRestauration() ? router.createUrlTree(['/pdv/comptoir']) : true;
 };
 

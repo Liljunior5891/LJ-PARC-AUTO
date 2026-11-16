@@ -7,6 +7,7 @@ import { AgencesService } from '../../../core/services/agences.service';
 import { LogoService } from '../../../shared/logo-service';
 import { Modale } from '../../../shared/modale';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
+import { datesDePeriode } from '../../../shared/periodes';
 
 /**
  * Rapprochement des commissions : pour chaque operateur, les commissions
@@ -43,8 +44,8 @@ export class RapprochementCommissions implements OnInit {
   readonly succes = signal<string | null>(null);
   readonly erreurModale = signal<string | null>(null);
 
-  du = '';
-  au = '';
+  du = datesDePeriode('CE_MOIS').du;
+  au = datesDePeriode('CE_MOIS').au;
   /** Commissions cochees (identifiant de transaction -> commission). */
   readonly choisies = signal<Map<number, number>>(new Map());
   readonly totalChoisi = computed(() => [...this.choisies().values()].reduce((s, c) => s + c, 0));

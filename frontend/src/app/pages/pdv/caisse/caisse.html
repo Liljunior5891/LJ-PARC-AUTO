@@ -1,6 +1,26 @@
 <div class="pos" [class.vue-commande]="vueMobile() === 'commande'">
   <!-- ========================================================= produits -->
   <section class="pos-carte">
+    @if (!horsLigne.enLigne() || horsLigne.nombreEnAttente()) {
+      <div class="bandeau-hors-ligne" [class.coupe]="!horsLigne.enLigne()" role="status">
+        <span aria-hidden="true">{{ horsLigne.enLigne() ? '🔄' : '📴' }}</span>
+        <span>
+          @if (horsLigne.enLigne()) { Connexion revenue : envoi des ventes gardees sur l'appareil. }
+          @else { <strong>Hors ligne</strong> : especes uniquement, les ventes sont gardees sur l'appareil. }
+          @if (horsLigne.nombreEnAttente()) { <strong>{{ horsLigne.nombreEnAttente() }}</strong> vente(s) en attente d'envoi. }
+        </span>
+      </div>
+    }
+    @for (r of horsLigne.derniersResultats(); track r.cle) {
+      <div class="bandeau-hors-ligne" [class.coupe]="r.statut === 'CONFLIT'" role="status">
+        <span aria-hidden="true">{{ r.statut === 'CONFLIT' ? '⚠' : 'ℹ' }}</span>
+        <span>{{ r.numeroProvisoire }} :
+          @if (r.statut === 'CONFLIT') { non enregistree ({{ r.message }}) ; le gerant la traitera. }
+          @else { enregistree ({{ r.numero }}) — {{ r.manques ? 'stock manquant : ' + r.manques : 'prix : ' + r.ecartsPrix }}. }
+        </span>
+        <button type="button" class="fermer-bandeau" (click)="horsLigne.oublierResultats()" aria-label="Masquer">×</button>
+      </div>
+    }
     <div class="barre-recherche">
       <label class="recherche">
         <span aria-hidden="true">⌕</span>
@@ -540,7 +560,9 @@
           <div class="tuiles-modes" role="radiogroup" aria-label="Moyen de paiement">
             @for (m of modes; track m.valeur) {
               <button type="button" class="tuile-mode" role="radio" [attr.data-mode]="m.valeur" [class.actif]="mode() === m.valeur"
-                      [attr.aria-checked]="mode() === m.valeur" (click)="choisirMode(m.valeur)">
+                      [attr.aria-checked]="mode() === m.valeur" (click)="choisirMode(m.valeur)"
+                      [disabled]="!horsLigne.enLigne() && m.valeur !== 'ESPECES'"
+                      [title]="!horsLigne.enLigne() && m.valeur !== 'ESPECES' ? 'Hors ligne : especes uniquement' : ''">
                 <span class="pictogramme-mode" aria-hidden="true">
                   @switch (m.valeur) {
                     @case ('ESPECES') {

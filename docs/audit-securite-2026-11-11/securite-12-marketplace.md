@@ -1,4 +1,4 @@
-# Audit de sécurité 12/13 : module Marketplace (LJ SAAS, branche saas)
+# Audit de sécurité 12/13 : module Marketplace (Nova, branche saas)
 
 Date : 2026-11-11. Périmètre : `backend/src/main/java/tg/parcauto/api/marketplace/**`, les liens avec le PDV (`VenteService`, `restauration/CommandeService`), `config/WebMvcConfig`, `config/SecurityConfig`, et les écrans Angular `pages/boutique-publique/*`, `pages/marketplace/*`, `shared/ticket-pdv.ts`, `shared/bon-cuisine.ts`.
 Tests dynamiques : uniquement des GET anonymes sur http://localhost:8085, plus un POST vide rejeté par la validation, donc sans écriture. Lecture seule en base locale `parcauto_saas` pour retrouver deux jetons de suivi existants, masqués ci-dessous. Aucune commande créée, aucun fichier du dépôt modifié.

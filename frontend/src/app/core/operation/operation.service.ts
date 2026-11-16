@@ -102,6 +102,7 @@ export class OperationService {
       return;
     }
     this.echec = null;
+    this.issueImposee = null;
     this.messageResultat.set(null);
     this.progression.set(0);
     this.debutOperation = Date.now();
@@ -117,10 +118,21 @@ export class OperationService {
     }, 80);
   }
 
+  /** Message de reussite impose par l'ecran (vente gardee hors ligne apres une coupure). */
+  private issueImposee: string | null = null;
+
+  /**
+   * L'ecran a pris en charge l'echec de sa requete (coupure du reseau : la vente
+   * est gardee sur l'appareil) : l'operation se termine en succes, sur ce message.
+   */
+  imposerSucces(message: string): void {
+    this.issueImposee = message;
+  }
+
   /** Fin d'une requete ; quand la derniere s'acheve, l'anneau atteint 100 %. */
   terminer(erreur: string | null): void {
     this.actives = Math.max(0, this.actives - 1);
-    if (erreur) {
+    if (erreur && this.issueImposee === null) {
       this.echec = erreur;
     }
     if (this.actives > 0) {
@@ -138,7 +150,8 @@ export class OperationService {
     this.progression.set(100);
     const reussie = this.echec === null;
     this.etat.set(reussie ? 'succes' : 'echec');
-    this.messageResultat.set(reussie ? 'Operation validee' : this.echec);
+    this.messageResultat.set(reussie ? this.issueImposee ?? 'Operation validee' : this.echec);
+    this.issueImposee = null;
     this.minuteurAffichage = setTimeout(() => {
       if (this.actives === 0 && this.etat() !== 'confirmation') {
         this.etat.set('inactif');

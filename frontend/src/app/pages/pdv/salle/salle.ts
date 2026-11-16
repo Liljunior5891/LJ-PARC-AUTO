@@ -21,6 +21,9 @@ const RAFRAICHISSEMENT_MS = 8000;
  * ouvre sa commande. Les commandes au comptoir ou a emporter, sans table,
  * sont listees a cote.
  */
+import { PdvHorsLigneService } from '../../../core/services/pdv-hors-ligne.service';
+import { erreurReseau } from '../../../core/services/agences-hors-ligne.service';
+
 @Component({
   selector: 'app-salle-pdv',
   imports: [DecimalPipe, FormsModule, RouterLink, Modale, BandeauSession],
@@ -33,6 +36,8 @@ export class SallePdv implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly sessions = inject(SessionTravailService);
+  /** Coupure du reseau : la salle propose d'encaisser au comptoir hors ligne. */
+  readonly horsLigne = inject(PdvHorsLigneService);
   /** Aucune caisse ouverte pour l'utilisateur : aucune table ne s'ouvre (le serveur le refuse aussi). */
   readonly salleFermee = computed(() => this.sessions.ouvertes()?.length === 0);
 
@@ -71,6 +76,8 @@ export class SallePdv implements OnInit {
   });
 
   ngOnInit(): void {
+    // Copies du catalogue et ecran de caisse gardes d'avance, pour encaisser pendant une coupure.
+    this.horsLigne.preparer();
     this.charger();
     const minuterie = setInterval(() => {
       this.maintenant.set(Date.now());
@@ -187,6 +194,9 @@ export class SallePdv implements OnInit {
         this.erreur.set(null);
       },
       error: (e) => {
+        if (erreurReseau(e)) {
+          this.horsLigne.signalerCoupure();
+        }
         if (!this.plan()) {
           this.erreur.set(this.message(e, 'Chargement du plan impossible.'));
         }

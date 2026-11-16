@@ -1,4 +1,4 @@
-# Audit sécurité 4/13 : module PARC (LJ SAAS, branche saas)
+# Audit sécurité 4/13 : module PARC (Nova, branche saas)
 
 Date : 2026-11-11. Périmètre :
 - backend `tg.parcauto.api.parc` (véhicules, chauffeurs, affectations, documents/justificatifs) ;

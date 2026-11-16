@@ -4,7 +4,7 @@ import { AuthService } from '../core/auth/auth.service';
 import { EtatPlateformeService, MODULES_HORS_LIGNE, MaintenancePlateforme } from '../core/services/etat-plateforme.service';
 import { Modale } from './modale';
 
-const MASQUEES = 'lj.maintenances.masquees';
+const MASQUEES = 'nova.maintenances.masquees';
 
 /**
  * Bandeaux de la plateforme en haut des pages : maintenance annoncee ou en cours

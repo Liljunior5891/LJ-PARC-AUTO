@@ -18,8 +18,8 @@ import java.util.Map;
 public class JwtService {
 
     /** Emetteur et audience exiges : un jeton signe pour un autre usage n'ouvre rien ici. */
-    static final String EMETTEUR = "lj-saas";
-    static final String AUDIENCE = "lj-saas-api";
+    static final String EMETTEUR = "nova";
+    static final String AUDIENCE = "nova-api";
 
     private final SecretKey key;
     private final Duration expiration;
@@ -63,18 +63,39 @@ public class JwtService {
     public Claims lire(String token) {
         var jws = Jwts.parser()
                 .verifyWith(key)
-                .requireIssuer(EMETTEUR)
-                .requireAudience(AUDIENCE)
                 .build()
                 .parseSignedClaims(token);
         if (!Jwts.SIG.HS512.getId().equals(jws.getHeader().getAlgorithm())) {
             throw new io.jsonwebtoken.security.SignatureException("Algorithme de signature refuse");
         }
-        return jws.getPayload();
+        Claims claims = jws.getPayload();
+        if (!emetteurAccepte(claims)) {
+            throw new io.jsonwebtoken.IncorrectClaimException(jws.getHeader(), claims, "iss", claims.getIssuer(),
+                    "Emetteur ou audience du jeton refuse");
+        }
+        return claims;
     }
 
+    /**
+     * Emetteur et audience de cette API. Les jetons emis avant le renommage de la plateforme
+     * (lj-saas) restent valables jusqu'a leur expiration : une caisse avec des ventes hors
+     * ligne en attente n'est pas deconnectee par la mise a jour.
+     */
+    static boolean emetteurAccepte(Claims claims) {
+        java.util.Set<String> audience = claims.getAudience() == null ? java.util.Set.of() : claims.getAudience();
+        return (EMETTEUR.equals(claims.getIssuer()) && audience.contains(AUDIENCE))
+                || (ANCIEN_EMETTEUR.equals(claims.getIssuer()) && audience.contains(ANCIENNE_AUDIENCE)
+                    && java.time.Instant.now().isBefore(FIN_ANCIEN_EMETTEUR));
+    }
+
+    /** Ancien nom de la plateforme : a retirer une fois expires les jetons emis avant le renommage. */
+    static final String ANCIEN_EMETTEUR = "lj-saas";
+    static final String ANCIENNE_AUDIENCE = "lj-saas-api";
+    /** Au-dela, l'ancien emetteur n'est plus accepte du tout (les jetons durent 8 h au plus). */
+    static final java.time.Instant FIN_ANCIEN_EMETTEUR = java.time.Instant.parse("2027-01-31T00:00:00Z");
+
     /** Audience du jeton d'attente entre le mot de passe et le code : il n'ouvre aucune session. */
-    static final String AUDIENCE_DEUX_FACTEURS = "lj-saas-deux-facteurs";
+    static final String AUDIENCE_DEUX_FACTEURS = "nova-deux-facteurs";
 
     /** Jeton de 5 minutes prouvant que le mot de passe est bon, a echanger contre une session avec le code. */
     public String genererJetonDeuxFacteurs(UtilisateurPrincipal principal) {

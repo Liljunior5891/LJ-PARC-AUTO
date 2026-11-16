@@ -36,8 +36,8 @@ public class CompteAgence extends BaseEntity {
     @Column(name = "service_id", updatable = false)
     private Long serviceId;
 
-    /** Caissier d'une caisse de caissier. */
-    @Column(name = "utilisateur_id", updatable = false)
+    /** Caissier d'une caisse de caissier, ou caissier a qui une petite caisse de depenses est affectee. */
+    @Column(name = "utilisateur_id")
     private Long utilisateurId;
 
     @Column(length = 120)

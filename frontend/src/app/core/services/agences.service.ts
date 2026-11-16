@@ -23,6 +23,7 @@ import {
   ChargeRecurrente,
   CreditAgence,
   DepenseAgence,
+  PetiteCaisseAgence,
   ResumeDepenses,
   SyntheseDepenses,
   TypeCredit,
@@ -424,6 +425,10 @@ export class AgencesService {
                     beneficiaire?: string; reference?: string; observations?: string; recurrenteId?: number | null;
                     periode?: string }, cle?: string): Observable<DepenseAgence> {
     return this.http.post<DepenseAgence>(`${this.base}/depenses`, r, this.avecCle(cle));
+  }
+
+  petiteCaisse(agenceId: number): Observable<PetiteCaisseAgence | null> {
+    return this.http.get<PetiteCaisseAgence | null>(`${this.base}/depenses/petite-caisse`, { params: { agenceId } });
   }
 
   depensesAValider(agenceId: number | null): Observable<DepenseAgence[]> {

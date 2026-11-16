@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { SANS_SUIVI } from '../operation/operation.interceptor';
 
-export type TypeNotificationPdv = 'VALIDATION' | 'APPEL' | 'ADDITION' | 'PRET' | 'BON' | 'CAISSE' | 'RETRAIT' | 'TRANSFERT';
+export type TypeNotificationPdv = 'VALIDATION' | 'APPEL' | 'ADDITION' | 'PRET' | 'BON' | 'CAISSE' | 'RETRAIT' | 'TRANSFERT' | 'HORS_LIGNE';
 
 /** Evenement en attente pour le poste, tel que le serveur le decrit. */
 export interface NotificationPdv {
@@ -36,7 +36,8 @@ const MELODIES: Record<TypeNotificationPdv, number[]> = {
   ADDITION: [988, 740],
   CAISSE: [523, 784],
   RETRAIT: [784, 988],
-  TRANSFERT: [587, 784, 587]
+  TRANSFERT: [587, 784, 587],
+  HORS_LIGNE: [659, 523, 659]
 };
 
 /**

@@ -1,6 +1,6 @@
 {
-  "name": "LJ SaaS",
-  "short_name": "LJ SaaS",
+  "name": "Nova",
+  "short_name": "Nova",
   "description": "Point de vente, agences multiservices, gestion de parc, marketplace et presence.",
   "id": "/",
   "start_url": "/?source=application",

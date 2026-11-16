@@ -1,4 +1,4 @@
-# Audit sécurité 13/13 : Gestion de présence (LJ SAAS, branche saas)
+# Audit sécurité 13/13 : Gestion de présence (Nova, branche saas)
 
 Périmètre : `backend/src/main/java/tg/parcauto/api/presence/` (PointagePublicController, AppairageBorneController, ContextePresenceInterceptor, SecuritePresence, PointageService, PresenceService, PresenceController, entités et dépôts), migration `V67__gestion_de_presence.sql`, écrans `frontend/src/app/pages/presence/**`.
 Méthode : revue statique, puis sondes locales en lecture seule sur http://localhost:8085 (aucun pointage écrit, aucune force brute). Les constats déjà signalés (socle, plateforme, getRemoteAddr, etc.) ne sont repris que lorsqu'ils ont un effet propre à la présence.
@@ -56,7 +56,7 @@ Données locales au moment du test : 1 lieu (sans position GPS), 1 borne appair�
 - Emplacements :
   - `ContextePresenceInterceptor.java:51-52` : la borne est authentifiée par la seule empreinte SHA-256 du jeton, sans expiration, sans lien à une IP ni à un appareil.
   - `PointagePublicController.java:70-77` : `GET /bornes/{jeton}/qr` délivre à volonté le code du moment, avec le jeton public du lieu (`PointageService.java:211-212`).
-  - `frontend/src/app/pages/presence/borne/borne.ts:81` : le jeton est stocké dans `localStorage` sous `lj-borne-presence`, sur la même origine que l'application authentifiée. Toute XSS de l'application le lit.
+  - `frontend/src/app/pages/presence/borne/borne.ts:81` : le jeton est stocké dans `localStorage` sous `nova-borne-presence`, sur la même origine que l'application authentifiée. Toute XSS de l'application le lit.
 - Scénario : un employé ayant un accès physique à la tablette copie le jeton (débogage distant Chrome, onglet non verrouillé). Depuis chez lui, il obtient le QR en continu et pointe en mode téléphone avec une position forgée (E1). Il peut aussi pointer en mode borne sans GPS pour tout PIN connu, et faire de la force brute (E2).
 - Points positifs : la révocation existe (`reappairer`, `basculerBorne` effacent l'empreinte) et le jeton fait 128 bits aléatoires.
 - Correctif :

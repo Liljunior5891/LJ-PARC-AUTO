@@ -42,7 +42,38 @@ public class VenteController {
     @Operation(summary = "Encaisse une commande sur la session de caisse ouverte de l'utilisateur")
     public VenteDto.Ticket encaisser(@Valid @RequestBody VenteDto.Encaissement demande,
                                      @AuthenticationPrincipal UtilisateurPrincipal principal) {
-        return service.encaisser(demande, principal);
+        try {
+            return service.encaisser(demande, principal);
+        } catch (org.springframework.dao.DataIntegrityViolationException
+                 | org.springframework.dao.ConcurrencyFailureException e) {
+            // Deux envois de la meme vente en meme temps : le second bute sur la cle unique ou sur
+            // la version du stock ; il recoit le ticket de la vente enregistree par le premier.
+            String cle = demande.cleHorsLigne() == null ? null : demande.cleHorsLigne().trim();
+            if (cle != null && !cle.isEmpty()) {
+                VenteDto.Ticket deja = attendreVente(cle);
+                if (deja != null) {
+                    return deja;
+                }
+            }
+            throw e;
+        }
+    }
+
+    /** Le premier envoi peut etre en cours de validation : quelques courtes attentes, une seconde au plus. */
+    private VenteDto.Ticket attendreVente(String cle) {
+        for (int essai = 0; essai < 5; essai++) {
+            VenteDto.Ticket deja = service.ticketParCle(cle);
+            if (deja != null) {
+                return deja;
+            }
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException interrompu) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
+        }
+        return null;
     }
 
     /** Sans bornes : les dernieres 24 heures. Avec une session : tous ses tickets. */

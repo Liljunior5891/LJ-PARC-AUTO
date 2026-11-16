@@ -38,7 +38,8 @@ import java.util.regex.Pattern;
  * Fournisseurs :
  * <ul>
  *   <li>e-mail : serveur SMTP (MAIL_HOST...) s'il est configure ;</li>
- *   <li>SMS et WhatsApp : pas encore de fournisseur branche.</li>
+ *   <li>WhatsApp : serveur WAHA, s'il est active par le super-administrateur ;</li>
+ *   <li>SMS : pas encore de fournisseur branche.</li>
  * </ul>
  * Sans fournisseur, le message est marque SIMULE et ecrit dans les journaux du
  * serveur ; le super-administrateur le lit dans la console (Notifications).
@@ -62,25 +63,41 @@ public class NotificationService {
     private final ObjectProvider<JavaMailSender> courrier;
     private final String expediteur;
     private final String nomExpediteur;
-    private final ThreadPoolExecutor fil = new ThreadPoolExecutor(1, 2, 60, TimeUnit.SECONDS,
-            new ArrayBlockingQueue<>(5_000), r -> {
-                Thread t = new Thread(r, "notifications");
-                t.setDaemon(true);
-                return t;
-            }, new ThreadPoolExecutor.DiscardPolicy());
+    private final WhatsAppWaha whatsApp;
+    /**
+     * Deux files : les e-mails (verification, mot de passe) ne doivent pas attendre WhatsApp,
+     * qui espace ses messages et peut rester bloque sur un serveur WAHA injoignable.
+     */
+    private final ThreadPoolExecutor filCourriel = file("notifications-courriel");
+    private final ThreadPoolExecutor filWhatsApp = file("notifications-whatsapp");
+    /** Messages deja en file : une reprise ne les ajoute pas une seconde fois. */
+    private final java.util.Set<Long> enFile = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
-    public NotificationService(JdbcTemplate jdbc, ObjectProvider<JavaMailSender> courrier,
-                               @Value("${parcauto.notifications.expediteur:no-reply@lj-saas.local}") String expediteur,
-                               @Value("${parcauto.notifications.nom-expediteur:LJ SaaS}") String nomExpediteur) {
+    private static ThreadPoolExecutor file(String nom) {
+        return new ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS, new ArrayBlockingQueue<>(5_000), r -> {
+            Thread t = new Thread(r, nom);
+            t.setDaemon(true);
+            return t;
+        }, new ThreadPoolExecutor.AbortPolicy());
+    }
+
+    public NotificationService(JdbcTemplate jdbc, ObjectProvider<JavaMailSender> courrier, WhatsAppWaha whatsApp,
+                               @Value("${parcauto.notifications.expediteur:no-reply@nova.local}") String expediteur,
+                               @Value("${parcauto.notifications.nom-expediteur:Nova}") String nomExpediteur) {
         this.jdbc = jdbc;
         this.courrier = courrier;
         this.expediteur = expediteur;
         this.nomExpediteur = nomExpediteur;
+        this.whatsApp = whatsApp;
     }
 
     /** Vrai si un vrai fournisseur existe pour ce canal (sinon : simulation). */
     public boolean fournisseurActif(Canal canal) {
-        return canal == Canal.EMAIL && courrier.getIfAvailable() != null;
+        return switch (canal) {
+            case EMAIL -> courrier.getIfAvailable() != null;
+            case WHATSAPP -> whatsApp.actif();
+            case SMS -> false;
+        };
     }
 
     /**
@@ -111,7 +128,8 @@ public class NotificationService {
         if (id == null) {
             return null;
         }
-        Runnable lancer = () -> fil.execute(() -> traiter(id));
+        Canal canal = m.canal();
+        Runnable lancer = () -> planifier(id, canal);
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -133,6 +151,31 @@ public class NotificationService {
     /** Raccourci : SMS. */
     public Long sms(Long entrepriseId, String telephone, String texte, String motif) {
         return envoyer(new Message(entrepriseId, Canal.SMS, telephone, null, texte, motif));
+    }
+
+    /** Raccourci : WhatsApp. */
+    public Long whatsapp(Long entrepriseId, String telephone, String texte, String motif) {
+        return envoyer(new Message(entrepriseId, Canal.WHATSAPP, telephone, null, texte, motif));
+    }
+
+    /** Met le message dans la file de son canal, sauf s'il y est deja. */
+    private void planifier(Long id, Canal canal) {
+        if (!enFile.add(id)) {
+            return;
+        }
+        ThreadPoolExecutor f = canal == Canal.WHATSAPP ? filWhatsApp : filCourriel;
+        try {
+            f.execute(() -> {
+                try {
+                    traiter(id);
+                } finally {
+                    enFile.remove(id);
+                }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException pleine) {
+            // File pleine ou serveur en arret : le message reste en base, la reprise le retentera.
+            enFile.remove(id);
+        }
     }
 
     /** Envoie un message enregistre ; appele apres validation, et par les nouvelles tentatives. */
@@ -179,6 +222,10 @@ public class NotificationService {
                 return "smtp";
             }
         }
+        if (canal == Canal.WHATSAPP && whatsApp.actif()) {
+            whatsApp.envoyer(destinataire, texte);
+            return "waha";
+        }
         // Aucun fournisseur pour ce canal : le message est seulement trace.
         log.info("[notification simulee] {} -> {} : {}", canal, masquer(destinataire), sujet == null ? "" : sujet);
         return null;
@@ -187,13 +234,14 @@ public class NotificationService {
     /** Nouvelles tentatives des envois en echec, et des envois restes en attente (redemarrage du serveur). */
     @Scheduled(fixedDelay = 300_000, initialDelay = 90_000)
     public void reprendre() {
-        List<Long> ids = jdbc.queryForList("""
-                select id from notification_envoi
+        jdbc.query("""
+                select id, canal from notification_envoi
                 where (statut = 'ECHEC' and tentatives < ?)
                    or (statut = 'EN_ATTENTE' and cree_le < ?)
                 order by id limit 200
-                """, Long.class, TENTATIVES_MAX, Timestamp.from(Instant.now().minusSeconds(120)));
-        ids.forEach(id -> fil.execute(() -> traiter(id)));
+                """, rs -> {
+            planifier(rs.getLong(1), Canal.valueOf(rs.getString(2)));
+        }, TENTATIVES_MAX, Timestamp.from(Instant.now().minusSeconds(120)));
     }
 
     /** Renvoie un message (console du super-administrateur). */
@@ -201,7 +249,8 @@ public class NotificationService {
         int n = jdbc.update("update notification_envoi set statut = 'EN_ATTENTE', tentatives = 0, erreur = null"
                 + " where id = ? and statut in ('ECHEC', 'ABANDONNE', 'SIMULE')", id);
         if (n > 0) {
-            fil.execute(() -> traiter(id));
+            planifier(id, Canal.valueOf(jdbc.queryForObject("select canal from notification_envoi where id = ?",
+                    String.class, id)));
         }
     }
 
@@ -236,6 +285,7 @@ public class NotificationService {
 
     @PreDestroy
     void arreter() {
-        fil.shutdown();
+        filCourriel.shutdown();
+        filWhatsApp.shutdown();
     }
 }

@@ -243,7 +243,10 @@ export class AuthService {
     try {
       // Copies de reference des agences (clients, pieces d'identite) : effacees ; la file
       // d'operations non envoyees (agences.horsligne.*) reste, pour ne rien perdre.
-      Object.keys(localStorage).filter((cle) => cle.startsWith('pin.empreinte.') || cle.startsWith('agences.copie.'))
+      // Idem pour les copies de la caisse du point de vente (catalogue, en-tete) ; la file des ventes
+      // hors ligne (pdv.horsligne.*) reste aussi.
+      Object.keys(localStorage).filter((cle) => cle.startsWith('pin.empreinte.') || cle.startsWith('agences.copie.')
+        || cle.startsWith('pdv.copie.'))
         .forEach((cle) => localStorage.removeItem(cle));
       sessionStorage.removeItem('pdv.caisse.deverrouillee');
     } catch {

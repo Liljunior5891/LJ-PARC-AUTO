@@ -62,7 +62,21 @@ public class VenteService {
     private final org.springframework.beans.factory.ObjectProvider<PrixCommandesEnLigne> prixCommandesEnLigne;
     private final tg.parcauto.api.pointdevente.reglage.ReglagePdvService reglagesPdv;
 
+    /** Ticket de la vente enregistree sous cette cle hors ligne, ou nul. */
+    @Transactional(readOnly = true, propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public VenteDto.Ticket ticketParCle(String cle) {
+        return repository.findFirstByCleHorsLigne(cle).map(VenteDto.Ticket::de).orElse(null);
+    }
+
     public VenteDto.Ticket encaisser(VenteDto.Encaissement demande, UtilisateurPrincipal caissier) {
+        String cle = demande.cleHorsLigne() == null || demande.cleHorsLigne().isBlank() ? null : demande.cleHorsLigne().trim();
+        if (cle != null) {
+            // Renvoi d'une vente deja enregistree (reponse perdue) : le meme ticket, sans seconde vente.
+            java.util.Optional<Vente> deja = repository.findFirstByCleHorsLigne(cle);
+            if (deja.isPresent()) {
+                return VenteDto.Ticket.de(deja.get());
+            }
+        }
         List<LigneVente> lignes = new ArrayList<>();
         // Commande en ligne : chaque article garde le prix paye par le client.
         java.util.Map<Long, BigDecimal> prixEnLigne = demande.commandeEnLigneId() == null ? java.util.Map.of()
@@ -92,6 +106,7 @@ public class VenteService {
             lignes.add(ligne);
         }
         Vente vente = encaisserLignes(lignes, demande.reglement(), demande.compte(), caissier, null);
+        vente.setCleHorsLigne(cle);
         // Vente directe au comptoir : les articles des categories imprimees partent en cuisine.
         impression.bonsVente(vente);
         if (demande.commandeEnLigneId() != null) {
@@ -102,6 +117,80 @@ public class VenteService {
         return VenteDto.Ticket.de(vente);
     }
 
+    /** Resultat d'une vente faite hors ligne : la vente, et ce que le gerant doit regulariser. */
+    public record VenteRejouee(Vente vente, List<String> manques, List<String> ecartsPrix) {
+    }
+
+    /**
+     * Rejoue une vente encaissee sans connexion (especes seules) : au prix paye
+     * par le client, sur la session de la caisse, a l'heure de l'appareil. Le stock
+     * manquant ne la refuse pas : il est releve pour le gerant. Rien n'est
+     * envoye en cuisine : l'appareil a deja imprime ses bons.
+     */
+    public VenteRejouee encaisserHorsLigne(VenteDto.VenteHorsLigne demande, UtilisateurPrincipal caissier, Long sessionId,
+                                           boolean prixAccepte) {
+        List<LigneVente> lignes = new ArrayList<>();
+        List<String> ecarts = new ArrayList<>();
+        // Tout ce que le gerant doit valider, liste en une fois : il voit l'ensemble avant de reprendre la vente.
+        List<String> aValider = new ArrayList<>();
+        for (VenteDto.LigneHorsLigne l : demande.lignes()) {
+            Article article = articleRepository.findById(l.articleId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Article", l.articleId()));
+            Conditionnement conditionnement = l.conditionnementId() == null ? null
+                    : conditionnementRepository.findById(l.conditionnementId())
+                    .filter(c -> c.getArticle().getId().equals(article.getId()))
+                    .orElseThrow(() -> ResourceNotFoundException.of("Conditionnement", l.conditionnementId()));
+            BigDecimal catalogue = conditionnement == null ? article.getPrixVente() : conditionnement.getPrixVente();
+            BigDecimal prix = montant(l.prixUnitaire());
+            if (!prixAccepte && catalogue != null && prix.compareTo(montant(catalogue)) < 0) {
+                // Un prix plus bas que le catalogue ne passe qu'avec l'accord du gerant (reprise du conflit).
+                aValider.add("prix de " + libelle(article, conditionnement) + " plus bas que le catalogue ("
+                        + prix.stripTrailingZeros().toPlainString() + " F au lieu de "
+                        + montant(catalogue).stripTrailingZeros().toPlainString() + " F)");
+            }
+            if (!prixAccepte && !article.isActif()) {
+                // Article retire de la vente depuis : la vente ne passe qu'avec l'accord du gerant.
+                aValider.add(libelle(article, conditionnement) + " n'est plus en vente");
+            }
+            if (catalogue != null && montant(catalogue).compareTo(prix) != 0) {
+                ecarts.add(libelle(article, conditionnement) + " : " + prix.stripTrailingZeros().toPlainString() + " F au lieu de "
+                        + montant(catalogue).stripTrailingZeros().toPlainString() + " F");
+            }
+            LigneVente ligne = ligne(article, conditionnement, l.quantite(), l.remise(), prix, false);
+            if (l.note() != null && !l.note().isBlank()) {
+                ligne.setNote(l.note().trim());
+            }
+            lignes.add(ligne);
+        }
+        if (!aValider.isEmpty()) {
+            String detail = String.join(" ; ", aValider);
+            if (detail.length() > 900) {
+                detail = detail.substring(0, 900) + "...";
+            }
+            throw new BusinessException("A valider par le gerant : " + detail);
+        }
+        VenteDto.Reglement reglement = new VenteDto.Reglement(demande.remise(), ModePaiementPdv.ESPECES,
+                demande.montantRecu(), null, demande.clientNom(), sessionId);
+        Vente vente = enregistrer(lignes, reglement, caissier, null, null, null, demande.saisieLe());
+        vente.setHorsLigne(true);
+        vente.setNumeroProvisoire(demande.numeroProvisoire());
+        vente.setCleHorsLigne(demande.cle());
+        tg.parcauto.api.pointdevente.lieu.LieuStock magasin = lieux.actif() ? lieux.lieuDeCaisse(vente.getSession().getCaisse()) : null;
+        List<String> manques = new ArrayList<>();
+        for (LigneVente ligne : vente.getLignes()) {
+            if (ligne.stockSuivi()) {
+                ligne.setLieu(magasin);
+                BigDecimal manque = stockService.sortieConstatee(ligne.getArticle(), magasin, ligne.getQuantiteBase(),
+                        "Commande " + vente.getNumero() + " (hors ligne)", vente.getId());
+                if (manque.signum() > 0) {
+                    manques.add(ligne.getArticle().getNom() + " : " + manque.stripTrailingZeros().toPlainString()
+                            + " " + (ligne.getArticle().getUnite() == null ? "unite(s)" : ligne.getArticle().getUnite()));
+                }
+            }
+        }
+        return new VenteRejouee(vente, manques, ecarts);
+    }
+
     /**
      * Ligne de ticket au prix du catalogue, ou au prix garanti d'un devis
      * ({@code prixImpose} non nul). Un conditionnement (tonne, botte, carton)
@@ -109,7 +198,13 @@ public class VenteService {
      */
     public LigneVente ligne(Article article, Conditionnement conditionnement, BigDecimal quantite,
                             BigDecimal remise, BigDecimal prixImpose) {
-        if (!article.isActif()) {
+        return ligne(article, conditionnement, quantite, remise, prixImpose, true);
+    }
+
+    /** {@code exigerEnVente} faux : vente deja faite hors ligne, l'article a pu etre retire depuis. */
+    private LigneVente ligne(Article article, Conditionnement conditionnement, BigDecimal quantite,
+                             BigDecimal remise, BigDecimal prixImpose, boolean exigerEnVente) {
+        if (exigerEnVente && !article.isActif()) {
             throw new BusinessException("L'article " + article.getNom() + " n'est plus en vente");
         }
         BigDecimal coefficient = conditionnement == null ? BigDecimal.ONE : conditionnement.getCoefficient();
@@ -242,12 +337,23 @@ public class VenteService {
 
     private Vente enregistrer(List<LigneVente> lignes, VenteDto.Reglement reglement, UtilisateurPrincipal caissier,
                               Long commandeId, String tableNom, VenteDto.Compte compte) {
+        return enregistrer(lignes, reglement, caissier, commandeId, tableNom, compte, null);
+    }
+
+    /** {@code dateVente} : heure de la vente faite hors ligne (nulle : maintenant). */
+    private Vente enregistrer(List<LigneVente> lignes, VenteDto.Reglement reglement, UtilisateurPrincipal caissier,
+                              Long commandeId, String tableNom, VenteDto.Compte compte, Instant dateVente) {
         // Pas de vente sans session ouverte par un gerant sur une caisse du vendeur.
         SessionCaisse session = sessionsTravail.exiger(caissier, reglement.sessionId());
 
         Vente vente = new Vente();
         vente.setSession(session);
-        vente.setDateVente(Instant.now());
+        Instant maintenant = Instant.now();
+        vente.setDateVente(dateVente == null ? maintenant
+                // Hors ligne : l'heure de l'appareil, ramenee dans la session (ni avant son ouverture, ni dans le futur).
+                : dateVente.isAfter(maintenant) ? maintenant
+                : session.getOuverteLe() != null && dateVente.isBefore(session.getOuverteLe()) ? session.getOuverteLe()
+                : dateVente);
         vente.setCaissierNom(caissier.getNomComplet());
         vente.setClientNom(vide(reglement.clientNom()));
         vente.setCommandeId(commandeId);
@@ -331,14 +437,16 @@ public class VenteService {
             return VenteDto.Ticket.de(vente);
         }
         boolean multiLieux = lieux.actif();
-        if (multiLieux) {
+        // Vente hors ligne : le stock a pu manquer, seul ce qui est reellement sorti doit revenir.
+        boolean parMouvements = multiLieux || vente.isHorsLigne();
+        if (parMouvements) {
             // Chaque quantite retourne dans le lieu d'ou elle est reellement sortie.
             stockService.retournerVente(vente.getId(), "Annulation de la commande " + vente.getNumero());
         }
         for (LigneVente ligne : vente.getLignes()) {
             if (ligne.stockSuivi()) {
                 // Seul ce qui a ete remis revient en stock ; le reste n'etait que reserve.
-                if (!multiLieux && ligne.baseDejaLivree().signum() > 0) {
+                if (!parMouvements && ligne.baseDejaLivree().signum() > 0) {
                     stockService.appliquer(ligne.getArticle(), TypeMouvementStock.RETOUR, ligne.baseDejaLivree(),
                             null, "Annulation de la commande " + vente.getNumero(), vente.getId());
                 }

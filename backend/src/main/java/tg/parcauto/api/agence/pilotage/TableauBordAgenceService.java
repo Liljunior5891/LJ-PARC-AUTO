@@ -47,7 +47,7 @@ public class TableauBordAgenceService {
 
     /** Comptes de la tresorerie disponible (hors commissions et fonds d'exploitation). */
     private static final EnumSet<TypeCompte> TRESORERIE = EnumSet.of(TypeCompte.CAISSE_GENERALE, TypeCompte.CAISSE_CAISSIER,
-            TypeCompte.FLOAT, TypeCompte.RECHARGE, TypeCompte.BANQUE);
+            TypeCompte.PETITE_CAISSE, TypeCompte.FLOAT, TypeCompte.RECHARGE, TypeCompte.BANQUE);
 
     private final PerimetreAgence perimetre;
     private final tg.parcauto.api.agence.DroitsAgence droits;
@@ -87,7 +87,9 @@ public class TableauBordAgenceService {
                               List<Repartition> parReseau, List<Repartition> parCaissier, long cloturesAFaire,
                               long mouvementsEnAttente,
                               /** CAISSIER : ses seules donnees ; AGENCE : une agence ; TOUTES : toutes les agences visibles. */
-                              String perimetre) {
+                              String perimetre,
+                              /** Caissier : solde de sa petite caisse de depenses (0 pour les autres profils). */
+                              long petiteCaisse) {
     }
 
     public TableauBord calculer(Filtres demande) {
@@ -124,7 +126,7 @@ public class TableauBordAgenceService {
         }
         if (agences.isEmpty()) {
             return new TableauBord(du, au, courante, tresorerie, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of(), List.of(), List.of(),
-                    List.of(), List.of(), 0, 0, portee);
+                    List.of(), List.of(), 0, 0, portee, 0);
         }
         Filtres borne = new Filtres(f.agenceId(), du, au, f.serviceId(), f.reseauId(), f.caissierId());
 
@@ -183,10 +185,18 @@ public class TableauBordAgenceService {
                     .setParameter("agences", agences).setParameter("moi", moi).setParameter("du", du).setParameter("au", au)
                     .getSingleResult());
             long chiffreAffaires = commissions + ventesCartes;
+            long petiteCaisse = nombre(em.createQuery("""
+                            select coalesce(sum(c.solde), 0) from CompteAgence c
+                            where c.agenceId in :agences and c.type = :type and c.utilisateurId = :moi and c.actif = true""", Long.class)
+                    .setParameter("agences", agences).setParameter("type", TypeCompte.PETITE_CAISSE).setParameter("moi", moi)
+                    .getSingleResult());
+            // Le caissier ne voit ni le resultat net, ni les commissions par reseau.
+            List<Repartition> reseauxSansCommission = parReseau.stream()
+                    .map(r -> new Repartition(r.id(), r.nom(), r.nombre(), r.volume(), 0)).toList();
             return new TableauBord(du, au, courante, tresorerie, nombre, volume, commissions, 0, 0, ventesCartes, coutCartes,
-                    chiffreAffaires, depenses, 0, chiffreAffaires - coutCartes - depenses, 0, 0, parJour,
-                    tresorerieParJour(mesCaisses, debutSerie, au), parService, parReseau, parCaissier,
-                    clotures.aFaire(f.agenceId()).size(), 0, portee);
+                    chiffreAffaires, depenses, 0, 0, 0, 0, parJour,
+                    tresorerieParJour(mesCaisses, debutSerie, au), parService, reseauxSansCommission, parCaissier,
+                    clotures.aFaire(f.agenceId()).size(), 0, portee, petiteCaisse);
         }
         var totauxCartes = cartes.totaux(ensemble, du, au);
         long ventesCartes = totauxCartes.chiffreAffaires();
@@ -203,7 +213,7 @@ public class TableauBordAgenceService {
                 rapprochement.totalEnAttente(ensemble), ventesCartes, coutCartes, chiffreAffaires,
                 depenses, frais, chiffreAffaires - coutCartes - depenses - frais, totauxCredits.dettesRestantes(), totauxCredits.creancesRestantes(), parJour,
                 tresorerieParJour(comptesTresorerie, debutSerie, au), parService, parReseau, parCaissier, clotures.aFaire(f.agenceId()).size(),
-                mouvements.enAttente(), portee);
+                mouvements.enAttente(), portee, 0);
     }
 
     /** Solde des comptes donnes en fin de chaque journee, reconstitue a partir du registre. */

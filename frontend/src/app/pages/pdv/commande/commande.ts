@@ -32,6 +32,8 @@ import { imprimerAddition, imprimerTicket } from '../../../shared/ticket-pdv';
 import { imprimerBonsCuisine } from '../../../shared/bon-cuisine';
 import { ImpressionService } from '../../../core/services/impression.service';
 import { TravailImpression } from '../../../core/models/restauration';
+import { PdvHorsLigneService } from '../../../core/services/pdv-hors-ligne.service';
+import { erreurReseau } from '../../../core/services/agences-hors-ligne.service';
 
 /** Consignes proposees en un geste pour la cuisine ou le bar. */
 const CONSIGNES = ['Sans piment', 'Peu pimente', 'Bien cuit', 'A point', 'Sans glace', 'Bien frais', 'A emporter'];
@@ -67,6 +69,8 @@ export class CommandePdv implements OnInit {
   private readonly pdv = inject(PdvService);
   private readonly auth = inject(AuthService);
   private readonly societeService = inject(SocieteService);
+  /** Coupure du reseau : le comptoir propose la caisse hors ligne (memes copies du catalogue). */
+  readonly horsLigne = inject(PdvHorsLigneService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -244,8 +248,13 @@ export class CommandePdv implements OnInit {
       this.charger();
       this.chargerEnCours();
     });
-    this.pdv.catalogueCaisse().subscribe({ next: (a) => this.articles.set(a) });
-    this.pdv.categories().subscribe({ next: (c) => this.categories.set(c.filter((x) => x.actif)) });
+    this.horsLigne.demarrer();
+    // Copies gardees sur l'appareil pour la caisse hors ligne, et son ecran charge d'avance.
+    this.horsLigne.avecCopie('catalogue', this.pdv.catalogueCaisse()).subscribe({ next: (a) => this.articles.set(a) });
+    this.horsLigne.avecCopie('categories', this.pdv.categories())
+      .subscribe({ next: (c) => this.categories.set(c.filter((x) => x.actif)) });
+    this.horsLigne.avecCopie('societe', this.societeService.lire()).subscribe({ error: () => undefined });
+    void import('../caisse/caisse').catch(() => undefined);
     // La cuisine fait avancer les lignes : la commande se relit regulierement.
     const minuterie = setInterval(() => {
       this.maintenant.set(Date.now());
@@ -760,6 +769,9 @@ export class CommandePdv implements OnInit {
       },
       error: (e) => {
         this.occupe.set(false);
+        if (erreurReseau(e)) {
+          this.horsLigne.signalerCoupure();
+        }
         this.erreur.set(this.message(e, 'Operation impossible.'));
       }
     });

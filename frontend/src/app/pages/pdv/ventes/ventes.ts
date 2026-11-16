@@ -11,12 +11,7 @@ import { SocieteService } from '../../../core/services/societe.service';
 import { Modale } from '../../../shared/modale';
 import { imprimerTicket } from '../../../shared/ticket-pdv';
 import { SuiteDePages, SuiteListe, cumulerPage } from '../../../shared/suite-liste';
-
-/** Date du jour au format des champs de saisie (aaaa-mm-jj), dans le fuseau du poste. */
-function aujourdHui(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+import { datesDePeriode } from '../../../shared/periodes';
 
 /** Historique des ventes, par periode ou par session de caisse : consultation, reimpression et annulation. */
 @Component({
@@ -39,8 +34,8 @@ export class VentesPdv implements OnInit {
   readonly erreur = signal<string | null>(null);
   readonly succes = signal<string | null>(null);
 
-  debut = aujourdHui();
-  fin = aujourdHui();
+  debut = datesDePeriode('CE_MOIS').du;
+  fin = datesDePeriode('CE_MOIS').au;
   /** Session de caisse filtree : choisie dans la liste, ou passee par l'adresse depuis l'historique d'une caisse. */
   sessionId: number | null = null;
   /** Sessions recentes de toutes les caisses, pour le filtre (gerant et administrateur). */

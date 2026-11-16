@@ -42,7 +42,7 @@ public class RapportSessionPdf {
         String sousTitre = s.caisseNom() + " · ouverte le " + date(s.ouverteLe(), fuseau) + " par " + s.caissierNom()
                 + (s.fermeeLe() == null ? " · session encore ouverte"
                 : " · fermee le " + date(s.fermeeLe(), fuseau) + " par " + (s.fermeeParNom() == null ? "—" : s.fermeeParNom()));
-        MiseEnPagePdf pdf = new MiseEnPagePdf(entreprise == null || entreprise.isBlank() ? "LJ SaaS" : entreprise,
+        MiseEnPagePdf pdf = new MiseEnPagePdf(entreprise == null || entreprise.isBlank() ? "Nova" : entreprise,
                 "Rapport de caisse " + s.numero(), sousTitre, false);
         try (pdf) {
             BigDecimal ecart = s.ecart();

@@ -9,7 +9,7 @@ import { imprimerBonsCuisine } from '../shared/bon-cuisine';
 
 /** Pages de caisse ou les bons de preparation sont proposes a l'impression. */
 const PAGES_CAISSE = ['/pdv/comptoir', '/pdv/caisse', '/pdv/salle', '/pdv/commandes'];
-const CLE_AUTO = 'lj-impression-auto';
+const CLE_AUTO = 'nova-impression-auto';
 const INTERVALLE = 5000;
 
 /**

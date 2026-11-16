@@ -132,12 +132,22 @@
       <span class="detail">commissions {{ d.commissions | number: '1.0-0' }} F · cartes {{ d.ventesCartes | number: '1.0-0' }} F</span>
       <ng-container [ngTemplateOutlet]="illustrationTelephone" />
     </a>
-    <a class="carte-tete violet" [routerLink]="lien('SOLDES_CONSULTER', '/agences/rapports')">
-      <span class="titre">{{ caissier() ? 'Mon resultat' : 'Resultat net' }}</span>
-      <strong>{{ grosMontant(d.resultatNet) }}<small>FCFA</small></strong>
-      <span class="detail">{{ caissier() ? 'CA − cout des cartes − mes depenses' : 'CA − cout des cartes − depenses − frais financiers' }}</span>
-      <ng-container [ngTemplateOutlet]="illustrationPieces" />
-    </a>
+    @if (caissier()) {
+      <!-- Le caissier ne voit pas de resultat : a la place, l'argent de sa petite caisse de depenses. -->
+      <a class="carte-tete violet" routerLink="/agences/depenses">
+        <span class="titre">Ma petite caisse</span>
+        <strong>{{ grosMontant(d.petiteCaisse) }}<small>FCFA</small></strong>
+        <span class="detail">disponible pour vos depenses</span>
+        <ng-container [ngTemplateOutlet]="illustrationPieces" />
+      </a>
+    } @else {
+      <a class="carte-tete violet" [routerLink]="lien('SOLDES_CONSULTER', '/agences/rapports')">
+        <span class="titre">Resultat net</span>
+        <strong>{{ grosMontant(d.resultatNet) }}<small>FCFA</small></strong>
+        <span class="detail">CA − cout des cartes − depenses − frais financiers</span>
+        <ng-container [ngTemplateOutlet]="illustrationPieces" />
+      </a>
+    }
   </section>
 
   <!-- Activite de la periode : cartes au style des rapports (icone et couleur par information). -->
@@ -159,7 +169,7 @@
       <span class="textes">
         <span class="libelle">{{ caissier() ? 'Mes depenses' : 'Depenses' }}</span>
         <strong>{{ d.depenses | number: '1.0-0' }}<em> F</em></strong>
-        <small>{{ caissier() ? 'payees depuis votre caisse' : 'frais financiers ' + (d.fraisFinanciers | number: '1.0-0') + ' F' }}</small>
+        <small>{{ caissier() ? 'payees depuis votre petite caisse' : 'frais financiers ' + (d.fraisFinanciers | number: '1.0-0') + ' F' }}</small>
       </span>
     </a>
     @if (caissier()) {
@@ -470,18 +480,20 @@
     <figure class="carte panneau">
       <figcaption>
         <h2>Activite par reseau</h2>
-        <p class="sous-titre">Volume et commissions, en FCFA</p>
+        <p class="sous-titre">{{ caissier() ? 'Volume, en FCFA' : 'Volume et commissions, en FCFA' }}</p>
       </figcaption>
       <ul class="legende-graphique">
         <li><span class="puce" [style.background]="couleurVolume"></span> Volume</li>
-        <li><span class="puce" [style.background]="couleurCommissions"></span> Commissions</li>
+        @if (!caissier()) { <li><span class="puce" [style.background]="couleurCommissions"></span> Commissions</li> }
       </ul>
       <div class="colonnes-camions">
         @for (r of d.parReseau; track r.id) {
-          <span class="camion" [attr.title]="r.nom + ' — ' + r.nombre + ' operation(s), volume ' + r.volume + ', commissions ' + r.commissions">
+          <span class="camion" [attr.title]="r.nom + ' — ' + r.nombre + ' operation(s), volume ' + r.volume + (caissier() ? '' : ', commissions ' + r.commissions)">
             <span class="paire-barres">
               <span class="barre" [style.height.%]="part(r.volume, maximumReseaux())" [style.background]="couleurVolume"></span>
-              <span class="barre" [style.height.%]="part(r.commissions, maximumCommissionsReseaux())" [style.background]="couleurCommissions"></span>
+              @if (!caissier()) {
+                <span class="barre" [style.height.%]="part(r.commissions, maximumCommissionsReseaux())" [style.background]="couleurCommissions"></span>
+              }
             </span>
             <app-logo-service [nom]="r.nom" [logo]="logoReseau(r.id)" [taille]="22" />
             <span class="etiquette-camion">{{ r.nom }}</span>

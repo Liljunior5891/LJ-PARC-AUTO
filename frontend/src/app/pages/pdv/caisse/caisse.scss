@@ -1297,3 +1297,35 @@
   .lieu-global { grid-template-columns: auto minmax(0, 1fr); }
   .lieu-global select { grid-column: 1 / -1; }
 }
+
+/* Vente sans connexion : etat de la caisse et resultats des envois. */
+.bandeau-hors-ligne {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid #bcd4f5;
+  border-radius: 10px;
+  background: #e8f1fd;
+  color: #12407a;
+  font-size: 0.85rem;
+
+  &.coupe {
+    border-color: #f1c4a2;
+    background: #fdf0e6;
+    color: #8a3b05;
+  }
+
+  > span:nth-child(2) {
+    flex: 1;
+  }
+
+  .fermer-bandeau {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+}

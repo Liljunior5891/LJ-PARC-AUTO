@@ -2,7 +2,7 @@
 // (bons de retrait, file hors ligne des agences) et permet son installation.
 // Le reseau passe toujours d'abord : le cache ne sert que lorsqu'il ne repond plus.
 // Seuls les fichiers de l'application sont concernes ; l'API, sur une autre origine, n'est jamais mise en cache.
-const CACHE = 'lj-saas-application-v2';
+const CACHE = 'nova-application-v3';
 // Coquille de l'application, gardee des l'installation : l'icone ouvre l'application meme sans reseau.
 const COQUILLE = ['/', '/manifest.webmanifest', '/favicon.ico', '/icones/icone-192.png', '/icones/icone-512.png'];
 

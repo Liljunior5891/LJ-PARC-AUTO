@@ -16,7 +16,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Agence de l'entreprise (LJ-Agoe, LJ-Be...), avec sa propre caisse, ses floats
+ * Agence de l'entreprise (Agoe, Be...), avec sa propre caisse, ses floats
  * et son personnel. L'administrateur voit toutes les agences ; le superviseur et
  * le caissier ne voient que celles auxquelles ils sont rattaches.
  */

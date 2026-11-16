@@ -29,7 +29,7 @@ import { Component, input } from '@angular/core';
           <g class="cahot">
             <rect x="200" y="320" width="230" height="120" rx="10" fill="#f8fafc"/>
             <rect x="200" y="320" width="230" height="22" rx="10" fill="#cbd5e1"/>
-            <text x="230" y="400" font-size="30" font-weight="800" fill="#0b3a63" letter-spacing="2">LJ</text>
+            <text x="214" y="400" font-size="24" font-weight="800" fill="#0b3a63" letter-spacing="1">NOVA</text>
             <rect x="290" y="372" width="120" height="8" rx="4" fill="#38bdf8"/>
             <path d="M436 350h70q18 0 28 16l26 40v34h-124z" fill="#0ea5e9"/>
             <path d="M450 362h50q10 0 16 9l18 28h-84z" fill="#e0f2fe"/>
