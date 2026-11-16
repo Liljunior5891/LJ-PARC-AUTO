@@ -42,10 +42,12 @@ class FournisseurServiceTest {
     private final List<ReglementFournisseur> enregistres = new ArrayList<>();
     private CommandeFournisseur ancienne;
     private CommandeFournisseur recente;
+    private AvanceFournisseurRepository avances;
 
     @BeforeEach
     void preparer() {
         FournisseurRepository fiches = mock(FournisseurRepository.class);
+        avances = mock(AvanceFournisseurRepository.class);
         reglements = mock(ReglementFournisseurRepository.class);
         CommandeFournisseurRepository commandes = mock(CommandeFournisseurRepository.class);
         caisse = mock(CaisseService.class);
@@ -71,7 +73,56 @@ class FournisseurServiceTest {
         });
         service = new FournisseurService(fiches, reglements, commandes, caisse, numerotation,
                 mock(tg.parcauto.api.pointdevente.tresorerie.TresorerieService.class),
-                mock(tg.parcauto.api.pointdevente.reglage.ReglagePdvService.class));
+                mock(tg.parcauto.api.pointdevente.reglage.ReglagePdvService.class),
+                avances);
+    }
+
+    @Test
+    @DisplayName("A la reception, la dette est reglee d'office avec l'avance disponible, sans mouvement d'argent")
+    void avanceImputeeALaReception() {
+        // 50 000 F d'avance versee, dont rien n'est encore utilise.
+        when(avances.netParFiche(7L)).thenReturn(java.util.Collections.singletonList(new Object[]{7L, new BigDecimal("50000")}));
+
+        BigDecimal impute = service.imputerAvance(recente, "Gerant");
+
+        // La commande doit 40 000 F : l'avance la regle entierement, il reste 10 000 F d'avance.
+        assertThat(impute).isEqualByComparingTo("40000");
+        assertThat(enregistres).hasSize(1);
+        assertThat(enregistres.get(0).getMode()).isEqualTo(ModeSortie.AVANCE);
+        assertThat(enregistres.get(0).getMouvementCaisse()).isNull();
+        verify(caisse, never()).sortie(any(), any(), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("Une nouvelle reception ne repousse pas l'echeance d'une livraison precedente impayee")
+    void echeanceGardeeSiImpaye() {
+        LocalDate echue = ancienne.getEcheance();
+
+        service.ouvrirDette(ancienne, new BigDecimal("5000"));
+
+        assertThat(ancienne.getEcheance()).isEqualTo(echue);
+        assertThat(ancienne.getMontantRecu()).isEqualByComparingTo("65000");
+    }
+
+    @Test
+    @DisplayName("Livraison precedente payee : la nouvelle reception ouvre une nouvelle echeance")
+    void nouvelleEcheanceSiPaye() {
+        service.regler(7L, new FournisseurService.ReglementRequete(new BigDecimal("60000"), ModeSortie.BANQUE,
+                null, null, null, "VIR-1", null), gerant());
+
+        service.ouvrirDette(ancienne, new BigDecimal("5000"));
+
+        assertThat(ancienne.getEcheance()).isAfterOrEqualTo(LocalDate.now());
+    }
+
+    @Test
+    @DisplayName("Payer avec l'avance est refuse au-dela de l'avance disponible")
+    void reglementParAvanceLimite() {
+        when(avances.netParFiche(7L)).thenReturn(java.util.Collections.singletonList(new Object[]{7L, new BigDecimal("10000")}));
+
+        assertThatThrownBy(() -> service.regler(7L, new FournisseurService.ReglementRequete(new BigDecimal("15000"),
+                ModeSortie.AVANCE, null, null, null, null, null), gerant()))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("10");
     }
 
     @Test

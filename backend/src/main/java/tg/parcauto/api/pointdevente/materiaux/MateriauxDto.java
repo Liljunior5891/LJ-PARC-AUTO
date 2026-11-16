@@ -99,7 +99,9 @@ public final class MateriauxDto {
             String nomFamille, String prenoms, LocalDate dateNaissance, String profession, String formeJuridique,
             String rccm, String secteurActivite, String organismeTutelle, String numeroAgrement, String ville,
             String pays, String personneContact, String fonctionContact, String telephoneContact,
-            String conditionsCommerciales) {
+            String conditionsCommerciales,
+            /** Argent depose par le client et non encore utilise. */
+            BigDecimal soldeDepot) {
     }
 
     /** Vente encore due par un client. */
@@ -157,14 +159,16 @@ public final class MateriauxDto {
     /** Vente dont une partie n'a pas encore ete remise, et ce que le client doit encore payer. */
     public record VenteALivrer(Long venteId, String numero, Instant dateVente, Long clientId, String clientNom,
                                String clientTelephone, BigDecimal resteDu, List<LigneALivrer> lignes,
-                               Vente.Statut statut, tg.parcauto.api.pointdevente.vente.ModePaiementPdv modePaiement) {
+                               Vente.Statut statut, tg.parcauto.api.pointdevente.vente.ModePaiementPdv modePaiement,
+                               /** Part payee avec le depot du client : elle lui revient sur son compte au solde du reste. */
+                               BigDecimal payeParDepot) {
 
         public static VenteALivrer de(Vente v) {
             ClientPdv c = v.getClient();
             return new VenteALivrer(v.getId(), v.getNumero(), v.getDateVente(), c == null ? null : c.getId(),
                     v.getClientNom(), c == null ? null : c.getTelephone(), v.getResteDu(),
                     v.getLignes().stream().filter(l -> l.resteALivrer().signum() > 0).map(LigneALivrer::de).toList(),
-                    v.getStatut(), v.getModePaiement());
+                    v.getStatut(), v.getModePaiement(), v.getPayeParDepot());
         }
     }
 
@@ -219,7 +223,8 @@ public final class MateriauxDto {
     public record SoldeReponse(Long id, String numero, Long venteId, String venteNumero, Instant dateSolde, String auteurNom,
                                String motif, BigDecimal montant, BigDecimal montantDeduit, BigDecimal montantRembourse,
                                String modeRemboursementLibelle, String sessionNumero, boolean sessionOuverte,
-                               SoldeReste.Statut statut, String motifAnnulation, List<LigneSolde> lignes) {
+                               SoldeReste.Statut statut, String motifAnnulation, List<LigneSolde> lignes,
+                               BigDecimal montantRenduDepot) {
 
         public static SoldeReponse de(SoldeReste s) {
             return new SoldeReponse(s.getId(), s.getNumero(), s.getVente().getId(), s.getVente().getNumero(), s.getDateSolde(),
@@ -227,7 +232,7 @@ public final class MateriauxDto {
                     s.getModeRemboursement() == null ? null : s.getModeRemboursement().getLibelle(),
                     s.getSession() == null ? null : s.getSession().getNumero(),
                     s.getSession() == null || s.getSession().ouverte(), s.getStatut(), s.getMotifAnnulation(),
-                    s.getLignes().stream().map(LigneSolde::de).toList());
+                    s.getLignes().stream().map(LigneSolde::de).toList(), s.getMontantRenduDepot());
         }
     }
 
@@ -325,7 +330,9 @@ public final class MateriauxDto {
             Boolean credit,
             @PositiveOrZero BigDecimal acompte,
             /** Ce que le client emporte maintenant ; nul : tout. */
-            List<@Valid Emporte> emportes) {
+            List<@Valid Emporte> emportes,
+            /** Part payee avec le depot du client. */
+            @PositiveOrZero BigDecimal depot) {
     }
 
     /** Quantite emportee d'un produit du devis ; le reste sera livre plus tard. */

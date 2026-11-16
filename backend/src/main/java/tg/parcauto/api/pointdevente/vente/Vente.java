@@ -131,6 +131,10 @@ public class Vente extends BaseEntity {
     @Column(name = "reste_du", nullable = false, precision = 16, scale = 2)
     private BigDecimal resteDu = BigDecimal.ZERO;
 
+    /** Part du total payee avec le depot du client : elle n'entre pas dans la caisse. */
+    @Column(name = "paye_par_depot", nullable = false, precision = 16, scale = 2)
+    private BigDecimal payeParDepot = BigDecimal.ZERO;
+
     /** Date limite de paiement d'une vente a credit. */
     @Column(name = "echeance")
     private java.time.LocalDate echeance;

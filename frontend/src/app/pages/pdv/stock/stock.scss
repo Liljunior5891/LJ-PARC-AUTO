@@ -64,6 +64,15 @@ tr.cliquable {
     color: #b35f00;
   }
 
+
+  &.partielle {
+
+    background: #fff4e0;
+
+    color: #b45309;
+
+  }
+
   &.recue {
     background: color-mix(in srgb, var(--couleur-succes) 14%, #fff);
     color: var(--couleur-succes);

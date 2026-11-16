@@ -73,7 +73,14 @@ class TresorerieServiceTest {
                 mock(tg.parcauto.api.pointdevente.vente.VenteRepository.class),
                 mock(tg.parcauto.api.pointdevente.materiaux.ReglementClientRepository.class),
                 mock(tg.parcauto.api.parc.document.StockageFichierService.class),
-                mock(tg.parcauto.api.pointdevente.reserve.FondsReserveService.class), versementsAssocies());
+                mock(tg.parcauto.api.pointdevente.reserve.FondsReserveService.class), versementsAssocies(),
+                mock(tg.parcauto.api.pointdevente.materiaux.DepotClientRepository.class), avancesFournisseurs());
+    }
+
+    private static tg.parcauto.api.pointdevente.fournisseur.AvanceFournisseurRepository avancesFournisseurs() {
+        var avances = mock(tg.parcauto.api.pointdevente.fournisseur.AvanceFournisseurRepository.class);
+        when(avances.sortiDuCoffre(any())).thenReturn(BigDecimal.ZERO);
+        return avances;
     }
 
     private static tg.parcauto.api.pointdevente.associe.DepotAssocieRepository versementsAssocies() {

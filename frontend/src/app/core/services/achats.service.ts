@@ -7,6 +7,8 @@ import { SANS_SUIVI } from '../operation/operation.interceptor';
 import {
   CategorieDepense,
   CategorieDepenseRequete,
+  AvanceFournisseur,
+  AvanceFournisseurRequete,
   CompteFournisseur,
   Depense,
   DepenseAPayer,
@@ -79,6 +81,18 @@ export class AchatsService {
 
   reglerFournisseur(id: number, r: ReglementFournisseurRequete): Observable<RecuReglementFournisseur> {
     return this.http.post<RecuReglementFournisseur>(`${this.fournisseursUrl}/${id}/reglements`, r);
+  }
+
+  verserAvanceFournisseur(id: number, r: AvanceFournisseurRequete): Observable<AvanceFournisseur> {
+    return this.http.post<AvanceFournisseur>(`${this.fournisseursUrl}/${id}/avances`, r);
+  }
+
+  rembourserAvanceFournisseur(id: number, r: AvanceFournisseurRequete): Observable<AvanceFournisseur> {
+    return this.http.post<AvanceFournisseur>(`${this.fournisseursUrl}/${id}/remboursements-avance`, r);
+  }
+
+  annulerAvanceFournisseur(numero: string, motif: string): Observable<AvanceFournisseur> {
+    return this.http.post<AvanceFournisseur>(`${this.fournisseursUrl}/avances/${encodeURIComponent(numero)}/annulation`, { motif });
   }
 
   annulerReglementFournisseur(numero: string, motif: string): Observable<RecuReglementFournisseur> {

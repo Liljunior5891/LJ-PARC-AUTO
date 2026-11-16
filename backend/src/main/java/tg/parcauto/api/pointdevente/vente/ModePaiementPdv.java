@@ -6,7 +6,9 @@ public enum ModePaiementPdv {
     ESPECES("Especes"),
     MOBILE_MONEY("Mobile money"),
     CARTE("Carte bancaire"),
-    AUTRE("Autre");
+    AUTRE("Autre"),
+    /** Achat paye entierement avec l'argent depose par le client (quincaillerie) : rien n'entre en caisse. */
+    COMPTE_CLIENT("Compte client");
 
     private final String libelle;
 

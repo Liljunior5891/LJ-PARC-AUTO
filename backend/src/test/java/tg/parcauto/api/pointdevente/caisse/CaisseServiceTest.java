@@ -65,7 +65,8 @@ class CaisseServiceTest {
                 mock(GestionCaisseService.class), mock(SessionTravailService.class),
                 mock(tg.parcauto.api.pointdevente.materiaux.SoldeResteRepository.class),
                 mock(tg.parcauto.api.pointdevente.tresorerie.RemiseCaisseRepository.class),
-                sortiesAttente, depensesEnAttente(), new CircuitDepensesCaisse(reglages, sessions));
+                sortiesAttente, depensesEnAttente(), new CircuitDepensesCaisse(reglages, sessions),
+                mock(tg.parcauto.api.pointdevente.materiaux.DepotClientRepository.class));
         org.mockito.Mockito.lenient().when(sortiesAttente.enAttenteSession(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(BigDecimal.ZERO);
 

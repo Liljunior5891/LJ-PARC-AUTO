@@ -6,11 +6,13 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { Depense, LIBELLES_STATUT_DEPENSE, SortieAttente } from '../../../core/models/achats';
 import { AchatsService } from '../../../core/services/achats.service';
 import { OptionsPdvService } from '../../../core/services/options-pdv.service';
+import { MateriauxService } from '../../../core/services/materiaux.service';
+import { OperationDepot } from '../../../core/models/materiaux';
 import { Modale } from '../../../shared/modale';
 
 /** Element a refuser : une depense ou une sortie de caisse. */
 interface ARefuser {
-  type: 'depense' | 'sortie';
+  type: 'depense' | 'sortie' | 'remboursement';
   id: number;
   numero: string;
   libelle: string;
@@ -32,6 +34,9 @@ export class ValidationsCaissePdv implements OnInit {
   private readonly service = inject(AchatsService);
   readonly options = inject(OptionsPdvService);
   readonly estAdmin = this.auth.aRole('ADMIN');
+  private readonly materiaux = inject(MateriauxService);
+  /** Remboursements du depot d'un client, demandes par un caissier (quincaillerie). */
+  readonly remboursements = signal<OperationDepot[]>([]);
   readonly libelles = LIBELLES_STATUT_DEPENSE;
 
   readonly depenses = signal<Depense[]>([]);
@@ -59,6 +64,9 @@ export class ValidationsCaissePdv implements OnInit {
         this.sorties.set(v.sorties);
         this.traitees.set(v.sortiesTraitees);
         this.chargement.set(false);
+        if (this.auth.estMateriaux()) {
+          this.materiaux.remboursementsDepotEnAttente().subscribe({ next: (r) => this.remboursements.set(r), error: () => this.remboursements.set([]) });
+        }
       },
       error: (e) => {
         this.chargement.set(false);
@@ -84,7 +92,12 @@ export class ValidationsCaissePdv implements OnInit {
       : `Sortie ${r.numero} visee : elle attend l'administrateur.`);
   }
 
-  ouvrirRefus(type: 'depense' | 'sortie', id: number, numero: string, libelle: string, montant: number): void {
+  validerRemboursement(r: OperationDepot): void {
+    this.lancer('remboursement-' + r.id, this.materiaux.validerRemboursementDepot(r.id), (o: OperationDepot) =>
+      `Remboursement ${o.numero} valide : ${this.f(o.montant)} F rendus a ${o.clientNom}.`);
+  }
+
+  ouvrirRefus(type: 'depense' | 'sortie' | 'remboursement', id: number, numero: string, libelle: string, montant: number): void {
     this.motif = '';
     this.erreur.set(null);
     this.aRefuser.set({ type, id, numero, libelle, montant });
@@ -98,7 +111,9 @@ export class ValidationsCaissePdv implements OnInit {
     }
     const appel: Observable<unknown> = r.type === 'depense'
       ? this.service.refuserDepenseCaisse(r.id, motif)
-      : this.service.refuserSortieCaisse(r.id, motif);
+      : r.type === 'remboursement'
+        ? this.materiaux.refuserRemboursementDepot(r.id, motif)
+        : this.service.refuserSortieCaisse(r.id, motif);
     this.lancer(r.type + '-' + r.id, appel, () => `${r.numero} refusee : rien n'est sorti de la caisse.`, () => this.aRefuser.set(null));
   }
 

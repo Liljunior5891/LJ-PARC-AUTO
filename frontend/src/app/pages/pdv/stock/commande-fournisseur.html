@@ -19,7 +19,15 @@
     @if (enCours()) {
         <button class="bouton danger" type="button" (click)="annuler()">Annuler la commande</button>
         <button class="bouton secondaire info" type="button" (click)="edition.set(true)">Modifier</button>
-        <button class="bouton succes" type="button" (click)="ouvrirReception()">Receptionner</button>
+    }
+    @if (c.resume.statut === 'PARTIELLE') {
+        <button class="bouton secondaire" type="button" (click)="soldeOuvert.set(true); motifSolde = ''">Solder la commande</button>
+    }
+    @if (receptionnable() && c.resume.fournisseurId && montantAvance() > 0) {
+        <button class="bouton secondaire" type="button" (click)="avanceOuverte.set(true)">Payer d'avance</button>
+    }
+    @if (receptionnable()) {
+        <button class="bouton succes" type="button" (click)="ouvrirReception()">{{ c.resume.statut === 'PARTIELLE' ? 'Receptionner le reste' : 'Receptionner' }}</button>
     }
     </div>
   </div>
@@ -37,10 +45,23 @@
     <div class="message succes">{{ succes() }}</div>
   }
   @if (c.resume.statut === 'RECUE') {
-    <div class="message info">Receptionnee le {{ c.resume.recueLe | date: 'dd/MM/yyyy' }} a {{ c.resume.recueLe | date: 'HH:mm' }} par {{ c.recuePar }} :
+    <div class="message info">Receptionnee le {{ c.resume.recueLe | date: 'dd/MM/yyyy' }} a {{ c.resume.recueLe | date: 'HH:mm' }} par {{ c.recuePar }}
+      @if ((c.receptions ?? 1) > 1) { (en {{ c.receptions }} fois) } :
       les quantites livrees sont entrees en stock.</div>
   }
-  @if (c.resume.statut === 'RECUE' && c.paiement; as p) {
+  @if (c.soldeeLe) {
+    <div class="message avertissement">Soldee le {{ c.soldeeLe | date: 'dd/MM/yyyy' }} par {{ c.soldeePar }} sans tout recevoir : {{ c.motifSolde }}.
+      Le reste a recevoir est abandonne.</div>
+  }
+  @if (c.resume.statut === 'PARTIELLE') {
+    <div class="message info">Partiellement recue ({{ c.receptions }} reception{{ (c.receptions ?? 0) > 1 ? 's' : '' }}, la derniere le {{ c.resume.recueLe | date: 'dd/MM/yyyy' }}) :
+      le reste est attendu. Receptionnez-le a son arrivee, ou soldez la commande si le fournisseur ne le livrera pas.</div>
+  }
+  @if ((c.avanceDisponible ?? 0) > 0) {
+    <div class="message info">Avance disponible chez {{ c.resume.fournisseur }} : <strong>{{ c.avanceDisponible | number: '1.0-0' }} F</strong>.
+      Elle reglera d'office la marchandise a sa reception.</div>
+  }
+  @if (recue() && c.paiement; as p) {
     @if (p.detteSuivie) {
       @let part = p.montantRecu ? Math.min(100, Math.round((p.regle / p.montantRecu) * 100)) : 0;
       @let jours = joursAvantEcheance(p.echeance);
@@ -104,7 +125,10 @@
           <th class="numerique">Quantite commandee</th>
           <th class="numerique">Cout unitaire</th>
           <th class="numerique">Montant</th>
-          @if (c.resume.statut === 'RECUE') {
+          @if (c.resume.statut === 'PARTIELLE') {
+            <th class="numerique">Quantite recue</th>
+            <th class="numerique">Reste a recevoir</th>
+          } @else if (c.resume.statut === 'RECUE') {
             <th class="numerique">Quantite recue</th>
             <th class="numerique">Ecart</th>
           } @else {
@@ -119,7 +143,10 @@
             <td class="numerique">{{ l.quantite | number: '1.0-3' }} {{ l.unite || '' }}</td>
             <td class="numerique">{{ l.coutUnitaire != null ? (l.coutUnitaire | number: '1.0-0') + ' F' : '—' }}</td>
             <td class="numerique"><strong>{{ l.total | number: '1.0-0' }} F</strong></td>
-            @if (c.resume.statut === 'RECUE') {
+            @if (c.resume.statut === 'PARTIELLE') {
+              <td class="numerique">{{ (l.quantiteRecue ?? 0) | number: '1.0-3' }}</td>
+              <td class="numerique"><strong>{{ resteARecevoir(l) | number: '1.0-3' }}</strong></td>
+            } @else if (c.resume.statut === 'RECUE') {
               <td class="numerique">{{ l.quantiteRecue | number: '1.0-3' }}</td>
               <td class="numerique">
                 @let e = ecart(l);
@@ -139,7 +166,7 @@
           <td></td>
           <td></td>
           <td class="numerique"><strong>{{ c.resume.total | number: '1.0-0' }} F</strong></td>
-          @if (c.resume.statut === 'RECUE') {
+          @if (recue()) {
             <td class="numerique" colspan="2">recu : <strong>{{ totalRecu() | number: '1.0-0' }} F</strong></td>
           } @else {
             <td></td>
@@ -165,23 +192,26 @@
             </select>
           </div>
         }
-        <p class="aide">Saisissez ce qui a ete reellement livre. Ces quantites entrent en stock, au cout indique,
-          qui devient le cout d'achat des produits.</p>
+        <p class="aide">Saisissez ce qui vient d'etre livre. Ces quantites entrent en stock, au cout indique,
+          qui devient le cout d'achat des produits. S'il manque de la marchandise, la commande reste partiellement recue :
+          le reste se receptionnera a son arrivee.</p>
         <div class="tableau-conteneur liste-modale">
           <table class="tableau saisie-reception">
             <thead>
               <tr>
                 <th>Produit</th>
                 <th class="numerique">Commande</th>
-                <th class="numerique">Quantite recue</th>
+                <th class="numerique">Deja recu</th>
+                <th class="numerique">Recu cette fois</th>
                 <th class="numerique">Cout unitaire (F)</th>
               </tr>
             </thead>
             <tbody>
               @for (l of c.lignes; track l.id) {
-                <tr [class.ecart]="recues()[l.id]?.quantite !== l.quantite">
+                <tr [class.ecart]="recues()[l.id]?.quantite !== resteARecevoir(l)">
                   <td><strong>{{ l.articleNom }}</strong></td>
                   <td class="numerique">{{ l.quantite | number: '1.0-3' }}</td>
+                  <td class="numerique">{{ (l.quantiteRecue ?? 0) | number: '1.0-3' }}</td>
                   <td class="numerique">
                     <app-champ-quantite [valeur]="recues()[l.id]?.quantite ?? null" (valeurChange)="modifierRecue(l, 'quantite', $event)"
                                         [libelle]="'Quantite recue de ' + l.articleNom" />
@@ -211,6 +241,30 @@
   <a class="bouton" routerLink="/pdv/stock">Retour aux commandes</a>
 } @else {
   <p>Chargement de la commande...</p>
+}
+
+@if (soldeOuvert() && commande(); as c) {
+  <app-modale [titre]="'Solder ' + c.resume.numero" sousTitre="Le fournisseur ne livrera pas le reste" largeur="520px"
+              [erreur]="erreur()" (ferme)="soldeOuvert.set(false)">
+    <form (ngSubmit)="solder()">
+      <p class="aide">La commande est close avec ce qui a ete recu : la dette reste la valeur recue.
+        Une avance versee pour toute la commande et non utilisee reste disponible chez le fournisseur.</p>
+      <div class="champ">
+        <label for="motif-solde">Motif *</label>
+        <input id="motif-solde" name="motif" maxlength="255" [(ngModel)]="motifSolde" placeholder="Ex. rupture chez le fournisseur" />
+      </div>
+      <div class="actions-formulaire">
+        <button class="bouton secondaire annuler" type="button" (click)="soldeOuvert.set(false)">Retour</button>
+        <button class="bouton succes" type="submit" [disabled]="!motifSolde.trim()">Solder la commande</button>
+      </div>
+    </form>
+  </app-modale>
+}
+
+@if (avanceOuverte() && commande()?.resume?.fournisseurId) {
+  <app-compte-fournisseur-pdv [fournisseurId]="commande()!.resume.fournisseurId!"
+                              [avancePourCommande]="{ id: commande()!.resume.id, montant: montantAvance() }"
+                              (ferme)="avanceOuverte.set(false)" (modifie)="paiementModifie()" />
 }
 
 @if (paiementOuvert() && commande()?.paiement?.fournisseurId) {

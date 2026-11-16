@@ -125,6 +125,34 @@ public class FournisseurController {
         return service.annuler(numero, motif.motif(), principal);
     }
 
+    // ------------------------------------------------------------ avances
+
+    @PostMapping("/{id}/avances")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Verse une avance au fournisseur (caisse, coffre ou banque), sans marchandise")
+    public FournisseurService.AvanceLigne verserAvance(@PathVariable Long id,
+                                                       @Valid @RequestBody FournisseurService.AvanceRequete requete,
+                                                       @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.verserAvance(id, requete, principal);
+    }
+
+    @PostMapping("/{id}/remboursements-avance")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Le fournisseur rend tout ou partie de l'avance, sur le compte de l'entreprise")
+    public FournisseurService.AvanceLigne rembourserAvance(@PathVariable Long id,
+                                                           @Valid @RequestBody FournisseurService.AvanceRequete requete,
+                                                           @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.rembourserAvance(id, requete, principal);
+    }
+
+    @PostMapping("/avances/{numero}/annulation")
+    @Operation(summary = "Annule une avance ou un remboursement d'avance saisi par erreur")
+    public FournisseurService.AvanceLigne annulerAvance(@PathVariable String numero,
+                                                        @Valid @RequestBody FournisseurService.MotifAnnulation motif,
+                                                        @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.annulerAvance(numero, motif.motif(), principal);
+    }
+
     // ------------------------------------------------------------ pieces
 
     @GetMapping("/{id}/documents")

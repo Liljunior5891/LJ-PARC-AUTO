@@ -33,8 +33,7 @@ public interface CommandeFournisseurRepository extends JpaRepository<CommandeFou
     long enRetard(@Param("aujourdhui") java.time.LocalDate aujourdhui);
 
     /** Valeur des marchandises receptionnees sur la periode, au cout de la commande. */
-    @Query("select coalesce(sum(l.quantiteRecue * coalesce(l.coutUnitaire, 0)), 0) "
-            + "from LigneCommandeFournisseur l where l.commande.recueLe >= :debut and l.commande.recueLe < :fin")
+    @Query("select coalesce(sum(r.valeur), 0) from ReceptionCommande r where r.recueLe >= :debut and r.recueLe < :fin")
     java.math.BigDecimal achatsRecus(@Param("debut") java.time.Instant debut, @Param("fin") java.time.Instant fin);
 
     /** Fournisseurs deja utilises, proposes a la saisie d'une nouvelle commande. */
@@ -43,7 +42,8 @@ public interface CommandeFournisseurRepository extends JpaRepository<CommandeFou
 
     /** Commandes recues dont la dette est suivie, de toutes les fiches ou d'une seule, les plus anciennes d'abord. */
     @Query("select c from CommandeFournisseur c left join fetch c.fiche "
-            + "where c.statut = tg.parcauto.api.pointdevente.approvisionnement.CommandeFournisseur.Statut.RECUE "
+            + "where c.statut in (tg.parcauto.api.pointdevente.approvisionnement.CommandeFournisseur.Statut.RECUE, "
+            + "tg.parcauto.api.pointdevente.approvisionnement.CommandeFournisseur.Statut.PARTIELLE) "
             + "and c.detteSuivie = true and (:fournisseurId is null or c.fiche.id = :fournisseurId) "
             + "order by c.echeance asc nulls last, c.recueLe asc, c.id asc")
     List<CommandeFournisseur> dettes(@Param("fournisseurId") Long fournisseurId);

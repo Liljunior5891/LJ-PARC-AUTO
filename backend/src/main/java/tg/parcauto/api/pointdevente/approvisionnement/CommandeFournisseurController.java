@@ -73,11 +73,19 @@ public class CommandeFournisseurController {
     }
 
     @PostMapping("/{id}/reception")
-    @Operation(summary = "Receptionne la commande : les quantites recues entrent en stock")
+    @Operation(summary = "Receptionne tout ou partie de la commande : les quantites recues entrent en stock")
     public CommandeFournisseurService.Detail receptionner(@PathVariable Long id,
                                                           @Valid @RequestBody(required = false) CommandeFournisseurService.Reception reception,
                                                           @AuthenticationPrincipal UtilisateurPrincipal principal) {
         return service.receptionner(id, reception, principal);
+    }
+
+    @PostMapping("/{id}/solde")
+    @Operation(summary = "Solde une commande partiellement recue : le reste a recevoir est abandonne")
+    public CommandeFournisseurService.Detail solder(@PathVariable Long id,
+                                                    @Valid @RequestBody CommandeFournisseurService.Solde solde,
+                                                    @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return service.solder(id, solde.motif(), principal);
     }
 
     @GetMapping("/{id}/bon-pdf")

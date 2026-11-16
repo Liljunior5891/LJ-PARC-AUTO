@@ -350,6 +350,7 @@
       <div class="message avertissement" style="margin-top: 1rem">
         Valeur : <strong>{{ valeurSolde() | number: '1.0-0' }} F</strong>
         @if (deduitSolde() > 0) { · retires de ce que le client doit : <strong>{{ deduitSolde() | number: '1.0-0' }} F</strong> }
+        @if (renduDepotSolde() > 0) { · revient sur son compte client : <strong>{{ renduDepotSolde() | number: '1.0-0' }} F</strong> }
         @if (rembourseSolde() > 0) { · <strong>a lui rendre : {{ rembourseSolde() | number: '1.0-0' }} F</strong> }
       </div>
 
@@ -453,6 +454,7 @@
                 <td class="numerique">
                   <strong>{{ s.montant | number: '1.0-0' }} F</strong>
                   @if (s.montantRembourse > 0) { <br /><small>dont {{ s.montantRembourse | number: '1.0-0' }} F rendus ({{ s.modeRemboursementLibelle }})</small> }
+                  @if ((s.montantRenduDepot ?? 0) > 0) { <br /><small>dont {{ s.montantRenduDepot | number: '1.0-0' }} F sur le compte client</small> }
                 </td>
                 <td style="white-space: nowrap; text-align: right">
                   <button class="bouton secondaire petit info" type="button" (click)="imprimerSolde(s)">Imprimer</button>

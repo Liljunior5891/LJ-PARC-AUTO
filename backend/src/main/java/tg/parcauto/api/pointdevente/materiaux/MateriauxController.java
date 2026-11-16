@@ -64,6 +64,7 @@ public class MateriauxController {
     private final VenteService ventes;
     private final DocumentService piecesClients;
     private final LivraisonClientService livraisons;
+    private final DepotClientService depots;
 
     // ------------------------------------------------------------- reglages
 
@@ -288,6 +289,73 @@ public class MateriauxController {
     @Operation(summary = "Recu d'un versement, pour reimpression")
     public MateriauxDto.RecuReglement recu(@PathVariable String numero, @AuthenticationPrincipal UtilisateurPrincipal principal) {
         return comptes.recu(numero, principal);
+    }
+
+    // ------------------------------------------------------ depots d'argent
+
+    @GetMapping("/clients/{id}/depots")
+    @PreAuthorize(Autorisations.PDV_CAISSE)
+    @Operation(summary = "Argent depose par un client : solde, depots, remboursements et achats payes avec")
+    public DepotClientService.CompteDepot depots(@PathVariable Long id) {
+        return depots.compte(id);
+    }
+
+    @PostMapping("/clients/{id}/depots")
+    @PreAuthorize(Autorisations.PDV_CAISSE)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Le client depose de l'argent sans achat, sur la session de caisse du poste")
+    public DepotClientService.Operation deposer(@PathVariable Long id, @Valid @RequestBody DepotClientService.DepotRequete r,
+                                                @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return depots.deposer(id, r, principal);
+    }
+
+    @GetMapping("/depots-clients/{numero}")
+    @PreAuthorize(Autorisations.PDV_CAISSE)
+    @Operation(summary = "Recu d'un depot ou d'un remboursement, pour reimpression")
+    public DepotClientService.Operation recuDepot(@PathVariable String numero,
+                                                  @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return depots.recu(numero, principal);
+    }
+
+    @PostMapping("/depots-clients/{numero}/annulation")
+    @PreAuthorize(Autorisations.PDV_GESTION)
+    @Operation(summary = "Annule un depot saisi par erreur, tant que sa session est ouverte et le solde suffisant")
+    public DepotClientService.Operation annulerDepot(@PathVariable String numero, @Valid @RequestBody MateriauxDto.Annulation a,
+                                                     @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return depots.annulerDepot(numero, a.motif(), principal);
+    }
+
+    @PostMapping("/clients/{id}/remboursements-depot")
+    @PreAuthorize(Autorisations.PDV_CAISSE)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Demande le remboursement du depot ; validee d'office pour un gerant")
+    public DepotClientService.Operation rembourser(@PathVariable Long id,
+                                                   @Valid @RequestBody DepotClientService.RemboursementRequete r,
+                                                   @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return depots.demanderRemboursement(id, r, principal);
+    }
+
+    @GetMapping("/remboursements-depot/en-attente")
+    @PreAuthorize(Autorisations.PDV_GESTION)
+    @Operation(summary = "Remboursements de depot qui attendent le gerant")
+    public java.util.List<DepotClientService.Operation> remboursementsEnAttente() {
+        return depots.remboursementsEnAttente();
+    }
+
+    @PostMapping("/remboursements-depot/{id}/validation")
+    @PreAuthorize(Autorisations.PDV_GESTION)
+    @Operation(summary = "Valide un remboursement de depot ; par la caisse, les especes sortent de la session")
+    public DepotClientService.Operation validerRemboursement(@PathVariable Long id,
+                                                             @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return depots.validerRemboursement(id, principal);
+    }
+
+    @PostMapping("/remboursements-depot/{id}/refus")
+    @PreAuthorize(Autorisations.PDV_GESTION)
+    @Operation(summary = "Refuse un remboursement de depot")
+    public DepotClientService.Operation refuserRemboursement(@PathVariable Long id, @Valid @RequestBody DepotClientService.Refus r,
+                                                             @AuthenticationPrincipal UtilisateurPrincipal principal) {
+        return depots.refuserRemboursement(id, r.motif(), principal);
     }
 
     @PostMapping("/reglements/{numero}/annulation")

@@ -43,9 +43,12 @@ class CompteClientServiceTest {
     private ClientPdv client;
     private final List<Object[]> encours = new ArrayList<>();
 
+    private DepotClientService depots;
+
     @BeforeEach
     void preparer() {
         clients = mock(ClientPdvRepository.class);
+        depots = mock(DepotClientService.class);
         ventes = mock(VenteRepository.class);
         sessions = mock(SessionTravailService.class);
         ReglageMateriauxService reglages = mock(ReglageMateriauxService.class);
@@ -53,7 +56,7 @@ class CompteClientServiceTest {
         when(numerotation.prochainNumero("REG")).thenReturn("REG-2026-0001");
         service = new CompteClientService(clients, mock(ReglementClientRepository.class), ventes, reglages,
                 sessions, numerotation, mock(SoldeResteRepository.class),
-                mock(tg.parcauto.api.pointdevente.caisse.PerimetreCaisse.class));
+                mock(tg.parcauto.api.pointdevente.caisse.PerimetreCaisse.class), depots);
 
         reglage = new ReglageMateriaux();
         reglage.setPlafondDefaut(BigDecimal.valueOf(500_000));
@@ -169,6 +172,28 @@ class CompteClientServiceTest {
                 ModePaiementPdv.ESPECES, null, null, null, null), principal(Role.CAISSIER)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("depasse");
+    }
+
+    @Test
+    @DisplayName("Un versement par le compte client puise dans l'argent depose, dans la limite du solde")
+    void versementParLeCompteClient() {
+        Vente due = vente("COM-1", 30_000);
+        when(ventes.duesDuClient(5L)).thenReturn(List.of(due));
+        SessionCaisse session = new SessionCaisse();
+        session.setNumero("CAI-1");
+        when(sessions.exiger(any(), any())).thenReturn(session);
+        org.mockito.Mockito.doThrow(new BusinessException("Le depot ne contient que 10 000 F"))
+                .when(depots).exigerSolde(5L, montant(20_000));
+
+        assertThatThrownBy(() -> service.regler(5L, new MateriauxDto.ReglementRequete(montant(20_000),
+                ModePaiementPdv.COMPTE_CLIENT, null, null, null, null), principal(Role.CAISSIER)))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("10 000");
+
+        MateriauxDto.RecuReglement recu = service.regler(5L, new MateriauxDto.ReglementRequete(montant(10_000),
+                ModePaiementPdv.COMPTE_CLIENT, null, null, null, null), principal(Role.CAISSIER));
+        assertThat(recu.modePaiementLibelle()).isEqualTo("Compte client");
+        assertThat(due.getResteDu()).isEqualByComparingTo("20000");
+        org.mockito.Mockito.verify(depots).exigerSolde(5L, montant(10_000));
     }
 
     // ------------------------------------------------------------ outils

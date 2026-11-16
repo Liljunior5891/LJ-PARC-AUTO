@@ -36,6 +36,26 @@ public interface ReglementClientRepository extends JpaRepository<ReglementClient
             """)
     List<Object[]> totauxSession(@Param("sessionId") Long sessionId);
 
+    /** [clientId, total] des versements valides payes avec le compte client (argent depose). */
+    @Query("""
+            select r.client.id, coalesce(sum(r.montant), 0) from ReglementClient r
+            where r.client.id in :ids
+              and r.modePaiement = tg.parcauto.api.pointdevente.vente.ModePaiementPdv.COMPTE_CLIENT
+              and r.statut = tg.parcauto.api.pointdevente.materiaux.ReglementClient.Statut.VALIDE
+            group by r.client.id
+            """)
+    List<Object[]> payesParCompte(@Param("ids") java.util.Collection<Long> ids);
+
+    /** Versements valides d'un client payes avec son compte, les plus recents d'abord. */
+    @Query("""
+            select r from ReglementClient r join fetch r.vente
+            where r.client.id = :client
+              and r.modePaiement = tg.parcauto.api.pointdevente.vente.ModePaiementPdv.COMPTE_CLIENT
+              and r.statut = tg.parcauto.api.pointdevente.materiaux.ReglementClient.Statut.VALIDE
+            order by r.dateReglement desc
+            """)
+    List<ReglementClient> versementsParCompte(@Param("client") Long clientId);
+
     /** Total des reglements valides recus sur une periode. */
     @Query("""
             select coalesce(sum(r.montant), 0) from ReglementClient r

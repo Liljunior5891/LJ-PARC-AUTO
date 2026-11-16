@@ -31,6 +31,21 @@
           }
         </div>
 
+        <!-- Argent depose par le client, sans achat. -->
+        <div class="solde depot" [class.a-jour]="(depots()?.solde ?? 0) > 0">
+          <small>Argent depose disponible</small>
+          <strong>{{ (depots()?.solde ?? c.client.soldeDepot ?? 0) | number: '1.0-0' }} <span>F</span></strong>
+          @if ((depots()?.enAttente ?? 0) > 0) {
+            <small class="detail-jauge">{{ depots()!.enAttente | number: '1.0-0' }} F bloques (remboursement en attente)</small>
+          }
+          <div class="actions-depot">
+            <button class="bouton secondaire" type="button" (click)="ouvrirDepot('depot')">Deposer de l'argent</button>
+            @if ((depots()?.solde ?? 0) > 0) {
+              <button class="bouton secondaire" type="button" (click)="ouvrirDepot('remboursement')">Rembourser</button>
+            }
+          </div>
+        </div>
+
         <dl class="chiffres">
           <div [class.danger]="c.client.encoursEchu > 0">
             <dt>En retard</dt>
@@ -61,7 +76,86 @@
 
       <!-- Colonne principale : le versement en cours, ou les listes en onglets. -->
       <div class="principal">
-        @if (versement()) {
+        @if (formulaireDepot(); as type) {
+          <form class="carte paiement" (ngSubmit)="enregistrerDepot()">
+            <header>
+              <div>
+                <h3>{{ type === 'depot' ? 'Deposer de l\'argent' : 'Rembourser le client' }}</h3>
+                <small>{{ type === 'depot' ? 'Sans achat : la somme servira a ses prochains achats' : (estGestionnaire ? 'Remboursement immediat' : 'Le gerant validera la demande') }}</small>
+              </div>
+              <div class="reste">
+                <small>Solde depose</small>
+                <strong>{{ (depots()?.solde ?? 0) | number: '1.0-0' }} F</strong>
+              </div>
+            </header>
+
+            @if (type === 'remboursement') {
+              <div class="moyens">
+                <button type="button" class="choix-moyen" [class.actif]="sourceRemboursement() === 'CAISSE'" (click)="sourceRemboursement.set('CAISSE')">
+                  <app-icone-moyen code="CAISSE" /> Especes de la caisse</button>
+                <button type="button" class="choix-moyen" [class.actif]="sourceRemboursement() === 'BANQUE'" (click)="sourceRemboursement.set('BANQUE')">
+                  <app-icone-moyen code="BANQUE" /> Banque</button>
+              </div>
+            }
+            @if ((type === 'depot' || sourceRemboursement() === 'CAISSE') && !session()) {
+              @if ((ouvertes()?.length ?? 0) > 1) {
+                <div class="champ">
+                  <label for="d-session">Caisse</label>
+                  <select id="d-session" name="session" [ngModel]="null" (ngModelChange)="choisirSession($event)">
+                    <option [ngValue]="null" disabled>Choisissez la caisse</option>
+                    @for (s of ouvertes() ?? []; track s.id) { <option [ngValue]="s.id">{{ s.caisseNom }} · {{ s.numero }}</option> }
+                  </select>
+                </div>
+              } @else {
+                <div class="message avertissement">Aucune caisse ouverte : un gerant doit ouvrir une session.</div>
+              }
+            }
+            @if (type === 'depot') {
+              <div class="moyens">
+                @for (m of modes; track m.valeur) {
+                  <button type="button" class="choix-moyen" [class.actif]="modeDepot() === m.valeur" (click)="modeDepot.set(m.valeur)">
+                    <app-icone-moyen [code]="m.valeur" /> {{ m.libelle }}
+                  </button>
+                }
+              </div>
+            }
+
+            <div class="grille-formulaire">
+              <div class="champ">
+                <label for="d-montant">{{ type === 'depot' ? 'Montant depose (F) *' : 'Montant rembourse (F) *' }}</label>
+                <input id="d-montant" name="montant" type="number" min="1" step="any" required class="montant"
+                       [max]="type === 'remboursement' ? (depots()?.solde ?? 0) : null"
+                       [ngModel]="montantDepot()" (ngModelChange)="montantDepot.set($event); recuDepot.set($event)" />
+              </div>
+              @if (type === 'depot' && modeDepot() === 'ESPECES') {
+                <div class="champ">
+                  <label for="d-recu">Billets remis (F)</label>
+                  <input id="d-recu" name="recu" type="number" min="0" step="any" [ngModel]="recuDepot()" (ngModelChange)="recuDepot.set($event)" />
+                  @if (monnaieDepot() > 0) { <small>Monnaie a rendre : <strong>{{ monnaieDepot() | number: '1.0-0' }} F</strong></small> }
+                </div>
+              } @else if (type === 'depot') {
+                <div class="champ">
+                  <label for="d-ref">Reference du paiement *</label>
+                  <input id="d-ref" name="reference" maxlength="80" [(ngModel)]="referenceDepot" placeholder="Numero de transaction" />
+                </div>
+              }
+              <div class="champ">
+                <label for="d-motif">{{ type === 'depot' ? 'Objet (facultatif)' : 'Motif' }}</label>
+                <input id="d-motif" name="motif" maxlength="500" [(ngModel)]="motifDepot"
+                       [placeholder]="type === 'depot' ? 'Ex. materiaux du chantier de Baguida' : 'Ex. chantier annule'" />
+              </div>
+            </div>
+            <div class="actions-formulaire">
+              <button class="bouton secondaire annuler" type="button" (click)="formulaireDepot.set(null)">Retour</button>
+              <button class="bouton succes" type="submit"
+                      [disabled]="enCours() || !(montantDepot() ?? 0) || ((type === 'depot' || sourceRemboursement() === 'CAISSE') && !session())
+                                  || (type === 'remboursement' && (montantDepot() ?? 0) > (depots()?.solde ?? 0))
+                                  || (type === 'depot' && modeDepot() !== 'ESPECES' && !referenceDepot.trim())">
+                {{ enCours() ? 'Enregistrement...' : (type === 'depot' ? 'Enregistrer le depot' : (estGestionnaire ? 'Rembourser' : 'Demander le remboursement')) }}
+              </button>
+            </div>
+          </form>
+        } @else if (versement()) {
           <form class="carte paiement" (ngSubmit)="encaisser()">
             <header>
               <div>
@@ -89,10 +183,18 @@
             <div class="moyens">
               @for (m of modes; track m.valeur) {
                 <button type="button" class="choix-moyen" [class.actif]="mode() === m.valeur" (click)="mode.set(m.valeur)">
-                  <span aria-hidden="true">{{ m.icone }}</span> {{ m.libelle }}
+                  <app-icone-moyen [code]="m.valeur" /> {{ m.libelle }}
+                </button>
+              }
+              @if ((depots()?.solde ?? 0) > 0) {
+                <button type="button" class="choix-moyen" [class.actif]="mode() === 'COMPTE_CLIENT'" (click)="payerParCompte()">
+                  <app-icone-moyen code="COMPTE_CLIENT" /> Compte client · {{ depots()!.solde | number: '1.0-0' }} F
                 </button>
               }
             </div>
+            @if (mode() === 'COMPTE_CLIENT') {
+              <small class="info-compte">Le versement est pris sur l'argent depose par le client : rien n'entre dans la caisse.</small>
+            }
 
             <div class="grille-formulaire">
               <div class="champ">
@@ -100,7 +202,8 @@
                 <input id="v-montant" name="montant" type="number" min="1" step="any" required class="montant"
                        [ngModel]="montant()" (ngModelChange)="montant.set($event); recu.set($event)" />
               </div>
-              @if (mode() === 'ESPECES') {
+              @if (mode() === 'COMPTE_CLIENT') {
+              } @else if (mode() === 'ESPECES') {
                 <div class="champ">
                   <label for="v-recu">Billets remis (F)</label>
                   <input id="v-recu" name="recu" type="number" min="0" step="any" [ngModel]="recu()" (ngModelChange)="recu.set($event)" />
@@ -115,7 +218,8 @@
             </div>
             <div class="actions-formulaire">
               <button class="bouton secondaire annuler" type="button" (click)="versement.set(false)">Retour</button>
-              <button class="bouton succes" type="submit" [disabled]="enCours() || !session() || !(montant() ?? 0)">
+              <button class="bouton succes" type="submit"
+                      [disabled]="enCours() || !session() || !(montant() ?? 0) || (mode() === 'COMPTE_CLIENT' && (montant() ?? 0) > (depots()?.solde ?? 0))">
                 {{ enCours() ? 'Enregistrement...' : 'Encaisser ' + ((montant() ?? 0) | number: '1.0-0') + ' F' }}
               </button>
             </div>
@@ -199,6 +303,77 @@
               @if (c.aLivrer.length) {
                 <div class="actions-formulaire pied-liste">
                   <a class="bouton succes" routerLink="/pdv/livraisons" [queryParams]="{ client: c.client.id }" (click)="ferme.emit()">Remettre au client</a>
+                </div>
+              }
+            }
+            @case ('depots') {
+              @if (depots(); as d) {
+                <div class="resume-depot">
+                  <span>Depose <strong>{{ d.deposes | number: '1.0-0' }} F</strong></span>
+                  <span>Utilise en achats <strong>{{ d.utilises | number: '1.0-0' }} F</strong></span>
+                  <span>Rembourse <strong>{{ d.rembourses | number: '1.0-0' }} F</strong></span>
+                  <span>Disponible <strong>{{ d.solde | number: '1.0-0' }} F</strong></span>
+                </div>
+                <div class="tableau-conteneur liste-compte">
+                  <table class="tableau">
+                    <thead><tr><th>Operation</th><th>Moyen</th><th>Statut</th><th class="numerique">Montant</th><th></th></tr></thead>
+                    <tbody>
+                      @for (o of d.operations; track o.id) {
+                        <tr [class.annule]="o.statut === 'ANNULE' || o.statut === 'REFUSE'">
+                          <td>
+                            <strong>{{ o.type === 'DEPOT' ? 'Depot' : 'Remboursement' }} {{ o.numero }}</strong>
+                            <small class="sous-ligne">{{ o.date | date: 'dd/MM/yyyy HH:mm' }} · {{ o.auteurNom }}@if (o.motif) { · {{ o.motif }} }</small>
+                          </td>
+                          <td><span class="moyen">{{ o.modePaiementLibelle }}</span></td>
+                          <td>
+                            @switch (o.statut) {
+                              @case ('EN_ATTENTE') { <span class="etiquette immobilise">Attend le gerant</span> }
+                              @case ('REFUSE') { <small>Refuse : {{ o.motifRefus }}</small> }
+                              @case ('ANNULE') { <small>Annule</small> }
+                              @default { <small>{{ o.type === 'DEPOT' ? 'Encaisse' : 'Rembourse' }}</small> }
+                            }
+                          </td>
+                          <td class="numerique"><strong class="somme">{{ o.type === 'DEPOT' ? '+' : '−' }}{{ o.montant | number: '1.0-0' }}</strong></td>
+                          <td class="actions-ligne">
+                            @if (o.statut === 'VALIDE') {
+                              <button class="bouton secondaire petit info" type="button" (click)="reimprimerDepot(o.numero)">Recu</button>
+                            }
+                            @if (estGestionnaire && o.statut === 'EN_ATTENTE') {
+                              @if (aRefuser() === o.id) {
+                                <input [(ngModel)]="motifRefus" placeholder="Motif du refus" aria-label="Motif du refus" />
+                                <button class="bouton danger petit" type="button" [disabled]="!motifRefus.trim()" (click)="refuserRemboursement(o)">Refuser</button>
+                                <button class="bouton secondaire petit" type="button" (click)="aRefuser.set(null)" aria-label="Ne pas refuser">×</button>
+                              } @else {
+                                <button class="bouton succes petit" type="button" (click)="validerRemboursement(o)">Valider</button>
+                                <button class="bouton secondaire petit annuler" type="button" (click)="aRefuser.set(o.id); motifRefus = ''">Refuser</button>
+                              }
+                            }
+                            @if (estGestionnaire && o.type === 'DEPOT' && o.statut === 'VALIDE') {
+                              @if (aAnnulerDepot() === o.numero) {
+                                <input [(ngModel)]="motif" placeholder="Motif" aria-label="Motif de l'annulation" />
+                                <button class="bouton danger petit" type="button" (click)="annulerDepot(o.numero)">Confirmer</button>
+                                <button class="bouton secondaire petit" type="button" (click)="aAnnulerDepot.set(null)" aria-label="Ne pas annuler">×</button>
+                              } @else {
+                                <button class="bouton secondaire petit annuler" type="button" (click)="aAnnulerDepot.set(o.numero); motif = ''">Annuler</button>
+                              }
+                            }
+                          </td>
+                        </tr>
+                      }
+                      @for (a of d.achats; track a.venteId) {
+                        <tr>
+                          <td><strong>Achat {{ a.numero }}</strong><small class="sous-ligne">{{ a.date | date: 'dd/MM/yyyy HH:mm' }} · total {{ a.total | number: '1.0-0' }} F</small></td>
+                          <td><span class="moyen">Paye avec le depot</span></td>
+                          <td><small>Utilise</small></td>
+                          <td class="numerique"><strong class="somme">−{{ a.payeParDepot | number: '1.0-0' }}</strong></td>
+                          <td></td>
+                        </tr>
+                      }
+                      @if (!d.operations.length && !d.achats.length) {
+                        <tr><td colspan="5" class="vide-ligne">Le client n'a encore rien depose.</td></tr>
+                      }
+                    </tbody>
+                  </table>
                 </div>
               }
             }

@@ -10,11 +10,13 @@ import {
   ClientPdv,
   ClientPdvRequete,
   CompteClient,
+  CompteDepot,
   Conditionnement,
   ConditionnementRequete,
   Devis,
   DevisRequete,
   EncaissementDevis,
+  OperationDepot,
   RecuReglement,
   ReglagesMateriaux,
   ReglementRequete,
@@ -128,6 +130,44 @@ export class MateriauxService {
 
   annulerReglement(numero: string, motif: string): Observable<RecuReglement> {
     return this.http.post<RecuReglement>(`${this.base}/reglements/${numero}/annulation`, { motif });
+  }
+
+  // ------------------------------------------------------ depots d'argent
+
+  depots(clientId: number): Observable<CompteDepot> {
+    return this.http.get<CompteDepot>(`${this.base}/clients/${clientId}/depots`);
+  }
+
+  deposer(clientId: number, r: { montant: number; modePaiement: string; montantRecu?: number | null;
+                                 referencePaiement?: string | null; sessionId?: number | null; motif?: string | null }): Observable<OperationDepot> {
+    return this.http.post<OperationDepot>(`${this.base}/clients/${clientId}/depots`, r, {
+      context: new HttpContext().set(SANS_SUIVI, true)
+    });
+  }
+
+  recuDepot(numero: string): Observable<OperationDepot> {
+    return this.http.get<OperationDepot>(`${this.base}/depots-clients/${numero}`);
+  }
+
+  annulerDepot(numero: string, motif: string): Observable<OperationDepot> {
+    return this.http.post<OperationDepot>(`${this.base}/depots-clients/${numero}/annulation`, { motif });
+  }
+
+  rembourserDepot(clientId: number, r: { montant: number; source: 'CAISSE' | 'BANQUE'; sessionId?: number | null;
+                                         motif?: string | null }): Observable<OperationDepot> {
+    return this.http.post<OperationDepot>(`${this.base}/clients/${clientId}/remboursements-depot`, r);
+  }
+
+  remboursementsDepotEnAttente(): Observable<OperationDepot[]> {
+    return this.http.get<OperationDepot[]>(`${this.base}/remboursements-depot/en-attente`);
+  }
+
+  validerRemboursementDepot(id: number): Observable<OperationDepot> {
+    return this.http.post<OperationDepot>(`${this.base}/remboursements-depot/${id}/validation`, {});
+  }
+
+  refuserRemboursementDepot(id: number, motif: string): Observable<OperationDepot> {
+    return this.http.post<OperationDepot>(`${this.base}/remboursements-depot/${id}/refus`, { motif });
   }
 
   // ---------------------------------------------------------------- devis

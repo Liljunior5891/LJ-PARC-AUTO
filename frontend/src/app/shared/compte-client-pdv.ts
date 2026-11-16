@@ -3,14 +3,15 @@ import { Component, OnInit, computed, inject, input, output, signal } from '@ang
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
-import { CompteClient, RecuReglement } from '../core/models/materiaux';
+import { CompteClient, CompteDepot, OperationDepot, RecuReglement } from '../core/models/materiaux';
 import { MODES_PAIEMENT_PDV, ModePaiementPdv } from '../core/models/pdv';
 import { MateriauxService } from '../core/services/materiaux.service';
 import { SessionTravailService } from '../core/services/session-travail.service';
 import { SocieteService } from '../core/services/societe.service';
 import { Modale } from './modale';
+import { IconeMoyen } from './icone-moyen';
 import { OperationService } from '../core/operation/operation.service';
-import { imprimerRecuReglement } from './ticket-pdv';
+import { imprimerRecuDepot, imprimerRecuReglement } from './ticket-pdv';
 
 /**
  * Compte d'un client de la quincaillerie : encours, ventes dues avec leur
@@ -18,11 +19,11 @@ import { imprimerRecuReglement } from './ticket-pdv';
  * sur la session de caisse du poste. Ouvert depuis la caisse comme depuis la
  * liste des clients.
  */
-type OngletCompte = 'dues' | 'livrer' | 'versements';
+type OngletCompte = 'dues' | 'livrer' | 'versements' | 'depots';
 
 @Component({
   selector: 'app-compte-client-pdv',
-  imports: [FormsModule, DecimalPipe, DatePipe, Modale, RouterLink],
+  imports: [FormsModule, DecimalPipe, DatePipe, Modale, RouterLink, IconeMoyen],
   templateUrl: './compte-client-pdv.html',
   styleUrls: ['./compte-tiers.scss', './compte-client-pdv.scss']
 })
@@ -61,8 +62,25 @@ export class CompteClientPdv implements OnInit {
   readonly onglets: { id: OngletCompte; libelle: string; icone: string }[] = [
     { id: 'dues', libelle: 'A regler', icone: '⏳' },
     { id: 'livrer', libelle: 'Reste a livrer', icone: '📦' },
-    { id: 'versements', libelle: 'Versements', icone: '💵' }
+    { id: 'versements', libelle: 'Versements', icone: '💵' },
+    { id: 'depots', libelle: 'Argent depose', icone: '🏦' }
   ];
+
+  // Argent depose par le client (sans achat), et son remboursement.
+  readonly depots = signal<CompteDepot | null>(null);
+  /** Formulaire ouvert : depot d'argent ou remboursement du solde. */
+  readonly formulaireDepot = signal<'depot' | 'remboursement' | null>(null);
+  readonly montantDepot = signal<number | null>(null);
+  readonly recuDepot = signal<number | null>(null);
+  readonly modeDepot = signal<ModePaiementPdv>('ESPECES');
+  readonly sourceRemboursement = signal<'CAISSE' | 'BANQUE'>('CAISSE');
+  referenceDepot = '';
+  motifDepot = '';
+  readonly monnaieDepot = computed(() => Math.max(0, (this.recuDepot() ?? 0) - (this.montantDepot() ?? 0)));
+  /** Remboursement refuse en cours de saisie du motif. */
+  readonly aRefuser = signal<number | null>(null);
+  motifRefus = '';
+  readonly aAnnulerDepot = signal<string | null>(null);
   readonly onglet = signal<OngletCompte>('dues');
 
   readonly initiales = computed(() => {
@@ -103,6 +121,9 @@ export class CompteClientPdv implements OnInit {
     if (!c) {
       return 0;
     }
+    if (id === 'depots') {
+      return this.depots()?.operations.length ?? 0;
+    }
     return id === 'dues' ? c.dues.length : id === 'livrer' ? c.aLivrer.length : this.versements().length;
   }
 
@@ -128,6 +149,140 @@ export class CompteClientPdv implements OnInit {
       },
       error: (e) => this.erreur.set(e?.error?.message ?? 'Compte illisible.')
     });
+    this.service.depots(this.clientId()).subscribe({
+      next: (d) => this.depots.set(d),
+      error: () => this.depots.set(null)
+    });
+  }
+
+  // ------------------------------------------------------- argent depose
+
+  ouvrirDepot(type: 'depot' | 'remboursement'): void {
+    this.versement.set(false);
+    this.formulaireDepot.set(type);
+    this.montantDepot.set(type === 'remboursement' ? this.depots()?.solde ?? null : null);
+    this.recuDepot.set(null);
+    this.modeDepot.set('ESPECES');
+    this.sourceRemboursement.set(this.session() ? 'CAISSE' : 'BANQUE');
+    this.referenceDepot = '';
+    this.motifDepot = '';
+    this.succes.set(null);
+    this.erreur.set(null);
+  }
+
+  async enregistrerDepot(): Promise<void> {
+    const montant = this.montantDepot() ?? 0;
+    const type = this.formulaireDepot();
+    if (this.enCours() || montant <= 0 || !type) {
+      return;
+    }
+    const parCaisse = type === 'depot' || this.sourceRemboursement() === 'CAISSE';
+    if (parCaisse && !this.session()) {
+      this.erreur.set(this.sessions.choixRequis()
+        ? 'Choisissez la caisse sur laquelle vous encaissez.'
+        : 'Aucune caisse ouverte : un gerant doit ouvrir une session.');
+      return;
+    }
+    const accepte = await this.operation.demander(type === 'depot'
+      ? { titre: `Enregistrer le depot de ${montant.toLocaleString('fr-FR')} F ?`,
+          message: 'L\'argent entre dans la caisse et reste a la disposition du client pour ses prochains achats.',
+          libelleAction: 'Enregistrer' }
+      : { titre: `Rembourser ${montant.toLocaleString('fr-FR')} F au client ?`,
+          message: this.estGestionnaire
+            ? (this.sourceRemboursement() === 'CAISSE' ? 'Les especes sortent aussitot de la caisse.' : 'Le remboursement sort du compte de l\'entreprise.')
+            : 'La demande part au gerant, qui la validera ; le montant est bloque en attendant.',
+          libelleAction: this.estGestionnaire ? 'Rembourser' : 'Demander' });
+    if (!accepte || this.enCours()) {
+      return;
+    }
+    this.enCours.set(true);
+    this.erreur.set(null);
+    const appel = type === 'depot'
+      ? this.service.deposer(this.clientId(), {
+          montant, modePaiement: this.modeDepot(), montantRecu: this.modeDepot() === 'ESPECES' ? this.recuDepot() : null,
+          referencePaiement: this.referenceDepot.trim() || null, sessionId: this.session()?.id, motif: this.motifDepot.trim() || null })
+      : this.service.rembourserDepot(this.clientId(), {
+          montant, source: this.sourceRemboursement(), sessionId: parCaisse ? this.session()?.id : null,
+          motif: this.motifDepot.trim() || null });
+    appel.subscribe({
+      next: (op) => {
+        this.enCours.set(false);
+        this.formulaireDepot.set(null);
+        if (op.type === 'DEPOT') {
+          this.succes.set(`Depot ${op.numero} enregistre : ${op.montant.toLocaleString('fr-FR')} F.`
+            + (op.monnaieRendue ? ` Monnaie a rendre : ${op.monnaieRendue.toLocaleString('fr-FR')} F.` : ''));
+        } else {
+          this.succes.set(op.statut === 'VALIDE'
+            ? `Remboursement ${op.numero} de ${op.montant.toLocaleString('fr-FR')} F effectue.`
+            : `Demande ${op.numero} envoyee au gerant : ${op.montant.toLocaleString('fr-FR')} F bloques en attendant.`);
+        }
+        if (op.statut === 'VALIDE') {
+          this.imprimerDepot(op);
+        }
+        this.onglet.set('depots');
+        this.sessions.rafraichir();
+        this.charger();
+        this.modifie.emit();
+      },
+      error: (e) => {
+        this.enCours.set(false);
+        this.erreur.set(e?.error?.message ?? 'Operation impossible.');
+      }
+    });
+  }
+
+  validerRemboursement(op: OperationDepot): void {
+    this.service.validerRemboursementDepot(op.id).subscribe({
+      next: (r) => {
+        this.succes.set(`Remboursement ${r.numero} valide.`);
+        this.imprimerDepot(r);
+        this.sessions.rafraichir();
+        this.charger();
+        this.modifie.emit();
+      },
+      error: (e) => this.erreur.set(e?.error?.message ?? 'Validation impossible.')
+    });
+  }
+
+  refuserRemboursement(op: OperationDepot): void {
+    if (!this.motifRefus.trim()) {
+      return;
+    }
+    this.service.refuserRemboursementDepot(op.id, this.motifRefus.trim()).subscribe({
+      next: () => {
+        this.aRefuser.set(null);
+        this.motifRefus = '';
+        this.succes.set(`Remboursement ${op.numero} refuse : le montant revient au solde du client.`);
+        this.charger();
+        this.modifie.emit();
+      },
+      error: (e) => this.erreur.set(e?.error?.message ?? 'Refus impossible.')
+    });
+  }
+
+  annulerDepot(numero: string): void {
+    this.service.annulerDepot(numero, this.motif.trim()).subscribe({
+      next: () => {
+        this.aAnnulerDepot.set(null);
+        this.motif = '';
+        this.succes.set(`Depot ${numero} annule.`);
+        this.sessions.rafraichir();
+        this.charger();
+        this.modifie.emit();
+      },
+      error: (e) => this.erreur.set(e?.error?.message ?? 'Annulation impossible.')
+    });
+  }
+
+  reimprimerDepot(numero: string): void {
+    this.service.recuDepot(numero).subscribe({ next: (r) => this.imprimerDepot(r) });
+  }
+
+  private imprimerDepot(op: OperationDepot): void {
+    this.societes.lire().subscribe({
+      next: (s) => imprimerRecuDepot(op, s),
+      error: () => imprimerRecuDepot(op, null)
+    });
   }
 
   ouvrirVersement(venteId: number | null = null, montant?: number): void {
@@ -135,6 +290,7 @@ export class CompteClientPdv implements OnInit {
     if (!c) {
       return;
     }
+    this.formulaireDepot.set(null);
     this.venteId = venteId;
     this.montant.set(montant ?? c.client.encours);
     this.recu.set(montant ?? c.client.encours);
@@ -143,6 +299,13 @@ export class CompteClientPdv implements OnInit {
     this.succes.set(null);
     this.erreur.set(null);
     this.versement.set(true);
+  }
+
+  /** Le versement est pris sur l'argent depose : au plus son solde, au plus ce qui est du. */
+  payerParCompte(): void {
+    const du = this.venteChoisie()?.resteDu ?? this.compte()?.client.encours ?? 0;
+    this.mode.set('COMPTE_CLIENT');
+    this.montant.set(Math.min(du, this.depots()?.solde ?? 0));
   }
 
   async encaisser(): Promise<void> {
@@ -158,7 +321,9 @@ export class CompteClientPdv implements OnInit {
     }
     const accepte = await this.operation.demander({
       titre: `Enregistrer le versement de ${montant.toLocaleString('fr-FR')} F ?`,
-      message: 'Il diminue ce que doit le client et entre dans la caisse.',
+      message: this.mode() === 'COMPTE_CLIENT'
+        ? "Il diminue ce que doit le client et est pris sur l'argent qu'il a depose."
+        : 'Il diminue ce que doit le client et entre dans la caisse.',
       libelleAction: 'Enregistrer'
     });
     if (!accepte || this.enCours()) {

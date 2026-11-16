@@ -1329,3 +1329,90 @@
     cursor: pointer;
   }
 }
+
+
+/* Moyen « Compte client » : l'argent depose par le client paie l'achat. */
+.tuile-compte {
+  --teinte: #b45309;
+  --teinte-pale: #fdf3e6;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  margin-bottom: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border: 1.5px solid var(--couleur-bordure);
+  border-radius: 14px;
+  background: var(--couleur-surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+
+  .pictogramme-mode {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--teinte-pale);
+
+    svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: var(--teinte);
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
+
+  .textes-compte {
+    display: flex;
+    flex-direction: column;
+
+    small {
+      color: var(--couleur-texte-doux);
+      font-size: 0.78rem;
+    }
+  }
+
+  .coche-mode {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--teinte);
+
+    svg { width: 12px; height: 12px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--teinte);
+    transform: translateY(-1px);
+  }
+
+  &.actif {
+    border-color: var(--teinte);
+    background: var(--teinte-pale);
+    color: var(--teinte);
+
+    .pictogramme-mode {
+      background: var(--teinte);
+
+      svg { stroke: #fff; }
+    }
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}

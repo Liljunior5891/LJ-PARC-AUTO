@@ -42,6 +42,12 @@ import java.util.stream.Collectors;
  * <p>
  * Une commande recue doit sa valeur recue ; son reste est cette valeur moins
  * ses reglements valides. Rien n'est stocke en double : le solde ne derive pas.
+ * <p>
+ * Avances : l'entreprise verse de l'argent a un fournisseur sans marchandise.
+ * A chaque reception, la dette est reglee d'office avec l'avance disponible
+ * (reglement de mode AVANCE, sans mouvement d'argent). Le fournisseur peut
+ * rembourser une avance, sur le compte de l'entreprise.
+ * Solde d'avance = avances valides - remboursements - dettes reglees avec l'avance.
  */
 @Service
 @RequiredArgsConstructor
@@ -57,6 +63,7 @@ public class FournisseurService {
     private final NumerotationService numerotation;
     private final tg.parcauto.api.pointdevente.tresorerie.TresorerieService tresorerie;
     private final tg.parcauto.api.pointdevente.reglage.ReglagePdvService reglagesPdv;
+    private final AvanceFournisseurRepository avanceRepository;
 
     // ------------------------------------------------------------------ dto
 
@@ -79,7 +86,9 @@ public class FournisseurService {
     public record Reponse(Long id, String code, String nom, String personneContact, String telephone,
                           String telephone2, String email, String adresse, String ville, String pays, String nif,
                           String rccm, Integer delaiPaiementJours, String conditions, String note, boolean actif,
-                          long commandes, BigDecimal du, BigDecimal enRetard, LocalDate prochaineEcheance) {
+                          long commandes, BigDecimal du, BigDecimal enRetard, LocalDate prochaineEcheance,
+                          /** Avance versee et pas encore utilisee. */
+                          BigDecimal avance) {
     }
 
     /** Commande recue et ce qu'il reste a payer dessus. */
@@ -106,7 +115,33 @@ public class FournisseurService {
     }
 
     public record Compte(Reponse fournisseur, List<Dette> dettes, List<ReglementLigne> reglements,
-                         List<CommandeLigne> commandes) {
+                         List<CommandeLigne> commandes, List<AvanceLigne> avances) {
+    }
+
+    /** Avance versee au fournisseur, ou remboursement d'avance. */
+    public record AvanceLigne(Long id, String numero, AvanceFournisseur.Type type, LocalDate date, BigDecimal montant,
+                              ModeSortie mode, String modeLibelle, String commandeNumero, String reference,
+                              String sessionNumero, String note, String auteurNom, AvanceFournisseur.Statut statut,
+                              String motifAnnulation) {
+
+        static AvanceLigne de(AvanceFournisseur a) {
+            return new AvanceLigne(a.getId(), a.getNumero(), a.getType(), a.getDateOperation(), a.getMontant(), a.getMode(),
+                    a.getMode().getLibelle(), a.getCommande() == null ? null : a.getCommande().getNumero(),
+                    a.getReference(), a.getSession() == null ? null : a.getSession().getNumero(), a.getNote(),
+                    a.getAuteurNom(), a.getStatut(), a.getMotifAnnulation());
+        }
+    }
+
+    public record AvanceRequete(
+            @NotNull @Positive BigDecimal montant,
+            /** Avance : CAISSE, COFFRE ou BANQUE ; remboursement : BANQUE. */
+            @NotNull ModeSortie mode,
+            Long sessionId,
+            /** Commande pour laquelle l'avance est versee (facultatif). */
+            Long commandeId,
+            LocalDate date,
+            @Size(max = 80) String reference,
+            @Size(max = 255) String note) {
     }
 
     public record ReglementRequete(
@@ -151,8 +186,9 @@ public class FournisseurService {
         Map<Long, BigDecimal[]> dettes = dettesParFiche();
         Map<Long, LocalDate> echeances = prochainesEcheances();
         Map<Long, Long> nombres = nombresDeCommandes();
+        Map<Long, BigDecimal> avances = avancesParFiche(null);
         List<Reponse> toutes = repository.rechercher(motif, actif).stream()
-                .map(f -> reponse(f, dettes, echeances, nombres))
+                .map(f -> reponse(f, dettes, echeances, nombres, avances))
                 .filter(r -> !avecDette || r.du().signum() > 0)
                 .sorted(avecDette ? Comparator.comparing(Reponse::enRetard).reversed()
                         .thenComparing(Comparator.comparing(Reponse::du).reversed())
@@ -168,7 +204,7 @@ public class FournisseurService {
     @Transactional(readOnly = true)
     public List<Reponse> actifs() {
         return repository.findByActifTrueOrderByNomAsc().stream()
-                .map(f -> reponse(f, Map.of(), Map.of(), Map.of())).toList();
+                .map(f -> reponse(f, Map.of(), Map.of(), Map.of(), Map.of())).toList();
     }
 
     @Transactional(readOnly = true)
@@ -223,14 +259,21 @@ public class FournisseurService {
         });
     }
 
-    /** A la reception, la valeur recue devient une dette, payable avant l'echeance du fournisseur. */
-    public void ouvrirDette(CommandeFournisseur commande) {
-        BigDecimal recu = commande.getLignes().stream()
-                .filter(l -> l.getQuantiteRecue() != null && l.getCoutUnitaire() != null)
-                .map(l -> l.getQuantiteRecue().multiply(l.getCoutUnitaire()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        commande.setMontantRecu(montant(recu));
+    /**
+     * A chaque reception, la valeur recue s'ajoute a la dette, payable avant
+     * l'echeance du fournisseur (comptee depuis la derniere reception).
+     */
+    public void ouvrirDette(CommandeFournisseur commande, BigDecimal valeurRecue) {
+        BigDecimal avant = commande.getMontantRecu() == null ? BigDecimal.ZERO : commande.getMontantRecu();
+        // Une livraison precedente reste impayee : son echeance tient pour la dette (les
+        // reglements soldent la plus ancienne d'abord), une nouvelle reception ne la repousse pas.
+        boolean impayeAnterieur = avant.signum() > 0 && commande.getEcheance() != null && commande.getId() != null
+                && regles(List.of(commande)).getOrDefault(commande.getId(), BigDecimal.ZERO).compareTo(avant) < 0;
+        commande.setMontantRecu(montant(avant.add(valeurRecue)));
         commande.setDetteSuivie(true);
+        if (impayeAnterieur) {
+            return;
+        }
         Integer delai = commande.getFiche() == null ? null : commande.getFiche().getDelaiPaiementJours();
         commande.setEcheance(LocalDate.now(FUSEAU).plusDays(delai == null ? 0 : delai));
     }
@@ -254,14 +297,15 @@ public class FournisseurService {
         return new Compte(reponse(f),
                 dettes,
                 reglementRepository.duFournisseur(id).stream().map(ReglementLigne::de).toList(),
-                commandes);
+                commandes,
+                avanceRepository.findByFournisseurIdOrderByDateOperationDescIdDesc(id).stream().map(AvanceLigne::de).toList());
     }
 
     @Transactional(readOnly = true)
     public Situation situation(CommandeFournisseur c) {
         List<ReglementLigne> reglements = reglementRepository.deLaCommande(c.getId()).stream()
                 .map(ReglementLigne::de).toList();
-        if (c.getStatut() != CommandeFournisseur.Statut.RECUE) {
+        if (!c.getStatut().recue()) {
             return new Situation(c.isDetteSuivie(), null, BigDecimal.ZERO, BigDecimal.ZERO, null, false,
                     c.getFiche() == null ? null : c.getFiche().getId(), reglements);
         }
@@ -309,20 +353,22 @@ public class FournisseurService {
             throw new BusinessException("La date du reglement ne peut pas etre dans le futur");
         }
         // Le fonds de reserve paie des depenses, pas les fournisseurs.
-        if (!demande.mode().propose() || demande.mode() == ModeSortie.RESERVE) {
-            throw new BusinessException("Choisissez la caisse, le coffre ou la banque");
+        boolean parAvance = demande.mode() == ModeSortie.AVANCE;
+        if (!parAvance && (!demande.mode().propose() || demande.mode() == ModeSortie.RESERVE)) {
+            throw new BusinessException("Choisissez la caisse, le coffre, la banque ou l'avance deja versee");
+        }
+        if (parAvance) {
+            repository.verrouiller(fournisseurId);
+            BigDecimal avance = soldeAvance(fournisseurId);
+            if (montant.compareTo(avance) > 0) {
+                throw new BusinessException("L'avance disponible chez " + f.getNom() + " n'est que de " + entier(avance) + " F");
+            }
         }
         Long coffre = demande.mode() == ModeSortie.COFFRE ? tresorerie.exigerCoffre(auteur, montant) : null;
         String numero = numerotation.prochainNumero("RF");
         MouvementCaisse sortie = null;
         if (demande.mode() == ModeSortie.CAISSE) {
-            // Avec la validation des depenses de caisse, aucune sortie d'especes du tiroir sans visa :
-            // le reglement passe par le coffre ou la banque (l'administrateur reste libre).
-            if (reglagesPdv.validationDepensesCaisse()
-                    && auteur.getAuthorities().stream().noneMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) {
-                throw new BusinessException("La validation des depenses de caisse est activee : reglez le fournisseur"
-                        + " depuis le coffre ou la banque, ou par une depense de caisse soumise a validation");
-            }
+            exigerCaisseLibre(auteur);
             if (demande.sessionId() == null) {
                 throw new BusinessException("Choisissez la caisse ouverte d'ou sortent les especes");
             }
@@ -393,6 +439,147 @@ public class FournisseurService {
                 totalDu(f.getId()), ReglementFournisseur.Statut.ANNULE);
     }
 
+    // --------------------------------------------------------------- avances
+
+    /** Avance versee au fournisseur et pas encore utilisee. */
+    @Transactional(readOnly = true)
+    public BigDecimal soldeAvance(Long fournisseurId) {
+        return avancesParFiche(fournisseurId).getOrDefault(fournisseurId, BigDecimal.ZERO);
+    }
+
+    /**
+     * L'entreprise verse une avance au fournisseur, depuis la caisse (sortie
+     * d'especes de la session ouverte), le coffre du gerant ou la banque.
+     */
+    public AvanceLigne verserAvance(Long fournisseurId, AvanceRequete demande, UtilisateurPrincipal auteur) {
+        Fournisseur f = repository.verrouiller(fournisseurId).orElseThrow(() -> ResourceNotFoundException.of("Fournisseur", fournisseurId));
+        if (!f.isActif()) {
+            throw new BusinessException("Le fournisseur " + f.getNom() + " est archive");
+        }
+        if (demande.mode() != ModeSortie.CAISSE && demande.mode() != ModeSortie.COFFRE && demande.mode() != ModeSortie.BANQUE) {
+            throw new BusinessException("Choisissez la caisse, le coffre ou la banque");
+        }
+        BigDecimal montant = montant(demande.montant());
+        LocalDate date = dateOperation(demande.date());
+        CommandeFournisseur commande = null;
+        if (demande.commandeId() != null) {
+            commande = commandeRepository.findById(demande.commandeId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Commande fournisseur", demande.commandeId()));
+            if (commande.getFiche() == null || !commande.getFiche().getId().equals(fournisseurId)) {
+                throw new BusinessException("La commande " + commande.getNumero() + " n'est pas passee chez " + f.getNom());
+            }
+            if (commande.getStatut() == CommandeFournisseur.Statut.ANNULEE || commande.getStatut() == CommandeFournisseur.Statut.RECUE) {
+                throw new BusinessException("La commande " + commande.getNumero() + " est close : versez une avance libre");
+            }
+        }
+        String numero = numerotation.prochainNumero("AVF");
+        AvanceFournisseur a = new AvanceFournisseur();
+        a.setNumero(numero);
+        a.setFournisseur(f);
+        a.setCommande(commande);
+        a.setType(AvanceFournisseur.Type.AVANCE);
+        a.setMontant(montant);
+        a.setMode(demande.mode());
+        if (demande.mode() == ModeSortie.COFFRE) {
+            a.setCoffreId(tresorerie.exigerCoffre(auteur, montant));
+        }
+        if (demande.mode() == ModeSortie.CAISSE) {
+            exigerCaisseLibre(auteur);
+            if (demande.sessionId() == null) {
+                throw new BusinessException("Choisissez la caisse ouverte d'ou sortent les especes");
+            }
+            MouvementCaisse sortie = caisseService.sortie(demande.sessionId(), montant,
+                    tronquer("Avance fournisseur " + f.getNom() + " - " + numero), auteur);
+            a.setMouvementCaisse(sortie);
+            a.setSession(sortie.getSession());
+        }
+        a.setReference(vide(demande.reference()));
+        a.setDateOperation(date);
+        a.setNote(vide(demande.note()));
+        a.setAuteurNom(auteur.getNomComplet());
+        return AvanceLigne.de(avanceRepository.save(a));
+    }
+
+    /** Le fournisseur rend tout ou partie de l'avance, sur le compte de l'entreprise. */
+    public AvanceLigne rembourserAvance(Long fournisseurId, AvanceRequete demande, UtilisateurPrincipal auteur) {
+        Fournisseur f = repository.verrouiller(fournisseurId).orElseThrow(() -> ResourceNotFoundException.of("Fournisseur", fournisseurId));
+        BigDecimal montant = montant(demande.montant());
+        BigDecimal avance = soldeAvance(fournisseurId);
+        if (montant.compareTo(avance) > 0) {
+            throw new BusinessException("L'avance disponible chez " + f.getNom() + " n'est que de " + entier(avance) + " F");
+        }
+        AvanceFournisseur a = new AvanceFournisseur();
+        a.setNumero(numerotation.prochainNumero("RAF"));
+        a.setFournisseur(f);
+        a.setType(AvanceFournisseur.Type.REMBOURSEMENT);
+        a.setMontant(montant);
+        a.setMode(ModeSortie.BANQUE);
+        a.setReference(vide(demande.reference()));
+        a.setDateOperation(dateOperation(demande.date()));
+        a.setNote(vide(demande.note()));
+        a.setAuteurNom(auteur.getNomComplet());
+        return AvanceLigne.de(avanceRepository.save(a));
+    }
+
+    /**
+     * Annule une avance (ou un remboursement) saisie par erreur. Une avance deja
+     * utilisee pour regler une dette ne s'annule pas : annulez d'abord ce reglement.
+     */
+    public AvanceLigne annulerAvance(String numero, String motif, UtilisateurPrincipal auteur) {
+        AvanceFournisseur a = avanceRepository.findByNumero(numero)
+                .orElseThrow(() -> new ResourceNotFoundException("Avance introuvable : " + numero));
+        if (a.getStatut() == AvanceFournisseur.Statut.ANNULE) {
+            throw new BusinessException("L'operation " + numero + " est deja annulee");
+        }
+        repository.verrouiller(a.getFournisseur().getId());
+        if (a.getType() == AvanceFournisseur.Type.AVANCE && a.getMontant().compareTo(soldeAvance(a.getFournisseur().getId())) > 0) {
+            throw new BusinessException("Cette avance a deja servi a regler des dettes : annulez d'abord ces reglements");
+        }
+        MouvementCaisse sortie = a.getMouvementCaisse();
+        if (sortie != null) {
+            a.setMouvementCaisse(null);
+            avanceRepository.flush();
+            caisseService.retirerSortie(sortie, "une avance");
+        }
+        a.setStatut(AvanceFournisseur.Statut.ANNULE);
+        a.setAnnuleLe(Instant.now());
+        a.setAnnulePar(auteur.getNomComplet());
+        a.setMotifAnnulation(motif.trim());
+        return AvanceLigne.de(a);
+    }
+
+    /**
+     * Apres une reception : la dette de la commande est reglee d'office avec
+     * l'avance disponible chez le fournisseur. Renvoie le montant impute.
+     */
+    public BigDecimal imputerAvance(CommandeFournisseur c, String auteurNom) {
+        if (c.getFiche() == null || !c.isDetteSuivie()) {
+            return BigDecimal.ZERO;
+        }
+        Fournisseur f = repository.verrouiller(c.getFiche().getId()).orElse(c.getFiche());
+        BigDecimal avance = soldeAvance(f.getId());
+        if (avance.signum() <= 0) {
+            return BigDecimal.ZERO;
+        }
+        reglementRepository.flush();
+        BigDecimal reste = dette(c, regles(List.of(c)), LocalDate.now(FUSEAU)).reste();
+        BigDecimal part = avance.min(reste);
+        if (part.signum() <= 0) {
+            return BigDecimal.ZERO;
+        }
+        ReglementFournisseur r = new ReglementFournisseur();
+        r.setNumero(numerotation.prochainNumero("RF"));
+        r.setFournisseur(f);
+        r.setCommande(c);
+        r.setMontant(part);
+        r.setMode(ModeSortie.AVANCE);
+        r.setDateReglement(LocalDate.now(FUSEAU));
+        r.setAuteurNom(auteurNom);
+        r.setNote("Reglee d'office avec l'avance versee");
+        reglementRepository.save(r);
+        return part;
+    }
+
     // ---------------------------------------------------------------- totaux
 
     @Transactional(readOnly = true)
@@ -436,7 +623,7 @@ public class FournisseurService {
     @Transactional(readOnly = true)
     public Map<Long, Dette> dettesDe(List<CommandeFournisseur> commandes) {
         List<CommandeFournisseur> recues = commandes.stream()
-                .filter(c -> c.getStatut() == CommandeFournisseur.Statut.RECUE).toList();
+                .filter(c -> c.getStatut().recue()).toList();
         Map<Long, BigDecimal> regles = regles(recues);
         LocalDate aujourdhui = LocalDate.now(FUSEAU);
         Map<Long, Dette> dettes = new HashMap<>();
@@ -497,22 +684,57 @@ public class FournisseurService {
         return echeances;
     }
 
+    /** Solde d'avance par fiche (toutes, ou une seule). */
+    private Map<Long, BigDecimal> avancesParFiche(Long fournisseurId) {
+        Map<Long, BigDecimal> soldes = new HashMap<>();
+        for (Object[] l : avanceRepository.netParFiche(fournisseurId)) {
+            soldes.merge((Long) l[0], (BigDecimal) l[1], BigDecimal::add);
+        }
+        for (Object[] l : reglementRepository.avanceUtilisee(fournisseurId)) {
+            soldes.merge((Long) l[0], ((BigDecimal) l[1]).negate(), BigDecimal::add);
+        }
+        return soldes;
+    }
+
+    /** Avec la validation des depenses de caisse, seul l'administrateur sort des especes sans visa. */
+    /**
+     * Avec la validation des depenses de caisse, aucune sortie d'especes du tiroir sans visa :
+     * le fournisseur est paye depuis le coffre ou la banque (l'administrateur reste libre).
+     */
+    private void exigerCaisseLibre(UtilisateurPrincipal auteur) {
+        if (reglagesPdv.validationDepensesCaisse()
+                && auteur.getAuthorities().stream().noneMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) {
+            throw new BusinessException("La validation des depenses de caisse est activee : payez le fournisseur"
+                    + " depuis le coffre ou la banque, ou par une depense de caisse soumise a validation");
+        }
+    }
+
+    private static LocalDate dateOperation(LocalDate demandee) {
+        LocalDate aujourdhui = LocalDate.now(FUSEAU);
+        LocalDate date = demandee == null ? aujourdhui : demandee;
+        if (date.isAfter(aujourdhui)) {
+            throw new BusinessException("La date ne peut pas etre dans le futur");
+        }
+        return date;
+    }
+
     private Map<Long, Long> nombresDeCommandes() {
         return commandeRepository.nombreParFiche().stream()
                 .collect(Collectors.toMap(l -> (Long) l[0], l -> (Long) l[1]));
     }
 
     private Reponse reponse(Fournisseur f) {
-        return reponse(f, dettesParFiche(), prochainesEcheances(), nombresDeCommandes());
+        return reponse(f, dettesParFiche(), prochainesEcheances(), nombresDeCommandes(), avancesParFiche(f.getId()));
     }
 
     private static Reponse reponse(Fournisseur f, Map<Long, BigDecimal[]> dettes, Map<Long, LocalDate> echeances,
-                                   Map<Long, Long> nombres) {
+                                   Map<Long, Long> nombres, Map<Long, BigDecimal> avances) {
         BigDecimal[] d = dettes.getOrDefault(f.getId(), new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
         return new Reponse(f.getId(), f.getCode(), f.getNom(), f.getPersonneContact(), f.getTelephone(),
                 f.getTelephone2(), f.getEmail(), f.getAdresse(), f.getVille(), f.getPays(), f.getNif(), f.getRccm(),
                 f.getDelaiPaiementJours(), f.getConditions(), f.getNote(), f.isActif(),
-                nombres.getOrDefault(f.getId(), 0L), montant(d[0]), montant(d[1]), echeances.get(f.getId()));
+                nombres.getOrDefault(f.getId(), 0L), montant(d[0]), montant(d[1]), echeances.get(f.getId()),
+                montant(avances.getOrDefault(f.getId(), BigDecimal.ZERO)));
     }
 
     private void appliquer(Fournisseur f, Requete r) {

@@ -31,7 +31,14 @@ import java.util.List;
 @NoArgsConstructor
 public class CommandeFournisseur extends BaseEntity {
 
-    public enum Statut { EN_COURS, RECUE, ANNULEE }
+    /** PARTIELLE : une partie de la marchandise est recue, le reste est attendu. */
+    public enum Statut { EN_COURS, PARTIELLE, RECUE, ANNULEE;
+
+        /** De la marchandise est arrivee : la commande porte une dette. */
+        public boolean recue() {
+            return this == PARTIELLE || this == RECUE;
+        }
+    }
 
     @Column(nullable = false, length = 40)
     private String numero;
@@ -83,6 +90,20 @@ public class CommandeFournisseur extends BaseEntity {
     @Column(name = "dette_suivie", nullable = false)
     private boolean detteSuivie = true;
 
+    /** Nombre de receptions deja faites. */
+    @Column(nullable = false)
+    private int receptions;
+
+    /** Commande soldee alors que tout n'etait pas livre : le reste a recevoir est abandonne. */
+    @Column(name = "soldee_le")
+    private Instant soldeeLe;
+
+    @Column(name = "soldee_par", length = 150)
+    private String soldeePar;
+
+    @Column(name = "motif_solde", length = 255)
+    private String motifSolde;
+
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id")
     private List<LigneCommandeFournisseur> lignes = new ArrayList<>();
@@ -90,6 +111,21 @@ public class CommandeFournisseur extends BaseEntity {
     public void ajouter(LigneCommandeFournisseur ligne) {
         ligne.setCommande(this);
         lignes.add(ligne);
+    }
+
+    /** Arrivees de marchandise, chacune a sa date (achats comptes au mois de chaque reception). */
+    @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id")
+    private List<ReceptionCommande> arrivees = new ArrayList<>();
+
+    /** Note une arrivee de marchandise de cette valeur. */
+    public void noterArrivee(Instant le, String par, BigDecimal valeur) {
+        ReceptionCommande r = new ReceptionCommande();
+        r.setCommande(this);
+        r.setRecueLe(le);
+        r.setRecuePar(par);
+        r.setValeur(valeur.setScale(2, java.math.RoundingMode.HALF_UP));
+        arrivees.add(r);
     }
 
     /** Montant commande, au cout prevu. */

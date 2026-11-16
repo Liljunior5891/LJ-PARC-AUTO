@@ -145,10 +145,11 @@ export interface MouvementStock {
 
 // ------------------------------------------------- commandes fournisseurs
 
-export type StatutCommandeFournisseur = 'EN_COURS' | 'RECUE' | 'ANNULEE';
+export type StatutCommandeFournisseur = 'EN_COURS' | 'PARTIELLE' | 'RECUE' | 'ANNULEE';
 
 export const LIBELLES_STATUT_COMMANDE_FOURNISSEUR: Record<StatutCommandeFournisseur, string> = {
   EN_COURS: 'En attente de reception',
+  PARTIELLE: 'Partiellement recue',
   RECUE: 'Receptionnee',
   ANNULEE: 'Annulee'
 };
@@ -204,6 +205,14 @@ export interface CommandeFournisseurDetail {
   lignes: LigneCommandeFournisseur[];
   /** Ce qui a ete paye au fournisseur et ce qu'il reste a payer. */
   paiement?: import('./achats').SituationPaiement;
+  /** Nombre de receptions deja faites. */
+  receptions?: number;
+  /** Commande soldee incomplete : le reste a recevoir est abandonne. */
+  soldeeLe?: string | null;
+  soldeePar?: string | null;
+  motifSolde?: string | null;
+  /** Avance disponible chez le fournisseur. */
+  avanceDisponible?: number;
 }
 
 export interface CommandeFournisseurRequete {
@@ -231,7 +240,8 @@ export interface SaisieStock {
   lieuId?: number | null;
 }
 
-export type ModePaiementPdv = 'ESPECES' | 'MOBILE_MONEY' | 'CARTE' | 'AUTRE';
+/** COMPTE_CLIENT : achat paye avec l'argent depose par le client (caisse de quincaillerie seulement). */
+export type ModePaiementPdv = 'ESPECES' | 'MOBILE_MONEY' | 'CARTE' | 'AUTRE' | 'COMPTE_CLIENT';
 
 export const MODES_PAIEMENT_PDV: { valeur: ModePaiementPdv; libelle: string; icone: string }[] = [
   { valeur: 'ESPECES', libelle: 'Especes', icone: '💵' },
@@ -394,6 +404,8 @@ export interface Encaissement {
   clientId?: number | null;
   credit?: boolean;
   acompte?: number | null;
+  /** Part payee avec l'argent depose par le client. */
+  depot?: number | null;
   /** Cle de la vente, reprise par sa copie hors ligne si la reponse se perd. */
   cleHorsLigne?: string;
 }
@@ -441,6 +453,8 @@ export interface Ticket {
   resteDu?: number;
   echeance?: string | null;
   devisId?: number | null;
+  /** Part payee avec l'argent depose par le client. */
+  payeParDepot?: number | null;
 }
 
 export interface VenteResume {

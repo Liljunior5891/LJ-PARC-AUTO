@@ -334,3 +334,28 @@ tr.annule {
     max-height: 60vh;
   }
 }
+
+
+/* Avance versee a un fournisseur. */
+.solde.avance {
+  margin-top: 0.75rem;
+
+  .actions-avance {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+}
+
+.case-avance {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  background: #e3f5ea;
+  color: #157a37;
+  font-weight: 600;
+  cursor: pointer;
+}

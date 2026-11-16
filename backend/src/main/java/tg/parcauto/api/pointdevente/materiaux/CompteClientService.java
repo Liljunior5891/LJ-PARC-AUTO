@@ -47,6 +47,8 @@ public class CompteClientService {
     private final NumerotationService numerotation;
     private final SoldeResteRepository soldeRepository;
     private final tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetre;
+    /** Solde d'argent depose par chaque client. */
+    private final DepotClientService depots;
 
     /** Encours d'un client : tout ce qu'il doit, et la part dont l'echeance est passee. */
     private record Encours(BigDecimal total, BigDecimal echu) {
@@ -66,17 +68,21 @@ public class CompteClientService {
             for (Object[] l : repository.tousLesEncours()) {
                 encours.put((Long) l[0], new Encours((BigDecimal) l[1], (BigDecimal) l[2]));
             }
+            Map<Long, BigDecimal> deposes = depots.soldes(encours.keySet());
             List<MateriauxDto.ClientReponse> liste = repository.findAllById(encours.keySet()).stream()
                     .filter(c -> motif.isEmpty() || c.getNom().toLowerCase().contains(motif))
                     .filter(c -> type == null || c.getType() == type)
-                    .map(c -> versDto(c, encours.get(c.getId())))
+                    .map(c -> versDto(c, encours.get(c.getId()), deposes.getOrDefault(c.getId(), BigDecimal.ZERO)))
                     .sorted((a, b) -> b.encours().compareTo(a.encours()))
                     .toList();
             return new org.springframework.data.domain.PageImpl<>(liste, Pageable.unpaged(), liste.size());
         }
         Page<ClientPdv> page = repository.rechercher(motif, actif, type, pageable);
-        Map<Long, Encours> encours = encours(page.getContent().stream().map(ClientPdv::getId).toList());
-        return page.map(c -> versDto(c, encours.getOrDefault(c.getId(), Encours.AUCUN)));
+        List<Long> ids = page.getContent().stream().map(ClientPdv::getId).toList();
+        Map<Long, Encours> encours = encours(ids);
+        Map<Long, BigDecimal> deposes = depots.soldes(ids);
+        return page.map(c -> versDto(c, encours.getOrDefault(c.getId(), Encours.AUCUN),
+                deposes.getOrDefault(c.getId(), BigDecimal.ZERO)));
     }
 
     @Transactional(readOnly = true)
@@ -221,6 +227,10 @@ public class CompteClientService {
         ClientPdv client = charger(clientId);
         SessionCaisse session = sessionsTravail.exiger(caissier, demande.sessionId());
         BigDecimal montant = demande.montant().setScale(2, RoundingMode.HALF_UP);
+        if (demande.modePaiement() == ModePaiementPdv.COMPTE_CLIENT) {
+            // Versement pris sur l'argent depose par le client : rien n'entre en caisse.
+            depots.exigerSolde(clientId, montant);
+        }
 
         List<Vente> dues = venteRepository.duesDuClient(clientId);
         if (demande.venteId() != null) {
@@ -363,10 +373,10 @@ public class CompteClientService {
     }
 
     private MateriauxDto.ClientReponse versDto(ClientPdv c) {
-        return versDto(c, encours(List.of(c.getId())).getOrDefault(c.getId(), Encours.AUCUN));
+        return versDto(c, encours(List.of(c.getId())).getOrDefault(c.getId(), Encours.AUCUN), depots.solde(c.getId()));
     }
 
-    private MateriauxDto.ClientReponse versDto(ClientPdv c, Encours e) {
+    private MateriauxDto.ClientReponse versDto(ClientPdv c, Encours e, BigDecimal soldeDepot) {
         BigDecimal plafond = plafond(c, reglages.courant());
         BigDecimal disponible = plafond == null ? null : plafond.subtract(e.total()).max(BigDecimal.ZERO);
         return new MateriauxDto.ClientReponse(c.getId(), c.getCode(), c.getType(), c.getType().getLibelle(),
@@ -375,7 +385,7 @@ public class CompteClientService {
                 c.getNomFamille(), c.getPrenoms(), c.getDateNaissance(), c.getProfession(), c.getFormeJuridique(),
                 c.getRccm(), c.getSecteurActivite(), c.getOrganismeTutelle(), c.getNumeroAgrement(), c.getVille(),
                 c.getPays(), c.getPersonneContact(), c.getFonctionContact(), c.getTelephoneContact(),
-                c.getConditionsCommerciales());
+                c.getConditionsCommerciales(), soldeDepot);
     }
 
     /** Nom affiche : les prenoms et le nom d'une personne, sinon la raison sociale. */

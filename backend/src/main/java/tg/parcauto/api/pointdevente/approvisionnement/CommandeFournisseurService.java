@@ -34,7 +34,8 @@ import java.util.stream.Collectors;
 
 /**
  * Commandes de reapprovisionnement : saisie, modification tant qu'elles sont
- * en cours, reception (entree en stock des quantites recues) et annulation.
+ * en cours, reception en une ou plusieurs fois (entree en stock des quantites
+ * recues), solde d'une commande incomplete, et annulation.
  */
 @Service
 @RequiredArgsConstructor
@@ -68,7 +69,7 @@ public class CommandeFournisseurService {
                                  @PositiveOrZero BigDecimal coutUnitaire) {
     }
 
-    /** Quantites effectivement livrees ; une ligne absente est recue en totalite. */
+    /** Quantites livrees cette fois ; une ligne absente recoit tout son reste a recevoir. */
     public record Reception(List<@Valid LigneReception> lignes,
                             /** Lieu qui recoit la marchandise, quand l'entreprise a des entrepots ; le principal sinon. */
                             Long lieuId) {
@@ -102,7 +103,7 @@ public class CommandeFournisseurService {
 
         static Resume de(CommandeFournisseur c, tg.parcauto.api.pointdevente.fournisseur.FournisseurService.Dette dette) {
             EtatPaiement etat = null;
-            if (c.getStatut() == CommandeFournisseur.Statut.RECUE && dette != null) {
+            if (c.getStatut().recue() && dette != null) {
                 if (!c.isDetteSuivie() || dette.reste().signum() == 0) {
                     etat = EtatPaiement.PAYEE;
                 } else if (dette.enRetard()) {
@@ -125,12 +126,22 @@ public class CommandeFournisseurService {
     public record Detail(Resume resume, String note, String creePar, String recuePar, Instant annuleeLe,
                          List<Ligne> lignes,
                          /** Ce qui a ete paye et ce qu'il reste a payer au fournisseur. */
-                         tg.parcauto.api.pointdevente.fournisseur.FournisseurService.Situation paiement) {
+                         tg.parcauto.api.pointdevente.fournisseur.FournisseurService.Situation paiement,
+                         /** Nombre de receptions ; commande soldee incomplete (reste a recevoir abandonne). */
+                         int receptions, Instant soldeeLe, String soldeePar, String motifSolde,
+                         /** Avance disponible chez le fournisseur. */
+                         BigDecimal avanceDisponible) {
+    }
+
+    /** Solde d'une commande partiellement recue : le reste a recevoir est abandonne. */
+    public record Solde(@jakarta.validation.constraints.NotBlank @Size(max = 255) String motif) {
     }
 
     private Detail detailDe(CommandeFournisseur c) {
         return new Detail(Resume.de(c, fournisseurService.dettesDe(List.of(c)).get(c.getId())), c.getNote(), c.getCreePar(), c.getRecuePar(), c.getAnnuleeLe(),
-                c.getLignes().stream().map(Ligne::de).toList(), fournisseurService.situation(c));
+                c.getLignes().stream().map(Ligne::de).toList(), fournisseurService.situation(c),
+                c.getReceptions(), c.getSoldeeLe(), c.getSoldeePar(), c.getMotifSolde(),
+                c.getFiche() == null ? BigDecimal.ZERO : fournisseurService.soldeAvance(c.getFiche().getId()));
     }
 
     @Transactional(readOnly = true)
@@ -169,26 +180,40 @@ public class CommandeFournisseurService {
     }
 
     /**
-     * Reception de la marchandise : chaque quantite recue entre en stock au
-     * cout de la commande, qui devient le cout d'achat de reference du produit.
+     * Reception de la marchandise, en une ou plusieurs fois : chaque quantite
+     * recue entre en stock au cout de la commande, qui devient le cout d'achat
+     * de reference du produit, et sa valeur s'ajoute a la dette. Tant qu'il
+     * reste a recevoir, la commande est partiellement recue. La dette est
+     * ensuite reglee d'office avec l'avance disponible chez le fournisseur.
      */
     public Detail receptionner(Long id, Reception reception, UtilisateurPrincipal auteur) {
-        CommandeFournisseur commande = chargerEnCours(id);
+        CommandeFournisseur commande = charger(id);
+        if (commande.getStatut() != CommandeFournisseur.Statut.EN_COURS
+                && commande.getStatut() != CommandeFournisseur.Statut.PARTIELLE) {
+            throw new BusinessException("La commande " + commande.getNumero() + " est "
+                    + (commande.getStatut() == CommandeFournisseur.Statut.RECUE ? "deja entierement receptionnee" : "annulee"));
+        }
         Map<Long, LigneReception> saisies = reception == null || reception.lignes() == null ? Map.of()
                 : reception.lignes().stream().collect(Collectors.toMap(LigneReception::ligneId, Function.identity(),
                         (a, b) -> b));
         boolean recu = false;
+        BigDecimal valeur = BigDecimal.ZERO;
         tg.parcauto.api.pointdevente.lieu.LieuStock lieu = lieux.cible(lieux.demande(reception == null ? null : reception.lieuId()));
         commande.setLieu(lieu);
         for (LigneCommandeFournisseur ligne : commande.getLignes()) {
             LigneReception saisie = saisies.get(ligne.getId());
-            BigDecimal quantite = saisie == null ? ligne.getQuantite() : saisie.quantiteRecue();
+            BigDecimal dejaRecu = ligne.getQuantiteRecue() == null ? BigDecimal.ZERO : ligne.getQuantiteRecue();
+            BigDecimal reste = ligne.getQuantite().subtract(dejaRecu).max(BigDecimal.ZERO);
+            BigDecimal quantite = saisie == null ? reste : saisie.quantiteRecue();
             if (saisie != null && saisie.coutUnitaire() != null) {
                 ligne.setCoutUnitaire(saisie.coutUnitaire());
             }
-            ligne.setQuantiteRecue(quantite);
+            ligne.setQuantiteRecue(dejaRecu.add(quantite));
             if (quantite.signum() > 0) {
                 recu = true;
+                if (ligne.getCoutUnitaire() != null) {
+                    valeur = valeur.add(quantite.multiply(ligne.getCoutUnitaire()));
+                }
                 Article article = ligne.getArticle();
                 if (article.isSuiviStock()) {
                     stockService.appliquer(article, lieu, TypeMouvementStock.ENTREE, quantite, ligne.getCoutUnitaire(),
@@ -200,12 +225,40 @@ public class CommandeFournisseurService {
             }
         }
         if (!recu) {
-            throw new BusinessException("Aucune quantite recue : annulez plutot la commande");
+            throw new BusinessException(commande.getReceptions() == 0
+                    ? "Aucune quantite recue : annulez plutot la commande"
+                    : "Aucune quantite recue : saisissez ce qui vient d'arriver, ou soldez la commande");
+        }
+        boolean complete = commande.getLignes().stream()
+                .allMatch(l -> l.getQuantiteRecue() != null && l.getQuantiteRecue().compareTo(l.getQuantite()) >= 0);
+        commande.setStatut(complete ? CommandeFournisseur.Statut.RECUE : CommandeFournisseur.Statut.PARTIELLE);
+        commande.setReceptions(commande.getReceptions() + 1);
+        Instant maintenant = Instant.now();
+        commande.setRecueLe(maintenant);
+        commande.setRecuePar(auteur.getNomComplet());
+        commande.noterArrivee(maintenant, auteur.getNomComplet(), valeur);
+        fournisseurService.ouvrirDette(commande, valeur);
+        repository.flush();
+        fournisseurService.imputerAvance(commande, auteur.getNomComplet());
+        return detailDe(commande);
+    }
+
+    /**
+     * Le fournisseur ne livrera pas le reste : la commande partiellement recue est
+     * close. Sa dette reste celle de la marchandise recue ; ce qui a ete verse
+     * d'avance et non utilise reste en avance chez le fournisseur.
+     */
+    public Detail solder(Long id, String motif, UtilisateurPrincipal auteur) {
+        CommandeFournisseur commande = charger(id);
+        if (commande.getStatut() != CommandeFournisseur.Statut.PARTIELLE) {
+            throw new BusinessException(commande.getStatut() == CommandeFournisseur.Statut.EN_COURS
+                    ? "Rien n'est encore recu : annulez plutot la commande"
+                    : "La commande " + commande.getNumero() + " n'attend plus de marchandise");
         }
         commande.setStatut(CommandeFournisseur.Statut.RECUE);
-        commande.setRecueLe(Instant.now());
-        commande.setRecuePar(auteur.getNomComplet());
-        fournisseurService.ouvrirDette(commande);
+        commande.setSoldeeLe(Instant.now());
+        commande.setSoldeePar(auteur.getNomComplet());
+        commande.setMotifSolde(motif.trim());
         return detailDe(commande);
     }
 
@@ -248,7 +301,7 @@ public class CommandeFournisseurService {
         CommandeFournisseur commande = charger(id);
         if (commande.getStatut() != CommandeFournisseur.Statut.EN_COURS) {
             throw new BusinessException("La commande " + commande.getNumero() + " est "
-                    + (commande.getStatut() == CommandeFournisseur.Statut.RECUE ? "deja receptionnee" : "annulee"));
+                    + (commande.getStatut().recue() ? "deja (en partie) receptionnee" : "annulee"));
         }
         return commande;
     }

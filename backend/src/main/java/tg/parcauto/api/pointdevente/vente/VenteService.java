@@ -61,6 +61,7 @@ public class VenteService {
     private final tg.parcauto.api.pointdevente.impression.ImpressionService impression;
     private final org.springframework.beans.factory.ObjectProvider<PrixCommandesEnLigne> prixCommandesEnLigne;
     private final tg.parcauto.api.pointdevente.reglage.ReglagePdvService reglagesPdv;
+    private final tg.parcauto.api.pointdevente.materiaux.DepotClientService depotsClients;
 
     /** Ticket de la vente enregistree sous cette cle hors ligne, ou nul. */
     @Transactional(readOnly = true, propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
@@ -377,9 +378,10 @@ public class VenteService {
 
         // Quincaillerie : client a fiche, et vente a credit ou avec acompte.
         BigDecimal aPayer = total;
+        ClientPdv client = null;
         if (compte != null && (compte.clientId() != null || compte.credit())) {
             reglagesMateriaux.exiger();
-            ClientPdv client = compte.clientId() == null ? null : comptes.client(compte.clientId());
+            client = compte.clientId() == null ? null : comptes.client(compte.clientId());
             if (client != null) {
                 vente.setClient(client);
                 vente.setClientNom(client.getNom());
@@ -396,6 +398,25 @@ public class VenteService {
         } else if (compte != null && reglagesMateriaux.estMateriaux()
                 && reglagesMateriaux.courant().isClientObligatoire()) {
             throw new BusinessException("Choisissez le client : chaque vente doit etre rattachee a une fiche client");
+        }
+        // Depot du client : il paie tout ou partie de ce qui est du maintenant, sans entrer dans la caisse.
+        // Moyen « Compte client » : le depot paie tout ce qui est du maintenant.
+        boolean parCompte = reglement.modePaiement() == ModePaiementPdv.COMPTE_CLIENT;
+        BigDecimal depot = parCompte ? aPayer
+                : compte == null || compte.depot() == null ? BigDecimal.ZERO : montant(compte.depot());
+        if (parCompte && client == null) {
+            throw new BusinessException("Choisissez le client dont le compte paie l'achat");
+        }
+        if (depot.signum() > 0) {
+            if (client == null) {
+                throw new BusinessException("Choisissez le client dont le depot paie l'achat");
+            }
+            if (depot.compareTo(aPayer) > 0) {
+                throw new BusinessException("La part payee par le depot depasse ce qui est a payer maintenant");
+            }
+            depotsClients.exigerSolde(client.getId(), depot);
+            vente.setPayeParDepot(depot);
+            aPayer = aPayer.subtract(depot);
         }
         vente.setMontantPaye(aPayer);
         regler(vente, reglement, aPayer);

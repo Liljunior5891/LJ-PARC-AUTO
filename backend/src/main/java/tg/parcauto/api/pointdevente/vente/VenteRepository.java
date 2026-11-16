@@ -135,10 +135,14 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
             """)
     List<Object[]> totauxSession(@Param("sessionId") Long sessionId);
 
-    /** [chiffre d'affaires, credit accorde] des ventes validees d'une session. */
+    /**
+     * [chiffre d'affaires, credit accorde] des ventes validees d'une session. La part payee
+     * avec le depot du client n'est pas du credit : elle est deduite comme l'encaisse.
+     */
     @Query("""
             select coalesce(sum(v.total), 0),
-                   coalesce(sum(case when v.total > v.montantPaye then v.total - v.montantPaye else 0 end), 0) from Vente v
+                   coalesce(sum(case when v.total > v.montantPaye + v.payeParDepot
+                                     then v.total - v.montantPaye - v.payeParDepot else 0 end), 0) from Vente v
             where v.session.id = :sessionId and v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
             """)
     List<Object[]> chiffreSession(@Param("sessionId") Long sessionId);
@@ -327,4 +331,22 @@ public interface VenteRepository extends JpaRepository<Vente, Long> {
     /** Date de la premiere vente validee, ou nul : point de depart des parts mensuelles des associes. */
     @Query("select min(v.dateVente) from Vente v where v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE")
     Instant premiereVente();
+
+    /** [clientId, total] des achats valides payes avec le depot de chaque client. */
+    @Query("""
+            select v.client.id, coalesce(sum(v.payeParDepot), 0) from Vente v
+            where v.client.id in :ids and v.payeParDepot > 0
+              and v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
+            group by v.client.id
+            """)
+    List<Object[]> payesParDepot(@Param("ids") java.util.Collection<Long> ids);
+
+    /** Achats valides d'un client payes (en partie) avec son depot, les plus recents d'abord. */
+    @Query("""
+            select v from Vente v
+            where v.client.id = :client and v.payeParDepot > 0
+              and v.statut = tg.parcauto.api.pointdevente.vente.Vente.Statut.VALIDEE
+            order by v.dateVente desc
+            """)
+    List<Vente> achatsParDepot(@Param("client") Long clientId);
 }

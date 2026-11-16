@@ -14,7 +14,9 @@ public enum ModeSortie {
     /** Fonds de reserve du point de vente (option des reglages), dans la limite de son solde. */
     RESERVE("Fonds de reserve"),
     ESPECES("Especes hors caisse"),
-    MOBILE_MONEY("Mobile money");
+    MOBILE_MONEY("Mobile money"),
+    /** Dette d'un fournisseur reglee avec l'avance deja versee : aucun argent ne bouge. */
+    AVANCE("Avance deja versee");
 
     /** Moyens proposes a la saisie. */
     public boolean propose() {

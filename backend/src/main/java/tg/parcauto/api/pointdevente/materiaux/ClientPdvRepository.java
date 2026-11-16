@@ -53,4 +53,9 @@ public interface ClientPdvRepository extends JpaRepository<ClientPdv, Long> {
             group by v.client.id
             """)
     List<Object[]> tousLesEncours();
+
+    /** Verrouille la fiche jusqu'a la fin de la transaction : deux usages simultanes du depot passent l'un apres l'autre. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from ClientPdv c where c.id = :id")
+    java.util.Optional<ClientPdv> verrouiller(@Param("id") Long id);
 }

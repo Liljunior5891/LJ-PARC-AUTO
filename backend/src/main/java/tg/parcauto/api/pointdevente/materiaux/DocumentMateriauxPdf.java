@@ -582,6 +582,9 @@ public class DocumentMateriauxPdf {
         if (s.getMontantDeduit().signum() > 0) {
             ligneTotal(totaux, "Déduit de ce qui est dû :", montant(s.getMontantDeduit()) + " F", false);
         }
+        if (s.getMontantRenduDepot() != null && s.getMontantRenduDepot().signum() > 0) {
+            ligneTotal(totaux, "Rendu sur le compte client :", montant(s.getMontantRenduDepot()) + " F", false);
+        }
         if (s.getMontantRembourse().signum() > 0) {
             ligneTotal(totaux, "Remboursé (" + s.getModeRemboursement().getLibelle() + ") :",
                     montant(s.getMontantRembourse()) + " F", false);

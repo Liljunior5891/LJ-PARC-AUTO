@@ -52,6 +52,15 @@ export class CommandeFournisseurPdv implements OnInit {
   readonly recues = signal<Record<number, { quantite: number | null; cout: number | null }>>({});
 
   readonly enCours = computed(() => this.commande()?.resume.statut === 'EN_COURS');
+  /** De la marchandise peut encore arriver : premiere reception ou reste d'une livraison partielle. */
+  readonly receptionnable = computed(() => ['EN_COURS', 'PARTIELLE'].includes(this.commande()?.resume.statut ?? ''));
+  /** De la marchandise est arrivee : la commande porte une dette. */
+  readonly recue = computed(() => ['PARTIELLE', 'RECUE'].includes(this.commande()?.resume.statut ?? ''));
+  /** Compte du fournisseur ouvert pour lui verser une avance sur cette commande. */
+  readonly avanceOuverte = signal(false);
+  /** Solde d'une commande incomplete. */
+  readonly soldeOuvert = signal(false);
+  motifSolde = '';
   readonly totalRecu = computed(() =>
     (this.commande()?.lignes ?? []).reduce((s, l) => s + (l.quantiteRecue ?? 0) * (l.coutUnitaire ?? 0), 0)
   );
@@ -74,10 +83,41 @@ export class CommandeFournisseurPdv implements OnInit {
     return l.quantiteRecue == null ? null : l.quantiteRecue - l.quantite;
   }
 
+  /** Ce qu'il reste a recevoir d'une ligne. */
+  resteARecevoir(l: LigneCommandeFournisseur): number {
+    return Math.max(0, l.quantite - (l.quantiteRecue ?? 0));
+  }
+
+  /** Avance proposee : ce qui n'est pas encore paye de la commande. */
+  montantAvance(): number {
+    const c = this.commande();
+    if (!c) {
+      return 0;
+    }
+    return Math.max(0, c.resume.total - (c.paiement?.regle ?? 0));
+  }
+
+  solder(): void {
+    const c = this.commande();
+    if (!c || !this.motifSolde.trim()) {
+      return;
+    }
+    this.service.solderCommandeFournisseur(c.resume.id, this.motifSolde.trim()).subscribe({
+      next: (detail) => {
+        this.commande.set(detail);
+        this.soldeOuvert.set(false);
+        this.motifSolde = '';
+        this.succes.set("Commande soldee : le reste a recevoir est abandonne. L'avance versee et non utilisee reste disponible chez le fournisseur pour ses prochaines commandes.");
+      },
+      error: (e) => this.erreur.set(this.message(e, 'Solde impossible.'))
+    });
+  }
+
   ouvrirReception(): void {
     const recues: Record<number, { quantite: number | null; cout: number | null }> = {};
     for (const l of this.commande()?.lignes ?? []) {
-      recues[l.id] = { quantite: l.quantite, cout: l.coutUnitaire ?? null };
+      // Par defaut, ce qui reste a recevoir de chaque ligne.
+      recues[l.id] = { quantite: this.resteARecevoir(l), cout: l.coutUnitaire ?? null };
     }
     this.recues.set(recues);
     this.lieuId = this.lieux().find((l) => l.type === 'ENTREPOT')?.id ?? this.lieux()[0]?.id ?? null;
@@ -101,9 +141,15 @@ export class CommandeFournisseurPdv implements OnInit {
     }));
     this.service.receptionnerCommandeFournisseur(c.resume.id, lignes, this.lieuId).subscribe({
       next: (detail) => {
+        const payeAvant = c.paiement?.regle ?? 0;
         this.commande.set(detail);
         this.reception.set(false);
-        this.succes.set('Commande receptionnee : les quantites livrees sont entrees en stock et la valeur recue est due au fournisseur.');
+        const avance = Math.max(0, (detail.paiement?.regle ?? 0) - payeAvant);
+        this.succes.set((detail.resume.statut === 'PARTIELLE'
+          ? 'Reception enregistree : le reste est attendu. '
+          : 'Commande receptionnee : ')
+          + 'les quantites livrees sont entrees en stock et leur valeur est due au fournisseur.'
+          + (avance > 0 ? ` ${Math.round(avance).toLocaleString('fr-FR')} F ont ete regles d'office avec l'avance versee.` : ''));
       },
       error: (e) => this.erreur.set(this.message(e, 'Reception impossible.'))
     });

@@ -5,6 +5,7 @@ import { AuthService } from '../core/auth/auth.service';
 import { MODES_SORTIE, ModeSortie } from '../core/models/achats';
 import { OptionsPdvService } from '../core/services/options-pdv.service';
 import { SessionTravailService } from '../core/services/session-travail.service';
+import { IconeMoyen } from './icone-moyen';
 
 /**
  * Moyen de paiement d'une depense ou d'un fournisseur : la caisse (la caisse
@@ -15,13 +16,13 @@ import { SessionTravailService } from '../core/services/session-travail.service'
  */
 @Component({
   selector: 'app-choix-sortie',
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, IconeMoyen],
   template: `
     <div class="moyens" role="radiogroup" aria-label="Moyen de paiement">
       @for (m of modes(); track m.valeur) {
         <button type="button" class="moyen" [class.actif]="mode() === m.valeur" [title]="m.aide"
                 role="radio" [attr.aria-checked]="mode() === m.valeur" (click)="mode.set(m.valeur)">
-          <span aria-hidden="true">{{ m.icone }}</span> {{ m.libelle }}
+          <app-icone-moyen [code]="m.valeur" /> {{ m.libelle }}
         </button>
       }
     </div>
@@ -43,14 +44,14 @@ import { SessionTravailService } from '../core/services/session-travail.service'
         }
       }
       @case ('COFFRE') {
-        <p class="info-moyen">🔐 Paye avec les especes de votre coffre
+        <p class="info-moyen">Paye avec les especes de votre coffre
           @if (soldeCoffre() !== null) { — solde : <strong>{{ soldeCoffre() | number: '1.0-0' }} F</strong> }</p>
       }
       @case ('BANQUE') {
-        <p class="info-moyen">🏦 Paye par le compte de l'entreprise (virement ou cheque) : indiquez la reference.</p>
+        <p class="info-moyen">Paye par le compte de l'entreprise (virement ou cheque) : indiquez la reference.</p>
       }
       @case ('RESERVE') {
-        <p class="info-moyen">🛟 Paye par le fonds de reserve
+        <p class="info-moyen">Paye par le fonds de reserve
           @if (disponibleFonds() !== null) { — disponible : <strong>{{ disponibleFonds() | number: '1.0-0' }} F</strong>
             <br /><small>Le versement du mois en cours devient utilisable a la fin du mois.</small> }
           @if (!auth.aRole('ADMIN')) { <br />La depense attend l'approbation de l'administrateur avant de sortir du fonds. }</p>
@@ -61,7 +62,8 @@ import { SessionTravailService } from '../core/services/session-travail.service'
     :host { display: flex; flex-direction: column; gap: 0.6rem; }
     .moyens { display: flex; flex-wrap: wrap; gap: 0.4rem; }
     .moyen {
-      padding: 0.45rem 0.8rem; border: 1px solid var(--couleur-bordure); border-radius: 999px;
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      padding: 0.3rem 0.85rem 0.3rem 0.35rem; border: 1px solid var(--couleur-bordure); border-radius: 999px;
       background: var(--couleur-surface); font: inherit; cursor: pointer;
     }
     .moyen.actif { border-color: #1e9e4a; background: #e3f5ea; color: #157a37; font-weight: 600; }

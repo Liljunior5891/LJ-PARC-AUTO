@@ -53,6 +53,16 @@ public interface ReglementFournisseurRepository extends JpaRepository<ReglementF
             """)
     BigDecimal totalPeriode(@Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
 
+    /** [fournisseurId, total] des dettes reglees avec l'avance (reglements valides de mode AVANCE). */
+    @Query("""
+            select r.fournisseur.id, coalesce(sum(r.montant), 0) from ReglementFournisseur r
+            where r.mode = tg.parcauto.api.pointdevente.depense.ModeSortie.AVANCE
+              and r.statut = tg.parcauto.api.pointdevente.fournisseur.ReglementFournisseur.Statut.VALIDE
+              and (:fournisseurId is null or r.fournisseur.id = :fournisseurId)
+            group by r.fournisseur.id
+            """)
+    List<Object[]> avanceUtilisee(@Param("fournisseurId") Long fournisseurId);
+
     /** Total des paiements valides sortis du coffre d'un gerant. */
     @Query("""
             select coalesce(sum(r.montant), 0) from ReglementFournisseur r

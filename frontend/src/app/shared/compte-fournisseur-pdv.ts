@@ -6,6 +6,7 @@ import { CompteFournisseur, ModeSortie, ReglementFournisseur } from '../core/mod
 import { AchatsService } from '../core/services/achats.service';
 import { ChoixSortie } from './choix-sortie';
 import { Modale } from './modale';
+import { IconeMoyen } from './icone-moyen';
 
 /** Paiement regroupe sous un meme numero (une ligne par commande reglee). */
 interface Paiement {
@@ -21,7 +22,7 @@ interface Paiement {
   motif?: string;
 }
 
-type OngletCompte = 'dettes' | 'paiements' | 'commandes';
+type OngletCompte = 'dettes' | 'paiements' | 'commandes' | 'avances';
 
 /**
  * Compte d'un fournisseur : ce qu'on lui doit, commande par commande avec
@@ -30,7 +31,7 @@ type OngletCompte = 'dettes' | 'paiements' | 'commandes';
  */
 @Component({
   selector: 'app-compte-fournisseur-pdv',
-  imports: [FormsModule, DecimalPipe, DatePipe, Modale, RouterLink, ChoixSortie],
+  imports: [FormsModule, DecimalPipe, DatePipe, Modale, RouterLink, ChoixSortie, IconeMoyen],
   templateUrl: './compte-fournisseur-pdv.html',
   styleUrl: './compte-tiers.scss'
 })
@@ -40,6 +41,8 @@ export class CompteFournisseurPdv implements OnInit {
   readonly fournisseurId = input.required<number>();
   /** Ouvre directement le paiement de cette commande. */
   readonly commandeAPayer = input<number | null>(null);
+  /** Ouvre directement une avance pour cette commande (payee avant la livraison). */
+  readonly avancePourCommande = input<{ id: number; montant: number } | null>(null);
   readonly ferme = output<void>();
   /** Le solde a change : la liste appelante se met a jour. */
   readonly modifie = output<void>();
@@ -58,6 +61,20 @@ export class CompteFournisseurPdv implements OnInit {
   dateReglement = new Date().toISOString().slice(0, 10);
   reference = '';
   note = '';
+
+  /** Le paiement se fait avec l'avance deja versee au fournisseur. */
+  readonly parAvance = signal(false);
+
+  // Avance au fournisseur, ou avance rendue par lui
+  readonly formulaireAvance = signal<'avance' | 'remboursement' | null>(null);
+  readonly montantAvance = signal<number | null>(null);
+  readonly modeAvance = signal<ModeSortie>('BANQUE');
+  readonly sessionAvance = signal<number | null>(null);
+  commandeAvance: number | null = null;
+  dateAvance = new Date().toISOString().slice(0, 10);
+  referenceAvance = '';
+  noteAvance = '';
+  readonly aAnnulerAvance = signal<string | null>(null);
 
   // Annulation
   readonly aAnnuler = signal<string | null>(null);
@@ -83,8 +100,13 @@ export class CompteFournisseurPdv implements OnInit {
   readonly onglets: { id: OngletCompte; libelle: string; icone: string }[] = [
     { id: 'dettes', libelle: 'A payer', icone: '⏳' },
     { id: 'paiements', libelle: 'Paiements', icone: '💸' },
-    { id: 'commandes', libelle: 'Commandes', icone: '📦' }
+    { id: 'commandes', libelle: 'Commandes', icone: '📦' },
+    { id: 'avances', libelle: 'Avances', icone: '🤝' }
   ];
+
+  /** Commandes qui attendent encore de la marchandise : on peut les payer d'avance. */
+  readonly commandesOuvertes = computed(() =>
+    (this.compte()?.commandes ?? []).filter((o) => o.statut === 'EN_COURS' || o.statut === 'PARTIELLE'));
   readonly onglet = signal<OngletCompte>('dettes');
 
   readonly totalRecu = computed(() => (this.compte()?.dettes ?? []).reduce((s, d) => s + d.montantRecu, 0));
@@ -114,6 +136,10 @@ export class CompteFournisseurPdv implements OnInit {
     this.service.compteFournisseur(this.fournisseurId()).subscribe({
       next: (c) => {
         this.compte.set(c);
+        const avance = this.avancePourCommande();
+        if (premier && avance) {
+          this.ouvrirAvance('avance', avance.id, avance.montant);
+        }
         const cible = this.commandeAPayer();
         if (premier && cible) {
           const dette = c.dettes.find((d) => d.commandeId === cible);
@@ -134,7 +160,76 @@ export class CompteFournisseurPdv implements OnInit {
     this.dateReglement = this.aujourdhui;
     this.succes.set(null);
     this.erreur.set(null);
+    this.formulaireAvance.set(null);
+    // L'avance disponible regle d'abord la dette.
+    this.parAvance.set((this.compte()?.fournisseur.avance ?? 0) > 0);
     this.paiement.set(true);
+  }
+
+  ouvrirAvance(type: 'avance' | 'remboursement', commandeId: number | null = null, montant?: number): void {
+    this.paiement.set(false);
+    this.formulaireAvance.set(type);
+    this.montantAvance.set(montant ?? (type === 'remboursement' ? this.compte()?.fournisseur.avance ?? null : null));
+    this.modeAvance.set('BANQUE');
+    this.commandeAvance = commandeId;
+    this.dateAvance = this.aujourdhui;
+    this.referenceAvance = '';
+    this.noteAvance = '';
+    this.succes.set(null);
+    this.erreur.set(null);
+  }
+
+  enregistrerAvance(): void {
+    const type = this.formulaireAvance();
+    const montant = this.montantAvance() ?? 0;
+    if (!type || montant <= 0 || this.enCours()) {
+      return;
+    }
+    if (type === 'avance' && this.modeAvance() === 'CAISSE' && !this.sessionAvance()) {
+      this.erreur.set('Choisissez la caisse d\'ou sortent les especes.');
+      return;
+    }
+    const requete = {
+      montant, mode: type === 'avance' ? this.modeAvance() : 'BANQUE' as ModeSortie,
+      sessionId: type === 'avance' && this.modeAvance() === 'CAISSE' ? this.sessionAvance() : null,
+      commandeId: type === 'avance' ? this.commandeAvance : null, date: this.dateAvance || null,
+      reference: this.referenceAvance.trim() || null, note: this.noteAvance.trim() || null
+    };
+    this.enCours.set(true);
+    this.erreur.set(null);
+    (type === 'avance' ? this.service.verserAvanceFournisseur(this.fournisseurId(), requete)
+      : this.service.rembourserAvanceFournisseur(this.fournisseurId(), requete)).subscribe({
+      next: (a) => {
+        this.enCours.set(false);
+        this.formulaireAvance.set(null);
+        this.onglet.set('avances');
+        this.succes.set(a.type === 'AVANCE'
+          ? `Avance ${a.numero} de ${this.entier(a.montant)} F versee : elle reglera d'office les prochaines receptions.`
+          : `Avance rendue ${a.numero} : ${this.entier(a.montant)} F revenus sur le compte de l'entreprise.`);
+        this.charger();
+        this.modifie.emit();
+      },
+      error: (e) => {
+        this.enCours.set(false);
+        this.erreur.set(e?.error?.message ?? 'Operation impossible.');
+      }
+    });
+  }
+
+  annulerAvance(numero: string): void {
+    if (!this.motif.trim()) {
+      this.erreur.set('Indiquez le motif de l\'annulation.');
+      return;
+    }
+    this.service.annulerAvanceFournisseur(numero, this.motif.trim()).subscribe({
+      next: () => {
+        this.aAnnulerAvance.set(null);
+        this.succes.set(`Operation ${numero} annulee.`);
+        this.charger();
+        this.modifie.emit();
+      },
+      error: (e) => this.erreur.set(e?.error?.message ?? 'Annulation impossible.')
+    });
   }
 
   payer(): void {
@@ -143,7 +238,8 @@ export class CompteFournisseurPdv implements OnInit {
       this.erreur.set('Indiquez le montant paye.');
       return;
     }
-    if (this.mode() === 'CAISSE' && !this.sessionId()) {
+    const mode: ModeSortie = this.parAvance() ? 'AVANCE' : this.mode();
+    if (mode === 'CAISSE' && !this.sessionId()) {
       this.erreur.set('Choisissez la caisse d\'ou sortent les especes.');
       return;
     }
@@ -151,8 +247,8 @@ export class CompteFournisseurPdv implements OnInit {
     this.erreur.set(null);
     this.service.reglerFournisseur(this.fournisseurId(), {
       montant,
-      mode: this.mode(),
-      sessionId: this.mode() === 'CAISSE' ? this.sessionId() : null,
+      mode,
+      sessionId: mode === 'CAISSE' ? this.sessionId() : null,
       commandeId: this.commandeId,
       dateReglement: this.dateReglement || null,
       reference: this.reference.trim() || null,
@@ -193,6 +289,9 @@ export class CompteFournisseurPdv implements OnInit {
     const c = this.compte();
     if (!c) {
       return 0;
+    }
+    if (id === 'avances') {
+      return c.avances?.length ?? 0;
     }
     return id === 'dettes' ? c.dettes.length : id === 'paiements' ? this.paiements().length : c.commandes.length;
   }

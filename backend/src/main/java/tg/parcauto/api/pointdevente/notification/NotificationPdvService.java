@@ -73,6 +73,8 @@ public class NotificationPdvService {
     private final tg.parcauto.api.pointdevente.caisse.SortieAttenteRepository sortiesAttente;
     private final tg.parcauto.api.pointdevente.horsligne.VenteHorsLignePdvRepository ventesHorsLigne;
     private final tg.parcauto.api.pointdevente.associe.DepotAssocieRepository depotsAssocies;
+    private final tg.parcauto.api.pointdevente.materiaux.DepotClientRepository depotsClients;
+    private final tg.parcauto.api.pointdevente.materiaux.ReglageMateriauxService reglagesMateriaux;
 
     public List<Evenement> pour(UtilisateurPrincipal u) {
         List<Evenement> evenements = new ArrayList<>();
@@ -104,6 +106,14 @@ public class NotificationPdvService {
         versementsAssocies(u, evenements);
         if (aRole(u, Role.ADMIN, Role.GERANT)) {
             horsLigne(evenements);
+            // Remboursements du depot d'un client, demandes par un caissier (quincaillerie seulement).
+            if (reglagesMateriaux.estMateriaux()) {
+                depotsClients.enAttenteAvecClient(tg.parcauto.api.pointdevente.materiaux.DepotClient.Type.REMBOURSEMENT,
+                        tg.parcauto.api.pointdevente.materiaux.DepotClient.Statut.EN_ATTENTE).forEach(d -> evenements.add(new Evenement(
+                        "remboursement-depot-" + d.getId(), Type.VALIDATION, "Remboursement de depot a valider",
+                        d.getNumero() + " · " + entier(d.getMontant()) + " F · " + d.getClient().getNom() + " · " + d.getAuteurNom(),
+                        "/pdv/validations-caisse", d.getDateOperation())));
+            }
         }
         if (aRole(u, Role.ADMIN, Role.GERANT, Role.MAGASINIER) && lieux.actif()) {
             magasins(u, evenements);

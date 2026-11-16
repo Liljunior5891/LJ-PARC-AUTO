@@ -13,7 +13,10 @@
   }
 
   .choix-moyen {
-    padding: 0.45rem 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.85rem 0.3rem 0.35rem;
     border: 1px solid var(--couleur-bordure);
     border-radius: 999px;
     background: var(--couleur-surface);
@@ -54,4 +57,37 @@
 
 .pied-liste {
   margin-top: 0.75rem;
+}
+
+
+/* Argent depose par le client. */
+.solde.depot {
+  margin-top: 0.75rem;
+
+  .actions-depot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+}
+
+.resume-depot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--couleur-texte-doux);
+
+  strong {
+    color: var(--couleur-texte);
+  }
+}
+
+.info-compte {
+  display: block;
+  margin-top: 0.4rem;
+  color: #b45309;
+  font-weight: 600;
 }

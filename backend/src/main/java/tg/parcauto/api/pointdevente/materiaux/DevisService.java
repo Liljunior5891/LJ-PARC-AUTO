@@ -149,7 +149,7 @@ public class DevisService {
         VenteDto.Reglement reglement = new VenteDto.Reglement(devis.getRemise(), e.modePaiement(), e.montantRecu(),
                 e.referencePaiement(), devis.getClientNom(), e.sessionId());
         VenteDto.Compte compte = new VenteDto.Compte(devis.getClient() == null ? null : devis.getClient().getId(),
-                Boolean.TRUE.equals(e.credit()), e.acompte());
+                Boolean.TRUE.equals(e.credit()), e.acompte(), e.depot());
         Vente vente = venteService.encaisserLignes(lignes, reglement, compte, caissier, devis.getId());
         devis.setStatut(Devis.Statut.CONVERTI);
         devis.setVenteId(vente.getId());

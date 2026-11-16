@@ -557,6 +557,29 @@
             }
           }
 
+          @if (client()) {
+            <!-- Compte client : l'argent que le client a depose paie l'achat. -->
+            <button type="button" class="tuile-compte" [class.actif]="parCompte()" [disabled]="soldeDepot() <= 0 || !horsLigne.enLigne()"
+                    [attr.aria-pressed]="parCompte()" (click)="basculerCompte()"
+                    [title]="soldeDepot() <= 0 ? 'Le client n\'a pas d\'argent depose' : ''">
+              <span class="pictogramme-mode" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19c.6-3.3 2.8-5.2 5.5-5.2 1.3 0 2.5.4 3.4 1.2" /><rect x="13" y="12.5" width="8.5" height="7" rx="1.5" /><path d="M13 15.3h8.5" /></svg>
+              </span>
+              <span class="textes-compte">
+                <strong>Compte client</strong>
+                <small>{{ soldeDepot() > 0 ? 'Solde : ' + (soldeDepot() | number: '1.0-0') + ' F' : 'Aucun argent depose' }}</small>
+              </span>
+              @if (parCompte()) {
+                <span class="coche-mode" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9" /></svg></span>
+              }
+            </button>
+            @if (parCompte()) {
+              <small class="aide-credit">{{ depotUtilise() | number: '1.0-0' }} F pris sur le compte de {{ client()?.nom }}{{ compteSuffit()
+                ? ' : rien d\'autre a payer.' : ' ; il reste ' + (aPayer() | number: '1.0-0') + ' F a payer par un autre moyen ci-dessous.' }}</small>
+            }
+          }
+
+          @if (!compteSuffit()) {
           <div class="tuiles-modes" role="radiogroup" aria-label="Moyen de paiement">
             @for (m of modes; track m.valeur) {
               <button type="button" class="tuile-mode" role="radio" [attr.data-mode]="m.valeur" [class.actif]="mode() === m.valeur"
@@ -587,7 +610,10 @@
             }
           </div>
 
-          @if (mode() === 'ESPECES') {
+          }
+
+          @if (compteSuffit()) {
+          } @else if (mode() === 'ESPECES') {
             <div class="bloc-apparition">
               <div class="champ">
                 <label for="recu">Montant recu</label>

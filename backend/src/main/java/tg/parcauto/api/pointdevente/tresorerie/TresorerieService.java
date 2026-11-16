@@ -65,6 +65,10 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
     private final tg.parcauto.api.pointdevente.reserve.FondsReserveService fondsReserve;
     /** Versements aux associes : ils sortent du coffre du gerant ou du compte de l'entreprise. */
     private final tg.parcauto.api.pointdevente.associe.DepotAssocieRepository depotsAssocies;
+    /** Depots des clients par mobile money ou carte, et remboursements de depot par la banque. */
+    private final tg.parcauto.api.pointdevente.materiaux.DepotClientRepository depotsClients;
+    /** Avances versees aux fournisseurs (coffre, banque) et remboursements d'avance (banque). */
+    private final tg.parcauto.api.pointdevente.fournisseur.AvanceFournisseurRepository avancesFournisseurs;
 
     private static final long TAILLE_MAX_PIECE = 15L * 1024 * 1024;
     private static final Instant ORIGINE = Instant.parse("2000-01-01T00:00:00Z");
@@ -424,6 +428,11 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
                 electroniques = electroniques.add((BigDecimal) r[5]);
             }
         }
+        for (Object[] r : depotsClients.journalDepots(ORIGINE, Instant.now().plusSeconds(60))) {
+            if (electronique(r[4])) {
+                electroniques = electroniques.add((BigDecimal) r[5]);
+            }
+        }
         BigDecimal sorties = BigDecimal.ZERO;
         java.time.LocalDate aujourdhui = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Lome"));
         for (var dp : depenses.payeesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.BANQUE, aujourdhui)) {
@@ -436,6 +445,24 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
             entrees.add(new MouvementCoffre(rf.getDateReglement().atStartOfDay(java.time.ZoneId.of("Africa/Lome")).toInstant(),
                     rf.getNumero(), "Paiement " + rf.getFournisseur().getNom() + " (" + rf.getCommande().getNumero() + ")",
                     null, rf.getMontant()));
+        }
+        BigDecimal rembAvances = BigDecimal.ZERO;
+        for (var a : avancesFournisseurs.validesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.BANQUE, aujourdhui)) {
+            Instant quand = a.getDateOperation().atStartOfDay(java.time.ZoneId.of("Africa/Lome")).toInstant();
+            if (a.getType() == tg.parcauto.api.pointdevente.fournisseur.AvanceFournisseur.Type.AVANCE) {
+                sorties = sorties.add(a.getMontant());
+                entrees.add(new MouvementCoffre(quand, a.getNumero(), "Avance au fournisseur " + a.getFournisseur().getNom(),
+                        null, a.getMontant()));
+            } else {
+                rembAvances = rembAvances.add(a.getMontant());
+                entrees.add(new MouvementCoffre(quand, a.getNumero(), "Avance rendue par " + a.getFournisseur().getNom(),
+                        a.getMontant(), null));
+            }
+        }
+        for (var d : depotsClients.remboursementsBanque(Instant.now().plusSeconds(60))) {
+            sorties = sorties.add(d.getMontant());
+            entrees.add(new MouvementCoffre(d.getTraiteLe(), d.getNumero(), "Remboursement du depot de "
+                    + d.getClient().getNom(), null, d.getMontant()));
         }
         BigDecimal versFonds = BigDecimal.ZERO;
         for (var a : fondsReserve.apportsEntreprise()) {
@@ -452,8 +479,8 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
                 .map(g -> new SoldeCoffre((Long) g[0], (String) g[1], solde((Long) g[0])))
                 .sorted(Comparator.comparing(SoldeCoffre::solde).reversed())
                 .toList();
-        return new CompteEntreprise(parDegagements.add(parRemises).add(electroniques).subtract(sorties).subtract(versFonds)
-                .subtract(versAssocies), parDegagements, parRemises, electroniques, sorties, coffres,
+        return new CompteEntreprise(parDegagements.add(parRemises).add(electroniques).add(rembAvances).subtract(sorties)
+                .subtract(versFonds).subtract(versAssocies), parDegagements, parRemises, electroniques, sorties, coffres,
                 entrees.size() > 150 ? entrees.subList(0, 150) : entrees, versFonds, versAssocies);
     }
 
@@ -512,6 +539,12 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
                         rf.getNumero(), "Paiement " + rf.getFournisseur().getNom(), null, rf.getMontant()));
             }
         }
+        for (var a : avancesFournisseurs.validesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.COFFRE, aujourdhui)) {
+            if (gerantId.equals(a.getCoffreId())) {
+                mouvements.add(new MouvementCoffre(a.getCreeLe() != null ? a.getCreeLe() : a.getDateOperation().atStartOfDay(zone).toInstant(),
+                        a.getNumero(), "Avance au fournisseur " + a.getFournisseur().getNom(), null, a.getMontant()));
+            }
+        }
         for (var d : depotsAssocies.engagesPar(tg.parcauto.api.pointdevente.associe.DepotAssocie.Source.COFFRE)) {
             if (gerantId.equals(d.getCoffreId())) {
                 mouvements.add(new MouvementCoffre(d.getSoumisLe(), d.getNumero(), libelleVersement(d), null, d.getMontant()));
@@ -531,7 +564,7 @@ public class TresorerieService implements ReglagePdvService.ControleOptions {
     public BigDecimal solde(Long gerantId) {
         return remises.recuParCoffre(gerantId).subtract(degagements.sortiParCoffre(gerantId))
                 .subtract(depenses.sortiDuCoffre(gerantId)).subtract(reglementsFournisseurs.sortiDuCoffre(gerantId))
-                .subtract(depotsAssocies.sortiDuCoffre(gerantId));
+                .subtract(depotsAssocies.sortiDuCoffre(gerantId)).subtract(avancesFournisseurs.sortiDuCoffre(gerantId));
     }
 
     /** Libelle d'un versement a un associe, dans le coffre comme sur le compte de l'entreprise. */

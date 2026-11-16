@@ -152,6 +152,8 @@ export class Caisse implements OnInit, OnDestroy {
   // Vente a credit
   readonly credit = signal(false);
   readonly acompte = signal<number | null>(0);
+  /** Moyen « Compte client » choisi : l'argent depose par le client paie l'achat. */
+  readonly parCompte = signal(false);
   // Livraison en plusieurs fois : ce que le client emporte maintenant, par ligne du panier.
   readonly resteALivrer = signal(false);
   readonly emportes = signal<Record<string, number | null>>({});
@@ -216,8 +218,28 @@ export class Caisse implements OnInit, OnDestroy {
   readonly totalBrut = computed(() => this.panier().reduce((somme, l) => somme + prix(l) * l.quantite, 0));
   readonly total = computed(() => Math.max(0, this.totalBrut() - (this.remise() || 0)));
   readonly nombreArticles = computed(() => this.panier().reduce((somme, l) => somme + l.quantite, 0));
-  /** Paye maintenant : le total, ou l'acompte d'une vente a credit. */
-  readonly aPayer = computed(() => (this.credit() ? Math.min(this.acompte() ?? 0, this.total()) : this.total()));
+  /** Du maintenant : le total, ou l'acompte d'une vente a credit. */
+  readonly duMaintenant = computed(() => (this.credit() ? Math.min(this.acompte() ?? 0, this.total()) : this.total()));
+  /** Argent depose par le client choisi, et pas encore utilise. */
+  readonly soldeDepot = computed(() => this.client()?.soldeDepot ?? 0);
+  /** Part prise sur le compte du client : tout ce qui est du, dans la limite de son solde. */
+  readonly depotUtilise = computed(() =>
+    this.parCompte() && this.soldeDepot() > 0 ? Math.min(this.soldeDepot(), this.duMaintenant()) : 0);
+  /** Le compte du client paie tout : aucun autre moyen n'est demande. */
+  readonly compteSuffit = computed(() => this.parCompte() && this.depotUtilise() > 0 && this.aPayer() === 0);
+  /** Moyen envoye au serveur : « Compte client » s'il paie tout, sinon celui du reste. */
+  readonly modeEnvoye = computed<ModePaiementPdv>(() => (this.compteSuffit() ? 'COMPTE_CLIENT' : this.mode()));
+  /** Paye maintenant par le moyen choisi : ce qui est du, moins la part prise sur le depot. */
+  readonly aPayer = computed(() => Math.max(0, this.duMaintenant() - this.depotUtilise()));
+
+  /** Choisit ou quitte le moyen « Compte client ». */
+  basculerCompte(): void {
+    if (this.soldeDepot() <= 0) {
+      return;
+    }
+    this.parCompte.update((v) => !v);
+    this.montantRecu.set(this.aPayer());
+  }
   readonly monnaie = computed(() => Math.max(0, (this.montantRecu() ?? 0) - this.aPayer()));
   /** Part de la somme due deja recue, pour la jauge de la fenetre d'encaissement. */
   readonly progression = computed(() =>
@@ -562,6 +584,7 @@ export class Caisse implements OnInit, OnDestroy {
     }
     this.mode.set(mode);
     this.credit.set(false);
+    this.parCompte.set(false);
     this.acompte.set(0);
     this.resteALivrer.set(false);
     this.emportes.set({});
@@ -753,7 +776,7 @@ export class Caisse implements OnInit, OnDestroy {
     const demande = {
       titre: `Encaisser ${montant(this.aPayer())} ?`,
       message: this.credit()
-        ? `Vente a credit de ${montant(this.total())} : ${montant(this.total() - this.aPayer())} restent dus par le client.`
+        ? `Vente a credit de ${montant(this.total())} : ${montant(this.total() - this.duMaintenant())} restent dus par le client.`
         : 'Verifiez le panier et le moyen de paiement : la vente sera enregistree et le stock mis a jour.',
       libelleAction: 'Encaisser'
     };
@@ -788,8 +811,8 @@ export class Caisse implements OnInit, OnDestroy {
           lieuId: this.choixLieux() && l.article.suiviStock ? this.lieuLigne(l) : null
         })),
         remise: this.remise() || 0,
-        modePaiement: this.mode(),
-        montantRecu: this.mode() === 'ESPECES' ? this.montantRecu() : null,
+        modePaiement: this.modeEnvoye(),
+        montantRecu: this.modeEnvoye() === 'ESPECES' ? this.montantRecu() : null,
         referencePaiement: this.reference || undefined,
         clientNom: this.clientNom.trim() || undefined,
         sessionId: this.session()?.id,
@@ -797,7 +820,8 @@ export class Caisse implements OnInit, OnDestroy {
         clientId: this.client()?.id ?? null,
         credit: this.credit(),
         acompte: this.credit() ? this.acompte() ?? 0 : null,
-        cleHorsLigne: cle
+        cleHorsLigne: cle,
+        depot: this.depotUtilise() || null
       })
       .subscribe({
         next: (ticket) => this.venteTerminee(ticket),
@@ -831,7 +855,7 @@ export class Caisse implements OnInit, OnDestroy {
     if (!this.session()) {
       return 'aucune session de caisse ouverte sur cet appareil';
     }
-    if (this.mode() !== 'ESPECES') {
+    if (this.mode() !== 'ESPECES' || this.parCompte()) {
       return 'hors ligne, seules les especes sont acceptees';
     }
     if (this.credit() || this.client()) {
@@ -910,12 +934,13 @@ export class Caisse implements OnInit, OnDestroy {
     const encaisser = (id: number) =>
       this.materiauxService
         .encaisserDevis(id, {
-          modePaiement: this.mode(),
-          montantRecu: this.mode() === 'ESPECES' ? this.montantRecu() : null,
+          modePaiement: this.modeEnvoye(),
+          montantRecu: this.modeEnvoye() === 'ESPECES' ? this.montantRecu() : null,
           referencePaiement: this.reference || null,
           sessionId: this.session()?.id,
           credit: this.credit(),
           acompte: this.credit() ? this.acompte() ?? 0 : null,
+          depot: this.depotUtilise() || null,
           emportes: this.resteALivrer() || this.choixLieux()
             ? this.panier().map((l) => ({
                 articleId: l.article.id,
@@ -967,6 +992,7 @@ export class Caisse implements OnInit, OnDestroy {
     this.clientNom = '';
     this.client.set(null);
     this.credit.set(false);
+    this.parCompte.set(false);
     this.resteALivrer.set(false);
     this.devisCharge.set(null);
     this.devisModifie.set(false);
@@ -1174,6 +1200,7 @@ export class Caisse implements OnInit, OnDestroy {
     this.client.set(null);
     this.clientNom = '';
     this.credit.set(false);
+    this.parCompte.set(false);
     this.devisModifie.set(true);
   }
 

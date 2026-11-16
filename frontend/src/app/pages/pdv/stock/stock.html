@@ -62,6 +62,7 @@
       <select aria-label="Statut des commandes" [ngModel]="filtreStatut()" (ngModelChange)="filtrerCommandes($event)">
         <option [ngValue]="null">Toutes les commandes</option>
         <option [ngValue]="'EN_COURS'">A receptionner</option>
+        <option [ngValue]="'PARTIELLE'">Partiellement recues</option>
         <option [ngValue]="'RECUE'">Receptionnees</option>
         <option [ngValue]="'ANNULEE'">Annulees</option>
       </select>

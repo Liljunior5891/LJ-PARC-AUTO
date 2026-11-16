@@ -80,7 +80,10 @@ export class LivraisonsPdv implements OnInit {
   readonly valeurSolde = computed(() =>
     (this.solde()?.lignes ?? []).reduce((total, l) => total + (this.quantitesSolde()[l.ligneId] ?? 0) * l.valeurUnitaire, 0));
   readonly deduitSolde = computed(() => Math.min(this.valeurSolde(), this.solde()?.resteDu ?? 0));
-  readonly rembourseSolde = computed(() => this.valeurSolde() - this.deduitSolde());
+  /** Ce qui avait ete paye avec le depot du client revient d'abord sur son compte. */
+  readonly renduDepotSolde = computed(() =>
+    Math.max(0, Math.min(this.valeurSolde() - this.deduitSolde(), this.solde()?.payeParDepot ?? 0)));
+  readonly rembourseSolde = computed(() => this.valeurSolde() - this.deduitSolde() - this.renduDepotSolde());
   readonly soldeValide = computed(() => {
     const v = this.solde();
     if (!v || !this.motifSolde().trim()) {
@@ -233,7 +236,7 @@ export class LivraisonsPdv implements OnInit {
     this.erreurSolde.set(null);
     this.motifSolde.set('');
     this.referenceSolde = '';
-    this.modeSolde.set(v.modePaiement);
+    this.modeSolde.set(v.modePaiement === 'COMPTE_CLIENT' ? 'ESPECES' : v.modePaiement);
     this.quantitesSolde.set(Object.fromEntries(v.lignes.map((l) => [l.ligneId, l.reste])));
     this.solde.set(v);
   }
@@ -267,8 +270,11 @@ export class LivraisonsPdv implements OnInit {
         this.solde.set(null);
         this.dernierBon.set(null);
         this.dernierSolde.set(s);
+        const surCompte = (s.montantRenduDepot ?? 0) > 0
+          ? ` ${Math.round(s.montantRenduDepot ?? 0)} F reviennent sur le compte du client.` : '';
         this.succes.set(s.montantRembourse > 0
-          ? `Reste solde (${s.numero}) : rendez ${Math.round(s.montantRembourse)} F au client.`
+          ? `Reste solde (${s.numero}) : rendez ${Math.round(s.montantRembourse)} F au client.${surCompte}`
+          : surCompte ? `Reste solde (${s.numero}) :${surCompte}`
           : `Reste solde (${s.numero}) : ${Math.round(s.montantDeduit)} F retires de ce que le client doit.`);
         this.sessions.rafraichir();
         this.charger();

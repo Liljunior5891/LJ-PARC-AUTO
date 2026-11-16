@@ -47,6 +47,7 @@ public class LivraisonClientService {
     private final tg.parcauto.api.pointdevente.lieu.BonRetraitRepository retraits;
     private final tg.parcauto.api.pointdevente.caisse.PerimetreCaisse perimetre;
     private final tg.parcauto.api.pointdevente.caisse.CaisseService caisses;
+    private final DepotClientService depotsClients;
 
     /** Ventes dont il reste de la marchandise a remettre, les plus anciennes d'abord ; un caissier, celles de sa caisse. */
     @Transactional(readOnly = true)
@@ -239,8 +240,13 @@ public class LivraisonClientService {
         vente.setTotal(vente.getTotal().subtract(net));
 
         BigDecimal deduit = net.min(vente.getResteDu());
-        BigDecimal rembourse = net.subtract(deduit);
+        // Ce qui avait ete paye avec le depot du client revient d'abord sur son compte.
+        BigDecimal payeParDepot = vente.getPayeParDepot() == null ? BigDecimal.ZERO : vente.getPayeParDepot();
+        BigDecimal renduDepot = net.subtract(deduit).min(payeParDepot).max(BigDecimal.ZERO);
+        BigDecimal rembourse = net.subtract(deduit).subtract(renduDepot);
         vente.setResteDu(vente.getResteDu().subtract(deduit));
+        vente.setPayeParDepot(payeParDepot.subtract(renduDepot));
+        solde.setMontantRenduDepot(renduDepot);
         solde.setMontantBrut(brut);
         solde.setMontant(net);
         solde.setMontantDeduit(deduit);
@@ -248,6 +254,10 @@ public class LivraisonClientService {
         if (rembourse.signum() > 0) {
             if (demande.modeRemboursement() == null) {
                 throw new BusinessException("Choisissez comment rembourser le client");
+            }
+            if (demande.modeRemboursement() == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.COMPTE_CLIENT) {
+                throw new BusinessException("Seule la part payee avec le depot revient sur le compte du client :"
+                        + " remboursez le reste par la caisse");
             }
             solde.setSession(sessionsTravail.exiger(auteur, demande.sessionId()));
             if (demande.modeRemboursement() == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.ESPECES) {
@@ -292,6 +302,12 @@ public class LivraisonClientService {
         vente.setRemise(vente.getRemise().add(solde.getMontantBrut().subtract(solde.getMontant())));
         vente.setTotal(vente.getTotal().add(solde.getMontant()));
         vente.setResteDu(vente.getResteDu().add(solde.getMontantDeduit()));
+        BigDecimal renduDepot = solde.getMontantRenduDepot() == null ? BigDecimal.ZERO : solde.getMontantRenduDepot();
+        if (renduDepot.signum() > 0 && vente.getClient() != null) {
+            // Le depot reprend ce qu'il avait recu : il faut que le client ne l'ait pas deja depense.
+            depotsClients.exigerSolde(vente.getClient().getId(), renduDepot);
+        }
+        vente.setPayeParDepot((vente.getPayeParDepot() == null ? BigDecimal.ZERO : vente.getPayeParDepot()).add(renduDepot));
         solde.setStatut(SoldeReste.Statut.ANNULE);
         solde.setAnnuleLe(Instant.now());
         solde.setAnnulePar(auteur.getNomComplet());

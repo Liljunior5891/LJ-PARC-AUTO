@@ -58,14 +58,16 @@ public final class VenteDto {
             Boolean credit,
             @PositiveOrZero BigDecimal acompte,
             /** Cle de la vente sur l'appareil, reprise par sa copie hors ligne si la reponse se perd. */
-            @Size(max = 64) String cleHorsLigne) {
+            @Size(max = 64) String cleHorsLigne,
+            /** Part payee avec le depot du client (quincaillerie). */
+            @PositiveOrZero BigDecimal depot) {
 
         public Reglement reglement() {
             return new Reglement(remise, modePaiement, montantRecu, referencePaiement, clientNom, sessionId);
         }
 
         public Compte compte() {
-            return new Compte(clientId, Boolean.TRUE.equals(credit), acompte);
+            return new Compte(clientId, Boolean.TRUE.equals(credit), acompte, depot);
         }
     }
 
@@ -79,8 +81,11 @@ public final class VenteDto {
             Long sessionId) {
     }
 
-    /** Compte client d'une vente de quincaillerie, et vente a credit avec son acompte. */
-    public record Compte(Long clientId, boolean credit, BigDecimal acompte) {
+    /**
+     * Compte client d'une vente de quincaillerie : vente a credit avec son acompte,
+     * et part payee avec le depot du client.
+     */
+    public record Compte(Long clientId, boolean credit, BigDecimal acompte, BigDecimal depot) {
     }
 
     /** Vente faite sans connexion, telle que l'appareil l'a gardee (especes seules). */
@@ -146,7 +151,9 @@ public final class VenteDto {
             Vente.Statut statut, Instant annuleeLe, String annuleePar, String motifAnnulation,
             Long commandeId, String tableNom,
             /** Quincaillerie : compte client, paye a la vente, reste du et echeance. */
-            Long clientId, BigDecimal montantPaye, BigDecimal resteDu, LocalDate echeance, Long devisId) {
+            Long clientId, BigDecimal montantPaye, BigDecimal resteDu, LocalDate echeance, Long devisId,
+            /** Part payee avec le depot du client. */
+            BigDecimal payeParDepot) {
 
         public static Ticket de(Vente v) {
             return new Ticket(v.getId(), v.getNumero(), v.getDateVente(), v.getCaissierNom(), v.getClientNom(),
@@ -159,7 +166,7 @@ public final class VenteDto {
                     v.getStatut(), v.getAnnuleeLe(), v.getAnnuleePar(), v.getMotifAnnulation(),
                     v.getCommandeId(), v.getTableNom(),
                     v.getClient() == null ? null : v.getClient().getId(), v.getMontantPaye(), v.getResteDu(),
-                    v.getEcheance(), v.getDevisId());
+                    v.getEcheance(), v.getDevisId(), v.getPayeParDepot());
         }
     }
 }

@@ -59,7 +59,8 @@ class CommandeFournisseurServiceTest {
                         mock(tg.parcauto.api.pointdevente.fournisseur.ReglementFournisseurRepository.class), repository,
                         mock(tg.parcauto.api.pointdevente.caisse.CaisseService.class), mock(NumerotationService.class),
                         mock(tg.parcauto.api.pointdevente.tresorerie.TresorerieService.class),
-                        mock(tg.parcauto.api.pointdevente.reglage.ReglagePdvService.class));
+                        mock(tg.parcauto.api.pointdevente.reglage.ReglagePdvService.class),
+                        mock(tg.parcauto.api.pointdevente.fournisseur.AvanceFournisseurRepository.class));
         service = new CommandeFournisseurService(repository, articles,
                 new StockService(articles, mouvements, org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class)), org.mockito.Mockito.mock(tg.parcauto.api.pointdevente.lieu.LieuStockService.class), mock(NumerotationService.class),
                 fournisseurs);
@@ -77,7 +78,8 @@ class CommandeFournisseurServiceTest {
         CommandeFournisseurService.Detail recue = service.receptionner(50L, new CommandeFournisseurService.Reception(
                 List.of(new CommandeFournisseurService.LigneReception(100L, new BigDecimal("20"), null))), gerant());
 
-        assertThat(recue.resume().statut()).isEqualTo(CommandeFournisseur.Statut.RECUE);
+        // Il manque 4 bieres : la commande reste partiellement recue.
+        assertThat(recue.resume().statut()).isEqualTo(CommandeFournisseur.Statut.PARTIELLE);
         assertThat(biere.getStockActuel()).isEqualByComparingTo("30");
         assertThat(coca.getStockActuel()).isEqualByComparingTo("16");
         assertThat(biere.getPrixAchat()).isEqualByComparingTo("520");
@@ -89,6 +91,46 @@ class CommandeFournisseurServiceTest {
     }
 
     @Test
+    @DisplayName("Le reste arrive plus tard : la seconde reception complete la commande et ajoute sa valeur a la dette")
+    void receptionEnDeuxFois() {
+        service.creer(new CommandeFournisseurService.Requete(null, "Brasserie", null, null, null, List.of(
+                new CommandeFournisseurService.LigneRequete(1L, new BigDecimal("24"), new BigDecimal("520")))));
+        service.receptionner(50L, new CommandeFournisseurService.Reception(
+                List.of(new CommandeFournisseurService.LigneReception(100L, new BigDecimal("20"), null))), gerant());
+
+        // Sans saisie, la ligne recoit son reste : 4 bieres.
+        CommandeFournisseurService.Detail complete = service.receptionner(50L, null, gerant());
+
+        assertThat(complete.resume().statut()).isEqualTo(CommandeFournisseur.Statut.RECUE);
+        assertThat(complete.receptions()).isEqualTo(2);
+        // Chaque arrivee est notee a part, avec sa valeur : les achats se comptent au mois de chacune.
+        CommandeFournisseur commande = repository.detail(50L).orElseThrow();
+        assertThat(commande.getArrivees()).hasSize(2);
+        assertThat(commande.getArrivees().stream().map(ReceptionCommande::getValeur).reduce(BigDecimal.ZERO, BigDecimal::add))
+                .isEqualByComparingTo("12480");
+        assertThat(biere.getStockActuel()).isEqualByComparingTo("34");
+        assertThat(complete.resume().montantRecu()).isEqualByComparingTo("12480");
+    }
+
+    @Test
+    @DisplayName("Soldee, une commande incomplete n'attend plus rien : sa dette reste celle de la marchandise recue")
+    void soldeCommandeIncomplete() {
+        service.creer(new CommandeFournisseurService.Requete(null, "Brasserie", null, null, null, List.of(
+                new CommandeFournisseurService.LigneRequete(1L, new BigDecimal("24"), new BigDecimal("520")))));
+        assertThatThrownBy(() -> service.solder(50L, "Rupture", gerant()))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("annulez");
+        service.receptionner(50L, new CommandeFournisseurService.Reception(
+                List.of(new CommandeFournisseurService.LigneReception(100L, new BigDecimal("20"), null))), gerant());
+
+        CommandeFournisseurService.Detail soldee = service.solder(50L, "Rupture chez le fournisseur", gerant());
+
+        assertThat(soldee.resume().statut()).isEqualTo(CommandeFournisseur.Statut.RECUE);
+        assertThat(soldee.soldeeLe()).isNotNull();
+        assertThat(soldee.resume().montantRecu()).isEqualByComparingTo("10400");
+        assertThatThrownBy(() -> service.receptionner(50L, null, gerant())).isInstanceOf(BusinessException.class);
+    }
+
+    @Test
     @DisplayName("Une commande receptionnee n'est plus modifiable ni receptionnable")
     void commandeFigee() {
         service.creer(new CommandeFournisseurService.Requete(null, "Brasserie", null, null, null,
@@ -97,7 +139,7 @@ class CommandeFournisseurServiceTest {
 
         assertThatThrownBy(() -> service.receptionner(50L, null, gerant()))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("deja receptionnee");
+                .hasMessageContaining("deja entierement receptionnee");
     }
 
     @Test

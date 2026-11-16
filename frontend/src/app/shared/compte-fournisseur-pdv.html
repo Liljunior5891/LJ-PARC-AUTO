@@ -31,6 +31,19 @@
           }
         </div>
 
+        <!-- Avance versee au fournisseur, sans marchandise. -->
+        <div class="solde avance" [class.a-jour]="(c.fournisseur.avance ?? 0) > 0">
+          <small>Avance chez lui</small>
+          <strong>{{ (c.fournisseur.avance ?? 0) | number: '1.0-0' }} <span>F</span></strong>
+          <small class="detail-jauge">Elle regle d'office les prochaines receptions.</small>
+          <div class="actions-avance">
+            <button class="bouton secondaire" type="button" (click)="ouvrirAvance('avance')">Verser une avance</button>
+            @if ((c.fournisseur.avance ?? 0) > 0) {
+              <button class="bouton secondaire" type="button" (click)="ouvrirAvance('remboursement')">Avance rendue</button>
+            }
+          </div>
+        </div>
+
         <dl class="chiffres">
           <div [class.danger]="c.fournisseur.enRetard > 0">
             <dt>En retard</dt>
@@ -61,7 +74,66 @@
 
       <!-- Colonne principale : le paiement en cours, ou les listes en onglets. -->
       <div class="principal">
-        @if (paiement()) {
+        @if (formulaireAvance(); as type) {
+          <form class="carte paiement" (ngSubmit)="enregistrerAvance()">
+            <header>
+              <div>
+                <h3>{{ type === 'avance' ? 'Verser une avance' : 'Le fournisseur rend une avance' }}</h3>
+                <small>{{ type === 'avance' ? 'Sans marchandise : elle reglera d\'office les prochaines receptions' : 'L\'argent revient sur le compte de l\'entreprise' }}</small>
+              </div>
+              <div class="reste">
+                <small>Avance actuelle</small>
+                <strong>{{ (c.fournisseur.avance ?? 0) | number: '1.0-0' }} F</strong>
+              </div>
+            </header>
+
+            @if (type === 'avance') {
+              <app-choix-sortie [(mode)]="modeAvance" [(sessionId)]="sessionAvance" />
+            }
+
+            <div class="grille-formulaire">
+              <div class="champ">
+                <label for="a-montant">Montant (F) *</label>
+                <input id="a-montant" name="montant" type="number" min="1" step="any" required class="montant"
+                       [max]="type === 'remboursement' ? (c.fournisseur.avance ?? 0) : null"
+                       [ngModel]="montantAvance()" (ngModelChange)="montantAvance.set($event)" />
+              </div>
+              @if (type === 'avance') {
+                <div class="champ">
+                  <label for="a-commande">Pour la commande</label>
+                  <select id="a-commande" name="commande" [(ngModel)]="commandeAvance">
+                    <option [ngValue]="null">Aucune en particulier</option>
+                    @for (o of commandesOuvertes(); track o.id) {
+                      <option [ngValue]="o.id">{{ o.numero }} — {{ o.total | number: '1.0-0' }} F</option>
+                    }
+                  </select>
+                </div>
+              }
+              <div class="champ">
+                <label for="a-date">Date</label>
+                <input id="a-date" name="date" type="date" [max]="aujourdhui" [(ngModel)]="dateAvance" />
+              </div>
+              @if (type === 'remboursement' || modeAvance() !== 'CAISSE') {
+                <div class="champ">
+                  <label for="a-ref">Reference</label>
+                  <input id="a-ref" name="reference" maxlength="80" [(ngModel)]="referenceAvance" placeholder="N° de virement, de cheque, de recu" />
+                </div>
+              }
+              <div class="champ" style="grid-column: 1 / -1">
+                <label for="a-note">Note</label>
+                <input id="a-note" name="note" maxlength="255" [(ngModel)]="noteAvance" />
+              </div>
+            </div>
+            <div class="actions-formulaire">
+              <button class="bouton secondaire annuler" type="button" (click)="formulaireAvance.set(null)">Retour</button>
+              <button class="bouton succes" type="submit"
+                      [disabled]="enCours() || !(montantAvance() ?? 0) || (type === 'avance' && modeAvance() === 'CAISSE' && !sessionAvance())
+                                  || (type === 'remboursement' && (montantAvance() ?? 0) > (c.fournisseur.avance ?? 0))">
+                {{ enCours() ? 'Enregistrement...' : (type === 'avance' ? 'Verser ' : 'Enregistrer ') + ((montantAvance() ?? 0) | number: '1.0-0') + ' F' }}
+              </button>
+            </div>
+          </form>
+        } @else if (paiement()) {
           <form class="carte paiement" (ngSubmit)="payer()">
             <header>
               <div>
@@ -74,7 +146,15 @@
               </div>
             </header>
 
-            <app-choix-sortie [(mode)]="mode" [(sessionId)]="sessionId" />
+            @if ((c.fournisseur.avance ?? 0) > 0) {
+              <label class="case-avance">
+                <input type="checkbox" name="parAvance" [ngModel]="parAvance()" (ngModelChange)="parAvance.set($event)" />
+                <app-icone-moyen code="AVANCE" /> Payer avec l'avance deja versee ({{ c.fournisseur.avance | number: '1.0-0' }} F disponibles)
+              </label>
+            }
+            @if (!parAvance()) {
+              <app-choix-sortie [(mode)]="mode" [(sessionId)]="sessionId" />
+            }
 
             <div class="grille-formulaire">
               <div class="champ">
@@ -95,7 +175,7 @@
                 <label for="p-date">Date du paiement</label>
                 <input id="p-date" name="date" type="date" [max]="aujourdhui" [(ngModel)]="dateReglement" />
               </div>
-              @if (mode() !== 'CAISSE') {
+              @if (!parAvance() && mode() !== 'CAISSE') {
                 <div class="champ">
                   <label for="p-ref">Reference</label>
                   <input id="p-ref" name="reference" maxlength="80" [(ngModel)]="reference" placeholder="N° de cheque, de virement, ID mobile money" />
@@ -108,7 +188,9 @@
             </div>
             <div class="actions-formulaire">
               <button class="bouton secondaire annuler" type="button" (click)="paiement.set(false)">Retour</button>
-              <button class="bouton succes" type="submit" [disabled]="enCours() || !(montant() ?? 0) || (mode() === 'CAISSE' && !sessionId())">
+              <button class="bouton succes" type="submit"
+                      [disabled]="enCours() || !(montant() ?? 0) || (!parAvance() && mode() === 'CAISSE' && !sessionId())
+                                  || (parAvance() && (montant() ?? 0) > (c.fournisseur.avance ?? 0))">
                 {{ enCours() ? 'Enregistrement...' : 'Payer ' + ((montant() ?? 0) | number: '1.0-0') + ' F' }}
               </button>
             </div>
@@ -207,6 +289,45 @@
                 </table>
               </div>
             }
+            @case ('avances') {
+              <div class="tableau-conteneur liste-compte">
+                <table class="tableau">
+                  <thead><tr><th>Operation</th><th>Moyen</th><th>Pour</th><th class="numerique">Montant</th><th></th></tr></thead>
+                  <tbody>
+                    @for (a of c.avances; track a.id) {
+                      <tr [class.annule]="a.statut === 'ANNULE'">
+                        <td>
+                          <strong>{{ a.type === 'AVANCE' ? 'Avance' : 'Avance rendue' }} {{ a.numero }}</strong>
+                          <small class="sous-ligne">{{ a.date | date: 'dd/MM/yyyy' }} · {{ a.auteurNom }}@if (a.note) { · {{ a.note }} }</small>
+                        </td>
+                        <td>
+                          <span class="moyen">{{ a.modeLibelle }}</span>
+                          @if (a.sessionNumero || a.reference) { <small class="sous-ligne">{{ a.sessionNumero ?? a.reference }}</small> }
+                        </td>
+                        <td><small>{{ a.commandeNumero ?? '—' }}</small></td>
+                        <td class="numerique">
+                          <strong class="somme">{{ a.type === 'AVANCE' ? '+' : '−' }}{{ a.montant | number: '1.0-0' }}</strong>
+                          @if (a.statut === 'ANNULE') { <small class="sous-ligne">Annulee{{ a.motifAnnulation ? ' : ' + a.motifAnnulation : '' }}</small> }
+                        </td>
+                        <td class="actions-ligne">
+                          @if (a.statut === 'VALIDE') {
+                            @if (aAnnulerAvance() === a.numero) {
+                              <input [(ngModel)]="motif" placeholder="Motif" aria-label="Motif de l'annulation" />
+                              <button class="bouton danger petit" type="button" (click)="annulerAvance(a.numero)">Confirmer</button>
+                              <button class="bouton secondaire petit" type="button" (click)="aAnnulerAvance.set(null)" aria-label="Ne pas annuler">×</button>
+                            } @else {
+                              <button class="bouton secondaire petit annuler" type="button" (click)="aAnnulerAvance.set(a.numero); motif = ''">Annuler</button>
+                            }
+                          }
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5" class="vide-ligne">Aucune avance versee a ce fournisseur.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
             @case ('commandes') {
               <div class="tableau-conteneur liste-compte">
                 <table class="tableau">
@@ -218,7 +339,7 @@
                         <td>{{ o.dateCommande | date: 'dd/MM/yyyy' }}</td>
                         <td>
                           <span class="etiquette" [class.disponible]="o.statut === 'RECUE'" [class.immobilise]="o.statut === 'ANNULEE'">
-                            {{ o.statut === 'EN_COURS' ? 'A receptionner' : o.statut === 'RECUE' ? 'Receptionnee' : 'Annulee' }}
+                            {{ o.statut === 'EN_COURS' ? 'A receptionner' : o.statut === 'PARTIELLE' ? 'Partiellement recue' : o.statut === 'RECUE' ? 'Receptionnee' : 'Annulee' }}
                           </span>
                         </td>
                         <td class="numerique">{{ (o.montantRecu ?? o.total) | number: '1.0-0' }}</td>

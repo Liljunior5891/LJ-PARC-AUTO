@@ -150,6 +150,11 @@ export class PdvService {
     return this.http.post<CommandeFournisseurDetail>(`${this.base}/approvisionnement/commandes/${id}/reception`, { lignes, lieuId });
   }
 
+  /** Commande partiellement recue : le reste a recevoir est abandonne. */
+  solderCommandeFournisseur(id: number, motif: string): Observable<CommandeFournisseurDetail> {
+    return this.http.post<CommandeFournisseurDetail>(`${this.base}/approvisionnement/commandes/${id}/solde`, { motif });
+  }
+
   annulerCommandeFournisseur(id: number): Observable<CommandeFournisseurDetail> {
     return this.http.post<CommandeFournisseurDetail>(`${this.base}/approvisionnement/commandes/${id}/annulation`, {});
   }

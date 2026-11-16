@@ -174,7 +174,8 @@ public class TableauBordPdvService {
                 caisseRepository.findAllByOrderByNomAsc().stream().filter(c -> c.isActif()).count(),
                 // Un produit epuise compte en rupture, pas sous le seuil : les deux compteurs s'additionnent.
                 articleRepository.enRupture(), stockBas.stream().filter(a -> a.stockActuel().signum() > 0).count(),
-                commandeFournisseurRepository.countByStatut(CommandeFournisseur.Statut.EN_COURS),
+                commandeFournisseurRepository.countByStatut(CommandeFournisseur.Statut.EN_COURS)
+                        + commandeFournisseurRepository.countByStatut(CommandeFournisseur.Statut.PARTIELLE),
                 commandeFournisseurRepository.enRetard(aujourdhui),
                 stockBas.stream().limit(10).toList(),
                 salle(),

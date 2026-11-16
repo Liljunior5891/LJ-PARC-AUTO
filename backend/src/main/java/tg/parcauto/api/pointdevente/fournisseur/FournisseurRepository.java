@@ -25,6 +25,11 @@ public interface FournisseurRepository extends JpaRepository<Fournisseur, Long> 
 
     List<Fournisseur> findByActifTrueOrderByNomAsc();
 
+    /** Verrouille la fiche jusqu'a la fin de la transaction : avances et imputations passent l'une apres l'autre. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select f from Fournisseur f where f.id = :id")
+    Optional<Fournisseur> verrouiller(@Param("id") Long id);
+
     default Optional<Fournisseur> premierParNom(String nom) {
         return parNom(nom).stream().findFirst();
     }

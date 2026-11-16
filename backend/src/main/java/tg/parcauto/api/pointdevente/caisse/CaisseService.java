@@ -63,6 +63,7 @@ public class CaisseService {
     private final SortieAttenteRepository sortiesAttente;
     private final tg.parcauto.api.pointdevente.depense.DepensePdvRepository depensesPdv;
     private final CircuitDepensesCaisse circuit;
+    private final tg.parcauto.api.pointdevente.materiaux.DepotClientRepository depotsClients;
 
     /** Quantite comptee d'une valeur de billet ou de piece. */
     public record LigneBillettage(@NotNull BigDecimal valeur, @NotNull @PositiveOrZero Integer quantite) {
@@ -413,13 +414,15 @@ public class CaisseService {
 
     /**
      * Encaissements de la session par moyen de paiement : ce qui est entre a la
-     * vente (total, ou acompte d'une vente a credit) et les reglements de
+     * vente (total, ou acompte d'une vente a credit), les reglements et depots de
      * clients recus ensuite, moins ce qui a ete rembourse a des clients.
      */
     private Map<ModePaiementPdv, TotalMode> totaux(Long sessionId) {
         Map<ModePaiementPdv, TotalMode> totaux = new EnumMap<>(ModePaiementPdv.class);
         List<Object[]> lignes = new ArrayList<>(venteRepository.totauxSession(sessionId));
         lignes.addAll(reglementRepository.totauxSession(sessionId));
+        // Depots d'argent des clients (quincaillerie), encaisses comme un reglement.
+        lignes.addAll(depotsClients.totauxSession(sessionId));
         for (Object[] r : soldeRepository.remboursementsSession(sessionId)) {
             lignes.add(new Object[]{r[0], ((BigDecimal) r[1]).negate(), 0L});
         }
@@ -431,6 +434,8 @@ public class CaisseService {
             totaux.put(mode, avant == null ? new TotalMode(mode, mode.getLibelle(), total, nombre)
                     : new TotalMode(mode, mode.getLibelle(), avant.total().add(total), avant.nombre() + nombre));
         }
+        // « Compte client » : l'argent est entre une fois, au depot ; payer avec n'encaisse rien.
+        totaux.remove(ModePaiementPdv.COMPTE_CLIENT);
         return totaux;
     }
 
@@ -452,6 +457,7 @@ public class CaisseService {
         BigDecimal chiffre = chiffres.isEmpty() || chiffres.get(0)[0] == null ? BigDecimal.ZERO : (BigDecimal) chiffres.get(0)[0];
         BigDecimal credit = chiffres.isEmpty() || chiffres.get(0)[1] == null ? BigDecimal.ZERO : (BigDecimal) chiffres.get(0)[1];
         BigDecimal reglements = reglementRepository.totauxSession(s.getId()).stream()
+                .filter(l -> l[0] != ModePaiementPdv.COMPTE_CLIENT)
                 .map(l -> (BigDecimal) l[1]).reduce(BigDecimal.ZERO, BigDecimal::add);
         long nombre = venteRepository.totauxSession(s.getId()).stream().mapToLong(l -> (Long) l[2]).sum();
         BigDecimal entrees = somme(mouvements, MouvementCaisse.Type.ENTREE);

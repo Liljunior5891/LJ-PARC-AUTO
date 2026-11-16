@@ -85,6 +85,9 @@ public class RapportPdvService {
     private final tg.parcauto.api.pointdevente.tresorerie.RemiseCaisseRepository remiseCaisseRepository;
     private final tg.parcauto.api.pointdevente.reserve.FondsReserveService fondsReserve;
     private final tg.parcauto.api.pointdevente.associe.DepotAssocieRepository depotAssocieRepository;
+    private final tg.parcauto.api.pointdevente.materiaux.DepotClientRepository depotClientRepository;
+    private final tg.parcauto.api.pointdevente.fournisseur.AvanceFournisseurRepository avanceFournisseurRepository;
+
     private final tg.parcauto.api.pointdevente.vente.MargeVentes marges;
 
     public record Catalogue(String type, String libelle, String famille, boolean periode, boolean parArticle,
@@ -554,16 +557,17 @@ public class RapportPdvService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             String statut = switch (c.getStatut()) {
                 case EN_COURS -> "A receptionner";
-                case RECUE -> "Receptionnee";
+                case PARTIELLE -> "Partiellement recue";
+                case RECUE -> c.getSoldeeLe() != null ? "Soldee (incomplete)" : "Receptionnee";
                 case ANNULEE -> "Annulee";
             };
             r.ligne(c.getNumero(), c.getDateCommande(), c.getFournisseur(), c.getLignes().size(), c.total(), statut,
-                    c.getLivraisonPrevue(), c.getRecueLe(), c.getStatut() == CommandeFournisseur.Statut.RECUE ? valeurRecue : null);
+                    c.getLivraisonPrevue(), c.getRecueLe(), c.getStatut().recue() ? valeurRecue : null);
             if (c.getStatut() != CommandeFournisseur.Statut.ANNULEE) {
                 commande = commande.add(c.total());
             }
             recu = recu.add(valeurRecue);
-            if (c.getStatut() == CommandeFournisseur.Statut.EN_COURS) {
+            if (c.getStatut() == CommandeFournisseur.Statut.EN_COURS || c.getStatut() == CommandeFournisseur.Statut.PARTIELLE) {
                 enCours++;
             }
         }
@@ -776,6 +780,12 @@ public class RapportPdvService {
                         (String) g[3], (BigDecimal) g[5], null));
             }
         }
+        for (Object[] g : depotClientRepository.journalDepots(debut, fin)) {
+            if (g[4] == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.ESPECES) {
+                ecritures.add(new Ecriture((Instant) g[0], (String) g[2], (String) g[1], "Depot d'argent : " + g[6],
+                        (String) g[3], (BigDecimal) g[5], null));
+            }
+        }
         for (Object[] s : soldeResteRepository.journal(debut, fin)) {
             if (s[4] == tg.parcauto.api.pointdevente.vente.ModePaiementPdv.ESPECES) {
                 ecritures.add(new Ecriture((Instant) s[0], (String) s[2], (String) s[1], "Remboursement au client",
@@ -842,13 +852,26 @@ public class RapportPdvService {
         for (Object[] g : reglementClientRepository.journal(origine, fin)) {
             electronique(parJour, (Instant) g[0], g[4], (BigDecimal) g[5], "Reglements clients", fuseau);
         }
+        for (Object[] g : depotClientRepository.journalDepots(origine, fin)) {
+            electronique(parJour, (Instant) g[0], g[4], (BigDecimal) g[5], "Depots de clients", fuseau);
+        }
+        java.time.LocalDate dernierJour = fin.minusSeconds(1).atZone(fuseau).toLocalDate();
+        for (var a : avanceFournisseurRepository.validesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.BANQUE, dernierJour)) {
+            boolean avance = a.getType() == tg.parcauto.api.pointdevente.fournisseur.AvanceFournisseur.Type.AVANCE;
+            ecritures.add(new Ecriture(a.getDateOperation().atTime(12, 0).atZone(fuseau).toInstant(), null, a.getNumero(),
+                    (avance ? "Avance au fournisseur " : "Avance rendue par ") + a.getFournisseur().getNom(), a.getAuteurNom(),
+                    avance ? null : a.getMontant(), avance ? a.getMontant() : null));
+        }
+        for (var d : depotClientRepository.remboursementsBanque(fin)) {
+            ecritures.add(new Ecriture(d.getTraiteLe(), null, d.getNumero(), "Remboursement du depot de "
+                    + d.getClient().getNom(), d.getTraitePar(), null, d.getMontant()));
+        }
         for (var e : parJour.entrySet()) {
             String[] cle = e.getKey().split("\\|");
             java.time.LocalDate jour = java.time.LocalDate.parse(cle[0]);
             ecritures.add(new Ecriture(jour.atTime(23, 59).atZone(fuseau).toInstant(), null, null,
                     cle[1] + " du " + JOUR.format(jour), null, e.getValue(), null));
         }
-        java.time.LocalDate dernierJour = fin.minusSeconds(1).atZone(fuseau).toLocalDate();
         for (var dp : depenseRepository.payeesPar(tg.parcauto.api.pointdevente.depense.ModeSortie.BANQUE, dernierJour)) {
             ecritures.add(new Ecriture(dp.getDateDepense().atTime(12, 0).atZone(fuseau).toInstant(), null, dp.getNumero(),
                     "Depense " + dp.getCategorie().getNom() + " : " + dp.getLibelle(), dp.getAuteurNom(), null, dp.getMontant()));

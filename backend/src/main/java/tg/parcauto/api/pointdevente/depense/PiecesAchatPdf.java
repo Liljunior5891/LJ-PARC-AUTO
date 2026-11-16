@@ -139,7 +139,8 @@ public class PiecesAchatPdf {
         }
         references.add(new String[]{"Statut :", switch (c.getStatut()) {
             case EN_COURS -> "A livrer";
-            case RECUE -> "Receptionnee";
+            case PARTIELLE -> "Partiellement recue";
+            case RECUE -> c.getSoldeeLe() != null ? "Soldee (livraison incomplete)" : "Receptionnee";
             case ANNULEE -> "Annulee";
         }});
         enTete(document, annulee ? "BON DE COMMANDE - ANNULÉ" : "BON DE COMMANDE", "FOURNISSEUR :", c.getFournisseur(),
@@ -201,7 +202,7 @@ public class PiecesAchatPdf {
      */
     public byte[] bonLivraison(Long id) {
         CommandeFournisseur c = commandes.detail(id).orElseThrow(() -> ResourceNotFoundException.of("Commande fournisseur", id));
-        boolean recue = c.getStatut() == CommandeFournisseur.Statut.RECUE;
+        boolean recue = c.getStatut().recue();
         boolean annulee = c.getStatut() == CommandeFournisseur.Statut.ANNULEE;
         ByteArrayOutputStream sortie = new ByteArrayOutputStream();
         Document document = ouvrir(sortie);

@@ -73,6 +73,53 @@ export interface ClientPdv extends DetailsClientPdv {
   /** Plafond applique (le sien ou celui des reglages) ; absent : sans limite. */
   plafondRetenu?: number | null;
   creditDisponible?: number | null;
+  /** Argent depose par le client et pas encore utilise. */
+  soldeDepot?: number | null;
+}
+
+// ------------------------------------------------------- depot d'argent
+
+export type TypeDepotClient = 'DEPOT' | 'REMBOURSEMENT';
+export type StatutDepotClient = 'EN_ATTENTE' | 'VALIDE' | 'REFUSE' | 'ANNULE';
+export type SourceDepotClient = 'CAISSE' | 'BANQUE';
+
+/** Depot d'argent d'un client, ou remboursement de son solde. */
+export interface OperationDepot {
+  id: number;
+  numero: string;
+  type: TypeDepotClient;
+  clientId: number;
+  clientNom: string;
+  clientTelephone?: string | null;
+  montant: number;
+  modePaiement?: string | null;
+  modePaiementLibelle: string;
+  source: SourceDepotClient;
+  sessionNumero?: string | null;
+  montantRecu?: number | null;
+  monnaieRendue: number;
+  referencePaiement?: string | null;
+  motif?: string | null;
+  statut: StatutDepotClient;
+  auteurNom: string;
+  date: string;
+  traitePar?: string | null;
+  traiteLe?: string | null;
+  motifRefus?: string | null;
+  /** Solde du client apres l'operation. */
+  soldeApres?: number | null;
+}
+
+export interface CompteDepot {
+  clientId: number;
+  clientNom: string;
+  solde: number;
+  deposes: number;
+  utilises: number;
+  rembourses: number;
+  enAttente: number;
+  operations: OperationDepot[];
+  achats: { venteId: number; numero: string; date: string; total: number; payeParDepot: number }[];
 }
 
 export interface ClientPdvRequete extends DetailsClientPdv {
@@ -151,6 +198,8 @@ export interface VenteALivrer {
   lignes: LigneALivrer[];
   statut: 'VALIDEE' | 'ANNULEE';
   modePaiement: ModePaiementPdv;
+  /** Part payee avec le depot du client : elle revient sur son compte au solde du reste. */
+  payeParDepot?: number | null;
 }
 
 export interface SoldeRequete {
@@ -172,6 +221,8 @@ export interface SoldeReste {
   montant: number;
   montantDeduit: number;
   montantRembourse: number;
+  /** Part rendue sur le compte du client (elle avait ete payee avec son depot). */
+  montantRenduDepot?: number | null;
   modeRemboursementLibelle?: string | null;
   sessionNumero?: string | null;
   /** Le solde reste annulable tant que la session de son remboursement est ouverte. */
@@ -279,6 +330,8 @@ export interface EncaissementDevis {
   sessionId?: number | null;
   credit?: boolean;
   acompte?: number | null;
+  /** Part payee avec l'argent depose par le client. */
+  depot?: number | null;
   /** Ce que le client emporte maintenant ; absent : tout. */
   emportes?: { articleId: number; conditionnementId?: number | null; quantite: number; lieuId?: number | null }[] | null;
 }

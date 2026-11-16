@@ -70,7 +70,11 @@ public class SoldeReste extends BaseEntity {
     @Column(name = "montant_deduit", nullable = false, precision = 16, scale = 2)
     private BigDecimal montantDeduit;
 
-    /** Part rendue au client. */
+    /** Part rendue sur le compte du client : elle avait ete payee avec son depot. */
+    @Column(name = "montant_rendu_depot", nullable = false, precision = 16, scale = 2)
+    private BigDecimal montantRenduDepot = BigDecimal.ZERO;
+
+    /** Part rendue au client par la caisse (ou un autre moyen). */
     @Column(name = "montant_rembourse", nullable = false, precision = 16, scale = 2)
     private BigDecimal montantRembourse;
 

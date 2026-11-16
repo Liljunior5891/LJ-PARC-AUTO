@@ -1,7 +1,7 @@
 import { Societe } from '../core/models/parametrage';
 import { Ticket } from '../core/models/pdv';
 import { CommandeDetail } from '../core/models/restauration';
-import { RecuReglement } from '../core/models/materiaux';
+import { OperationDepot, RecuReglement } from '../core/models/materiaux';
 
 /** Echappe le texte libre avant de l'inserer dans le document du ticket. */
 function echapper(valeur: string | number | null | undefined): string {
@@ -43,7 +43,9 @@ export function imprimerTicket(ticket: Ticket, societe: Societe | null): void {
 
   const coordonnees = [societe?.adresse, societe?.ville, societe?.telephone].filter(Boolean).map(echapper).join(' · ');
   // Vente a credit (quincaillerie) : l'acompte paye et le reste du, a signer par le client.
-  const aCredit = ticket.statut === 'VALIDEE' && (ticket.montantPaye ?? ticket.total) < ticket.total;
+  const aCredit = ticket.statut === 'VALIDEE' && (ticket.resteDu ?? 0) > 0;
+  // Part payee avec l'argent que le client avait depose.
+  const parDepot = ticket.payeParDepot ?? 0;
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${echapper(ticket.numero)}</title>
 <style>
   @page { size: 80mm auto; margin: 0; }
@@ -81,7 +83,9 @@ export function imprimerTicket(ticket: Ticket, societe: Societe | null): void {
     ${ticket.remise > 0 ? `<tr><td>Sous-total</td><td class="montant">${fcfa(ticket.totalBrut)}</td></tr>
     <tr><td>Remise</td><td class="montant">-${fcfa(ticket.remise)}</td></tr>` : ''}
     <tr class="total"><td>TOTAL</td><td class="montant">${fcfa(ticket.total)}</td></tr>
+    ${parDepot > 0 ? `<tr><td>Compte client</td><td class="montant">${fcfa(parDepot)}</td></tr>` : ''}
     ${aCredit ? `<tr><td>Acompte (${echapper(ticket.modePaiementLibelle)})</td><td class="montant">${fcfa(ticket.montantPaye)}</td></tr>`
+      : ticket.modePaiement === 'COMPTE_CLIENT' ? ''
       : `<tr><td>${echapper(ticket.modePaiementLibelle)}</td><td class="montant">${fcfa(ticket.montantRecu)}</td></tr>`}
     ${ticket.monnaieRendue ? `<tr><td>Monnaie rendue</td><td class="montant">${fcfa(ticket.monnaieRendue)}</td></tr>` : ''}
     ${ticket.referencePaiement ? `<tr><td colspan="2" class="petit">Ref. ${echapper(ticket.referencePaiement)}</td></tr>` : ''}
@@ -209,6 +213,77 @@ export function imprimerRecuReglement(recu: RecuReglement, societe: Societe | nu
   </table>
   <hr>
   <div class="centre">Merci !</div>
+</body></html>`;
+  imprimerDocument(html);
+}
+
+/**
+ * Recu de depot d'argent (ou de remboursement du depot) au format A4, en deux
+ * exemplaires identiques sur la page (client, entreprise), avec signatures.
+ */
+export function imprimerRecuDepot(op: OperationDepot, societe: Societe | null): void {
+  const date = new Date(op.date).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' });
+  const depot = op.type === 'DEPOT';
+  const titre = depot ? 'RECU DE DEPOT D\'ARGENT' : 'RECU DE REMBOURSEMENT DE DEPOT';
+  const annule = op.statut === 'ANNULE' || op.statut === 'REFUSE';
+  const coordonnees = [societe?.adresse, societe?.ville, societe?.telephone].filter(Boolean).map((v) => echapper(v)).join(' · ');
+  const exemplaire = (pour: string) => `
+  <section class="exemplaire">
+    <header>
+      <div>
+        ${societe?.logo ? `<img class="logo" src="${societe.logo}" alt="">` : ''}
+        <strong class="societe">${echapper(societe?.nom ?? '')}</strong>
+        <div class="petit">${coordonnees}</div>
+        ${societe?.nif ? `<div class="petit">NIF : ${echapper(societe.nif)}${societe.rccm ? ' · RCCM : ' + echapper(societe.rccm) : ''}</div>` : ''}
+      </div>
+      <div class="droite">
+        <h1>${titre}</h1>
+        <div>N° <b>${echapper(op.numero)}</b></div>
+        <div>${echapper(date)}</div>
+        <div class="petit">Exemplaire ${pour}</div>
+      </div>
+    </header>
+    ${annule ? `<div class="annule">${op.statut === 'REFUSE' ? 'REMBOURSEMENT REFUSE' : 'OPERATION ANNULEE'}</div>` : ''}
+    <table class="infos">
+      <tr><th>Client</th><td><b>${echapper(op.clientNom)}</b>${op.clientTelephone ? ' · ' + echapper(op.clientTelephone) : ''}</td></tr>
+      <tr><th>${depot ? 'Montant depose' : 'Montant rembourse'}</th><td class="montant">${fcfa(op.montant)}</td></tr>
+      <tr><th>Moyen</th><td>${echapper(op.modePaiementLibelle)}${op.referencePaiement ? ' · Ref. ' + echapper(op.referencePaiement) : ''}${op.sessionNumero ? ' · Caisse ' + echapper(op.sessionNumero) : ''}</td></tr>
+      ${op.motif ? `<tr><th>Objet</th><td>${echapper(op.motif)}</td></tr>` : ''}
+      ${op.soldeApres !== null && op.soldeApres !== undefined ? `<tr><th>Solde disponible</th><td><b>${fcfa(op.soldeApres)}</b></td></tr>` : ''}
+    </table>
+    <p class="mention">${depot
+      ? `L'entreprise reconnait avoir recu du client la somme ci-dessus, sans achat. Elle reste a sa disposition et sera deduite de ses prochains achats ; le solde non utilise peut lui etre rembourse sur demande.`
+      : `Le client reconnait avoir recu la somme ci-dessus, prelevee sur l'argent qu'il avait depose.`}</p>
+    <div class="signatures">
+      <div>Le client<br><span>(signature)</span></div>
+      <div>Pour l'entreprise : ${echapper(op.auteurNom)}<br><span>(signature et cachet)</span></div>
+    </div>
+  </section>`;
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${echapper(op.numero)}</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 11pt/1.4 Arial, sans-serif; color: #000; }
+  .exemplaire { height: 132mm; padding: 4mm 0; display: flex; flex-direction: column; }
+  .exemplaire + .exemplaire { border-top: 1px dashed #777; padding-top: 8mm; }
+  header { display: flex; justify-content: space-between; gap: 8mm; }
+  .logo { max-height: 16mm; max-width: 40mm; display: block; margin-bottom: 2mm; }
+  .societe { font-size: 13pt; }
+  .droite { text-align: right; }
+  h1 { margin: 0 0 1mm; font-size: 13pt; letter-spacing: .5px; }
+  .petit { font-size: 9pt; color: #333; }
+  .infos { width: 100%; border-collapse: collapse; margin: 5mm 0 3mm; }
+  .infos th, .infos td { border: 1px solid #999; padding: 2mm 3mm; text-align: left; vertical-align: top; }
+  .infos th { width: 38%; background: #f2f2f2; font-weight: 600; }
+  .montant { font-size: 14pt; font-weight: bold; }
+  .mention { font-size: 9.5pt; margin: 2mm 0; }
+  .signatures { margin-top: auto; display: flex; justify-content: space-between; gap: 10mm; }
+  .signatures div { flex: 1; border-top: 1px solid #000; padding-top: 1.5mm; font-size: 10pt; }
+  .signatures span { color: #666; font-size: 8.5pt; }
+  .annule { margin: 3mm 0 0; padding: 1.5mm; border: 2px solid #000; text-align: center; font-weight: bold; }
+</style></head><body>
+${exemplaire('client')}
+${exemplaire('entreprise')}
 </body></html>`;
   imprimerDocument(html);
 }

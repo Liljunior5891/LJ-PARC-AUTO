@@ -1,7 +1,7 @@
 /** Fournisseurs et depenses du point de vente (toutes les variantes). */
 
 /** ESPECES et MOBILE_MONEY ne sont plus proposes : ils restent lisibles sur les pieces anciennes. */
-export type ModeSortie = 'CAISSE' | 'COFFRE' | 'BANQUE' | 'RESERVE' | 'ESPECES' | 'MOBILE_MONEY';
+export type ModeSortie = 'CAISSE' | 'COFFRE' | 'BANQUE' | 'RESERVE' | 'ESPECES' | 'MOBILE_MONEY' | 'AVANCE';
 
 /** Moyens proposes a la saisie : la caisse, le coffre du gerant ou la banque (compte de l'entreprise). */
 export const MODES_SORTIE: { valeur: ModeSortie; libelle: string; icone: string; aide: string }[] = [
@@ -37,6 +37,36 @@ export interface Fournisseur extends FournisseurRequete {
   du: number;
   enRetard: number;
   prochaineEcheance?: string;
+  /** Avance versee au fournisseur et pas encore utilisee. */
+  avance?: number;
+}
+
+/** Avance versee a un fournisseur, ou rendue par lui. */
+export interface AvanceFournisseur {
+  id: number;
+  numero: string;
+  type: 'AVANCE' | 'REMBOURSEMENT';
+  date: string;
+  montant: number;
+  mode: ModeSortie;
+  modeLibelle: string;
+  commandeNumero?: string | null;
+  reference?: string | null;
+  sessionNumero?: string | null;
+  note?: string | null;
+  auteurNom: string;
+  statut: 'VALIDE' | 'ANNULE';
+  motifAnnulation?: string | null;
+}
+
+export interface AvanceFournisseurRequete {
+  montant: number;
+  mode: ModeSortie;
+  sessionId?: number | null;
+  commandeId?: number | null;
+  date?: string | null;
+  reference?: string | null;
+  note?: string | null;
 }
 
 export interface DetteFournisseur {
@@ -76,11 +106,12 @@ export interface CompteFournisseur {
     id: number;
     numero: string;
     dateCommande: string;
-    statut: 'EN_COURS' | 'RECUE' | 'ANNULEE';
+    statut: 'EN_COURS' | 'PARTIELLE' | 'RECUE' | 'ANNULEE';
     total: number;
     montantRecu?: number;
     recueLe?: string;
   }[];
+  avances: AvanceFournisseur[];
 }
 
 export interface ReglementFournisseurRequete {

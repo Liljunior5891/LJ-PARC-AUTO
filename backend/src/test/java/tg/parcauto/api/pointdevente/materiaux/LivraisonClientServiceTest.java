@@ -58,7 +58,8 @@ class LivraisonClientServiceTest {
     @BeforeEach
     void preparer() {
         stock = new StockService(articles, mouvements, lieux);
-        service = new LivraisonClientService(bons, ventes, stock, numerotation, reglages, soldes, sessionsTravail, lieux, retraits, perimetre, caisses);
+        service = new LivraisonClientService(bons, ventes, stock, numerotation, reglages, soldes, sessionsTravail, lieux, retraits, perimetre, caisses,
+                org.mockito.Mockito.mock(DepotClientService.class));
         org.mockito.Mockito.lenient().when(caisses.especesDuTiroir(any())).thenReturn(BigDecimal.valueOf(10_000_000));
         when(numerotation.prochainNumero("BL")).thenReturn("BL-1");
         when(auteur.getNomComplet()).thenReturn("Magasinier");
@@ -220,6 +221,18 @@ class LivraisonClientServiceTest {
         assertThat(s.montantRembourse()).isEqualByComparingTo("0");
         assertThat(vente.getResteDu()).isEqualByComparingTo("10000");
         assertThat(s.sessionNumero()).isNull();
+    }
+
+    @Test
+    void laPartPayeeParLeDepotRevientSurLeCompteDuClient() {
+        // 100 000 F : 50 000 F payes avec le depot, 50 000 F en especes. Renoncer a 60 000 F.
+        vente.setMontantPaye(new BigDecimal("50000"));
+        vente.setPayeParDepot(new BigDecimal("50000"));
+        MateriauxDto.SoldeReponse s = service.solder(1L, solde("60"), auteur);
+
+        assertThat(s.montantRenduDepot()).isEqualByComparingTo("50000");
+        assertThat(s.montantRembourse()).isEqualByComparingTo("10000");
+        assertThat(vente.getPayeParDepot()).isEqualByComparingTo("0");
     }
 
     @Test

@@ -89,6 +89,33 @@
   </div>
 </div>
 
+@if (remboursements().length) {
+  <div class="carte">
+    <h3 class="titre-section">Remboursements de depot demandes pour des clients</h3>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead><tr><th>Demande</th><th>Client</th><th>Par</th><th class="numerique">Montant</th><th></th></tr></thead>
+        <tbody>
+          @for (r of remboursements(); track r.id) {
+            <tr>
+              <td><strong>{{ r.numero }}</strong><br /><small>{{ r.auteurNom }} · {{ r.date | date: 'dd/MM HH:mm' }}</small></td>
+              <td>{{ r.clientNom }}@if (r.motif) { <br /><small>{{ r.motif }}</small> }</td>
+              <td>{{ r.source === 'CAISSE' ? 'Especes de la caisse' : 'Banque' }}@if (r.sessionNumero) { <br /><small>{{ r.sessionNumero }}</small> }</td>
+              <td class="numerique"><strong>{{ r.montant | number: '1.0-0' }}</strong></td>
+              <td class="actions">
+                <button class="bouton petit succes" type="button" [disabled]="!!envoi()" (click)="validerRemboursement(r)">
+                  {{ envoi() === 'remboursement-' + r.id ? '...' : 'Valider' }}</button>
+                <button class="bouton petit danger" type="button" [disabled]="!!envoi()"
+                        (click)="ouvrirRefus('remboursement', r.id, r.numero, 'Remboursement du depot de ' + r.clientNom, r.montant)">Refuser</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
 @if (traitees().length) {
   <div class="carte">
     <h3 class="titre-section">Dernieres sorties traitees</h3>
