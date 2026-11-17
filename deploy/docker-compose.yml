@@ -1,0 +1,69 @@
+# Nova en production : base PostgreSQL et API, donnees sur le volume /mnt/HC_Volume_107456986.
+# Le front (fichiers statiques) est servi par Apache, qui renvoie /api vers 127.0.0.1:8087.
+name: nova
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nova-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nova
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      NOVA_OWNER_PASSWORD: ${NOVA_OWNER_PASSWORD:?}
+      NOVA_APP_PASSWORD: ${NOVA_APP_PASSWORD:?}
+      TZ: UTC
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    # Aucun port publie : seule l'API (reseau nova) joint la base.
+    networks: [nova]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nova"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: eclipse-temurin:21-jre
+    container_name: nova-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /app
+    command: ["java", "-Xms256m", "-Xmx640m", "-XX:+ExitOnOutOfMemoryError", "-Duser.timezone=UTC",
+              "-jar", "/app/parcauto-api.jar"]
+    # Secrets propres a l API (cle JWT, double authentification, super-administrateur).
+    env_file: api.env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: nova
+      DB_USER: nova_app
+      DB_PASSWORD: ${NOVA_APP_PASSWORD:?}
+      # Migrations Flyway par le proprietaire des tables ; l'API tourne avec un role restreint.
+      SPRING_FLYWAY_USER: nova_owner
+      SPRING_FLYWAY_PASSWORD: ${NOVA_OWNER_PASSWORD:?}
+      SERVER_PORT: "8080"
+      DOCUMENTS_DIR: /app/documents
+      CORS_ORIGINS: https://nova.ljtechnologie.com
+      URL_APPLICATION: https://nova.ljtechnologie.com
+      # Apache joint l'API par la passerelle du reseau nova.
+      PROXIES_DE_CONFIANCE: 172\.30\.0\.1
+    volumes:
+      - ./app/parcauto-api.jar:/app/parcauto-api.jar:ro
+      - ./data/documents:/app/documents
+    ports:
+      - "127.0.0.1:8087:8080"
+    networks: [nova]
+    mem_limit: 900m
+
+networks:
+  nova:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
