@@ -33,6 +33,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UtilisateurDetailsService utilisateurDetailsService;
     private final SessionService sessions;
     private final VerrouEcranService verrouEcran;
+    private final tg.parcauto.api.plateforme.entreprise.EntrepriseRepository entreprises;
+
+    /** En consultation, seules la lecture et la sortie de l'assistance sont permises. */
+    private static final java.util.Set<String> ECRITURES_PERMISES_EN_CONSULTATION = java.util.Set.of(
+            "/api/auth/assistance/fin", "/api/auth/logout");
 
     /** Attribut de requete : cle de la session de caisse, pour le deverrouillage par code PIN. */
     public static final String ATTRIBUT_SESSION = "parcauto.session";
@@ -53,7 +58,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // apres un changement de mot de passe ou d'adresse, les anciens ne rouvrent rien.
                 Object uid = claims.get("uid");
                 boolean memeCompte = uid instanceof Number n && n.longValue() == compte.getId();
-                if (details.isEnabled() && memeCompte && !compte.jetonPerime(claims.get("ver"))) {
+                if (details.isEnabled() && memeCompte && !compte.jetonPerime(claims.get("ver"))
+                        && claims.get("assist") != null) {
+                    // Session d'assistance : le super-administrateur dans l'espace d'une entreprise.
+                    if (!assistance(request, response, claims, compte)) {
+                        return;
+                    }
+                } else if (details.isEnabled() && memeCompte && !compte.jetonPerime(claims.get("ver"))) {
                     if (compte.isMotDePasseAChanger() && !permisAvantChangement(request)) {
                         motDePasseAChanger(response);
                         return;
@@ -90,6 +101,51 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Les fils du serveur sont recycles : le contexte ne doit pas survivre a la requete.
             ContexteEntreprise.effacer();
         }
+    }
+
+    /**
+     * Ouvre le contexte d'une session d'assistance. Le compte doit etre encore
+     * super-administrateur (relu en base), l'entreprise doit exister, et en
+     * consultation toute ecriture est refusee.
+     *
+     * @return faux si la reponse est deja envoyee (requete refusee)
+     */
+    private boolean assistance(HttpServletRequest request, HttpServletResponse response,
+                               io.jsonwebtoken.Claims claims, UtilisateurPrincipal compte) throws IOException {
+        boolean superAdmin = compte.getAuthorities().stream()
+                .anyMatch(a -> Role.SUPER_ADMIN.authority().equals(a.getAuthority()));
+        Object eid = claims.get("eid");
+        String mode = String.valueOf(claims.get("assist"));
+        if (!superAdmin || !(eid instanceof Number n) || compte.isMotDePasseAChanger()
+                || sessions.deuxFacteursAActiver(compte)
+                || !("CONSULTATION".equals(mode) || "INTERVENTION".equals(mode))) {
+            refuser(response, "ASSISTANCE_REFUSEE", "Session d'assistance refusee : reconnectez-vous a la console");
+            return false;
+        }
+        var entreprise = entreprises.findById(n.longValue()).orElse(null);
+        if (entreprise == null) {
+            refuser(response, "ASSISTANCE_REFUSEE", "Entreprise introuvable");
+            return false;
+        }
+        String chemin = request.getRequestURI();
+        // Le compte du super-administrateur ne se modifie pas depuis l'espace d'une entreprise.
+        if (chemin.startsWith("/api/utilisateurs/moi/") || chemin.startsWith("/api/auth/deux-facteurs")
+                || (chemin.equals("/api/utilisateurs/moi") && !"GET".equals(request.getMethod()))) {
+            refuser(response, "ASSISTANCE_COMPTE", "Votre propre compte se gere depuis la console de la plateforme");
+            return false;
+        }
+        boolean lecture = java.util.Set.of("GET", "HEAD", "OPTIONS").contains(request.getMethod());
+        if ("CONSULTATION".equals(mode) && !lecture && !ECRITURES_PERMISES_EN_CONSULTATION.contains(chemin)) {
+            refuser(response, "ASSISTANCE_CONSULTATION",
+                    "Mode consultation : aucune modification n'est possible. Rouvrez l'espace en mode intervention.");
+            return false;
+        }
+        UtilisateurPrincipal p = UtilisateurPrincipal.pourAssistance(compte, entreprise.getId(), entreprise.getNom(), mode);
+        var auth = new UsernamePasswordAuthenticationToken(p, null, p.getAuthorities());
+        auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        ContexteEntreprise.definir(entreprise.getId());
+        return true;
     }
 
     /** Avec un mot de passe provisoire, seuls son compte et la deconnexion restent accessibles. */

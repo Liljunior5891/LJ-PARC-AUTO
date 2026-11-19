@@ -25,6 +25,14 @@ public class SessionService {
                 && p.getAuthorities().stream().anyMatch(a -> "ROLE_SUPER_ADMIN".equals(a.getAuthority()));
     }
 
+    /** Session d'assistance du super-administrateur dans une entreprise. */
+    public AuthController.LoginResponse ouvrirAssistance(UtilisateurPrincipal superAdmin, Long entrepriseId,
+                                                         String entrepriseNom, String mode) {
+        UtilisateurPrincipal p = UtilisateurPrincipal.pourAssistance(superAdmin, entrepriseId, entrepriseNom, mode);
+        return new AuthController.LoginResponse(jwtService.genererTokenAssistance(superAdmin, entrepriseId, mode),
+                JwtService.DUREE_ASSISTANCE.toSeconds(), profil(p));
+    }
+
     public AuthController.LoginResponse ouvrir(UtilisateurPrincipal principal) {
         return new AuthController.LoginResponse(
                 jwtService.genererToken(principal), jwtService.expirationSecondes(), profil(principal));
@@ -42,6 +50,6 @@ public class SessionService {
         return new AuthController.UtilisateurCourant(
                 p.getId(), p.getEmail(), p.getNomComplet(), p.getChauffeurId(), roles,
                 p.getEntrepriseId(), p.getEntrepriseNom(), modules, variantes, p.isMotDePasseAChanger(),
-                p.isDeuxFacteursActif(), deuxFacteursAActiver(p));
+                p.isDeuxFacteursActif(), !p.enAssistance() && deuxFacteursAActiver(p), p.getAssistance());
     }
 }

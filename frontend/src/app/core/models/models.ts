@@ -48,6 +48,8 @@ export interface UtilisateurCourant {
   deuxFacteursActif?: boolean;
   /** Super-administrateur sans double authentification : « Mon compte » s'ouvre pour l'activer. */
   deuxFacteursAActiver?: boolean;
+  /** Assistance du super-administrateur dans cette entreprise : CONSULTATION ou INTERVENTION. */
+  assistance?: 'CONSULTATION' | 'INTERVENTION' | null;
 }
 
 export interface LoginResponse {

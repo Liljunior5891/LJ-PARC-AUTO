@@ -193,3 +193,47 @@
   margin: 0.75rem 0;
   font-size: 0.88rem;
 }
+
+/* Fenetre d'acces a l'espace d'une entreprise (assistance). */
+.aide-assistance {
+  margin: 0 0 1rem;
+  color: var(--couleur-texte-doux);
+  line-height: 1.5;
+}
+
+.choix-assistance {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+
+  label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 10px;
+    cursor: pointer;
+
+    &.coche {
+      border-color: var(--couleur-primaire);
+      background: #eef4fb;
+    }
+
+    span {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    small {
+      color: var(--couleur-texte-doux);
+      line-height: 1.4;
+    }
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}

@@ -24,6 +24,11 @@ export class PlateformeService {
   }
 
   /** Premiere etape : un lien de confirmation part a l'adresse donnee. */
+  /** Ouvre l'espace d'une entreprise en assistance : la reponse est une session limitee a cette entreprise. */
+  ouvrirAssistance(entrepriseId: number, mode: 'CONSULTATION' | 'INTERVENTION', motif: string): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${this.api}/plateforme/entreprises/${entrepriseId}/assistance`, { mode, motif });
+  }
+
   /** Session presente quand le super-admin a desactive la confirmation par e-mail : le compte est deja cree. */
   inscrire(demande: DemandeInscription): Observable<{ message: string; session?: LoginResponse | null }> {
     return this.http.post<{ message: string; session?: LoginResponse | null }>(`${this.api}/public/inscription`, demande);

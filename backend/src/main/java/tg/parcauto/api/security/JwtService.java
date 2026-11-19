@@ -56,6 +56,33 @@ public class JwtService {
                 .compact();
     }
 
+    /** Duree d'une session d'assistance : au-dela, le super-administrateur la rouvre. */
+    public static final Duration DUREE_ASSISTANCE = Duration.ofHours(2);
+
+    /**
+     * Jeton d'assistance : le super-administrateur (compte {@code superAdmin}) dans l'espace
+     * d'une entreprise. Le filtre relit le compte et exige qu'il soit toujours super-administrateur.
+     */
+    public String genererTokenAssistance(UtilisateurPrincipal superAdmin, Long entrepriseId, String mode) {
+        Instant maintenant = Instant.now();
+        return Jwts.builder()
+                .issuer(EMETTEUR)
+                .audience().add(AUDIENCE).and()
+                .subject(superAdmin.getUsername())
+                .claims(Map.of(
+                        "uid", superAdmin.getId(),
+                        "nom", superAdmin.getNomComplet(),
+                        "roles", List.of("ADMIN"),
+                        "ver", superAdmin.getVersionJetons(),
+                        "sid", java.util.UUID.randomUUID().toString(),
+                        "eid", entrepriseId,
+                        "assist", mode))
+                .issuedAt(Date.from(maintenant))
+                .expiration(Date.from(maintenant.plus(DUREE_ASSISTANCE)))
+                .signWith(key, Jwts.SIG.HS512)
+                .compact();
+    }
+
     /**
      * Lit un jeton signe en HS512 uniquement (algorithme epingle), emis par
      * cette API et destine a elle.

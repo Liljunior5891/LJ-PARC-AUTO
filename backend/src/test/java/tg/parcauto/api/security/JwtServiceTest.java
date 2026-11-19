@@ -44,4 +44,28 @@ class JwtServiceTest {
         assertThatThrownBy(() -> service.lire(jeton("nova", "lj-saas-api"))).isInstanceOf(JwtException.class);
         assertThatThrownBy(() -> service.lire(jeton("nova", "nova-deux-facteurs"))).isInstanceOf(JwtException.class);
     }
+
+    @Test
+    void jetonAssistanceLimiteAUneEntrepriseEtADeuxHeures() {
+        Utilisateur u = new Utilisateur();
+        u.setId(1L);
+        u.setEmail("superadmin@nova.tg");
+        u.setNom("Admin");
+        u.setMotDePasse("x");
+        u.setRoles(java.util.EnumSet.of(Role.SUPER_ADMIN));
+        UtilisateurPrincipal superAdmin = new UtilisateurPrincipal(u, null, true);
+
+        var claims = service.lire(service.genererTokenAssistance(superAdmin, 42L, "CONSULTATION"));
+
+        assertThat(claims.getSubject()).isEqualTo("superadmin@nova.tg");
+        assertThat(((Number) claims.get("eid")).longValue()).isEqualTo(42L);
+        assertThat(claims.get("assist")).isEqualTo("CONSULTATION");
+        assertThat(claims.getExpiration().toInstant())
+                .isBefore(Instant.now().plus(JwtService.DUREE_ASSISTANCE).plusSeconds(5));
+
+        UtilisateurPrincipal p = UtilisateurPrincipal.pourAssistance(superAdmin, 42L, "Boutique", "CONSULTATION");
+        assertThat(p.getAuthorities()).extracting(Object::toString).containsExactly("ROLE_ADMIN");
+        assertThat(p.getNomComplet()).startsWith("Assistance Nova");
+        assertThat(p.enAssistance()).isTrue();
+    }
 }

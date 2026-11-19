@@ -21,6 +21,7 @@ import {
   PRESENTATION_MODULES,
   StatistiquesPlateforme
 } from '../../core/models/plateforme';
+import { AuthService } from '../../core/auth/auth.service';
 import { AbonnementService } from '../../core/services/abonnement.service';
 import { PlateformeService } from '../../core/services/plateforme.service';
 import { environment } from '../../../environments/environment';
@@ -77,6 +78,40 @@ const LIBELLES_MODULES: Record<CodeModule, string> = {
 export class Plateforme implements OnInit {
   private readonly service = inject(PlateformeService);
   private readonly abonnementService = inject(AbonnementService);
+  private readonly auth = inject(AuthService);
+
+  /** Assistance a distance : entreprise visee, mode et motif (ecrit au journal de l'entreprise). */
+  readonly aAssister = signal<EntrepriseResume | null>(null);
+  readonly modeAssistance = signal<'CONSULTATION' | 'INTERVENTION'>('CONSULTATION');
+  motifAssistance = '';
+  readonly erreurAssistance = signal<string | null>(null);
+  readonly ouvertureAssistance = signal(false);
+
+  ouvrirAssistance(e: EntrepriseResume): void {
+    this.modeAssistance.set('CONSULTATION');
+    this.motifAssistance = '';
+    this.erreurAssistance.set(null);
+    this.aAssister.set(e);
+  }
+
+  entrerAssistance(): void {
+    const e = this.aAssister();
+    const motif = this.motifAssistance.trim();
+    if (!e) return;
+    if (!motif) {
+      this.erreurAssistance.set("Indiquez le motif : il est ecrit dans le journal de l'entreprise.");
+      return;
+    }
+    this.ouvertureAssistance.set(true);
+    this.erreurAssistance.set(null);
+    this.service.ouvrirAssistance(e.id, this.modeAssistance(), motif).subscribe({
+      next: (session) => this.auth.entrerEnAssistance(session),
+      error: (r) => {
+        this.ouvertureAssistance.set(false);
+        this.erreurAssistance.set((r as { error?: { message?: string } })?.error?.message ?? 'Ouverture impossible.');
+      }
+    });
+  }
 
   readonly teintes = TEINTES_ETATS;
   readonly moyens = MOYENS_PAIEMENT;

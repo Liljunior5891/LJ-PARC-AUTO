@@ -157,6 +157,10 @@
         }
 
         <footer class="actions-carte">
+          <button class="bouton secondaire info" type="button" (click)="ouvrirAssistance(e)"
+                  title="Ouvrir l'espace de l'entreprise pour voir ses donnees ou l'aider (assistance a distance)">
+            <span class="ico" aria-hidden="true">🛟</span><span class="lib">Acceder</span>
+          </button>
           <button class="bouton secondaire" type="button" (click)="ouvrirFiche(e)" title="Abonnement, paiements et factures">
             <span class="ico" aria-hidden="true">💳</span><span class="lib">Abonnement</span>
           </button>
@@ -185,6 +189,38 @@
       <p class="message vide">Aucune entreprise ne correspond.</p>
     }
   </div>
+}
+
+@if (aAssister(); as e) {
+  <app-modale titre="Acceder a l'espace de l'entreprise" [sousTitre]="e.nom" largeur="600px"
+              [erreur]="erreurAssistance()" (ferme)="aAssister.set(null)">
+    <p class="aide-assistance">Vous travaillerez dans l'espace de <strong>{{ e.nom }}</strong> comme son administrateur,
+      pendant 2 heures au plus. L'ouverture, son motif et chacune de vos actions sont ecrits dans le journal de
+      l'entreprise, signes « Assistance Nova ».</p>
+    <div class="choix-assistance">
+      <label [class.coche]="modeAssistance() === 'CONSULTATION'">
+        <input type="radio" name="mode-assistance" [checked]="modeAssistance() === 'CONSULTATION'"
+               (change)="modeAssistance.set('CONSULTATION')" />
+        <span><strong>Consultation</strong><small>Voir les donnees, sans rien pouvoir modifier.</small></span>
+      </label>
+      <label [class.coche]="modeAssistance() === 'INTERVENTION'">
+        <input type="radio" name="mode-assistance" [checked]="modeAssistance() === 'INTERVENTION'"
+               (change)="modeAssistance.set('INTERVENTION')" />
+        <span><strong>Intervention</strong><small>Corriger une erreur : creer, modifier, annuler comme l'administrateur.</small></span>
+      </label>
+    </div>
+    <div class="champ">
+      <label for="motif-assistance">Motif <span class="requis">*</span></label>
+      <input id="motif-assistance" maxlength="300" [(ngModel)]="motifAssistance" (keyup.enter)="entrerAssistance()"
+             placeholder="Ex. vente en double signalee par le gerant le 19/11" />
+    </div>
+    <div class="actions-formulaire">
+      <button class="bouton secondaire annuler" type="button" (click)="aAssister.set(null)">Annuler</button>
+      <button class="bouton" type="button" [disabled]="ouvertureAssistance()" (click)="entrerAssistance()">
+        @if (ouvertureAssistance()) { Ouverture... } @else { Ouvrir l'espace }
+      </button>
+    </div>
+  </app-modale>
 }
 
 @if (aSuspendre(); as e) {

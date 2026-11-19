@@ -201,6 +201,18 @@
   }
 
   <main class="contenu" #contenu>
+    @if (assistance(); as mode) {
+      <!-- Super-administrateur dans l'espace d'une entreprise : toujours visible, sortie en un clic. -->
+      <div class="bandeau-assistance" [class.intervention]="mode === 'INTERVENTION'" role="status">
+        <span class="texte">
+          <strong>Assistance Nova · {{ mode === 'INTERVENTION' ? 'intervention' : 'consultation' }}</strong>
+          — vous etes dans l'espace de <strong>{{ utilisateur()?.entrepriseNom }}</strong>.
+          {{ mode === 'INTERVENTION' ? 'Vos modifications sont enregistrees et signees « Assistance Nova ».'
+                                     : 'Lecture seule : aucune modification possible.' }}
+        </span>
+        <button class="bouton petit" type="button" (click)="quitterAssistance()">Quitter et revenir a la console</button>
+      </div>
+    }
     <app-bandeau-maintenance />
     @if (!estSuperAdmin && utilisateur()?.entrepriseId) {
       <app-bandeau-abonnement />

@@ -778,6 +778,12 @@ export const routes: Routes = [
         title: 'WhatsApp — Nova'
       },
       {
+        path: 'plateforme/utilisateurs',
+        loadComponent: () => import('./pages/plateforme/utilisateurs-plateforme').then((m) => m.UtilisateursPlateforme),
+        canActivate: [roleGuard('SUPER_ADMIN')],
+        title: 'Utilisateurs — Nova'
+      },
+      {
         path: 'plateforme/parametrage',
         loadComponent: () => import('./pages/plateforme/parametres-plateforme').then((m) => m.ParametresPlateformeComponent),
         canActivate: [roleGuard('SUPER_ADMIN')],

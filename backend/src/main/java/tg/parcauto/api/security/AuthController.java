@@ -62,7 +62,9 @@ public class AuthController {
             /** Double authentification active sur ce compte. */
             boolean deuxFacteursActif,
             /** Super-administrateur sans double authentification : il doit l'activer avant tout. */
-            boolean deuxFacteursAActiver) {
+            boolean deuxFacteursAActiver,
+            /** Assistance du super-administrateur : CONSULTATION ou INTERVENTION ; nul sinon. */
+            String assistance) {
     }
 
     /**

@@ -23,6 +23,11 @@ public class UtilisateurPrincipal implements UserDetails {
     private final boolean motDePasseAChanger;
     private final boolean deuxFacteursActif;
     private final List<GrantedAuthority> authorities;
+    /**
+     * Mode d'assistance (CONSULTATION ou INTERVENTION) quand le super-administrateur
+     * travaille dans l'espace d'une entreprise ; nul pour une session ordinaire.
+     */
+    private final String assistance;
 
     /**
      * @param entrepriseNom nom de l'entreprise, nul pour l'administrateur de la plateforme
@@ -43,6 +48,37 @@ public class UtilisateurPrincipal implements UserDetails {
         this.authorities = u.getRoles().stream()
                 .map(r -> (GrantedAuthority) new SimpleGrantedAuthority(r.authority()))
                 .toList();
+        this.assistance = null;
+    }
+
+    private UtilisateurPrincipal(UtilisateurPrincipal base, Long entrepriseId, String entrepriseNom, String mode) {
+        this.id = base.id;
+        this.email = base.email;
+        this.motDePasse = base.motDePasse;
+        // Nom ecrit dans les journaux et sur les fiches (cree_par) : l'entreprise voit qui est intervenu.
+        this.nomComplet = "Assistance Nova (" + base.nomComplet + ")";
+        this.chauffeurId = null;
+        this.entrepriseId = entrepriseId;
+        this.entrepriseNom = entrepriseNom;
+        this.actif = base.actif;
+        this.versionJetons = base.versionJetons;
+        this.motDePasseAChanger = false;
+        this.deuxFacteursActif = base.deuxFacteursActif;
+        this.authorities = List.of(new SimpleGrantedAuthority(Role.ADMIN.authority()));
+        this.assistance = mode;
+    }
+
+    /**
+     * Le super-administrateur dans l'espace d'une entreprise : administrateur de
+     * cette seule entreprise, sans aucun droit de la plateforme.
+     */
+    public static UtilisateurPrincipal pourAssistance(UtilisateurPrincipal superAdmin, Long entrepriseId,
+                                                      String entrepriseNom, String mode) {
+        return new UtilisateurPrincipal(superAdmin, entrepriseId, entrepriseNom, mode);
+    }
+
+    public boolean enAssistance() {
+        return assistance != null;
     }
 
     @Override

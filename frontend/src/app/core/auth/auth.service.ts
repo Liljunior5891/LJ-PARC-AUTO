@@ -10,6 +10,8 @@ const CLE_TOKEN = 'parcauto.token';
 /** Profils de terrain : ils travaillent en poste, sur leur seul ecran. */
 const POSTES: Role[] = ['CAISSIER', 'SERVEUR', 'PREPARATEUR'];
 const CLE_UTILISATEUR = 'parcauto.utilisateur';
+/** Session de la console, mise de cote pendant l'assistance dans une entreprise. */
+const CLE_CONSOLE = 'nova.console';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -24,6 +26,62 @@ export class AuthService {
   readonly utilisateur = this.utilisateurSignal.asReadonly();
   readonly sessionExpiree = this.sessionExpireeSignal.asReadonly();
   readonly connecte = computed(() => this.utilisateurSignal() !== null);
+  /** Mode d'assistance en cours (super-administrateur dans une entreprise), nul sinon. */
+  readonly assistance = computed(() => this.utilisateurSignal()?.assistance ?? null);
+
+  /**
+   * Entre dans l'espace d'une entreprise : la session de la console est mise de cote
+   * pour y revenir en quittant l'assistance.
+   */
+  entrerEnAssistance(reponse: LoginResponse): void {
+    const token = localStorage.getItem(CLE_TOKEN);
+    const utilisateur = this.utilisateurSignal();
+    if (token && utilisateur && !utilisateur.assistance) {
+      localStorage.setItem(CLE_CONSOLE, JSON.stringify({ token, utilisateur }));
+    }
+    this.ouvrirSession(reponse);
+    // Rechargement complet : menus, logo et donnees en cache repartent de l'entreprise.
+    window.location.assign(this.pageAccueil());
+  }
+
+  /** Quitte l'assistance et reprend la session de la console (ou demande de se reconnecter). */
+  quitterAssistance(): void {
+    const reprendre = () => {
+      if (!this.reprendreConsole()) {
+        this.logout('expiration');
+        return;
+      }
+      window.location.assign('/plateforme/entreprises');
+    };
+    const jeton = localStorage.getItem(CLE_TOKEN);
+    if (!jeton) {
+      reprendre();
+      return;
+    }
+    // La fin est notee au journal de l'entreprise avant de recharger la page.
+    this.http.post<void>(`${environment.apiUrl}/auth/assistance/fin`, {}, { headers: { Authorization: `Bearer ${jeton}` } })
+      .subscribe({ next: reprendre, error: reprendre });
+  }
+
+  /** Remet la session de la console mise de cote ; faux si elle a expire ou n'existe pas. */
+  private reprendreConsole(): boolean {
+    const brut = localStorage.getItem(CLE_CONSOLE);
+    localStorage.removeItem(CLE_CONSOLE);
+    if (!brut) {
+      return false;
+    }
+    try {
+      const { token, utilisateur } = JSON.parse(brut) as { token: string; utilisateur: UtilisateurCourant };
+      if (!token || this.expire(token)) {
+        return false;
+      }
+      localStorage.setItem(CLE_TOKEN, token);
+      this.memoriser(utilisateur);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   /** Premiere etape ; si la reponse porte jetonDeuxFacteurs, la session s'ouvre avec le code (deuxFacteurs). */
   login(email: string, motDePasse: string): Observable<LoginResponse> {
@@ -233,6 +291,12 @@ export class AuthService {
    * expiree doit etre annoncee comme telle, et non ressembler a une panne serveur.
    */
   logout(motif?: 'expiration'): void {
+    // Assistance expiree : on revient a la console si sa session est encore valable.
+    if (motif === 'expiration' && this.utilisateurSignal()?.assistance && this.reprendreConsole()) {
+      window.location.assign('/plateforme/entreprises');
+      return;
+    }
+    localStorage.removeItem(CLE_CONSOLE);
     const jeton = localStorage.getItem(CLE_TOKEN);
     if (jeton && motif !== 'expiration') {
       // Invalide le jeton cote serveur : une copie faite avant la deconnexion ne rouvre plus rien.

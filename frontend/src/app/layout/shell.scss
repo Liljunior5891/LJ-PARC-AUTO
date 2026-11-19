@@ -734,3 +734,36 @@ button.entree {
     background: #eef3f9;
   }
 }
+
+/* Assistance du super-administrateur : bandeau fixe en haut du contenu. */
+.bandeau-assistance {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  background: #1f3b63;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.18);
+  font-size: 0.9rem;
+
+  &.intervention {
+    background: #8a3b12;
+  }
+
+  .texte {
+    line-height: 1.45;
+  }
+
+  .bouton {
+    flex: none;
+    background: #fff;
+    color: #1f3b63;
+  }
+}

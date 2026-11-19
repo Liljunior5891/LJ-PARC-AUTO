@@ -83,6 +83,12 @@ export class Shell {
 
   readonly nomPlateforme = environment.nomPlateforme;
   readonly estSuperAdmin = this.auth.estSuperAdmin();
+  /** Assistance du super-administrateur dans une entreprise (bandeau et sortie). */
+  readonly assistance = this.auth.assistance;
+
+  quitterAssistance(): void {
+    this.auth.quitterAssistance();
+  }
 
   /**
    * Poste de travail (caissier, serveur, cuisinier) : son seul ecran, sous une
@@ -380,7 +386,8 @@ export class Shell {
     {
       id: 'plateforme-entreprises', libelle: 'Entreprises',
       entrees: [
-        { libelle: 'Entreprises', route: '/plateforme/entreprises', description: 'Fiches, creation, abonnement, modules et suspension' }
+        { libelle: 'Entreprises', route: '/plateforme/entreprises', description: 'Fiches, creation, abonnement, modules et suspension' },
+        { libelle: 'Utilisateurs', route: '/plateforme/utilisateurs', description: 'Comptes de toutes les entreprises : mot de passe, fiche, acces' }
       ]
     },
     {
