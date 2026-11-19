@@ -1,4 +1,6 @@
 import { FondModules } from '../../shared/fond-modules';
+import { OPTIONS_PAYS, PAYS_PAR_DEFAUT } from '../../shared/pays';
+import { SelectRecherche } from '../../shared/select-recherche';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -23,7 +25,7 @@ function confirmationIdentique(groupe: AbstractControl): ValidationErrors | null
  */
 @Component({
   selector: 'app-inscription',
-  imports: [ReactiveFormsModule, RouterLink, FondModules],
+  imports: [ReactiveFormsModule, RouterLink, FondModules, SelectRecherche],
   templateUrl: './inscription.html',
   styleUrls: ['../login/login.scss', './inscription.scss']
 })
@@ -37,6 +39,7 @@ export class Inscription implements OnInit {
   readonly longueurMinimale = LONGUEUR_MOT_DE_PASSE;
   readonly presentation = PRESENTATION_MODULES;
   readonly icones = ICONES_VARIANTES;
+  readonly optionsPays = OPTIONS_PAYS;
 
   readonly catalogue = signal<ModuleCatalogue[]>([]);
   /** La gestion de parc est proposee cochee : c'est le module qui motive la plupart des inscriptions. */
@@ -53,7 +56,7 @@ export class Inscription implements OnInit {
   readonly formulaire = this.fb.nonNullable.group(
     {
       nomEntreprise: ['', [Validators.required, Validators.maxLength(150)]],
-      pays: [''],
+      pays: [PAYS_PAR_DEFAUT as string | null],
       telephone: [''],
       prenom: [''],
       nom: ['', [Validators.required]],
@@ -131,9 +134,15 @@ export class Inscription implements OnInit {
     const modules = [...this.choisis()];
     const variantes: Partial<Record<CodeModule, string>> = {};
     modules.filter((m) => this.variantes()[m]).forEach((m) => (variantes[m] = this.variantes()[m]));
-    this.service.inscrire({ ...saisie, modules, variantes }).subscribe({
+    this.service.inscrire({ ...saisie, pays: saisie.pays ?? undefined, modules, variantes }).subscribe({
       next: (reponse) => {
         this.enCours.set(false);
+        if (reponse.session) {
+          // Confirmation par e-mail desactivee : le compte existe deja, on entre directement.
+          this.auth.ouvrirSession(reponse.session);
+          void this.router.navigateByUrl(this.auth.pageAccueil(), { replaceUrl: true });
+          return;
+        }
         this.envoye.set(reponse.message);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },

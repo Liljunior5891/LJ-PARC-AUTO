@@ -24,8 +24,9 @@ export class PlateformeService {
   }
 
   /** Premiere etape : un lien de confirmation part a l'adresse donnee. */
-  inscrire(demande: DemandeInscription): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.api}/public/inscription`, demande);
+  /** Session presente quand le super-admin a desactive la confirmation par e-mail : le compte est deja cree. */
+  inscrire(demande: DemandeInscription): Observable<{ message: string; session?: LoginResponse | null }> {
+    return this.http.post<{ message: string; session?: LoginResponse | null }>(`${this.api}/public/inscription`, demande);
   }
 
   /** Seconde etape : le lien est ouvert, le compte est cree et la session ouverte. */

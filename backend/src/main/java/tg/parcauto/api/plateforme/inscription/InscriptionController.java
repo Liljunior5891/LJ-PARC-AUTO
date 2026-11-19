@@ -31,6 +31,7 @@ public class InscriptionController {
     private final ModuleService moduleService;
     private final UtilisateurDetailsService utilisateurDetailsService;
     private final SessionService sessionService;
+    private final tg.parcauto.api.plateforme.parametres.ParametresPlateformeService parametres;
 
     @GetMapping("/modules")
     @Operation(summary = "Catalogue des modules proposes par la plateforme")
@@ -38,7 +39,11 @@ public class InscriptionController {
         return moduleService.catalogue(null);
     }
 
-    public record Reponse(String message) {
+    /**
+     * @param message a afficher au visiteur
+     * @param session session ouverte quand le compte est cree sans confirmation par e-mail, sinon nulle
+     */
+    public record Reponse(String message, AuthController.LoginResponse session) {
     }
 
     public record Confirmation(String jeton) {
@@ -50,7 +55,8 @@ public class InscriptionController {
      */
     @PostMapping("/inscription")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @Operation(summary = "Demande la creation d'un compte entreprise : un lien de confirmation part par e-mail")
+    @Operation(summary = "Demande la creation d'un compte entreprise : un lien de confirmation part par e-mail,"
+            + " ou le compte est cree tout de suite si la confirmation est desactivee")
     public Reponse inscrire(@Valid @RequestBody InscriptionService.Demande demande,
                             jakarta.servlet.http.HttpServletRequest requete) {
         // Point public : quelques demandes par heure et par adresse IP, et par adresse e-mail.
@@ -58,9 +64,15 @@ public class InscriptionController {
                 "Trop d'inscriptions depuis cette connexion : reessayez dans une heure");
         limiteur.exiger("inscription-email:" + demande.email().trim().toLowerCase(java.util.Locale.ROOT), 3,
                 java.time.Duration.ofHours(1), "Trop de demandes pour cette adresse : reessayez dans une heure");
+        if (!parametres.confirmationEmailInscription()) {
+            // Confirmation desactivee par le super-administrateur : compte cree et session ouverte tout de suite.
+            String email = inscriptionService.inscrire(demande);
+            var principal = (UtilisateurPrincipal) utilisateurDetailsService.loadUserByUsername(email);
+            return new Reponse("Votre compte est cree.", sessionService.ouvrir(principal));
+        }
         inscriptionService.demander(demande);
         return new Reponse("Un e-mail de confirmation vient d'etre envoye a " + demande.email().trim()
-                + ". Ouvrez le lien qu'il contient pour creer votre compte.");
+                + ". Ouvrez le lien qu'il contient pour creer votre compte.", null);
     }
 
     /** Seconde etape : le lien est ouvert, le compte est cree et sa session ouverte. */

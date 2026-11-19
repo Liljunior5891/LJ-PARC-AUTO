@@ -777,6 +777,12 @@ export const routes: Routes = [
         canActivate: [roleGuard('SUPER_ADMIN')],
         title: 'WhatsApp — Nova'
       },
+      {
+        path: 'plateforme/parametrage',
+        loadComponent: () => import('./pages/plateforme/parametres-plateforme').then((m) => m.ParametresPlateformeComponent),
+        canActivate: [roleGuard('SUPER_ADMIN')],
+        title: 'Parametrage — Nova'
+      },
       { path: 'plateforme/maintenance', pathMatch: 'full', redirectTo: 'plateforme/maintenance/maintenances' },
       {
         path: 'plateforme/maintenance/:vue',

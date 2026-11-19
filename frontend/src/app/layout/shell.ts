@@ -406,6 +406,12 @@ export class Shell {
         { libelle: 'Maintenances', route: '/plateforme/maintenance/maintenances', description: 'Programmer, annoncer et terminer, module par module' },
         { libelle: 'Versions', route: '/plateforme/maintenance/versions', description: 'Notes de version et rechargement des navigateurs' }
       ]
+    },
+    {
+      id: 'plateforme-parametrage', libelle: 'Parametrage',
+      entrees: [
+        { libelle: 'Inscription', route: '/plateforme/parametrage', description: 'Confirmation par e-mail des nouveaux comptes' }
+      ]
     }
   ];
 
