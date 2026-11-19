@@ -207,7 +207,7 @@
         <div class="champ"><label for="ne-nom">Nom de l'entreprise *</label>
           <input id="ne-nom" name="nomEntreprise" [(ngModel)]="saisie.nomEntreprise" required maxlength="150" /></div>
         <div class="champ"><label for="ne-pays">Pays</label>
-          <input id="ne-pays" name="pays" [(ngModel)]="saisie.pays" maxlength="100" /></div>
+          <app-select-recherche id="ne-pays" name="pays" [(ngModel)]="saisie.pays" [options]="optionsPays" placeholder="Choisir le pays" /></div>
         <div class="champ"><label for="ne-tel">Telephone</label>
           <input id="ne-tel" name="telephone" [(ngModel)]="saisie.telephone" maxlength="40" /></div>
         <div class="champ"><label for="ne-essai">Jours d'essai</label>

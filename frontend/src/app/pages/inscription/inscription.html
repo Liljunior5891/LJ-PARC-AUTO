@@ -56,7 +56,7 @@
         <div class="deux-colonnes">
           <div class="champ">
             <label for="pays">Pays</label>
-            <input id="pays" formControlName="pays" autocomplete="country-name" placeholder="Togo" />
+            <app-select-recherche id="pays" formControlName="pays" [options]="optionsPays" placeholder="Choisir le pays" />
           </div>
           <div class="champ">
             <label for="telephone">Telephone</label>

@@ -74,7 +74,7 @@
       </div>
       <div class="champ">
         <label for="pays">Pays</label>
-        <input id="pays" type="text" formControlName="pays" />
+        <app-select-recherche id="pays" formControlName="pays" [options]="optionsPays()" placeholder="Choisir le pays" />
       </div>
       <div class="champ">
         <label for="telephone">Telephone</label>

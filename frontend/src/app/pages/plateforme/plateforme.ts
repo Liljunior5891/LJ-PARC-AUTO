@@ -27,12 +27,14 @@ import { environment } from '../../../environments/environment';
 import { imprimerFactureAbonnement } from '../../shared/facture-abonnement';
 import { ouvrirFichier } from '../../shared/ouvrir-fichier';
 import { Modale } from '../../shared/modale';
+import { OPTIONS_PAYS, PAYS_PAR_DEFAUT } from '../../shared/pays';
+import { SelectRecherche } from '../../shared/select-recherche';
 import { ChoixFormule } from './choix-formule';
 
 /** Saisie de la creation d'une entreprise par l'exploitant. */
 interface NouvelleEntreprise {
   nomEntreprise: string;
-  pays: string;
+  pays: string | null;
   telephone: string;
   nom: string;
   prenom: string;
@@ -68,7 +70,7 @@ const LIBELLES_MODULES: Record<CodeModule, string> = {
  */
 @Component({
   selector: 'app-plateforme',
-  imports: [DatePipe, DecimalPipe, FormsModule, Modale, ChoixFormule],
+  imports: [DatePipe, DecimalPipe, FormsModule, Modale, ChoixFormule, SelectRecherche],
   templateUrl: './plateforme.html',
   styleUrl: './plateforme.scss'
 })
@@ -91,6 +93,7 @@ export class Plateforme implements OnInit {
   readonly modulesChoisis = signal<CodeModule[]>([]);
   readonly variantes = signal<Partial<Record<CodeModule, string>>>({});
   readonly erreurCreation = signal<string | null>(null);
+  readonly optionsPays = OPTIONS_PAYS;
   saisie: NouvelleEntreprise = this.saisieVide();
 
   // ------------------------------------------------ fiche d'abonnement
@@ -266,7 +269,7 @@ export class Plateforme implements OnInit {
     this.enCours.set(-1);
     this.erreurCreation.set(null);
     this.service.creerEntreprise({
-      nomEntreprise: s.nomEntreprise.trim(), pays: s.pays.trim() || undefined, telephone: s.telephone.trim() || undefined,
+      nomEntreprise: s.nomEntreprise.trim(), pays: s.pays?.trim() || undefined, telephone: s.telephone.trim() || undefined,
       nom: s.nom.trim(), prenom: s.prenom.trim() || undefined, email: s.email.trim(), motDePasse: s.motDePasse,
       modules, variantes
     }, s.joursEssai || null).subscribe({
@@ -286,7 +289,7 @@ export class Plateforme implements OnInit {
   }
 
   private saisieVide(): NouvelleEntreprise {
-    return { nomEntreprise: '', pays: '', telephone: '', nom: '', prenom: '', email: '', motDePasse: '', joursEssai: null };
+    return { nomEntreprise: '', pays: PAYS_PAR_DEFAUT, telephone: '', nom: '', prenom: '', email: '', motDePasse: '', joursEssai: null };
   }
 
   // ------------------------------------------------- fiche d'abonnement

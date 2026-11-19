@@ -3,6 +3,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FormatDocuments, SocieteRequete } from '../../core/models/parametrage';
 import { SocieteService } from '../../core/services/societe.service';
 import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
+import { normaliserPays, optionsPays } from '../../shared/pays';
+import { SelectRecherche } from '../../shared/select-recherche';
 
 /**
  * Parametrage de l'entreprise (chapitre 39).
@@ -13,7 +15,7 @@ import { VALIDATION_FORMULAIRE } from '../../shared/validation-formulaire';
  */
 @Component({
   selector: 'app-parametrage',
-  imports: [ReactiveFormsModule, VALIDATION_FORMULAIRE],
+  imports: [ReactiveFormsModule, VALIDATION_FORMULAIRE, SelectRecherche],
   templateUrl: './parametrage.html',
   styleUrl: './parametrage.scss'
 })
@@ -22,6 +24,8 @@ export class Parametrage implements OnInit {
   private readonly service = inject(SocieteService);
 
   readonly logo = signal<string | null>(null);
+  /** Liste des pays, plus l'ancienne saisie libre si elle n'y figure pas. */
+  readonly optionsPays = signal(optionsPays());
   readonly chargement = signal(true);
   readonly enregistrement = signal(false);
   readonly televersement = signal(false);
@@ -34,7 +38,7 @@ export class Parametrage implements OnInit {
     formeJuridique: [''],
     adresse: [''],
     ville: [''],
-    pays: [''],
+    pays: ['' as string | null],
     telephone: [''],
     email: [''],
     siteWeb: [''],
@@ -56,13 +60,14 @@ export class Parametrage implements OnInit {
   ngOnInit(): void {
     this.service.lire().subscribe({
       next: (societe) => {
+        this.optionsPays.set(optionsPays(normaliserPays(societe.pays)));
         this.formulaire.patchValue({
           nom: societe.nom ?? '',
           sigle: societe.sigle ?? '',
           formeJuridique: societe.formeJuridique ?? '',
           adresse: societe.adresse ?? '',
           ville: societe.ville ?? '',
-          pays: societe.pays ?? '',
+          pays: normaliserPays(societe.pays),
           telephone: societe.telephone ?? '',
           email: societe.email ?? '',
           siteWeb: societe.siteWeb ?? '',
