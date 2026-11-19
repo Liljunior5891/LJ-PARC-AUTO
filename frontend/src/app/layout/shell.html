@@ -63,10 +63,12 @@
   } @else {
   <header class="barre-haute">
     <a class="marque" [routerLink]="accueil()">
-      @if (societe()?.logo; as logo) {
+      @if (estSuperAdmin) {
+        <span class="pastille-nova"><img src="nova-detoure.png" [alt]="nomPlateforme" /></span>
+      } @else if (societe()?.logo; as logo) {
         <img class="logo-image" [src]="logo" [alt]="societe()?.nom || 'Logo'" />
       } @else {
-        <span class="logo">{{ estSuperAdmin ? '◆' : '🏢' }}</span>
+        <span class="logo">🏢</span>
       }
       <span class="nom">
         {{ estSuperAdmin ? nomPlateforme : (societe()?.nom || utilisateur()?.entrepriseNom) }}

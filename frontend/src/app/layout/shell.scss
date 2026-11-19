@@ -148,6 +148,25 @@
       border-radius: 6px;
     }
 
+    /* Logo Nova detoure (lettres blanches) sur une pastille sombre,
+       lisible sur la barre claire comme en theme sombre. */
+    .pastille-nova {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 38px;
+      padding: 0 0.6rem;
+      background: #0f1115;
+      border-radius: 10px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+
+      img {
+        display: block;
+        height: 28px;
+        width: auto;
+      }
+    }
+
     .nom {
       display: flex;
       flex-direction: column;
