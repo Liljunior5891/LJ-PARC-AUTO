@@ -18,7 +18,7 @@ const LIBELLES_MODULES: Record<string, string> = {
 const LIBELLES_VARIANTES: Record<string, string> = {
   BOUTIQUE: 'Boutique / commerce',
   RESTAURATION: 'Bar, restaurant, cafe',
-  MATERIAUX: 'Quincaillerie & materiaux'
+  MATERIAUX: 'Commerce general & distribution'
 };
 
 const LIBELLES_MOYENS: Record<string, string> = {

@@ -25,7 +25,7 @@ export interface VarianteModule {
 export const ICONES_VARIANTES: Record<string, string> = {
   BOUTIQUE: '🛍️',
   RESTAURATION: '🍽️',
-  MATERIAUX: '🧱'
+  MATERIAUX: '🏬'
 };
 
 /** Presentation des modules dans l'interface : icone, page d'entree et fonctionnalites. */
@@ -101,7 +101,9 @@ export const FONCTIONNALITES_VARIANTES: Record<string, string[]> = {
     'Commande des clients par code QR depuis leur table'
   ],
   MATERIAUX: [
+    'Magasins et entrepots : stock par lieu, bons de retrait et transferts',
     'Comptes clients, pieces justificatives, vente a credit et acomptes',
+    'Fournisseurs, dettes et avances fournisseurs',
     'Devis et facture A4 avec TVA',
     'Vente sous plusieurs unites : sac, tonne, botte, carton',
     'Reglages du credit par l\'administrateur'

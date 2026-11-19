@@ -54,11 +54,11 @@ export class ReglagesPdvPage implements OnInit {
     { id: 'reglage-fonds-reserve', libelle: 'Fonds de reserve', icone: '🛟', groupe: 'Options' },
     { id: 'reglage-verrou', libelle: 'Verrouillage de la caisse', icone: '🔒', groupe: 'Options' },
     ...(this.materiaux ? [
-      { id: 'reglage-credit', libelle: 'Vente a credit', icone: '💳', groupe: 'Quincaillerie' },
-      { id: 'reglage-devis', libelle: 'Devis', icone: '📄', groupe: 'Quincaillerie' },
-      { id: 'reglage-facture', libelle: 'Facture et TVA', icone: '🧾', groupe: 'Quincaillerie' },
-      { id: 'reglage-conditionnements', libelle: 'Conditionnements', icone: '📦', groupe: 'Quincaillerie' },
-      { id: 'reglage-livraison', libelle: 'Livraison en plusieurs fois', icone: '🚚', groupe: 'Quincaillerie' }
+      { id: 'reglage-credit', libelle: 'Vente a credit', icone: '💳', groupe: 'Commerce general' },
+      { id: 'reglage-devis', libelle: 'Devis', icone: '📄', groupe: 'Commerce general' },
+      { id: 'reglage-facture', libelle: 'Facture et TVA', icone: '🧾', groupe: 'Commerce general' },
+      { id: 'reglage-conditionnements', libelle: 'Conditionnements', icone: '📦', groupe: 'Commerce general' },
+      { id: 'reglage-livraison', libelle: 'Livraison en plusieurs fois', icone: '🚚', groupe: 'Commerce general' }
     ] : [])
   ]);
 

@@ -46,9 +46,9 @@ public enum ModuleApplicatif {
                             "Caisse rapide au comptoir : douchette, panier et recu."),
                     new Variante("RESTAURATION", "Bar, restaurant, cafe",
                             "Plan de salle, commandes par table, ecrans cuisine et bar, additions."),
-                    new Variante("MATERIAUX", "Quincaillerie & materiaux (BTP)",
-                            "Caisse de la boutique, plus les comptes clients, la vente a credit, les devis, "
-                                    + "la facture A4 et la vente au sac, a la tonne ou au carton."))),
+                    new Variante("MATERIAUX", "Commerce general & distribution",
+                            "Grande boutique avec magasins et entrepots : comptes clients et vente a credit, "
+                                    + "fournisseurs et dettes, devis, facture A4 et vente au sac, a la tonne ou au carton."))),
     MARKETPLACE(
             "Marketplace",
             "Boutique en ligne et place de marche : vos produits, vos vehicules a louer, "

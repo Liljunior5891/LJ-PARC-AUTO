@@ -1,6 +1,6 @@
 import { ModePaiementPdv } from './pdv';
 
-/** Point de vente « Quincaillerie & materiaux (BTP) » : reglages, clients, credit, devis, conditionnements. */
+/** Point de vente « Commerce general & distribution » (code MATERIAUX) : reglages, clients, credit, devis, conditionnements. */
 
 export interface ReglagesMateriaux {
   creditActif: boolean;

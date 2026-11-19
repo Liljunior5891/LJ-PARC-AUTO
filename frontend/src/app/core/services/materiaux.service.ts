@@ -28,7 +28,7 @@ import {
   VenteALivrer
 } from '../models/materiaux';
 
-/** API du point de vente « Quincaillerie & materiaux ». */
+/** API du point de vente « Commerce general & distribution » (code MATERIAUX). */
 @Injectable({ providedIn: 'root' })
 export class MateriauxService {
   private readonly http = inject(HttpClient);
